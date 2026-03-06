@@ -1,0 +1,118 @@
+import createClient from 'openapi-fetch'
+import { config } from '@/app/config'
+
+let getToken: (() => string | undefined) | null = null
+
+export function setTokenGetter(getter: () => string | undefined) {
+  getToken = getter
+}
+
+export function getAuthToken() {
+  return getToken?.()
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const apiClient = createClient<Record<string, any>>({
+  baseUrl: config.api.baseUrl,
+})
+
+apiClient.use({
+  onRequest({ request }) {
+    const token = getAuthToken()
+    if (token) {
+      request.headers.set('Authorization', `Bearer ${token}`)
+    }
+    return request
+  },
+  async onResponse({ response }) {
+    if (!response.ok) {
+      throw await toApiError(response)
+    }
+    return response
+  },
+})
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details?: Record<string, unknown>,
+    public readonly traceId?: string,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
+export async function toApiError(response: Response) {
+  const body = await response.clone().json().catch(() => null)
+  const apiError = body?.error
+  return new ApiError(
+    response.status,
+    apiError?.code ?? 'UNKNOWN',
+    apiError?.message ?? response.statusText,
+    apiError?.details,
+    apiError?.trace_id,
+  )
+}
+
+export function buildApiUrl(path: string) {
+  if (/^https?:\/\//.test(path)) return path
+  return `${config.api.baseUrl}${path}`
+}
+
+export function createRequestHeaders(
+  headers?: HeadersInit,
+  options?: { json?: boolean },
+) {
+  const normalized = new Headers(headers)
+  const token = getAuthToken()
+  if (token && !normalized.has('Authorization')) {
+    normalized.set('Authorization', `Bearer ${token}`)
+  }
+  if (options?.json && !normalized.has('Content-Type')) {
+    normalized.set('Content-Type', 'application/json')
+  }
+  return normalized
+}
+
+export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetch(buildApiUrl(path), {
+    ...init,
+    headers: createRequestHeaders(init.headers, {
+      json: init.body != null && !(init.body instanceof FormData),
+    }),
+  })
+  if (!response.ok) {
+    throw await toApiError(response)
+  }
+  if (response.status === 204) {
+    return undefined as T
+  }
+  return response.json() as Promise<T>
+}
+
+export function isApiError(err: unknown): err is ApiError {
+  return err instanceof ApiError
+}
+
+export function isConflict(err: unknown): err is ApiError {
+  return isApiError(err) && err.status === 409
+}
+
+export function isRateLimit(err: unknown): err is ApiError {
+  return isApiError(err) && err.status === 429
+}
+
+export function isValidationError(err: unknown): err is ApiError {
+  return isApiError(err) && err.status === 422
+}
+
+export function isNotFound(err: unknown): err is ApiError {
+  return isApiError(err) && err.status === 404
+}
+
+export function isIntegrationNotConfigured(err: unknown): err is ApiError {
+  return isApiError(err) && err.code === 'INTEGRATION_NOT_CONFIGURED'
+}

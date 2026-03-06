@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Env files
+.env
+.env.local
+.env.*.local
+
+# Alembic
+api/app/migrations/versions/__pycache__/
+
+# OS
+.DS_Store
+
+# Docker
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# Skills
+skills/
+.agent/
+.agents/
+.trae/
+.claude/
+
+docs/
+scripts/
+
+frontend/node_modules/

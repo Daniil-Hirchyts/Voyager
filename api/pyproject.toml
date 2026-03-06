@@ -1,0 +1,52 @@
+[project]
+name = "voyager-api"
+version = "0.1.0"
+description = "Voyager backend API"
+requires-python = ">=3.12"
+dependencies = [
+  "alembic>=1.14.0",
+  "asyncpg>=0.30.0",
+  "fastapi>=0.115.0",
+  "httpx>=0.28.0",
+  "pydantic-settings>=2.7.0",
+  "pyjwt[crypto]>=2.10.0",
+  "redis>=5.2.0",
+  "sqlalchemy>=2.0.36",
+  "uvicorn[standard]>=0.32.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.0",
+  "pytest-asyncio>=0.24.0",
+  "ruff>=0.8.0",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-q"
+testpaths = ["app/tests"]
+markers = [
+  "phase1: phase 1 integration coverage",
+  "phase2: phase 2 integration coverage",
+  "phase3: phase 3 integration coverage",
+  "phase4: phase 4 integration coverage",
+  "phase5: phase 5 integration coverage",
+  "phase6: phase 6 integration coverage",
+  "integration: integration tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/migrations/**" = ["UP007", "UP035"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

@@ -1,0 +1,45 @@
+import type { components } from './generated/schema'
+
+export type UserProfile = components['schemas']['UserProfileResponse']
+export type UserProfilePatchInput = components['schemas']['UserProfilePatchRequest']
+
+export type Trip = components['schemas']['TripResponse']
+export type TripListResponse = components['schemas']['TripListResponse']
+export type TripCreateInput = components['schemas']['TripCreateRequest']
+export type TripUpdateInput = components['schemas']['TripPatchRequest']
+export type GenerationMode = components['schemas']['GenerationMode']
+export type TripGenerateInput = components['schemas']['TripGenerateRequest']
+export type TripRegenerateInput = components['schemas']['TripRegenerateRequest']
+export type TripResetInput = components['schemas']['TripResetItineraryRequest']
+
+export type Day = components['schemas']['DayResponse']
+export type DayListResponse = components['schemas']['DayListResponse']
+export type DayUpdateInput = components['schemas']['DayPatchRequest']
+
+export type Activity = components['schemas']['ActivityResponse']
+export type ActivityListResponse = components['schemas']['ActivityListResponse']
+export type ActivityCreateInput = components['schemas']['ActivityCreateRequest']
+export type ActivityUpdateInput = components['schemas']['ActivityPatchRequest']
+export type ActivityReorderInput = components['schemas']['ActivityReorderRequest']
+export type ActivityMoveInput = components['schemas']['ActivityMoveRequest']
+
+export type Job = components['schemas']['JobResponse']
+export type JobListResponse = components['schemas']['JobListResponse']
+export type JobAcceptedResponse = components['schemas']['JobAcceptedResponse']
+
+export type Place = components['schemas']['PlaceResponse']
+export type PlaceListResponse = components['schemas']['PlaceListResponse']
+export type PlaceCreateInput = components['schemas']['PlaceCreateRequest']
+export type PlacePhoto = components['schemas']['PlacePhotoResponse']
+export type PlacePhotoListResponse = components['schemas']['PlacePhotoListResponse']
+
+export type Offer = components['schemas']['OfferResponse']
+export type OfferListResponse = components['schemas']['OfferListResponse']
+export type OfferKind = components['schemas']['OfferKind']
+export type OfferAttachDayInput = components['schemas']['OfferAttachDayRequest']
+export type OfferRefreshInput = components['schemas']['OfferRefreshRequest']
+export type TripOffersRefreshInput = components['schemas']['TripOffersRefreshRequest']
+export type TransportOfferSearchInput = components['schemas']['TransportOfferSearchRequest']
+export type LodgingOfferSearchInput = components['schemas']['LodgingOfferSearchRequest']
+export type TransportMode = components['schemas']['TransportMode']
+export type LodgingType = components['schemas']['LodgingType']

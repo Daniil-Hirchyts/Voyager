@@ -1,0 +1,225 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: voyager-db
+    environment:
+      POSTGRES_DB: voyager
+      POSTGRES_USER: voyager
+      POSTGRES_PASSWORD: voyager
+    ports:
+      - "5432:5432"
+    volumes:
+      - voyager_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voyager -d voyager"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: voyager-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: voyager-keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak
+    volumes:
+      - voyager_keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: voyager-keycloak
+    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/realm-travel.json:/opt/keycloak/data/import/realm-travel.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  api:
+    build:
+      context: ./api
+    container_name: voyager-api
+    environment:
+      VOYAGER_DB_DSN: ${VOYAGER_DB_DSN:-postgresql+asyncpg://voyager:voyager@db:5432/voyager}
+      VOYAGER_REDIS_URL: ${VOYAGER_REDIS_URL:-redis://redis:6379/0}
+      VOYAGER_KEYCLOAK_ISSUER: ${VOYAGER_KEYCLOAK_ISSUER:-http://localhost:8080/realms/travel}
+      VOYAGER_KEYCLOAK_AUDIENCE: ${VOYAGER_KEYCLOAK_AUDIENCE:-voyager-api}
+      VOYAGER_KEYCLOAK_JWKS_URL: ${VOYAGER_KEYCLOAK_JWKS_URL:-http://keycloak:8080/realms/travel/protocol/openid-connect/certs}
+      VOYAGER_KEYCLOAK_CLIENT_ID: ${VOYAGER_KEYCLOAK_CLIENT_ID:-voyager-api}
+      VOYAGER_KEYCLOAK_CLIENT_SECRET: ${VOYAGER_KEYCLOAK_CLIENT_SECRET:-}
+      VOYAGER_ENV: ${VOYAGER_ENV:-dev}
+      VOYAGER_REQUIRE_IDEMPOTENCY_KEYS: ${VOYAGER_REQUIRE_IDEMPOTENCY_KEYS:-true}
+      VOYAGER_RATE_LIMIT_IP_PER_MIN: ${VOYAGER_RATE_LIMIT_IP_PER_MIN:-240}
+      VOYAGER_RATE_LIMIT_USER_PER_MIN: ${VOYAGER_RATE_LIMIT_USER_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_GENERATE_PER_HOUR: ${VOYAGER_RATE_LIMIT_GENERATE_PER_HOUR:-5}
+      VOYAGER_RATE_LIMIT_PLACES_GEO_PER_MIN: ${VOYAGER_RATE_LIMIT_PLACES_GEO_PER_MIN:-60}
+      VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR: ${VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR:-6}
+      VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_OFFERS_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_OFFERS_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_EXPORT_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_EXPORT_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN: ${VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_OFFERS_PROVIDER_PER_MIN: ${VOYAGER_RATE_LIMIT_OFFERS_PROVIDER_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN: ${VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN:-120}
+      VOYAGER_LOG_LEVEL: ${VOYAGER_LOG_LEVEL:-INFO}
+      VOYAGER_WORKER_POLL_INTERVAL_SEC: ${VOYAGER_WORKER_POLL_INTERVAL_SEC:-1}
+      VOYAGER_JOB_MAX_ATTEMPTS: ${VOYAGER_JOB_MAX_ATTEMPTS:-3}
+      VOYAGER_EXPORTS_DIR: ${VOYAGER_EXPORTS_DIR:-/var/lib/voyager/exports}
+      VOYAGER_EXPORT_RETENTION_DAYS: ${VOYAGER_EXPORT_RETENTION_DAYS:-14}
+      VOYAGER_OFFER_CACHE_TTL_SEC: ${VOYAGER_OFFER_CACHE_TTL_SEC:-30}
+      VOYAGER_OFFER_SEARCH_CACHE_TTL_SEC: ${VOYAGER_OFFER_SEARCH_CACHE_TTL_SEC:-180}
+      VOYAGER_EVENT_CACHE_TTL_SEC: ${VOYAGER_EVENT_CACHE_TTL_SEC:-30}
+      VOYAGER_PROPOSAL_CACHE_TTL_SEC: ${VOYAGER_PROPOSAL_CACHE_TTL_SEC:-30}
+      VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC: ${VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC:-60}
+      VOYAGER_EXPORT_CACHE_TTL_SEC: ${VOYAGER_EXPORT_CACHE_TTL_SEC:-20}
+      VOYAGER_AUDIT_CACHE_TTL_SEC: ${VOYAGER_AUDIT_CACHE_TTL_SEC:-15}
+      VOYAGER_OFFERS_PROVIDER_FAILURE_THRESHOLD: ${VOYAGER_OFFERS_PROVIDER_FAILURE_THRESHOLD:-3}
+      VOYAGER_OFFERS_PROVIDER_COOLDOWN_SEC: ${VOYAGER_OFFERS_PROVIDER_COOLDOWN_SEC:-60}
+      VOYAGER_OFFERS_TRANSPORT_PROVIDERS: ${VOYAGER_OFFERS_TRANSPORT_PROVIDERS:-amadeus_transport,mock_transport}
+      VOYAGER_OFFERS_LODGING_PROVIDERS: ${VOYAGER_OFFERS_LODGING_PROVIDERS:-amadeus_lodging,mock_lodging}
+      VOYAGER_ITINERARY_LLM_ENABLED: ${VOYAGER_ITINERARY_LLM_ENABLED:-true}
+      VOYAGER_LLM_OPENROUTER_API_KEY: ${VOYAGER_LLM_OPENROUTER_API_KEY:-}
+      VOYAGER_LLM_OPENROUTER_BASE_URL: ${VOYAGER_LLM_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      VOYAGER_LLM_OPENROUTER_MODEL_ORDER: ${VOYAGER_LLM_OPENROUTER_MODEL_ORDER:-openai/gpt-oss-20b:free,qwen/qwen3-coder:free,meta-llama/llama-3.3-70b-instruct:free}
+      VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC: ${VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC:-20}
+      VOYAGER_FLIGHTS_AMADEUS_CLIENT_ID: ${VOYAGER_FLIGHTS_AMADEUS_CLIENT_ID:-}
+      VOYAGER_FLIGHTS_AMADEUS_CLIENT_SECRET: ${VOYAGER_FLIGHTS_AMADEUS_CLIENT_SECRET:-}
+      VOYAGER_FLIGHTS_AMADEUS_BASE_URL: ${VOYAGER_FLIGHTS_AMADEUS_BASE_URL:-https://test.api.amadeus.com}
+      VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC: ${VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC:-20}
+      VOYAGER_EVENTS_TICKETMASTER_API_KEY: ${VOYAGER_EVENTS_TICKETMASTER_API_KEY:-}
+      VOYAGER_EVENTS_TICKETMASTER_BASE_URL: ${VOYAGER_EVENTS_TICKETMASTER_BASE_URL:-https://app.ticketmaster.com/discovery/v2}
+      VOYAGER_EVENTS_TICKETMASTER_TIMEOUT_SEC: ${VOYAGER_EVENTS_TICKETMASTER_TIMEOUT_SEC:-20}
+      VOYAGER_MEDIA_USER_AGENT: ${VOYAGER_MEDIA_USER_AGENT:-Voyager/0.1 (+https://localhost)}
+      UV_LINK_MODE: copy
+      UV_PROJECT_ENVIRONMENT: /tmp/venv
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api:/app
+      - voyager_exports_data:/var/lib/voyager/exports
+    command:
+      [
+        "sh",
+        "-c",
+        "uv sync && uv run alembic -c alembic.ini upgrade head && uv run uvicorn app.main:app --host 0.0.0.0 --port 8000",
+      ]
+
+  worker:
+    build:
+      context: ./api
+    container_name: voyager-worker
+    environment:
+      VOYAGER_DB_DSN: ${VOYAGER_DB_DSN:-postgresql+asyncpg://voyager:voyager@db:5432/voyager}
+      VOYAGER_REDIS_URL: ${VOYAGER_REDIS_URL:-redis://redis:6379/0}
+      VOYAGER_KEYCLOAK_ISSUER: ${VOYAGER_KEYCLOAK_ISSUER:-http://localhost:8080/realms/travel}
+      VOYAGER_KEYCLOAK_AUDIENCE: ${VOYAGER_KEYCLOAK_AUDIENCE:-voyager-api}
+      VOYAGER_KEYCLOAK_JWKS_URL: ${VOYAGER_KEYCLOAK_JWKS_URL:-http://keycloak:8080/realms/travel/protocol/openid-connect/certs}
+      VOYAGER_KEYCLOAK_CLIENT_ID: ${VOYAGER_KEYCLOAK_CLIENT_ID:-voyager-api}
+      VOYAGER_KEYCLOAK_CLIENT_SECRET: ${VOYAGER_KEYCLOAK_CLIENT_SECRET:-}
+      VOYAGER_ENV: ${VOYAGER_ENV:-dev}
+      VOYAGER_REQUIRE_IDEMPOTENCY_KEYS: ${VOYAGER_REQUIRE_IDEMPOTENCY_KEYS:-true}
+      VOYAGER_RATE_LIMIT_IP_PER_MIN: ${VOYAGER_RATE_LIMIT_IP_PER_MIN:-240}
+      VOYAGER_RATE_LIMIT_USER_PER_MIN: ${VOYAGER_RATE_LIMIT_USER_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_GENERATE_PER_HOUR: ${VOYAGER_RATE_LIMIT_GENERATE_PER_HOUR:-5}
+      VOYAGER_RATE_LIMIT_PLACES_GEO_PER_MIN: ${VOYAGER_RATE_LIMIT_PLACES_GEO_PER_MIN:-60}
+      VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR: ${VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR:-6}
+      VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_OFFERS_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_OFFERS_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_EXPORT_SUBMIT_PER_HOUR: ${VOYAGER_RATE_LIMIT_EXPORT_SUBMIT_PER_HOUR:-20}
+      VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN: ${VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_OFFERS_PROVIDER_PER_MIN: ${VOYAGER_RATE_LIMIT_OFFERS_PROVIDER_PER_MIN:-120}
+      VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN: ${VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN:-120}
+      VOYAGER_LOG_LEVEL: ${VOYAGER_LOG_LEVEL:-INFO}
+      VOYAGER_WORKER_POLL_INTERVAL_SEC: ${VOYAGER_WORKER_POLL_INTERVAL_SEC:-1}
+      VOYAGER_JOB_MAX_ATTEMPTS: ${VOYAGER_JOB_MAX_ATTEMPTS:-3}
+      VOYAGER_EXPORTS_DIR: ${VOYAGER_EXPORTS_DIR:-/var/lib/voyager/exports}
+      VOYAGER_EXPORT_RETENTION_DAYS: ${VOYAGER_EXPORT_RETENTION_DAYS:-14}
+      VOYAGER_OFFER_CACHE_TTL_SEC: ${VOYAGER_OFFER_CACHE_TTL_SEC:-30}
+      VOYAGER_OFFER_SEARCH_CACHE_TTL_SEC: ${VOYAGER_OFFER_SEARCH_CACHE_TTL_SEC:-180}
+      VOYAGER_EVENT_CACHE_TTL_SEC: ${VOYAGER_EVENT_CACHE_TTL_SEC:-30}
+      VOYAGER_PROPOSAL_CACHE_TTL_SEC: ${VOYAGER_PROPOSAL_CACHE_TTL_SEC:-30}
+      VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC: ${VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC:-60}
+      VOYAGER_EXPORT_CACHE_TTL_SEC: ${VOYAGER_EXPORT_CACHE_TTL_SEC:-20}
+      VOYAGER_AUDIT_CACHE_TTL_SEC: ${VOYAGER_AUDIT_CACHE_TTL_SEC:-15}
+      VOYAGER_OFFERS_PROVIDER_FAILURE_THRESHOLD: ${VOYAGER_OFFERS_PROVIDER_FAILURE_THRESHOLD:-3}
+      VOYAGER_OFFERS_PROVIDER_COOLDOWN_SEC: ${VOYAGER_OFFERS_PROVIDER_COOLDOWN_SEC:-60}
+      VOYAGER_OFFERS_TRANSPORT_PROVIDERS: ${VOYAGER_OFFERS_TRANSPORT_PROVIDERS:-amadeus_transport,mock_transport}
+      VOYAGER_OFFERS_LODGING_PROVIDERS: ${VOYAGER_OFFERS_LODGING_PROVIDERS:-amadeus_lodging,mock_lodging}
+      VOYAGER_ITINERARY_LLM_ENABLED: ${VOYAGER_ITINERARY_LLM_ENABLED:-true}
+      VOYAGER_LLM_OPENROUTER_API_KEY: ${VOYAGER_LLM_OPENROUTER_API_KEY:-}
+      VOYAGER_LLM_OPENROUTER_BASE_URL: ${VOYAGER_LLM_OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      VOYAGER_LLM_OPENROUTER_MODEL_ORDER: ${VOYAGER_LLM_OPENROUTER_MODEL_ORDER:-openai/gpt-oss-20b:free,qwen/qwen3-coder:free,meta-llama/llama-3.3-70b-instruct:free}
+      VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC: ${VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC:-20}
+      VOYAGER_FLIGHTS_AMADEUS_CLIENT_ID: ${VOYAGER_FLIGHTS_AMADEUS_CLIENT_ID:-}
+      VOYAGER_FLIGHTS_AMADEUS_CLIENT_SECRET: ${VOYAGER_FLIGHTS_AMADEUS_CLIENT_SECRET:-}
+      VOYAGER_FLIGHTS_AMADEUS_BASE_URL: ${VOYAGER_FLIGHTS_AMADEUS_BASE_URL:-https://test.api.amadeus.com}
+      VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC: ${VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC:-20}
+      VOYAGER_EVENTS_TICKETMASTER_API_KEY: ${VOYAGER_EVENTS_TICKETMASTER_API_KEY:-}
+      VOYAGER_EVENTS_TICKETMASTER_BASE_URL: ${VOYAGER_EVENTS_TICKETMASTER_BASE_URL:-https://app.ticketmaster.com/discovery/v2}
+      VOYAGER_EVENTS_TICKETMASTER_TIMEOUT_SEC: ${VOYAGER_EVENTS_TICKETMASTER_TIMEOUT_SEC:-20}
+      VOYAGER_MEDIA_USER_AGENT: ${VOYAGER_MEDIA_USER_AGENT:-Voyager/0.1 (+https://localhost)}
+      UV_LINK_MODE: copy
+      UV_PROJECT_ENVIRONMENT: /tmp/venv
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+    volumes:
+      - ./api:/app
+      - voyager_exports_data:/var/lib/voyager/exports
+    command:
+      [
+        "sh",
+        "-c",
+        "uv sync && uv run python -m app.worker.main",
+      ]
+
+volumes:
+  voyager_db_data:
+  voyager_keycloak_db_data:
+  voyager_exports_data:

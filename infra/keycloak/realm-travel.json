@@ -1,0 +1,83 @@
+{
+  "realm": "travel",
+  "enabled": true,
+  "displayName": "Voyager Travel",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "accessTokenLifespan": 900,
+  "clients": [
+    {
+      "clientId": "voyager-api",
+      "name": "Voyager API",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      {"name": "user", "description": "Default Voyager user role"},
+      {"name": "admin", "description": "Voyager admin role"}
+    ]
+  },
+  "users": [
+    {
+      "username": "voyager_user",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Voyager",
+      "lastName": "User",
+      "email": "voyager_user@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "voyager_pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "voyager_user_2",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Voyager",
+      "lastName": "User Two",
+      "email": "voyager_user_2@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "voyager_pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "voyager_admin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Voyager",
+      "lastName": "Admin",
+      "email": "voyager_admin@example.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "voyager_pass",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user", "admin"]
+    }
+  ]
+}

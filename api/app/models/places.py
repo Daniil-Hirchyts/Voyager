@@ -1,0 +1,99 @@
+from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, Field
+
+
+class PlaceCreateRequest(BaseModel):
+    source: str
+    external_id: str | None = None
+    name: str
+    category: str | None = None
+    address_text: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class PlacePhotoSummary(BaseModel):
+    id: UUID
+    source: str
+    image_url: str
+    thumbnail_url: str | None
+    license_code: str | None
+    license_url: str | None
+    attribution_text: str | None
+
+
+class PlaceResponse(BaseModel):
+    id: UUID
+    source: str
+    external_id: str | None
+    name: str
+    category: str | None
+    address_text: str | None
+    lat: float | None
+    lon: float | None
+    metadata: dict
+    canonical_place_id: UUID | None
+    is_canonical: bool
+    dedup_confidence: float | None
+    merged_at: datetime | None
+    photo_count: int = 0
+    primary_photo: PlacePhotoSummary | None = None
+    distance_m: float | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlaceListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[PlaceResponse]
+
+
+class PlaceMetadataPatchRequest(BaseModel):
+    metadata: dict = Field(default_factory=dict)
+
+
+class PlaceMergeRequest(BaseModel):
+    source_place_ids: list[UUID] = Field(min_length=1)
+    dedup_confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+
+
+class PlaceMergeResponse(BaseModel):
+    canonical_place_id: UUID
+    merged_places: int
+    relinked_aliases: int
+    remapped_activities: int
+
+
+class PlaceDedupRunRequest(BaseModel):
+    radius_m: int = Field(default=120, ge=1, le=50_000)
+    max_groups: int = Field(default=500, ge=1, le=10_000)
+
+
+class PlacePhotoResponse(BaseModel):
+    id: UUID
+    place_id: UUID
+    source: str
+    source_media_ref: str
+    image_url: str
+    thumbnail_url: str | None
+    width: int | None
+    height: int | None
+    license_code: str | None
+    license_url: str | None
+    author_name: str | None
+    author_url: str | None
+    attribution_text: str | None
+    rank: int
+    is_primary: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlacePhotoListResponse(BaseModel):
+    total: int
+    items: list[PlacePhotoResponse]
