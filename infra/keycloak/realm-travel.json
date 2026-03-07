@@ -2,6 +2,7 @@
   "realm": "travel",
   "enabled": true,
   "displayName": "Voyager Travel",
+  "loginTheme": "voyager",
   "registrationAllowed": false,
   "resetPasswordAllowed": true,
   "rememberMe": true,
@@ -22,6 +23,25 @@
       "fullScopeAllowed": true,
       "redirectUris": ["*"],
       "webOrigins": ["*"]
+    },
+    {
+      "clientId": "voyager-frontend",
+      "name": "Voyager Frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "fullScopeAllowed": true,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "+",
+        "http://localhost:5173"
+      ]
     }
   ],
   "roles": {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -15,7 +15,24 @@ import {
 import { toast } from 'sonner'
 import { config } from '@/app/config'
 import { useCreatePlace, usePlace, usePlaceSearch } from '@/entities/place/queries'
-import type { Activity, ActivityCreateInput, PlaceCreateInput } from '@/shared/api/types'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import type {
+  Activity,
+  ActivityCreateInput,
+  PlaceCreateInput,
+  PlannerActivity,
+} from '@/shared/api/types'
 
 const activitySchema = z.object({
   title: z.string().min(1, 'Title is required').max(300),
@@ -55,13 +72,13 @@ type PlaceFormValues = z.infer<typeof createPlaceSchema>
 interface Props {
   open: boolean
   tripId: string
-  activity?: Activity | null
+  activity?: Activity | PlannerActivity | null
   onClose: () => void
   onSave: (data: ActivityCreateInput) => Promise<void>
   isSaving?: boolean
 }
 
-function activityToForm(activity: Activity): ActivityFormValues {
+function activityToForm(activity: Activity | PlannerActivity): ActivityFormValues {
   return {
     title: activity.title,
     description: activity.description ?? undefined,
@@ -101,6 +118,7 @@ export function ActivityDrawer({
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<ActivityFormValues>({
     resolver: zodResolver(activitySchema),
@@ -186,8 +204,6 @@ export function ActivityDrawer({
     navigate(`/app/trips/${tripId}/map?${params.toString()}`)
   }
 
-  const inputClass =
-    'w-full px-3 py-2 rounded-[10px] border text-sm outline-none transition-colors focus:border-[#2F6F73] focus:ring-1 focus:ring-[#2F6F73]/20'
   const labelClass = 'block text-xs font-medium text-[#526072] mb-1 uppercase tracking-wider'
 
   if (!open) return null
@@ -210,121 +226,119 @@ export function ActivityDrawer({
           <h2 className="font-semibold text-[#1D2430]">
             {isCreate ? 'Add Activity' : 'Edit Activity'}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-[10px] hover:bg-[#F4EBDD] transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4 text-[#526072]" />
-          </button>
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
+            <X className="w-4 h-4" />
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit(submitActivity)} className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
           <div>
-            <label className={labelClass}>Title *</label>
-            <input
+            <Label className={labelClass}>Title *</Label>
+            <Input
               {...register('title')}
               placeholder="Activity title"
-              className={inputClass}
-              style={{
-                borderColor: errors.title ? '#C56A3D' : 'var(--color-border)',
-                background: 'var(--color-bg)',
-              }}
+              className={errors.title ? 'border-[#C56A3D]' : ''}
+              style={{ background: 'var(--color-bg)' }}
             />
             {errors.title && <p className="mt-1 text-xs text-[#C56A3D]">{errors.title.message}</p>}
           </div>
 
           <div>
-            <label className={labelClass}>Description</label>
-            <textarea
+            <Label className={labelClass}>Description</Label>
+            <Textarea
               {...register('description')}
               rows={2}
               placeholder="Brief description..."
-              className={`${inputClass} resize-none`}
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg)' }}
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Start Time</label>
-              <input
+              <Label className={labelClass}>Start Time</Label>
+              <Input
                 type="time"
                 {...register('start_time')}
-                className={inputClass}
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg)' }}
               />
             </div>
             <div>
-              <label className={labelClass}>Duration (min)</label>
-              <input
+              <Label className={labelClass}>Duration (min)</Label>
+              <Input
                 type="number"
                 {...register('duration_min', { valueAsNumber: true })}
                 min={1}
                 max={1440}
                 placeholder="60"
-                className={inputClass}
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg)' }}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelClass}>Est. Cost</label>
-              <input
+              <Label className={labelClass}>Est. Cost</Label>
+              <Input
                 type="number"
                 {...register('estimated_cost_amount', { valueAsNumber: true })}
                 min={0}
                 step={0.01}
                 placeholder="0.00"
-                className={inputClass}
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg)' }}
               />
             </div>
             <div>
-              <label className={labelClass}>Currency</label>
-              <select
-                {...register('estimated_cost_currency')}
-                className={inputClass}
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
-              >
-                {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'].map((currency) => (
-                  <option key={currency} value={currency}>
-                    {currency}
-                  </option>
-                ))}
-              </select>
+              <Label className={labelClass}>Currency</Label>
+              <Controller
+                control={control}
+                name="estimated_cost_currency"
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger style={{ background: 'var(--color-bg)' }}>
+                      <SelectValue placeholder="Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'].map((currency) => (
+                        <SelectItem key={currency} value={currency}>{currency}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
           </div>
 
           <div>
-            <label className={labelClass}>Tags (comma-separated)</label>
-            <input
+            <Label className={labelClass}>Tags (comma-separated)</Label>
+            <Input
               {...register('tags')}
               placeholder="food, outdoor, culture"
-              className={inputClass}
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg)' }}
             />
           </div>
 
           <div>
-            <label className={labelClass}>Notes</label>
-            <textarea
+            <Label className={labelClass}>Notes</Label>
+            <Textarea
               {...register('notes')}
               rows={3}
               placeholder="Personal notes..."
-              className={`${inputClass} resize-none`}
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg)' }}
             />
           </div>
 
           <div className="flex items-center gap-2.5">
-            <input
-              type="checkbox"
-              id="is_favorite"
-              {...register('is_favorite')}
-              className="w-4 h-4 rounded accent-[#C56A3D]"
+            <Controller
+              control={control}
+              name="is_favorite"
+              render={({ field }) => (
+                <Checkbox
+                  id="is_favorite"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  className="data-[state=checked]:bg-[#C56A3D] data-[state=checked]:border-[#C56A3D]"
+                />
+              )}
             />
             <label htmlFor="is_favorite" className="text-sm text-[#1D2430] cursor-pointer">
               Mark as favorite
@@ -377,15 +391,15 @@ export function ActivityDrawer({
             )}
 
             <div>
-              <label className={labelClass}>Search Places</label>
+              <Label className={labelClass}>Search Places</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#526072]" />
-                <input
+                <Input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Louvre Museum, brunch, viewpoint..."
-                  className={`${inputClass} pl-9`}
-                  style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                  className="pl-9"
+                  style={{ background: 'var(--color-bg)' }}
                 />
               </div>
             </div>
@@ -423,25 +437,25 @@ export function ActivityDrawer({
             )}
 
             <div className="flex flex-wrap gap-2">
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={() => setShowCreatePlace((value) => !value)}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] border text-sm text-[#526072] hover:bg-[#F4EBDD] transition-colors"
-                style={{ borderColor: 'var(--color-border)' }}
               >
                 <Plus className="w-4 h-4 text-[#2F6F73]" />
                 {showCreatePlace ? 'Hide Custom Place Form' : 'Create Custom Place'}
-              </button>
+              </Button>
               {config.features.mapUI && activity && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={openInMap}
-                  className="inline-flex items-center gap-2 px-3 py-2 rounded-[10px] border text-sm text-[#526072] hover:bg-[#F4EBDD] transition-colors"
-                  style={{ borderColor: 'var(--color-border)' }}
                 >
                   <ExternalLink className="w-4 h-4 text-[#2F6F73]" />
                   Browse on Map
-                </button>
+                </Button>
               )}
             </div>
 
@@ -451,87 +465,74 @@ export function ActivityDrawer({
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
               >
                 <div>
-                  <label className={labelClass}>Place Name *</label>
-                  <input
+                  <Label className={labelClass}>Place Name *</Label>
+                  <Input
                     {...placeForm.register('name')}
-                    className={inputClass}
-                    style={{
-                      borderColor: placeForm.formState.errors.name ? '#C56A3D' : 'var(--color-border)',
-                      background: 'var(--color-surface)',
-                    }}
+                    className={placeForm.formState.errors.name ? 'border-[#C56A3D]' : ''}
+                    style={{ background: 'var(--color-surface)' }}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>Category</label>
-                    <input
+                    <Label className={labelClass}>Category</Label>
+                    <Input
                       {...placeForm.register('category')}
-                      className={inputClass}
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)' }}
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Address</label>
-                    <input
+                    <Label className={labelClass}>Address</Label>
+                    <Input
                       {...placeForm.register('address_text')}
-                      className={inputClass}
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)' }}
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>Latitude</label>
-                    <input
+                    <Label className={labelClass}>Latitude</Label>
+                    <Input
                       type="number"
                       step="any"
                       {...placeForm.register('lat', { valueAsNumber: true })}
-                      className={inputClass}
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)' }}
                     />
                   </div>
                   <div>
-                    <label className={labelClass}>Longitude</label>
-                    <input
+                    <Label className={labelClass}>Longitude</Label>
+                    <Input
                       type="number"
                       step="any"
                       {...placeForm.register('lon', { valueAsNumber: true })}
-                      className={inputClass}
-                      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-surface)' }}
                     />
                   </div>
                 </div>
-                <button
+                <Button
                   type="button"
                   onClick={placeForm.handleSubmit(submitCreatePlace)}
                   disabled={createPlaceMutation.isPending}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#2F6F73] text-white text-sm font-medium rounded-[10px] hover:bg-[#266063] transition-colors disabled:opacity-50"
                 >
                   {createPlaceMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save Custom Place
-                </button>
+                </Button>
               </div>
             )}
           </div>
         </form>
 
         <div className="px-5 py-4 border-t flex gap-3" style={{ borderColor: 'var(--color-border)' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 px-4 py-2.5 border text-sm text-[#526072] rounded-[10px] hover:bg-[#F4EBDD] transition-colors"
-            style={{ borderColor: 'var(--color-border)' }}
-          >
+          <Button type="button" variant="outline" onClick={onClose} className="flex-1">
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit(submitActivity)}
             disabled={isSaving}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#2F6F73] text-white text-sm font-medium rounded-[10px] hover:bg-[#266063] transition-colors disabled:opacity-50"
+            className="flex-1"
           >
             {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
             {isCreate ? 'Add Activity' : 'Save Changes'}
-          </button>
+          </Button>
         </div>
       </aside>
     </>

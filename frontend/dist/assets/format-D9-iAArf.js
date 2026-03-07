@@ -1,0 +1,1 @@
+function i(r,t){if(r==null||r==="")return null;const e=typeof r=="number"?r:Number(r);if(Number.isNaN(e))return t?`${r} ${t}`:String(r);if(!t)return e.toLocaleString();try{return new Intl.NumberFormat(void 0,{style:"currency",currency:t,maximumFractionDigits:0}).format(e)}catch{return`${e.toLocaleString()} ${t}`}}export{i as f};

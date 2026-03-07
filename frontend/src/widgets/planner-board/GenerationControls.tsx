@@ -2,8 +2,11 @@ import { useState, useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Sparkles, RefreshCw, Trash2, X, Loader2 } from 'lucide-react'
+import { Sparkles, RefreshCw, Trash2, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import type { Day } from '@/shared/api/types'
 
 const schema = z.object({
@@ -44,12 +47,13 @@ export function GenerationControls({
   const genKeyRef = useRef(crypto.randomUUID())
   const resetKeyRef = useRef(crypto.randomUUID())
 
-  const { register, handleSubmit, watch } = useForm<FormValues>({
+  const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { mode: 'replace' },
   })
 
   const mode = watch('mode')
+  const dayIds = watch('day_ids') ?? []
 
   const openDialog = (act: typeof action) => {
     setAction(act)
@@ -86,31 +90,24 @@ export function GenerationControls({
           </div>
         ) : (
           <>
-            <button
-              onClick={() => openDialog('generate')}
-              className="flex items-center gap-2 px-4 py-2 bg-[#2F6F73] text-white text-sm font-medium rounded-[10px] hover:bg-[#266063] transition-colors"
-            >
+            <Button onClick={() => openDialog('generate')}>
               <Sparkles className="w-4 h-4" />
               Generate
-            </button>
+            </Button>
             {hasActivities && (
               <>
-                <button
-                  onClick={() => openDialog('regenerate')}
-                  className="flex items-center gap-2 px-3 py-2 border text-sm text-[#526072] rounded-[10px] hover:bg-[#F4EBDD] transition-colors"
-                  style={{ borderColor: 'var(--color-border)' }}
-                >
+                <Button variant="outline" onClick={() => openDialog('regenerate')}>
                   <RefreshCw className="w-3.5 h-3.5" />
                   Regenerate
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="outline"
                   onClick={() => openDialog('reset')}
-                  className="flex items-center gap-2 px-3 py-2 border text-sm text-[#526072] rounded-[10px] hover:bg-[#C56A3D]/10 hover:border-[#C56A3D]/30 transition-colors"
-                  style={{ borderColor: 'var(--color-border)' }}
+                  className="hover:bg-[#C56A3D]/10 hover:border-[#C56A3D]/30"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Reset
-                </button>
+                </Button>
               </>
             )}
           </>
@@ -129,138 +126,105 @@ export function GenerationControls({
         )}
       </div>
 
-      {/* Dialog */}
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(29, 36, 48, 0.6)', backdropFilter: 'blur(4px)' }}
-        >
-          <div
-            className="w-full max-w-md rounded-[18px] shadow-2xl"
-            style={{ background: 'var(--color-surface)' }}
-          >
-            <div
-              className="flex items-center justify-between px-5 py-4 border-b"
-              style={{ borderColor: 'var(--color-border)' }}
-            >
-              <h2 className="font-semibold text-[#1D2430]">
-                {action === 'generate' && 'Generate Itinerary'}
-                {action === 'regenerate' && 'Regenerate Itinerary'}
-                {action === 'reset' && 'Reset Itinerary'}
-              </h2>
-              <button
-                onClick={() => setOpen(false)}
-                className="p-1.5 rounded-[10px] hover:bg-[#F4EBDD] transition-colors"
-              >
-                <X className="w-4 h-4 text-[#526072]" />
-              </button>
-            </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {action === 'generate' && 'Generate Itinerary'}
+              {action === 'regenerate' && 'Regenerate Itinerary'}
+              {action === 'reset' && 'Reset Itinerary'}
+            </DialogTitle>
+          </DialogHeader>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-5 space-y-4">
-              {action !== 'reset' && (
-                <div>
-                  <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
-                    Mode
-                  </label>
-                  <div className="space-y-2">
-                    {(['replace', 'merge', 'append'] as const).map((m) => (
-                      <label
-                        key={m}
-                        className={cn(
-                          'flex items-start gap-3 p-3 rounded-[10px] border cursor-pointer transition-colors',
-                          mode === m ? 'border-[#2F6F73] bg-[#2F6F73]/5' : 'hover:bg-[#F4EBDD]',
-                        )}
-                        style={{ borderColor: mode === m ? '#2F6F73' : 'var(--color-border)' }}
-                      >
-                        <input
-                          type="radio"
-                          value={m}
-                          {...register('mode')}
-                          className="mt-0.5"
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-[#1D2430]">
-                            {MODE_LABELS[m].label}
-                          </p>
-                          <p className="text-xs text-[#526072]">{MODE_LABELS[m].desc}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+          <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-4 space-y-4">
+            {action !== 'reset' && (
+              <div>
+                <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
+                  Mode
+                </label>
+                <div className="space-y-2">
+                  {(['replace', 'merge', 'append'] as const).map((m) => (
+                    <label
+                      key={m}
+                      className={cn(
+                        'flex items-start gap-3 p-3 rounded-[10px] border cursor-pointer transition-colors',
+                        mode === m ? 'border-[#2F6F73] bg-[#2F6F73]/5' : 'hover:bg-[#F4EBDD]',
+                      )}
+                      style={{ borderColor: mode === m ? '#2F6F73' : 'var(--color-border)' }}
+                    >
+                      <input
+                        type="radio"
+                        value={m}
+                        {...register('mode')}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-[#1D2430]">
+                          {MODE_LABELS[m].label}
+                        </p>
+                        <p className="text-xs text-[#526072]">{MODE_LABELS[m].desc}</p>
+                      </div>
+                    </label>
+                  ))}
                 </div>
-              )}
-
-              {/* Day selection (optional scoping) */}
-              {days.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
-                    Scope to specific days (optional)
-                  </label>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
-                    {days.map((day, i) => (
-                      <label
-                        key={day.id}
-                        className="flex items-center gap-2 text-sm text-[#1D2430] cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          value={day.id}
-                          {...register('day_ids')}
-                          className="rounded accent-[#2F6F73]"
-                        />
-                        Day {i + 1}{day.date && ` — ${day.date}`}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {action === 'reset' && (
-                <p className="text-sm text-[#526072]">
-                  This will remove all AI-generated activities from the selected days. Manually
-                  added activities will be preserved.
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="flex-1 px-4 py-2.5 border text-sm text-[#526072] rounded-[10px] hover:bg-[#F4EBDD] transition-colors"
-                  style={{ borderColor: 'var(--color-border)' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className={cn(
-                    'flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-white text-sm font-medium rounded-[10px] transition-colors',
-                    action === 'reset'
-                      ? 'bg-[#C56A3D] hover:bg-[#b05e35]'
-                      : 'bg-[#2F6F73] hover:bg-[#266063]',
-                  )}
-                >
-                  {action === 'generate' && (
-                    <>
-                      <Sparkles className="w-4 h-4" /> Generate
-                    </>
-                  )}
-                  {action === 'regenerate' && (
-                    <>
-                      <RefreshCw className="w-4 h-4" /> Regenerate
-                    </>
-                  )}
-                  {action === 'reset' && (
-                    <>
-                      <Trash2 className="w-4 h-4" /> Reset
-                    </>
-                  )}
-                </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+
+            {/* Day selection */}
+            {days.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
+                  Scope to specific days (optional)
+                </label>
+                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                  {days.map((day, i) => (
+                    <label
+                      key={day.id}
+                      htmlFor={`day-${day.id}`}
+                      className="flex items-center gap-2 text-sm text-[#1D2430] cursor-pointer"
+                    >
+                      <Checkbox
+                        id={`day-${day.id}`}
+                        checked={dayIds.includes(day.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setValue('day_ids', [...dayIds, day.id])
+                          } else {
+                            setValue('day_ids', dayIds.filter((id) => id !== day.id))
+                          }
+                        }}
+                      />
+                      Day {i + 1}{day.date && ` — ${day.date}`}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {action === 'reset' && (
+              <p className="text-sm text-[#526072]">
+                This will remove all generated activities from the selected days. Manually
+                added activities will be preserved.
+              </p>
+            )}
+          </form>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit(onSubmit)}
+              variant={action === 'reset' ? 'destructive' : 'default'}
+              className="flex-1"
+            >
+              {action === 'generate' && <><Sparkles className="w-4 h-4" /> Generate</>}
+              {action === 'regenerate' && <><RefreshCw className="w-4 h-4" /> Regenerate</>}
+              {action === 'reset' && <><Trash2 className="w-4 h-4" /> Reset</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

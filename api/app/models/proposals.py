@@ -12,6 +12,7 @@ class OptimizeObjective(StrEnum):
 
 class TripOptimizeRequest(BaseModel):
     day_ids: list[UUID] | None = None
+    activity_snapshot_ids: list[UUID] | None = None
     objective: OptimizeObjective = OptimizeObjective.BALANCED_FLOW
     include_event_candidates: bool = True
     max_event_candidates_per_day: int = Field(default=2, ge=0, le=10)

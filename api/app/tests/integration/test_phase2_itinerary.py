@@ -1,4 +1,3 @@
-import os
 import time
 import uuid
 
@@ -402,11 +401,7 @@ def test_generation_and_job_polling_enforce_ownership(api_client, headers_user1,
     assert foreign_submit.status_code in (403, 404)
 
 
-@pytest.mark.skipif(
-    not os.getenv("VOYAGER_LLM_OPENROUTER_API_KEY"),
-    reason="OpenRouter key not configured for compose runtime",
-)
-def test_generate_reports_openrouter_engine_metadata(api_client, headers_user1):
+def test_generate_reports_deterministic_place_backed_metadata(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, idem_key=f"p2-trip-{uuid.uuid4()}")
     response = _submit_generate(
         api_client,
@@ -414,34 +409,46 @@ def test_generate_reports_openrouter_engine_metadata(api_client, headers_user1):
         trip_id=trip["id"],
         version=trip["version"],
         mode="replace",
-        constraints={"llm_mock_mode": "success"},
         idem_key=f"p2-generate-{uuid.uuid4()}",
     )
     assert response.status_code == 202
     job = _wait_for_job(api_client, headers_user1, response.json()["job_id"])
     assert job["status"] == "SUCCEEDED"
-    assert job["result"]["generator_engine"] == "openrouter"
-    assert job["result"]["llm_model"] is not None
-    assert job["result"]["fallback_used"] is False
-    assert isinstance(job["result"]["provider_errors"], list)
-
-
-def test_generate_falls_back_to_deterministic_on_provider_error(api_client, headers_user1):
-    trip = _create_trip(api_client, headers_user1, idem_key=f"p2-trip-{uuid.uuid4()}")
-    response = _submit_generate(
-        api_client,
-        headers_user1,
-        trip_id=trip["id"],
-        version=trip["version"],
-        mode="replace",
-        constraints={"llm_mock_mode": "provider_error"},
-        idem_key=f"p2-generate-{uuid.uuid4()}",
-    )
-    assert response.status_code == 202
-    job = _wait_for_job(api_client, headers_user1, response.json()["job_id"])
-    assert job["status"] == "SUCCEEDED"
-    assert job["result"]["generator_engine"] == "deterministic"
+    assert job["result"]["generator_engine"] == "deterministic_place_backed"
     assert job["result"]["llm_model"] is None
-    assert job["result"]["fallback_used"] is True
+    assert job["result"]["fallback_used"] is False
+    assert job["result"]["resolved_place_count"] >= 1
+    assert job["result"]["photo_enriched_place_count"] >= 0
+    assert job["result"]["unresolved_activity_count"] == 0
     assert isinstance(job["result"]["provider_errors"], list)
-    assert len(job["result"]["provider_errors"]) >= 1
+
+
+def test_planner_endpoint_embeds_generated_places(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, idem_key=f"p2-trip-{uuid.uuid4()}")
+    days = _list_days(api_client, headers_user1, trip["id"])
+    response = _submit_generate(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        version=trip["version"],
+        mode="replace",
+        idem_key=f"p2-generate-{uuid.uuid4()}",
+    )
+    assert response.status_code == 202
+    _wait_for_job(api_client, headers_user1, response.json()["job_id"])
+
+    planner = api_client.get(f"/trips/{trip['id']}/planner", headers=headers_user1)
+    assert planner.status_code == 200
+    payload = planner.json()
+    assert payload["trip"]["id"] == trip["id"]
+    assert len(payload["days"]) == len(days)
+
+    first_generated = next(
+        item
+        for day in payload["days"]
+        for item in day["activities"]
+        if item["source"] == "generated"
+    )
+    assert first_generated["place"] is not None
+    assert first_generated["place"]["id"] == first_generated["place_id"]
+    assert first_generated["end_time"] is not None

@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, time, timedelta
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_helpers import (
@@ -14,7 +15,14 @@ from app.cache.redis_helpers import (
     cache_set_json,
 )
 from app.config import get_settings
-from app.db.repositories import AuditRepository, JobRepository, TripRepository
+from app.db.models import Place
+from app.db.repositories import (
+    ActivityRepository,
+    AuditRepository,
+    JobRepository,
+    PlacePhotoRepository,
+    TripRepository,
+)
 from app.db.session import get_db_session, get_redis
 from app.errors import ConflictError, ValidationApiError
 from app.models.audit import AuditLogEntry, AuditLogListResponse
@@ -22,10 +30,14 @@ from app.models.jobs import JobAcceptedResponse
 from app.models.trips import (
     DayListResponse,
     DayResponse,
+    PlannerActivityResponse,
+    PlannerDayResponse,
+    PlannerPlaceSummary,
     TripCreateRequest,
     TripGenerateRequest,
     TripListResponse,
     TripPatchRequest,
+    TripPlannerResponse,
     TripRegenerateRequest,
     TripResetItineraryRequest,
     TripResponse,
@@ -52,6 +64,59 @@ def _trip_response(trip) -> TripResponse:
         version=trip.version,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
+    )
+
+
+def _activity_end_time(start_time: time | None, duration_min: int | None) -> time | None:
+    if start_time is None or duration_min is None:
+        return None
+    return (datetime.combine(datetime.min, start_time) + timedelta(minutes=duration_min)).time()
+
+
+def _planner_place_summary(place, *, photo_count: int = 0, primary_photo=None) -> PlannerPlaceSummary:
+    return PlannerPlaceSummary(
+        id=place.id,
+        name=place.name,
+        category=place.category,
+        address_text=place.address_text,
+        lat=place.lat,
+        lon=place.lon,
+        photo_count=photo_count,
+        primary_photo=primary_photo,
+    )
+
+
+def _planner_activity_response(
+    activity,
+    *,
+    place=None,
+    photo_count: int = 0,
+    primary_photo=None,
+) -> PlannerActivityResponse:
+    return PlannerActivityResponse(
+        id=activity.id,
+        trip_day_id=activity.trip_day_id,
+        order_index=activity.order_index,
+        title=activity.title,
+        description=activity.description,
+        start_time=activity.start_time,
+        end_time=_activity_end_time(activity.start_time, activity.duration_min),
+        duration_min=activity.duration_min,
+        tags=activity.tags_json,
+        estimated_cost_amount=activity.estimated_cost_amount,
+        estimated_cost_currency=activity.estimated_cost_currency,
+        place_id=activity.place_id,
+        place=(
+            _planner_place_summary(place, photo_count=photo_count, primary_photo=primary_photo)
+            if place is not None
+            else None
+        ),
+        event_snapshot_id=activity.event_snapshot_id,
+        notes=activity.notes,
+        is_favorite=activity.is_favorite,
+        source=activity.source,
+        created_at=activity.created_at,
+        updated_at=activity.updated_at,
     )
 
 
@@ -185,6 +250,58 @@ async def get_trip(
         redis, cache_key, response.model_dump(mode="json"), get_settings().trip_cache_ttl_sec
     )
     return response
+
+
+@router.get("/{trip_id}/planner", response_model=TripPlannerResponse)
+async def get_trip_planner(
+    trip_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+) -> TripPlannerResponse:
+    trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
+    days = await TripRepository.list_days(db, auth.user_id, trip_id)
+    activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
+
+    place_ids = list(dict.fromkeys(activity.place_id for activity in activities if activity.place_id))
+    photo_summaries = await PlacePhotoRepository.photo_summaries_for_place_ids(db, place_ids)
+
+    places_by_id: dict[uuid.UUID, Place] = {}
+    if place_ids:
+        rows = await db.execute(select(Place).where(Place.id.in_(place_ids)))
+        places_by_id = {place.id: place for place in rows.scalars().all()}
+
+    activities_by_day: dict[uuid.UUID, list[PlannerActivityResponse]] = {day.id: [] for day in days}
+    for activity in activities:
+        photo_count = 0
+        primary_photo = None
+        place = places_by_id.get(activity.place_id) if activity.place_id else None
+        if activity.place_id:
+            photo_count, primary_photo = photo_summaries.get(activity.place_id, (0, None))
+        activities_by_day.setdefault(activity.trip_day_id, []).append(
+            _planner_activity_response(
+                activity,
+                place=place,
+                photo_count=photo_count,
+                primary_photo=primary_photo,
+            )
+        )
+
+    return TripPlannerResponse(
+        trip=_trip_response(trip),
+        days=[
+            PlannerDayResponse(
+                id=day.id,
+                trip_id=day.trip_id,
+                day_index=day.day_index,
+                date=day.date,
+                notes=day.notes,
+                created_at=day.created_at,
+                updated_at=day.updated_at,
+                activities=activities_by_day.get(day.id, []),
+            )
+            for day in days
+        ],
+    )
 
 
 @router.patch("/{trip_id}", response_model=TripResponse)

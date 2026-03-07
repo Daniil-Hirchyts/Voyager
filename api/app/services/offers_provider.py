@@ -120,6 +120,48 @@ def _truncate_text(value: Any, max_length: int) -> str | None:
     return text[:max_length]
 
 
+def _to_int(value: Any) -> int | None:
+    try:
+        if value in (None, ""):
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _to_float(value: Any) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+_ISO_DURATION_RE = re.compile(
+    r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?)?$"
+)
+
+
+def _iso_duration_to_minutes(value: Any) -> int | None:
+    if not isinstance(value, str):
+        return None
+    match = _ISO_DURATION_RE.match(value.strip().upper())
+    if not match:
+        return None
+    days = int(match.group("days") or 0)
+    hours = int(match.group("hours") or 0)
+    minutes = int(match.group("minutes") or 0)
+    return (days * 24 * 60) + (hours * 60) + minutes
+
+
+def _join_non_empty(parts: list[str | None], *, sep: str = " · ") -> str | None:
+    filtered = [part for part in parts if part]
+    if not filtered:
+        return None
+    return sep.join(filtered)
+
+
 def _http_error_details(response: httpx.Response) -> dict[str, Any]:
     details: dict[str, Any] = {"status_code": response.status_code}
     try:
@@ -502,21 +544,100 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
     def __init__(self) -> None:
         super().__init__(provider_name=self.name)
 
-    @classmethod
-    def _iata_code(cls, value: Any, *, field: str) -> str:
+    async def _resolve_iata_code(self, value: Any, *, field: str) -> tuple[str, dict[str, float] | None]:
         if not isinstance(value, str) or not value.strip():
             raise OfferProviderNonRetryableError(
                 "VALIDATION_ERROR",
-                f"{field} must be a 3-letter IATA code for amadeus_transport",
+                f"{field} is required for amadeus_transport",
             )
-        normalized = value.strip().upper()
-        if not cls._iata_code_re.match(normalized):
+        raw_value = value.strip()
+        is_iata = bool(self._iata_code_re.match(raw_value.upper()))
+        
+        if len(raw_value) < 3:
             raise OfferProviderNonRetryableError(
                 "VALIDATION_ERROR",
-                f"{field} must be a 3-letter IATA code for amadeus_transport",
+                f"{field} must be at least 3 characters when not using an IATA code",
+            )
+
+        response = await self._authorized_request(
+            method="GET",
+            path="/v1/reference-data/locations",
+            params={"keyword": raw_value[:20], "subType": "CITY,AIRPORT", "page[limit]": 5},
+        )
+
+        if response.status_code == 429:
+            raise OfferProviderLimitedError(
+                "PROVIDER_LIMITED",
+                "Amadeus location lookup rate-limited",
+                _http_error_details(response),
+            )
+        if response.status_code >= 500:
+            raise OfferProviderRetryableError(
+                "UPSTREAM_PROVIDER_ERROR",
+                "Amadeus location lookup unavailable",
+                _http_error_details(response),
+            )
+        if response.status_code >= 400:
+            raise OfferProviderNonRetryableError(
+                "UPSTREAM_PROVIDER_ERROR",
+                "Amadeus location lookup rejected the request",
+                _http_error_details(response),
+            )
+
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            raise OfferProviderRetryableError(
+                "UPSTREAM_PROVIDER_ERROR",
+                "Amadeus location lookup response missing data list",
+                {"provider": self.name},
+            )
+
+        lowered = raw_value.casefold()
+        preferred_code: str | None = None
+        preferred_geo: dict[str, float] | None = None
+        fallback_code: str | None = None
+        fallback_geo: dict[str, float] | None = None
+        
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            iata_code = item.get("iataCode")
+            if not isinstance(iata_code, str) or not self._iata_code_re.match(iata_code):
+                continue
+                
+            geo = item.get("geoCode")
+            if isinstance(geo, dict) and "latitude" in geo and "longitude" in geo:
+                geo_dict = {"latitude": float(geo["latitude"]), "longitude": float(geo["longitude"])}
+            else:
+                geo_dict = None
+                
+            if fallback_code is None:
+                fallback_code = iata_code.upper()
+                fallback_geo = geo_dict
+                
+            name = item.get("name")
+            if is_iata and iata_code.upper() == raw_value.upper():
+                preferred_code = iata_code.upper()
+                preferred_geo = geo_dict
+                break
+            elif isinstance(name, str) and name.casefold() == lowered:
+                preferred_code = iata_code.upper()
+                preferred_geo = geo_dict
+                break
+
+        resolved = preferred_code or fallback_code
+        resolved_geo = preferred_geo or fallback_geo
+        
+        if resolved is None:
+            if is_iata:
+                return raw_value.upper(), None
+            raise OfferProviderNonRetryableError(
+                "VALIDATION_ERROR",
+                f"{field} could not be resolved to an Amadeus location code",
                 {"field": field, "value": value},
             )
-        return normalized
+        return resolved, resolved_geo
 
     @staticmethod
     def _date_string(value: Any, *, field: str) -> str:
@@ -557,8 +678,30 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
         dictionaries: dict[str, Any],
         origin_iata: str,
         destination_iata: str,
+        origin_geo: dict[str, float] | None = None,
+        destination_geo: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         itineraries = offer.get("itineraries") if isinstance(offer.get("itineraries"), list) else []
+        carriers_map = dictionaries.get("carriers", {}) if isinstance(dictionaries.get("carriers"), dict) else {}
+        traveler_pricings = (
+            offer.get("travelerPricings") if isinstance(offer.get("travelerPricings"), list) else []
+        )
+        fare_by_segment: dict[str, dict[str, Any]] = {}
+        for traveler in traveler_pricings:
+            if not isinstance(traveler, dict):
+                continue
+            fare_details = (
+                traveler.get("fareDetailsBySegment")
+                if isinstance(traveler.get("fareDetailsBySegment"), list)
+                else []
+            )
+            for detail in fare_details:
+                if not isinstance(detail, dict):
+                    continue
+                segment_id = detail.get("segmentId")
+                if isinstance(segment_id, str) and segment_id not in fare_by_segment:
+                    fare_by_segment[segment_id] = detail
+
         first_segment: dict[str, Any] = {}
         last_segment: dict[str, Any] = {}
         if itineraries:
@@ -581,13 +724,172 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
         price_amount = _to_decimal(price.get("grandTotal") or price.get("total"))
 
         carrier_code = first_segment.get("carrierCode") if isinstance(first_segment, dict) else None
+        airline_name = carrier_code
+        if carrier_code in carriers_map:
+            airline_name = carriers_map[carrier_code]
+
         flight_number = first_segment.get("number") if isinstance(first_segment, dict) else None
-        title = "Amadeus Flight Offer"
-        if isinstance(carrier_code, str) and isinstance(flight_number, str):
-            title = f"Flight {carrier_code}{flight_number}"
+
+        parsed_segments: list[dict[str, Any]] = []
+        layovers: list[dict[str, Any]] = []
+        emissions_total = Decimal("0.00")
+        has_emissions = False
+        total_duration_min = 0
+        stops = 0
+        baggage_summaries: list[str] = []
+        cabins: list[str] = []
+
+        for itinerary_index, itinerary in enumerate(itineraries):
+            if not isinstance(itinerary, dict):
+                continue
+            itinerary_duration_min = _iso_duration_to_minutes(itinerary.get("duration"))
+            if itinerary_duration_min is not None:
+                total_duration_min += itinerary_duration_min
+
+            itinerary_segments = (
+                itinerary.get("segments") if isinstance(itinerary.get("segments"), list) else []
+            )
+            stops += max(len(itinerary_segments) - 1, 0)
+
+            for seg_index, segment in enumerate(itinerary_segments):
+                if not isinstance(segment, dict):
+                    continue
+                segment_id = _string_value(segment.get("id"))
+                fare_detail = fare_by_segment.get(segment_id or "", {})
+                departure_data = (
+                    segment.get("departure") if isinstance(segment.get("departure"), dict) else {}
+                )
+                arrival_data = (
+                    segment.get("arrival") if isinstance(segment.get("arrival"), dict) else {}
+                )
+                seg_carrier = segment.get("carrierCode")
+                op_carrier = (
+                    segment.get("operating", {}).get("carrierCode", seg_carrier)
+                    if isinstance(segment.get("operating"), dict)
+                    else seg_carrier
+                )
+                cabin = _string_value(fare_detail.get("cabin"))
+                if cabin:
+                    cabins.append(cabin)
+
+                included_bags = (
+                    fare_detail.get("includedCheckedBags")
+                    if isinstance(fare_detail.get("includedCheckedBags"), dict)
+                    else {}
+                )
+                baggage_parts: list[str] = []
+                quantity = _to_int(included_bags.get("quantity"))
+                weight = _to_int(included_bags.get("weight"))
+                weight_unit = _string_value(included_bags.get("weightUnit"))
+                if quantity is not None:
+                    baggage_parts.append(
+                        f"{quantity} checked bag{'s' if quantity != 1 else ''}"
+                    )
+                elif weight is not None:
+                    baggage_parts.append(
+                        f"{weight}{weight_unit or 'KG'} checked baggage"
+                    )
+                baggage_summary = _join_non_empty(baggage_parts)
+                if baggage_summary:
+                    baggage_summaries.append(baggage_summary)
+
+                co2_entries = (
+                    segment.get("co2Emissions") if isinstance(segment.get("co2Emissions"), list) else []
+                )
+                for entry in co2_entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    emission = _to_decimal(entry.get("weight"))
+                    if emission is not None:
+                        emissions_total += emission
+                        has_emissions = True
+
+                parsed_segments.append(
+                    {
+                        "itineraryIndex": itinerary_index,
+                        "sequence": seg_index + 1,
+                        "departure": departure_data,
+                        "arrival": arrival_data,
+                        "carrierCode": seg_carrier,
+                        "operatingCarrierCode": op_carrier,
+                        "flightNumber": segment.get("number"),
+                        "duration": segment.get("duration"),
+                        "durationMin": _iso_duration_to_minutes(segment.get("duration")),
+                        "airlineName": carriers_map.get(seg_carrier, seg_carrier),
+                        "operatingAirlineName": carriers_map.get(op_carrier, op_carrier),
+                        "cabin": cabin,
+                        "fareBasis": _string_value(fare_detail.get("fareBasis")),
+                        "brandedFare": _string_value(fare_detail.get("brandedFare")),
+                        "baggageSummary": baggage_summary,
+                    }
+                )
+
+                if seg_index < len(itinerary_segments) - 1:
+                    next_segment = itinerary_segments[seg_index + 1]
+                    if isinstance(next_segment, dict):
+                        next_departure = (
+                            next_segment.get("departure")
+                            if isinstance(next_segment.get("departure"), dict)
+                            else {}
+                        )
+                        current_arrive_at = _to_utc_datetime(arrival_data.get("at"))
+                        next_depart_at = _to_utc_datetime(next_departure.get("at"))
+                        layovers.append(
+                            {
+                                "itineraryIndex": itinerary_index,
+                                "airportCode": arrival_data.get("iataCode"),
+                                "durationMin": (
+                                    int((next_depart_at - current_arrive_at).total_seconds() // 60)
+                                    if current_arrive_at and next_depart_at and next_depart_at > current_arrive_at
+                                    else None
+                                ),
+                            }
+                        )
+
+        total_duration = total_duration_min or None
+        additional_services = (
+            price.get("additionalServices") if isinstance(price.get("additionalServices"), dict) else {}
+        )
+        additional_baggage_value = additional_services.get("chargeableCheckedBags")
+        additional_baggage_price = None
+        additional_baggage_currency = None
+        if isinstance(additional_baggage_value, dict):
+            additional_baggage_price = _to_decimal(
+                additional_baggage_value.get("amount") or additional_baggage_value.get("price")
+            )
+            additional_baggage_currency = _string_value(
+                additional_baggage_value.get("currencyCode") or additional_baggage_value.get("currency")
+            )
+        else:
+            additional_baggage_price = _to_decimal(additional_baggage_value, default=Decimal("0.00"))
+            if additional_baggage_price != Decimal("0.00"):
+                additional_baggage_currency = currency
+            else:
+                additional_baggage_price = None
+
+        baggage_summary = _join_non_empty(sorted(set(baggage_summaries)))
+        cabin_summary = _join_non_empty([_string_value(_string_value(item).title()) for item in cabins], sep=", ")
+        validating_airline_codes = [
+            item
+            for item in (offer.get("validatingAirlineCodes") if isinstance(offer.get("validatingAirlineCodes"), list) else [])
+            if isinstance(item, str)
+        ]
+        bookable_seats = _to_int(offer.get("numberOfBookableSeats"))
+
+        title = f"{airline_name or carrier_code or 'Amadeus'} Flight"
+        if flight_number:
+            title += f" {flight_number}"
+        if stops > 0:
+            title += f" ({stops} stop{'s' if stops > 1 else ''})"
+        else:
+            title += " (Nonstop)"
 
         links = offer.get("links") if isinstance(offer.get("links"), dict) else {}
         deep_link = links.get("flightOffers") if isinstance(links.get("flightOffers"), str) else None
+        
+        if not deep_link and depart_at:
+            depart_date_str = depart_at.strftime('%Y-%m-%d')
+            deep_link = f"https://www.google.com/travel/flights?q=Flights%20to%20{destination_iata}%20from%20{origin_iata}%20on%20{depart_date_str}"
 
         return {
             "provider": self.name,
@@ -612,6 +914,20 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
                         else {}
                     )
                 },
+                "origin_geo": origin_geo,
+                "destination_geo": destination_geo,
+                "segments": parsed_segments,
+                "layovers": layovers,
+                "stops_count": stops,
+                "total_duration_min": total_duration,
+                "cabin": cabin_summary,
+                "baggage_summary": baggage_summary,
+                "validating_airline_codes": validating_airline_codes,
+                "bookable_seats": bookable_seats,
+                "additional_baggage_price": additional_baggage_price,
+                "additional_baggage_currency": additional_baggage_currency,
+                "emissions_kg": emissions_total if has_emissions else None,
+                "emissions_description": "Estimated CO2 emissions" if has_emissions else None,
             },
         }
 
@@ -638,8 +954,8 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
         if modes_filter and "flight" not in modes_filter:
             return []
 
-        origin = self._iata_code(request.get("origin_text"), field="origin_text")
-        destination = self._iata_code(request.get("destination_text"), field="destination_text")
+        origin, origin_geo = await self._resolve_iata_code(request.get("origin_text"), field="origin_text")
+        destination, destination_geo = await self._resolve_iata_code(request.get("destination_text"), field="destination_text")
         departure_date = self._date_string(request.get("depart_date"), field="depart_date")
         return_date_raw = request.get("return_date")
         return_date = None
@@ -720,6 +1036,8 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
                 dictionaries=dictionaries,
                 origin_iata=origin,
                 destination_iata=destination,
+                origin_geo=origin_geo,
+                destination_geo=destination_geo,
             )
             for item in data
             if isinstance(item, dict)
@@ -805,13 +1123,15 @@ class AmadeusTransportProvider(_AmadeusOAuthClient):
 
         refreshed_offer = flight_offers[0]
         dictionaries = payload.get("dictionaries") if isinstance(payload.get("dictionaries"), dict) else {}
-        origin_iata = self._iata_code(existing_snapshot.get("origin_text"), field="origin_text")
-        destination_iata = self._iata_code(existing_snapshot.get("destination_text"), field="destination_text")
+        origin_iata, origin_geo = await self._resolve_iata_code(existing_snapshot.get("origin_text"), field="origin_text")
+        destination_iata, destination_geo = await self._resolve_iata_code(existing_snapshot.get("destination_text"), field="destination_text")
         normalized = self._normalize_offer(
             offer=refreshed_offer,
             dictionaries=dictionaries,
             origin_iata=origin_iata,
             destination_iata=destination_iata,
+            origin_geo=origin_geo,
+            destination_geo=destination_geo,
         )
 
         return {"status": "refreshed", "offer": normalized}
@@ -900,7 +1220,7 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             )
         return resolved
 
-    async def _hotel_ids_for_city(self, city_code: str) -> list[str]:
+    async def _hotels_for_city(self, city_code: str) -> list[dict[str, Any]]:
         response = await self._authorized_request(
             method="GET",
             path="/v1/reference-data/locations/hotels/by-city",
@@ -940,7 +1260,7 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
                 {"provider": self.name},
             )
 
-        hotel_ids: list[str] = []
+        hotels: list[dict[str, Any]] = []
         seen: set[str] = set()
         for item in data:
             if not isinstance(item, dict):
@@ -955,11 +1275,49 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             if hotel_id in seen:
                 continue
             seen.add(hotel_id)
-            hotel_ids.append(hotel_id)
-            if len(hotel_ids) >= 10:
+            hotel = item.get("hotel") if isinstance(item.get("hotel"), dict) else {}
+            normalized_hotel = dict(hotel)
+            normalized_hotel.setdefault("hotelId", hotel_id)
+            for field in ("name", "address", "geoCode", "chainCode", "rating", "amenities", "distance"):
+                if field in item and field not in normalized_hotel:
+                    normalized_hotel[field] = item[field]
+            hotels.append(normalized_hotel)
+            if len(hotels) >= 10:
                 break
 
-        return hotel_ids
+        return hotels
+
+    async def _ratings_for_hotels(self, hotel_ids: list[str]) -> dict[str, dict[str, Any]]:
+        if not hotel_ids:
+            return {}
+
+        response = await self._authorized_request(
+            method="GET",
+            path="/v2/e-reputation/hotel-sentiments",
+            params={"hotelIds": ",".join(hotel_ids[:20])},
+        )
+
+        if response.status_code >= 400:
+            raise OfferProviderRetryableError(
+                "UPSTREAM_PROVIDER_ERROR",
+                "Amadeus hotel ratings unavailable",
+                _http_error_details(response),
+            )
+
+        payload = response.json()
+        data = payload.get("data") if isinstance(payload, dict) else None
+        if not isinstance(data, list):
+            return {}
+
+        ratings: dict[str, dict[str, Any]] = {}
+        for item in data:
+            if not isinstance(item, dict):
+                continue
+            hotel_id = _string_value(item.get("hotelId") or item.get("hotel_id"))
+            if not hotel_id:
+                continue
+            ratings[hotel_id] = item
+        return ratings
 
     @staticmethod
     def _normalize_offer(
@@ -967,6 +1325,7 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
         *,
         hotel: dict[str, Any],
         offer: dict[str, Any],
+        rating: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         price = offer.get("price") if isinstance(offer.get("price"), dict) else {}
         room = offer.get("room") if isinstance(offer.get("room"), dict) else {}
@@ -981,6 +1340,15 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
         nights = int((checkout - checkin).days) if checkin and checkout else None
 
         hotel_name = hotel.get("name") if isinstance(hotel.get("name"), str) else "Amadeus Hotel"
+        hotel_id = _string_value(hotel.get("hotelId"))
+        geo_code = hotel.get("geoCode") if isinstance(hotel.get("geoCode"), dict) else {}
+        address = hotel.get("address") if isinstance(hotel.get("address"), dict) else {}
+        address_lines = address.get("lines") if isinstance(address.get("lines"), list) else []
+        address_text = ", ".join(
+            [line.strip() for line in address_lines if isinstance(line, str) and line.strip()]
+        )
+        if not address_text:
+            address_text = _string_value(address.get("label"))
         room_label = (
             type_estimated.get("category")
             or room.get("description")
@@ -988,14 +1356,45 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             or room_description.get("text")
         )
         deep_link = None
-        if isinstance(offer.get("self"), str):
+        if isinstance(offer.get("self"), str) and str(offer.get("self")).startswith("http"):
             deep_link = offer.get("self")
-        elif isinstance(offer.get("policies"), dict) and isinstance(offer["policies"].get("paymentType"), str):
-            deep_link = None
+        if deep_link is None:
+            query = "+".join(part for part in [hotel_name, request.get("location_text")] if isinstance(part, str))
+            deep_link = f"https://www.google.com/travel/hotels?q={query}" if query else None
 
-        title = _truncate_text(room_description.get("text"), 255) or _truncate_text(
-            f"{hotel_name} offer", 255
+        room_description_text = _string_value(room_description.get("text") or room_description.get("name"))
+        title = _truncate_text(hotel_name, 255) or "Amadeus Hotel"
+        price_variations = price.get("variations") if isinstance(price.get("variations"), dict) else {}
+        average = price_variations.get("average") if isinstance(price_variations.get("average"), dict) else {}
+        taxes = price.get("taxes") if isinstance(price.get("taxes"), list) else []
+        tax_total = sum(
+            (
+                _to_decimal(item.get("amount"))
+                for item in taxes
+                if isinstance(item, dict) and _to_decimal(item.get("amount")) is not None
+            ),
+            Decimal("0.00"),
         )
+        amenities = [
+            _string_value(item)
+            for item in (hotel.get("amenities") if isinstance(hotel.get("amenities"), list) else [])
+        ]
+        place_payload = {
+            "source": "amadeus_hotel",
+            "external_id": hotel_id,
+            "name": hotel_name,
+            "category": "hotel",
+            "address_text": address_text,
+            "lat": _to_float(geo_code.get("latitude")),
+            "lon": _to_float(geo_code.get("longitude")),
+            "metadata": {
+                "chain_code": _string_value(hotel.get("chainCode")),
+                "rating": _to_int(hotel.get("rating") or hotel.get("hotelRating")),
+                "amenities": [item for item in amenities if item],
+                "city_code": _string_value(hotel.get("cityCode")),
+                "distance": hotel.get("distance"),
+            },
+        }
         return {
             "provider": "amadeus_lodging",
             "provider_offer_ref": str(offer.get("id") or _hash_int(str(offer), 10_000_000)),
@@ -1006,6 +1405,7 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             "checkin_date": checkin,
             "checkout_date": checkout,
             "nights": nights,
+            "place_payload": place_payload,
             "price_amount": _to_decimal(price.get("total") or price.get("base") or offer.get("price")),
             "currency": str(price.get("currency") or request.get("currency") or "EUR").upper(),
             "deep_link": deep_link,
@@ -1014,6 +1414,11 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
                 "provider": "amadeus_lodging",
                 "hotel": hotel,
                 "offer": offer,
+                "rating": rating or {},
+                "address_text": address_text,
+                "nightly_rate": average.get("total") or average.get("base") or price.get("base"),
+                "taxes_amount": str(tax_total) if taxes else None,
+                "room_description": room_description_text,
             },
         }
 
@@ -1047,9 +1452,15 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             raise OfferProviderNonRetryableError(
                 "VALIDATION_ERROR", "checkin_date/checkout_date must define a valid range"
             )
-        hotel_ids = await self._hotel_ids_for_city(city_code)
-        if not hotel_ids:
+        hotels = await self._hotels_for_city(city_code)
+        if not hotels:
             return []
+        hotel_lookup = {
+            _string_value(item.get("hotelId")): item
+            for item in hotels
+            if isinstance(item, dict) and _string_value(item.get("hotelId"))
+        }
+        hotel_ids = list(hotel_lookup.keys())
 
         params: dict[str, Any] = {
             "hotelIds": ",".join(hotel_ids),
@@ -1095,16 +1506,33 @@ class AmadeusLodgingProvider(_AmadeusOAuthClient):
             )
 
         rows = payload.get("data") if isinstance(payload.get("data"), list) else []
+        ratings_by_hotel: dict[str, dict[str, Any]] = {}
+        try:
+            ratings_by_hotel = await self._ratings_for_hotels(hotel_ids)
+        except OfferProviderError:
+            ratings_by_hotel = {}
+
         candidates: list[dict[str, Any]] = []
         for row in rows:
             if not isinstance(row, dict):
                 continue
-            hotel = row.get("hotel") if isinstance(row.get("hotel"), dict) else row
+            row_hotel = row.get("hotel") if isinstance(row.get("hotel"), dict) else row
+            hotel_id = _string_value(row_hotel.get("hotelId")) if isinstance(row_hotel, dict) else None
+            hotel = dict(hotel_lookup.get(hotel_id, {}))
+            if isinstance(row_hotel, dict):
+                hotel.update(row_hotel)
             offers = row.get("offers") if isinstance(row.get("offers"), list) else []
             for offer in offers:
                 if not isinstance(offer, dict):
                     continue
-                candidates.append(self._normalize_offer(request, hotel=hotel, offer=offer))
+                candidates.append(
+                    self._normalize_offer(
+                        request,
+                        hotel=hotel,
+                        offer=offer,
+                        rating=ratings_by_hotel.get(hotel_id or ""),
+                    )
+                )
 
         return candidates
 

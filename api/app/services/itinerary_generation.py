@@ -1,19 +1,24 @@
 from __future__ import annotations
 
-import hashlib
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Activity, Job, Trip, TripDay
-from app.db.repositories import ActivityRepository, TripRepository
-from app.db.session import redis_client
-from app.metrics import increment_itinerary_llm_metric
-from app.services.itinerary_llm import generate_with_openrouter
+from app.db.models import Activity, Job, Place, Trip, TripDay
+from app.db.repositories import (
+    ActivityRepository,
+    PlacePhotoRepository,
+    PlaceRepository,
+    TripRepository,
+)
+from app.models.places import PlaceCreateRequest
+from app.services.itinerary_catalog import CatalogPlaceSeed, build_catalog_candidates
+
+PHOTO_ENRICHMENT_LIMIT = 6
 
 
 class JobExecutionError(Exception):
@@ -41,89 +46,9 @@ class ItineraryExecutionResult:
     llm_model: str | None
     fallback_used: bool
     provider_errors: list[dict[str, Any]]
-
-
-def _normalize_title(value: str) -> str:
-    return " ".join(value.lower().split())
-
-
-def _pick(pool: list[str], key: str) -> str:
-    if not pool:
-        return ""
-    digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
-    idx = int(digest[:8], 16) % len(pool)
-    return pool[idx]
-
-
-def _slot_templates(slot: str) -> list[str]:
-    if slot == "morning":
-        return [
-            "Walk through {destination}",
-            "Local breakfast and street exploration in {destination}",
-            "Visit a signature landmark in {destination}",
-        ]
-    if slot == "afternoon":
-        return [
-            "Museum or cultural stop focused on {preference}",
-            "Neighborhood discovery around {destination}",
-            "Scenic route and photo stops in {destination}",
-        ]
-    return [
-        "Dinner plan around {preference}",
-        "Sunset viewpoint and relaxed stroll in {destination}",
-        "Evening local experience in {destination}",
-    ]
-
-
-def _build_deterministic_candidates(
-    *,
-    trip: Trip,
-    day: TripDay,
-    seed: int | None,
-) -> list[dict[str, Any]]:
-    destination = trip.destination_text.split(",")[0].strip()
-    preferences = [p for p in trip.preferences_json if isinstance(p, str)]
-    if not preferences:
-        preferences = ["local highlights"]
-
-    slots: list[tuple[str, time, int]] = [
-        ("morning", time(9, 0), 120),
-        ("afternoon", time(13, 30), 150),
-        ("evening", time(19, 0), 120),
-    ]
-
-    base_seed = seed if seed is not None else 0
-    rows: list[dict[str, Any]] = []
-    for slot_idx, (slot_name, start_time, duration_min) in enumerate(slots):
-        preference = preferences[(day.day_index + slot_idx) % len(preferences)]
-        key = (
-            f"{trip.id}:{trip.trip_type}:{destination}:{preference}:"
-            f"{day.day_index}:{slot_idx}:{base_seed}"
-        )
-        template = _pick(_slot_templates(slot_name), key)
-        title = template.format(destination=destination, preference=preference)
-        description = (
-            f"Generated {slot_name} suggestion for day {day.day_index + 1} focused on {preference}."
-        )
-        rows.append(
-            {
-                "title": title,
-                "description": description,
-                "start_time": start_time,
-                "duration_min": duration_min,
-                "tags_json": [slot_name, preference],
-            }
-        )
-    return rows
-
-
-def _build_deterministic_candidates_for_scope(
-    *,
-    trip: Trip,
-    days: list[TripDay],
-    seed: int | None,
-) -> dict[uuid.UUID, list[dict[str, Any]]]:
-    return {day.id: _build_deterministic_candidates(trip=trip, day=day, seed=seed) for day in days}
+    resolved_place_count: int
+    photo_enriched_place_count: int
+    unresolved_activity_count: int
 
 
 @dataclass
@@ -133,45 +58,18 @@ class CandidateResolutionResult:
     llm_model: str | None
     fallback_used: bool
     provider_errors: list[dict[str, Any]]
+    resolved_place_count: int
+    photo_enriched_place_count: int
+    unresolved_activity_count: int
 
 
-async def _resolve_candidates_for_scope(
-    *,
-    trip: Trip,
-    days: list[TripDay],
-    seed: int | None,
-    constraints: dict[str, Any],
-) -> CandidateResolutionResult:
-    llm_result = await generate_with_openrouter(
-        trip=trip,
-        days=days,
-        seed=seed,
-        constraints=constraints,
-    )
-    if llm_result.success:
-        return CandidateResolutionResult(
-            candidates_by_day=llm_result.candidates_by_day,
-            generator_engine="openrouter",
-            llm_model=llm_result.model,
-            fallback_used=False,
-            provider_errors=llm_result.errors,
-        )
+def _normalize_title(value: str) -> str:
+    return " ".join(value.lower().split())
 
-    fallback_used = llm_result.attempted
-    if fallback_used:
-        await increment_itinerary_llm_metric(redis_client, "fallback")
 
-    return CandidateResolutionResult(
-        candidates_by_day=_build_deterministic_candidates_for_scope(
-            trip=trip,
-            days=days,
-            seed=seed,
-        ),
-        generator_engine="deterministic",
-        llm_model=None,
-        fallback_used=fallback_used,
-        provider_errors=llm_result.errors,
-    )
+def _seed_external_id(trip: Trip, place_seed: CatalogPlaceSeed) -> str:
+    destination_key = " ".join(trip.destination_text.lower().split())
+    return f"planner-seed:{destination_key}:{place_seed.slug}"
 
 
 async def _load_trip_for_job(db: AsyncSession, payload: dict[str, Any]) -> Trip:
@@ -261,6 +159,155 @@ async def _normalize_day(db: AsyncSession, day_id: uuid.UUID) -> None:
     await ActivityRepository._apply_order_for_day(db, day_id, [row.id for row in rows])
 
 
+async def _resolve_place_seed(
+    db: AsyncSession,
+    *,
+    trip: Trip,
+    place_seed: CatalogPlaceSeed,
+    place_cache: dict[str, Place],
+) -> Place | None:
+    external_id = _seed_external_id(trip, place_seed)
+    cached = place_cache.get(external_id)
+    if cached is not None:
+        return cached
+
+    matched = await PlaceRepository.find_seed_match(
+        db,
+        name=place_seed.name,
+        address_text=place_seed.address_text,
+        lat=place_seed.lat,
+        lon=place_seed.lon,
+    )
+    if matched is not None:
+        place_cache[external_id] = matched
+        return matched
+
+    created = await PlaceRepository.create_place(
+        db,
+        PlaceCreateRequest(
+            source="seed",
+            external_id=external_id,
+            name=place_seed.name,
+            category=place_seed.category,
+            address_text=place_seed.address_text,
+            lat=place_seed.lat,
+            lon=place_seed.lon,
+            metadata={
+                **place_seed.metadata,
+                "planner_seed_slug": place_seed.slug,
+                "planner_destination": trip.destination_text,
+            },
+        ),
+    )
+    place_cache[external_id] = created
+    return created
+
+
+async def _enrich_places_with_photos(
+    db: AsyncSession,
+    *,
+    place_ids: set[uuid.UUID],
+    limit: int,
+) -> tuple[int, list[dict[str, Any]]]:
+    if not place_ids:
+        return 0, []
+
+    provider_errors: list[dict[str, Any]] = []
+    photo_summaries = await PlacePhotoRepository.photo_summaries_for_place_ids(
+        db,
+        list(place_ids),
+    )
+    candidate_ids = [
+        place_id
+        for place_id in place_ids
+        if photo_summaries.get(place_id, (0, None))[0] == 0
+    ][:limit]
+    if not candidate_ids:
+        return 0, provider_errors
+
+    rows = await db.execute(select(Place).where(Place.id.in_(candidate_ids)))
+    places_by_id = {place.id: place for place in rows.scalars().all()}
+
+    from app.services.place_photos import _fetch_place_photos
+
+    enriched = 0
+    for place_id in candidate_ids:
+        place = places_by_id.get(place_id)
+        if place is None:
+            continue
+
+        provider_name, photos, errors = await _fetch_place_photos(place)
+        provider_errors.extend(errors)
+        if not provider_name or not photos:
+            continue
+
+        await PlacePhotoRepository.replace_photos(db, place_id=place.id, items=photos[:8])
+        enriched += 1
+
+    return enriched, provider_errors
+
+
+async def _resolve_candidates_for_scope(
+    db: AsyncSession,
+    *,
+    trip: Trip,
+    days: list[TripDay],
+    seed: int | None,
+    constraints: dict[str, Any],
+) -> CandidateResolutionResult:
+    raw_candidates = build_catalog_candidates(trip=trip, days=days, seed=seed)
+    place_cache: dict[str, Place] = {}
+    resolved_place_ids: set[uuid.UUID] = set()
+    unresolved_activity_count = 0
+    resolved_candidates: dict[uuid.UUID, list[dict[str, Any]]] = {}
+
+    for day in days:
+        resolved_rows: list[dict[str, Any]] = []
+        for candidate in raw_candidates.get(day.id, []):
+            next_row = {key: value for key, value in candidate.items() if key != "place_seed"}
+            place_seed = candidate.get("place_seed")
+            if isinstance(place_seed, CatalogPlaceSeed):
+                place = await _resolve_place_seed(
+                    db,
+                    trip=trip,
+                    place_seed=place_seed,
+                    place_cache=place_cache,
+                )
+                if place is not None:
+                    next_row["place_id"] = place.id
+                    resolved_place_ids.add(place.id)
+                else:
+                    unresolved_activity_count += 1
+                    next_row["place_id"] = None
+            else:
+                unresolved_activity_count += 1
+                next_row["place_id"] = None
+            resolved_rows.append(next_row)
+        resolved_candidates[day.id] = resolved_rows
+
+    photo_limit_raw = constraints.get("photo_enrichment_limit")
+    photo_limit = PHOTO_ENRICHMENT_LIMIT
+    if isinstance(photo_limit_raw, int):
+        photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
+
+    photo_enriched_place_count, provider_errors = await _enrich_places_with_photos(
+        db,
+        place_ids=resolved_place_ids,
+        limit=photo_limit,
+    )
+
+    return CandidateResolutionResult(
+        candidates_by_day=resolved_candidates,
+        generator_engine="deterministic_place_backed",
+        llm_model=None,
+        fallback_used=False,
+        provider_errors=provider_errors,
+        resolved_place_count=len(resolved_place_ids),
+        photo_enriched_place_count=photo_enriched_place_count,
+        unresolved_activity_count=unresolved_activity_count,
+    )
+
+
 async def _apply_replace(
     db: AsyncSession,
     *,
@@ -294,6 +341,8 @@ async def _apply_replace(
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
                     tags_json=candidate["tags_json"],
+                    estimated_cost_amount=candidate.get("estimated_cost_amount"),
+                    estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),
                     event_snapshot_id=candidate.get("event_snapshot_id"),
                     source="generated",
@@ -349,6 +398,8 @@ async def _apply_merge(
                 row.start_time = candidate["start_time"]
                 row.duration_min = candidate["duration_min"]
                 row.tags_json = candidate["tags_json"]
+                row.estimated_cost_amount = candidate.get("estimated_cost_amount")
+                row.estimated_cost_currency = candidate.get("estimated_cost_currency")
                 row.place_id = candidate.get("place_id")
                 row.event_snapshot_id = candidate.get("event_snapshot_id")
                 row.generation_batch_id = job_id
@@ -371,6 +422,8 @@ async def _apply_merge(
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
                     tags_json=candidate["tags_json"],
+                    estimated_cost_amount=candidate.get("estimated_cost_amount"),
+                    estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),
                     event_snapshot_id=candidate.get("event_snapshot_id"),
                     source="generated",
@@ -430,6 +483,8 @@ async def _apply_append(
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
                     tags_json=candidate["tags_json"],
+                    estimated_cost_amount=candidate.get("estimated_cost_amount"),
+                    estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),
                     event_snapshot_id=candidate.get("event_snapshot_id"),
                     source="generated",
@@ -517,10 +572,14 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
         llm_model = None
         fallback_used = False
         provider_errors: list[dict[str, Any]] = []
+        resolved_place_count = 0
+        photo_enriched_place_count = 0
+        unresolved_activity_count = 0
     else:
         scope_days = await _resolve_scope_days(db, trip, payload, require_non_empty=False)
         constraints = payload.get("constraints") if isinstance(payload.get("constraints"), dict) else {}
         candidate_resolution = await _resolve_candidates_for_scope(
+            db,
             trip=trip,
             days=scope_days,
             seed=seed,
@@ -554,6 +613,9 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
         llm_model = candidate_resolution.llm_model
         fallback_used = candidate_resolution.fallback_used
         provider_errors = candidate_resolution.provider_errors
+        resolved_place_count = candidate_resolution.resolved_place_count
+        photo_enriched_place_count = candidate_resolution.photo_enriched_place_count
+        unresolved_activity_count = candidate_resolution.unresolved_activity_count
         trip.last_generated_at = datetime.now(UTC)
         trip.generation_state = "READY"
 
@@ -569,4 +631,7 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
         llm_model=llm_model,
         fallback_used=fallback_used,
         provider_errors=provider_errors,
+        resolved_place_count=resolved_place_count,
+        photo_enriched_place_count=photo_enriched_place_count,
+        unresolved_activity_count=unresolved_activity_count,
     )

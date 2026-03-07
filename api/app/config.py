@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,8 +34,12 @@ class Settings(BaseSettings):
     rate_limit_places_dedup_per_hour: int = Field(
         default=6, alias="VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR"
     )
-    rate_limit_events_submit_per_hour: int = Field(
-        default=20, alias="VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR"
+    rate_limit_activities_discover_per_hour: int = Field(
+        default=20,
+        validation_alias=AliasChoices(
+            "VOYAGER_RATE_LIMIT_ACTIVITIES_DISCOVER_PER_HOUR",
+            "VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR",
+        ),
     )
     rate_limit_optimize_submit_per_hour: int = Field(
         default=20, alias="VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR"
@@ -56,7 +60,13 @@ class Settings(BaseSettings):
     trip_cache_ttl_sec: int = 30
     place_cache_ttl_sec: int = 60
     job_cache_ttl_sec: int = 5
-    event_cache_ttl_sec: int = Field(default=30, alias="VOYAGER_EVENT_CACHE_TTL_SEC")
+    activity_cache_ttl_sec: int = Field(
+        default=30,
+        validation_alias=AliasChoices(
+            "VOYAGER_ACTIVITY_CACHE_TTL_SEC",
+            "VOYAGER_EVENT_CACHE_TTL_SEC",
+        ),
+    )
     proposal_cache_ttl_sec: int = Field(default=30, alias="VOYAGER_PROPOSAL_CACHE_TTL_SEC")
     place_photo_cache_ttl_sec: int = Field(
         default=60, alias="VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC"
@@ -96,11 +106,11 @@ class Settings(BaseSettings):
     )
 
     offers_transport_providers: str = Field(
-        default="amadeus_transport,mock_transport",
+        default="amadeus_transport",
         alias="VOYAGER_OFFERS_TRANSPORT_PROVIDERS",
     )
     offers_lodging_providers: str = Field(
-        default="amadeus_lodging,mock_lodging",
+        default="amadeus_lodging",
         alias="VOYAGER_OFFERS_LODGING_PROVIDERS",
     )
 
@@ -118,15 +128,19 @@ class Settings(BaseSettings):
         default=20,
         alias="VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC",
     )
-    events_ticketmaster_api_key: str | None = Field(
-        default=None, alias="VOYAGER_EVENTS_TICKETMASTER_API_KEY"
+    activities_tripadvisor_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "VOYAGER_ACTIVITIES_TRIPADVISOR_API_KEY",
+            "TRIPADVISOR_SCRAPER_API_KEY",
+        ),
     )
-    events_ticketmaster_base_url: str = Field(
-        default="https://app.ticketmaster.com/discovery/v2",
-        alias="VOYAGER_EVENTS_TICKETMASTER_BASE_URL",
+    activities_tripadvisor_base_url: str = Field(
+        default="https://tripadvisor-scraper-api.omkar.cloud/tripadvisor",
+        alias="VOYAGER_ACTIVITIES_TRIPADVISOR_BASE_URL",
     )
-    events_ticketmaster_timeout_sec: int = Field(
-        default=20, alias="VOYAGER_EVENTS_TICKETMASTER_TIMEOUT_SEC"
+    activities_tripadvisor_timeout_sec: int = Field(
+        default=20, alias="VOYAGER_ACTIVITIES_TRIPADVISOR_TIMEOUT_SEC"
     )
     media_user_agent: str = Field(
         default="Voyager/0.1 (+https://localhost)",
@@ -145,6 +159,10 @@ class Settings(BaseSettings):
             for part in self.llm_openrouter_model_order_raw.split(",")
             if part.strip()
         ]
+
+    @property
+    def allowed_audiences(self) -> list[str]:
+        return [a.strip() for a in self.keycloak_audience.split(",")]
 
 
 @lru_cache

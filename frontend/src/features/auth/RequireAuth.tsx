@@ -1,16 +1,20 @@
 import { useAuth } from 'react-oidc-context'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/shared/stores/auth.store'
+import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const auth = useAuth()
   const location = useLocation()
   const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
 
+  const showLoading = useDelayedLoading(auth.isLoading, 250)
+
   if (auth.isLoading) {
+    if (!showLoading) return null
     return (
       <div
-        className="flex items-center justify-center min-h-screen"
+        className="flex items-center justify-center min-h-screen animate-in fade-in duration-300"
         style={{ background: 'var(--color-bg)' }}
       >
         <div className="text-center">

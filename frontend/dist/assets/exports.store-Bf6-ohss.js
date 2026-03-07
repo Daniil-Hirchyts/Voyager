@@ -1,0 +1,1 @@
+import{p as r}from"./index-B0NwfNKI.js";const p=r(e=>({pendingExports:[],addPendingExport:t=>e(n=>({pendingExports:[t,...n.pendingExports]})),clearPendingExports:()=>e({pendingExports:[]}),selectedExportId:null,setSelectedExportId:t=>e({selectedExportId:t}),auditDetailEntryId:null,setAuditDetailEntryId:t=>e({auditDetailEntryId:t})}));export{p as u};

@@ -1,3 +1,5 @@
+const mapFeatureFlag = import.meta.env.VITE_ENABLE_MAP_UI
+
 export const config = {
   keycloak: {
     issuer: import.meta.env.VITE_KEYCLOAK_ISSUER,
@@ -12,7 +14,10 @@ export const config = {
     styleUrl: import.meta.env.VITE_MAP_STYLE_URL,
   },
   features: {
-    mapUI: import.meta.env.VITE_ENABLE_MAP_UI === 'true',
+    mapUI:
+      mapFeatureFlag === 'false'
+        ? false
+        : mapFeatureFlag === 'true' || Boolean(import.meta.env.VITE_MAP_STYLE_URL),
     landingMotion: import.meta.env.VITE_ENABLE_LANDING_MOTION === 'true',
     offersUI: import.meta.env.VITE_ENABLE_OFFERS_UI === 'true',
     eventsUI: import.meta.env.VITE_ENABLE_EVENTS_UI === 'true',

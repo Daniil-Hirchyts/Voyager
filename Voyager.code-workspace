@@ -10,32 +10,7 @@
 			"api/.venv/**/*": true,
 			"api/.ruff_cache/**/*": true,
 			".ruff_cache/**/*": true,
-			"**/__pycache__/": true,
-			"**/*.py[cod]": true,
-			"**/*.so": true,
-			"**/.venv/": true,
-			"**/.pytest_cache/": true,
-			"**/.mypy_cache/": true,
-			"**/.ruff_cache/": true,
-			"**/.coverage": true,
-			"**/htmlcov/": true,
-			"**/.env": true,
-			"**/.env.local": true,
-			"**/.env.*.local": true,
-			"**/api/app/migrations/versions/__pycache__/": true,
-			"**/.DS_Store": true,
-			"**/*.log": true,
-			"**/.vscode/": true,
-			"**/.idea/": true,
-			"**/skills/": true,
-			"**/frontend/node_modules/": true,
-			"**/.agent": true,
-			"**/.agent/": true,
-			"**/.agents/": true,
-			"**/.trae/": true,
-			"**/scripts/": true,
-			"**/.claude/": true,
-			"**/docs/": true
+			"**/.agent": true
 		}
 	}
 }

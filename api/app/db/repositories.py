@@ -1,5 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal, InvalidOperation
+import re
 from typing import Any
 
 from sqlalchemy import case, func, or_, select, text, update
@@ -24,9 +26,17 @@ from app.db.models import (
     UserProfile,
 )
 from app.errors import ConflictError, NotFoundError, ValidationApiError
-from app.models.events import EventResponse
+from app.models.activity_discovery import ActivityDiscoveryDetail, ActivityDiscoveryItem
 from app.models.jobs import JobResponse
-from app.models.offers import OfferKind, OfferResponse
+from app.models.offers import (
+    LodgingOfferDetails,
+    OfferGeoPoint,
+    OfferKind,
+    OfferResponse,
+    TransportLayoverDetail,
+    TransportOfferDetails,
+    TransportSegmentDetail,
+)
 from app.models.places import PlaceCreateRequest, PlacePhotoResponse, PlacePhotoSummary
 from app.models.proposals import ProposalActivityResponse, ProposalResponse
 from app.models.trips import (
@@ -38,6 +48,79 @@ from app.models.trips import (
     TripCreateRequest,
     TripPatchRequest,
 )
+
+
+_ISO_DURATION_RE = re.compile(
+    r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?)?$"
+)
+
+
+def _coerce_string(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip()
+        return cleaned or None
+    text = str(value).strip()
+    return text or None
+
+
+def _coerce_decimal(value: Any) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _coerce_int(value: Any) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_float(value: Any) -> float | None:
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _iso_duration_to_minutes(value: Any) -> int | None:
+    if not isinstance(value, str):
+        return None
+    match = _ISO_DURATION_RE.match(value.strip().upper())
+    if not match:
+        return None
+    days = int(match.group("days") or 0)
+    hours = int(match.group("hours") or 0)
+    minutes = int(match.group("minutes") or 0)
+    return (days * 24 * 60) + (hours * 60) + minutes
+
+
+def _titleize_token(value: str) -> str:
+    return value.replace("_", " ").replace("-", " ").strip().title()
+
+
+def _unique_strings(values: list[Any]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        item = _coerce_string(value)
+        if not item:
+            continue
+        normalized = item.casefold()
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(item)
+    return result
 
 
 class UserRepository:
@@ -371,6 +454,21 @@ class ActivityRepository:
         return total, list(result.scalars().all())
 
     @staticmethod
+    async def list_trip_activities(
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> list[Activity]:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        result = await db.execute(
+            select(Activity)
+            .join(TripDay, Activity.trip_day_id == TripDay.id)
+            .where(TripDay.trip_id == trip_id)
+            .order_by(TripDay.day_index, Activity.order_index)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
     async def create_activity(
         db: AsyncSession,
         user_id: uuid.UUID,
@@ -631,6 +729,70 @@ class PlaceRepository:
         )
 
     @staticmethod
+    def _normalize_match_text(value: str | None) -> str:
+        if not value:
+            return ""
+        return " ".join(value.lower().split())
+
+    @staticmethod
+    async def find_seed_match(
+        db: AsyncSession,
+        *,
+        name: str,
+        address_text: str | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+    ) -> Place | None:
+        normalized_name = PlaceRepository._normalize_match_text(name)
+        if not normalized_name:
+            return None
+
+        normalized_address = PlaceRepository._normalize_match_text(address_text)
+        rows = await db.execute(
+            select(Place)
+            .where(func.lower(func.trim(Place.name)) == normalized_name)
+            .order_by(
+                case(
+                    (
+                        func.lower(func.trim(func.coalesce(Place.address_text, "")))
+                        == normalized_address,
+                        0,
+                    ),
+                    else_=1,
+                ),
+                case((Place.canonical_place_id.is_(None), 0), else_=1),
+                Place.updated_at.desc(),
+            )
+            .limit(12)
+        )
+        candidates = list(rows.scalars().all())
+        if not candidates:
+            return None
+
+        if normalized_address:
+            exact_address_matches = [
+                place
+                for place in candidates
+                if PlaceRepository._normalize_match_text(place.address_text) == normalized_address
+            ]
+            if exact_address_matches:
+                candidates = exact_address_matches
+
+        if lat is not None and lon is not None:
+            close_geo_matches = [
+                place
+                for place in candidates
+                if place.lat is not None
+                and place.lon is not None
+                and abs(place.lat - lat) <= 0.01
+                and abs(place.lon - lon) <= 0.01
+            ]
+            if close_geo_matches:
+                candidates = close_geo_matches
+
+        return candidates[0]
+
+    @staticmethod
     async def create_place(db: AsyncSession, payload: PlaceCreateRequest) -> Place:
         if payload.external_id:
             existing_result = await db.execute(
@@ -674,6 +836,30 @@ class PlaceRepository:
         lon: float | None,
         metadata: dict | None = None,
     ) -> Place:
+        if external_id:
+            existing_result = await db.execute(
+                select(Place)
+                .where(Place.source == source)
+                .where(Place.external_id == external_id)
+            )
+            existing = existing_result.scalar_one_or_none()
+            if existing:
+                existing.name = name
+                existing.category = category
+                existing.address_text = address_text
+                existing.lat = lat
+                existing.lon = lon
+                existing.metadata_json = metadata or {}
+                await db.flush()
+                await PlaceRepository._sync_geom(
+                    db,
+                    place_id=existing.id,
+                    lat=existing.lat,
+                    lon=existing.lon,
+                )
+                await db.refresh(existing)
+                return existing
+
         payload = PlaceCreateRequest(
             source=source,
             external_id=external_id,
@@ -1014,32 +1200,60 @@ class PlaceRepository:
 
 class EventRepository:
     @staticmethod
-    def _to_response(item: EventSnapshot) -> EventResponse:
-        return EventResponse(
-            id=item.id,
+    def _is_attachable(item: EventSnapshot) -> bool:
+        return item.entity_type in {"attraction", "restaurant"}
+
+    @staticmethod
+    def _to_discovery_item(item: EventSnapshot) -> ActivityDiscoveryItem:
+        place = item.__dict__.get("place")
+        lat = place.lat if place is not None else None
+        lon = place.lon if place is not None else None
+        return ActivityDiscoveryItem(
+            id=str(item.id),
+            snapshot_id=item.id,
             trip_id=item.trip_id,
             trip_day_id=item.trip_day_id,
+            place_id=item.place_id,
+            entity_type=item.entity_type or "attraction",
             provider=item.provider,
-            provider_event_ref=item.provider_event_ref,
+            provider_ref=item.provider_event_ref,
             title=item.title,
             summary=item.summary,
-            start_at=item.start_at,
-            end_at=item.end_at,
-            timezone=item.timezone,
-            venue_name=item.venue_name,
-            venue_address=item.venue_address,
-            place_id=item.place_id,
-            segment=item.segment,
-            genre=item.genre,
-            min_price=item.min_price,
-            max_price=item.max_price,
-            currency=item.currency,
+            rating=_coerce_float(item.rating),
+            review_count=item.review_count,
+            price_label=item.price_label,
             image_url=item.image_url,
-            deep_link=item.deep_link,
-            sales_status=item.sales_status,
-            expires_at=item.expires_at,
+            detail_url=item.deep_link,
+            address_text=item.venue_address,
+            lat=lat,
+            lon=lon,
+            tags=_unique_strings(
+                list(item.tags_json or [])
+                + [item.segment, item.genre]
+            ),
+            status_text=item.status_text or item.sales_status,
+            is_attachable=EventRepository._is_attachable(item),
             created_at=item.created_at,
             updated_at=item.updated_at,
+        )
+
+    @staticmethod
+    def to_discovery_item(item: EventSnapshot) -> ActivityDiscoveryItem:
+        return EventRepository._to_discovery_item(item)
+
+    @staticmethod
+    def to_discovery_detail(item: EventSnapshot) -> ActivityDiscoveryDetail:
+        base = EventRepository._to_discovery_item(item)
+        provider_detail = item.provider_detail_json or {}
+        return ActivityDiscoveryDetail(
+            **base.model_dump(),
+            photos=provider_detail.get("photos") or [],
+            reviews=provider_detail.get("reviews") or [],
+            hours=provider_detail.get("hours") or [],
+            booking_links=provider_detail.get("booking_links") or [],
+            provider_payload=provider_detail.get("provider_payload")
+            or item.raw_payload_json
+            or {},
         )
 
     @staticmethod
@@ -1049,6 +1263,7 @@ class EventRepository:
         trip_id: uuid.UUID,
         trip_day_id: uuid.UUID | None,
         provider: str,
+        entity_type: str | None,
         provider_event_ref: str,
         title: str,
         summary: str | None,
@@ -1057,9 +1272,14 @@ class EventRepository:
         timezone: str | None,
         venue_name: str | None,
         venue_address: str | None,
+        rating,
+        review_count: int | None,
+        price_label: str | None,
         place_id: uuid.UUID | None,
         segment: str | None,
         genre: str | None,
+        tags_json: list[str] | None,
+        status_text: str | None,
         min_price,
         max_price,
         currency: str | None,
@@ -1068,6 +1288,7 @@ class EventRepository:
         sales_status: str | None,
         request_fingerprint: str | None,
         raw_payload_json: dict,
+        provider_detail_json: dict | None,
         expires_at: datetime | None,
     ) -> EventSnapshot:
         if trip_day_id is not None:
@@ -1086,6 +1307,7 @@ class EventRepository:
         existing = existing_row.scalar_one_or_none()
         if existing:
             existing.trip_day_id = trip_day_id
+            existing.entity_type = entity_type
             existing.title = title
             existing.summary = summary
             existing.start_at = start_at
@@ -1093,9 +1315,14 @@ class EventRepository:
             existing.timezone = timezone
             existing.venue_name = venue_name
             existing.venue_address = venue_address
+            existing.rating = rating
+            existing.review_count = review_count
+            existing.price_label = price_label
             existing.place_id = place_id
             existing.segment = segment
             existing.genre = genre
+            existing.tags_json = tags_json or []
+            existing.status_text = status_text
             existing.min_price = min_price
             existing.max_price = max_price
             existing.currency = currency
@@ -1104,6 +1331,7 @@ class EventRepository:
             existing.sales_status = sales_status
             existing.request_fingerprint = request_fingerprint
             existing.raw_payload_json = raw_payload_json
+            existing.provider_detail_json = provider_detail_json or {}
             existing.expires_at = expires_at
             await db.flush()
             await db.refresh(existing)
@@ -1113,6 +1341,7 @@ class EventRepository:
             trip_id=trip_id,
             trip_day_id=trip_day_id,
             provider=provider,
+            entity_type=entity_type,
             provider_event_ref=provider_event_ref,
             title=title,
             summary=summary,
@@ -1121,9 +1350,14 @@ class EventRepository:
             timezone=timezone,
             venue_name=venue_name,
             venue_address=venue_address,
+            rating=rating,
+            review_count=review_count,
+            price_label=price_label,
             place_id=place_id,
             segment=segment,
             genre=genre,
+            tags_json=tags_json or [],
+            status_text=status_text,
             min_price=min_price,
             max_price=max_price,
             currency=currency,
@@ -1132,6 +1366,7 @@ class EventRepository:
             sales_status=sales_status,
             request_fingerprint=request_fingerprint,
             raw_payload_json=raw_payload_json,
+            provider_detail_json=provider_detail_json or {},
             expires_at=expires_at,
         )
         db.add(item)
@@ -1140,7 +1375,7 @@ class EventRepository:
         return item
 
     @staticmethod
-    async def list_trip_events(
+    async def list_trip_saved_activities(
         db: AsyncSession,
         *,
         user_id: uuid.UUID,
@@ -1152,16 +1387,20 @@ class EventRepository:
         count = int(
             (
                 await db.execute(
-                    select(func.count(EventSnapshot.id)).where(EventSnapshot.trip_id == trip_id)
+                    select(func.count(EventSnapshot.id))
+                    .where(EventSnapshot.trip_id == trip_id)
+                    .where(EventSnapshot.provider == "tripadvisor")
                 )
             ).scalar_one()
         )
         rows = await db.execute(
             select(EventSnapshot)
             .where(EventSnapshot.trip_id == trip_id)
+            .where(EventSnapshot.provider == "tripadvisor")
+            .options(selectinload(EventSnapshot.place))
             .order_by(
-                EventSnapshot.start_at.asc().nulls_last(),
                 EventSnapshot.created_at.desc(),
+                EventSnapshot.start_at.asc().nulls_last(),
                 EventSnapshot.id.asc(),
             )
             .limit(limit)
@@ -1170,22 +1409,115 @@ class EventRepository:
         return count, list(rows.scalars().all())
 
     @staticmethod
+    async def get_snapshot_for_user(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        snapshot_id: uuid.UUID,
+    ) -> EventSnapshot:
+        row = await db.execute(
+            select(EventSnapshot)
+            .options(selectinload(EventSnapshot.place))
+            .join(Trip, EventSnapshot.trip_id == Trip.id)
+            .where(EventSnapshot.id == snapshot_id)
+            .where(Trip.user_id == user_id)
+        )
+        item = row.scalar_one_or_none()
+        if not item:
+            raise NotFoundError("Activity not found")
+        return item
+
+    @staticmethod
+    async def attach_snapshot_to_day(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        snapshot_id: uuid.UUID,
+        trip_day_id: uuid.UUID,
+    ) -> Activity:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        day = await DayRepository.get_day_for_user(db, user_id, trip_day_id)
+        if day.trip_id != trip_id:
+            raise ValidationApiError("trip_day_id must belong to the trip")
+
+        snapshot = await EventRepository.get_snapshot_for_user(
+            db,
+            user_id=user_id,
+            snapshot_id=snapshot_id,
+        )
+        if snapshot.trip_id != trip_id:
+            raise NotFoundError("Activity not found")
+        if not EventRepository._is_attachable(snapshot):
+            raise ValidationApiError("Only attractions and restaurants can be attached to itinerary days")
+
+        count_result = await db.execute(
+            select(func.count(Activity.id)).where(Activity.trip_day_id == day.id)
+        )
+        order_index = int(count_result.scalar_one())
+        duration_min = None
+        start_time = None
+        if snapshot.start_at is not None:
+            start_time = snapshot.start_at.time().replace(tzinfo=None)
+        if snapshot.start_at is not None and snapshot.end_at is not None:
+            delta = int((snapshot.end_at - snapshot.start_at).total_seconds() // 60)
+            duration_min = max(delta, 30)
+
+        activity = Activity(
+            trip_day_id=day.id,
+            order_index=order_index,
+            title=snapshot.title,
+            description=snapshot.summary,
+            start_time=start_time,
+            duration_min=duration_min,
+            tags_json=_unique_strings(
+                list(snapshot.tags_json or [])
+                + [snapshot.entity_type, snapshot.segment, snapshot.genre]
+            ),
+            estimated_cost_amount=snapshot.min_price or snapshot.max_price,
+            estimated_cost_currency=snapshot.currency,
+            place_id=snapshot.place_id,
+            event_snapshot_id=snapshot.id,
+            notes=None,
+            is_favorite=False,
+            source="manual",
+        )
+        db.add(activity)
+        snapshot.trip_day_id = day.id
+        await TripRepository.bump_version(db, trip_id)
+        await db.flush()
+        await db.refresh(activity)
+        return activity
+
+    @staticmethod
+    async def list_trip_events(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        limit: int,
+        offset: int,
+    ) -> tuple[int, list[EventSnapshot]]:
+        return await EventRepository.list_trip_saved_activities(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+            limit=limit,
+            offset=offset,
+        )
+
+    @staticmethod
     async def get_event_for_user(
         db: AsyncSession,
         *,
         user_id: uuid.UUID,
         event_id: uuid.UUID,
     ) -> EventSnapshot:
-        row = await db.execute(
-            select(EventSnapshot)
-            .join(Trip, EventSnapshot.trip_id == Trip.id)
-            .where(EventSnapshot.id == event_id)
-            .where(Trip.user_id == user_id)
+        return await EventRepository.get_snapshot_for_user(
+            db,
+            user_id=user_id,
+            snapshot_id=event_id,
         )
-        item = row.scalar_one_or_none()
-        if not item:
-            raise NotFoundError("Event not found")
-        return item
 
     @staticmethod
     async def attach_event_to_day(
@@ -1196,52 +1528,13 @@ class EventRepository:
         event_id: uuid.UUID,
         trip_day_id: uuid.UUID,
     ) -> Activity:
-        await TripRepository.get_trip(db, user_id, trip_id)
-        day = await DayRepository.get_day_for_user(db, user_id, trip_day_id)
-        if day.trip_id != trip_id:
-            raise ValidationApiError("trip_day_id must belong to the trip")
-
-        event = await EventRepository.get_event_for_user(db, user_id=user_id, event_id=event_id)
-        if event.trip_id != trip_id:
-            raise NotFoundError("Event not found")
-
-        count_result = await db.execute(
-            select(func.count(Activity.id)).where(Activity.trip_day_id == day.id)
+        return await EventRepository.attach_snapshot_to_day(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+            snapshot_id=event_id,
+            trip_day_id=trip_day_id,
         )
-        order_index = int(count_result.scalar_one())
-        duration_min = None
-        start_time = None
-        if event.start_at is not None:
-            start_time = event.start_at.time().replace(tzinfo=None)
-        if event.start_at is not None and event.end_at is not None:
-            delta = int((event.end_at - event.start_at).total_seconds() // 60)
-            duration_min = max(delta, 30)
-
-        activity = Activity(
-            trip_day_id=day.id,
-            order_index=order_index,
-            title=event.title,
-            description=event.summary,
-            start_time=start_time,
-            duration_min=duration_min,
-            tags_json=[value for value in (event.segment, event.genre, "event") if value],
-            estimated_cost_amount=event.min_price or event.max_price,
-            estimated_cost_currency=event.currency,
-            place_id=event.place_id,
-            event_snapshot_id=event.id,
-            notes=None,
-            is_favorite=False,
-            source="manual",
-        )
-        db.add(activity)
-        await TripRepository.bump_version(db, trip_id)
-        await db.flush()
-        await db.refresh(activity)
-        return activity
-
-    @staticmethod
-    def to_response(item: EventSnapshot) -> EventResponse:
-        return EventRepository._to_response(item)
 
 
 class PlacePhotoRepository:
@@ -1585,6 +1878,191 @@ class ProposalRepository:
 
 class OfferRepository:
     @staticmethod
+    def _geo_point(value: Any) -> OfferGeoPoint | None:
+        if not isinstance(value, dict):
+            return None
+        latitude = _coerce_float(value.get("latitude"))
+        longitude = _coerce_float(value.get("longitude"))
+        if latitude is None or longitude is None:
+            return None
+        return OfferGeoPoint(latitude=latitude, longitude=longitude)
+
+    @staticmethod
+    def _transport_details_from_raw(raw_payload: dict | None) -> TransportOfferDetails | None:
+        if not isinstance(raw_payload, dict):
+            return None
+
+        segments_raw = raw_payload.get("segments") if isinstance(raw_payload.get("segments"), list) else []
+        layovers_raw = raw_payload.get("layovers") if isinstance(raw_payload.get("layovers"), list) else []
+        details = TransportOfferDetails(
+            stops_count=_coerce_int(raw_payload.get("stops_count")),
+            total_duration_min=_coerce_int(raw_payload.get("total_duration_min")),
+            cabin=_coerce_string(raw_payload.get("cabin")),
+            baggage_summary=_coerce_string(raw_payload.get("baggage_summary")),
+            validating_airline_codes=_unique_strings(
+                raw_payload.get("validating_airline_codes")
+                if isinstance(raw_payload.get("validating_airline_codes"), list)
+                else []
+            ),
+            bookable_seats=_coerce_int(raw_payload.get("bookable_seats")),
+            additional_baggage_price=_coerce_decimal(raw_payload.get("additional_baggage_price")),
+            additional_baggage_currency=_coerce_string(raw_payload.get("additional_baggage_currency")),
+            emissions_kg=_coerce_decimal(raw_payload.get("emissions_kg")),
+            emissions_description=_coerce_string(raw_payload.get("emissions_description")),
+            origin_geo=OfferRepository._geo_point(raw_payload.get("origin_geo")),
+            destination_geo=OfferRepository._geo_point(raw_payload.get("destination_geo")),
+        )
+
+        for index, segment in enumerate(segments_raw):
+            if not isinstance(segment, dict):
+                continue
+            departure = segment.get("departure") if isinstance(segment.get("departure"), dict) else {}
+            arrival = segment.get("arrival") if isinstance(segment.get("arrival"), dict) else {}
+            details.segments.append(
+                TransportSegmentDetail(
+                    itinerary_index=_coerce_int(segment.get("itineraryIndex")) or 0,
+                    sequence=_coerce_int(segment.get("sequence")) or (index + 1),
+                    airline_code=_coerce_string(segment.get("carrierCode")),
+                    airline_name=_coerce_string(segment.get("airlineName")),
+                    operating_airline_code=_coerce_string(segment.get("operatingCarrierCode")),
+                    operating_airline_name=_coerce_string(segment.get("operatingAirlineName")),
+                    flight_number=_coerce_string(segment.get("flightNumber")),
+                    departure_iata=_coerce_string(departure.get("iataCode")),
+                    departure_at=departure.get("at"),
+                    departure_terminal=_coerce_string(departure.get("terminal")),
+                    arrival_iata=_coerce_string(arrival.get("iataCode")),
+                    arrival_at=arrival.get("at"),
+                    arrival_terminal=_coerce_string(arrival.get("terminal")),
+                    duration_min=_coerce_int(segment.get("durationMin"))
+                    or _iso_duration_to_minutes(segment.get("duration")),
+                    cabin=_coerce_string(segment.get("cabin")),
+                    fare_basis=_coerce_string(segment.get("fareBasis")),
+                    branded_fare=_coerce_string(segment.get("brandedFare")),
+                    baggage_summary=_coerce_string(segment.get("baggageSummary")),
+                )
+            )
+
+        for layover in layovers_raw:
+            if not isinstance(layover, dict):
+                continue
+            details.layovers.append(
+                TransportLayoverDetail(
+                    itinerary_index=_coerce_int(layover.get("itineraryIndex")) or 0,
+                    airport_code=_coerce_string(layover.get("airportCode")),
+                    duration_min=_coerce_int(layover.get("durationMin")),
+                )
+            )
+
+        if details.stops_count is None and details.segments:
+            itinerary_indexes = {segment.itinerary_index for segment in details.segments}
+            inferred = 0
+            for itinerary_index in itinerary_indexes:
+                count = len(
+                    [segment for segment in details.segments if segment.itinerary_index == itinerary_index]
+                )
+                inferred += max(count - 1, 0)
+            details.stops_count = inferred
+
+        if (
+            not details.segments
+            and not details.layovers
+            and details.total_duration_min is None
+            and details.bookable_seats is None
+            and details.origin_geo is None
+            and details.destination_geo is None
+        ):
+            return None
+
+        return details
+
+    @staticmethod
+    def _lodging_details_from_raw(
+        raw_payload: dict | None,
+        *,
+        place_id: uuid.UUID | None,
+        photo_summary: tuple[int, PlacePhotoSummary | None] | None,
+    ) -> LodgingOfferDetails | None:
+        if not isinstance(raw_payload, dict) and place_id is None:
+            return None
+
+        hotel = raw_payload.get("hotel") if isinstance(raw_payload, dict) and isinstance(raw_payload.get("hotel"), dict) else {}
+        offer = raw_payload.get("offer") if isinstance(raw_payload, dict) and isinstance(raw_payload.get("offer"), dict) else {}
+        rating = raw_payload.get("rating") if isinstance(raw_payload, dict) and isinstance(raw_payload.get("rating"), dict) else {}
+        address = hotel.get("address") if isinstance(hotel.get("address"), dict) else {}
+        geo_code = hotel.get("geoCode") if isinstance(hotel.get("geoCode"), dict) else {}
+        price = offer.get("price") if isinstance(offer.get("price"), dict) else {}
+        policies = offer.get("policies") if isinstance(offer.get("policies"), dict) else {}
+        cancellation = policies.get("cancellation") if isinstance(policies.get("cancellation"), dict) else {}
+        price_variations = price.get("variations") if isinstance(price.get("variations"), dict) else {}
+        average_variation = (
+            price_variations.get("average") if isinstance(price_variations.get("average"), dict) else {}
+        )
+
+        tax_total = None
+        taxes = price.get("taxes") if isinstance(price.get("taxes"), list) else []
+        if taxes:
+            amounts = [_coerce_decimal(item.get("amount")) for item in taxes if isinstance(item, dict)]
+            tax_total = sum((amount for amount in amounts if amount is not None), Decimal("0"))
+
+        distance = hotel.get("distance") if isinstance(hotel.get("distance"), dict) else {}
+        address_lines = address.get("lines") if isinstance(address.get("lines"), list) else []
+        full_address = ", ".join([line for line in address_lines if isinstance(line, str) and line.strip()])
+        if not full_address:
+            full_address = _coerce_string(address.get("label"))
+
+        room_description = None
+        room_description_obj = offer.get("roomDescription")
+        if isinstance(room_description_obj, dict):
+            room_description = _coerce_string(room_description_obj.get("text") or room_description_obj.get("name"))
+        if room_description is None:
+            room = offer.get("room") if isinstance(offer.get("room"), dict) else {}
+            room_description = _coerce_string(room.get("description"))
+
+        photo_count = photo_summary[0] if photo_summary is not None else 0
+        primary_photo = photo_summary[1] if photo_summary is not None else None
+        details = LodgingOfferDetails(
+            hotel_id=_coerce_string(hotel.get("hotelId")),
+            hotel_name=_coerce_string(hotel.get("name")),
+            chain_code=_coerce_string(hotel.get("chainCode")),
+            brand=_coerce_string(hotel.get("brandCode")),
+            star_rating=_coerce_int(hotel.get("rating") or hotel.get("hotelRating")),
+            sentiment_rating=_coerce_int(
+                rating.get("overallRating") or rating.get("overall") or rating.get("sentiment")
+            ),
+            amenities=[
+                _titleize_token(item)
+                for item in _unique_strings(hotel.get("amenities") if isinstance(hotel.get("amenities"), list) else [])
+            ],
+            address_text=full_address,
+            latitude=_coerce_float(geo_code.get("latitude")),
+            longitude=_coerce_float(geo_code.get("longitude")),
+            distance_km=_coerce_float(distance.get("value")),
+            room_description=room_description,
+            payment_type=_coerce_string(policies.get("paymentType")),
+            cancellation_summary=_coerce_string(
+                cancellation.get("description") or cancellation.get("type") or policies.get("deposit")
+            ),
+            nightly_rate_amount=_coerce_decimal(
+                average_variation.get("total") or average_variation.get("base") or price.get("base")
+            ),
+            taxes_amount=tax_total,
+            place_id=place_id,
+            photo_count=photo_count,
+            primary_photo=primary_photo,
+        )
+
+        if (
+            details.hotel_id is None
+            and details.hotel_name is None
+            and details.place_id is None
+            and details.latitude is None
+            and details.longitude is None
+        ):
+            return None
+
+        return details
+
+    @staticmethod
     def _offer_response_from_transport(offer: TransportOffer) -> OfferResponse:
         return OfferResponse(
             id=offer.id,
@@ -1606,10 +2084,16 @@ class OfferRepository:
             destination_text=offer.destination_text,
             depart_at=offer.depart_at,
             arrive_at=offer.arrive_at,
+            raw_payload_json=offer.raw_payload_json,
+            transport_details=OfferRepository._transport_details_from_raw(offer.raw_payload_json),
         )
 
     @staticmethod
-    def _offer_response_from_lodging(offer: LodgingOffer) -> OfferResponse:
+    def _offer_response_from_lodging(
+        offer: LodgingOffer,
+        *,
+        photo_summary: tuple[int, PlacePhotoSummary | None] | None = None,
+    ) -> OfferResponse:
         return OfferResponse(
             id=offer.id,
             kind=OfferKind.LODGING,
@@ -1631,6 +2115,12 @@ class OfferRepository:
             checkin_date=offer.checkin_date,
             checkout_date=offer.checkout_date,
             nights=offer.nights,
+            raw_payload_json=offer.raw_payload_json,
+            lodging_details=OfferRepository._lodging_details_from_raw(
+                offer.raw_payload_json,
+                place_id=offer.place_id,
+                photo_summary=photo_summary,
+            ),
         )
 
     @staticmethod
@@ -1710,6 +2200,7 @@ class OfferRepository:
         checkin_date,
         checkout_date,
         nights: int | None,
+        place_id: uuid.UUID | None,
         price_amount,
         currency: str,
         deep_link: str | None,
@@ -1732,6 +2223,7 @@ class OfferRepository:
             checkin_date=checkin_date,
             checkout_date=checkout_date,
             nights=nights,
+            place_id=place_id,
             price_amount=price_amount,
             currency=currency,
             deep_link=deep_link,
@@ -1786,11 +2278,21 @@ class OfferRepository:
             count = int(
                 (await db.execute(select(func.count()).select_from(query.subquery()))).scalar_one()
             )
-            rows = await db.execute(
+            rows = (
+                await db.execute(
                 query.order_by(LodgingOffer.created_at.desc()).limit(limit).offset(offset)
+                )
+            ).scalars().all()
+            photo_summary_map = await PlacePhotoRepository.photo_summaries_for_place_ids(
+                db,
+                [item.place_id for item in rows if item.place_id is not None],
             )
             return count, [
-                OfferRepository._offer_response_from_lodging(item) for item in rows.scalars().all()
+                OfferRepository._offer_response_from_lodging(
+                    item,
+                    photo_summary=photo_summary_map.get(item.place_id) if item.place_id else None,
+                )
+                for item in rows
             ]
 
         transport_query = select(TransportOffer).where(TransportOffer.trip_id == trip_id)
@@ -1803,16 +2305,26 @@ class OfferRepository:
         if lodging_types:
             lodging_query = lodging_query.where(LodgingOffer.lodging_type.in_(lodging_types))
 
-        transport_rows = (
-            await db.execute(transport_query.order_by(TransportOffer.created_at.desc()))
-        ).scalars()
-        lodging_rows = (
-            await db.execute(lodging_query.order_by(LodgingOffer.created_at.desc()))
-        ).scalars()
+        transport_rows = list(
+            (await db.execute(transport_query.order_by(TransportOffer.created_at.desc()))).scalars().all()
+        )
+        lodging_rows = list(
+            (await db.execute(lodging_query.order_by(LodgingOffer.created_at.desc()))).scalars().all()
+        )
+        photo_summary_map = await PlacePhotoRepository.photo_summaries_for_place_ids(
+            db,
+            [item.place_id for item in lodging_rows if item.place_id is not None],
+        )
 
         combined = [OfferRepository._offer_response_from_transport(item) for item in transport_rows]
         combined.extend(
-            [OfferRepository._offer_response_from_lodging(item) for item in lodging_rows]
+            [
+                OfferRepository._offer_response_from_lodging(
+                    item,
+                    photo_summary=photo_summary_map.get(item.place_id) if item.place_id else None,
+                )
+                for item in lodging_rows
+            ]
         )
         combined.sort(key=lambda item: (item.created_at, str(item.id)), reverse=True)
         total = len(combined)

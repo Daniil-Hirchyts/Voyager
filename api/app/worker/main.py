@@ -10,7 +10,6 @@ from app.db.models import Trip
 from app.db.repositories import ExportRepository, JobRepository
 from app.db.session import AsyncSessionLocal, redis_client
 from app.metrics import increment_job_metric
-from app.services.events_pipeline import execute_events_search_job
 from app.services.export_pipeline import execute_export_job
 from app.services.itinerary_generation import (
     NonRetryableJobError,
@@ -57,9 +56,9 @@ async def _invalidate_place_caches() -> None:
     await cache_delete_prefix(redis_client, "place:viewport:v1:")
 
 
-async def _invalidate_event_caches() -> None:
-    await cache_delete_prefix(redis_client, "event:get:")
-    await cache_delete_prefix(redis_client, "event:list:")
+async def _invalidate_activity_shortlist_caches() -> None:
+    await cache_delete_prefix(redis_client, "activity:shortlist:get:")
+    await cache_delete_prefix(redis_client, "activity:shortlist:list:")
 
 
 async def _invalidate_proposal_caches() -> None:
@@ -155,13 +154,9 @@ async def _process_job(job_id: uuid.UUID) -> None:
                         "llm_model": result.llm_model,
                         "fallback_used": result.fallback_used,
                         "provider_errors": result.provider_errors,
-                    }
-                elif job.job_type == "events.search":
-                    result = await execute_events_search_job(db, job)
-                    result_payload = {
-                        "summary": result.summary,
-                        "event_ids": result.event_ids,
-                        "errors": result.errors,
+                        "resolved_place_count": result.resolved_place_count,
+                        "photo_enriched_place_count": result.photo_enriched_place_count,
+                        "unresolved_activity_count": result.unresolved_activity_count,
                     }
                 elif job.job_type == "places.dedup.run":
                     result = await execute_places_dedup_job(db, job)
@@ -248,8 +243,7 @@ async def _process_job(job_id: uuid.UUID) -> None:
         await _invalidate_trip_caches()
     if job_type == "itinerary.optimize" and final_status == "SUCCEEDED":
         await _invalidate_proposal_caches()
-    if job_type == "events.search" and final_status == "SUCCEEDED":
-        await _invalidate_event_caches()
+        await _invalidate_activity_shortlist_caches()
     if job_type.startswith("places.") and final_status == "SUCCEEDED":
         await _invalidate_place_caches()
     if job_type == "places.photos.refresh" and final_status == "SUCCEEDED":

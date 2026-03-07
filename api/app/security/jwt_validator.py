@@ -88,11 +88,11 @@ async def validate_jwt_token(token: str) -> TokenPrincipal:
     azp = claims.get("azp")
     audience_ok = False
     if isinstance(aud, str):
-        audience_ok = aud == settings.keycloak_audience
+        audience_ok = aud in settings.allowed_audiences
     elif isinstance(aud, list):
-        audience_ok = settings.keycloak_audience in aud
+        audience_ok = any(a in settings.allowed_audiences for a in aud)
     if not audience_ok:
-        audience_ok = azp == settings.keycloak_audience
+        audience_ok = azp in settings.allowed_audiences
     if not audience_ok:
         raise UnauthorizedError("Invalid token audience")
 

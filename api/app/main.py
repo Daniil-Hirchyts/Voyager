@@ -2,6 +2,7 @@ import logging
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.errors import ApiError
@@ -10,7 +11,6 @@ from app.middleware import IpRateLimitMiddleware, TraceAndLoggingMiddleware
 from app.routers import (
     activities,
     days,
-    events,
     exports,
     health,
     jobs,
@@ -29,6 +29,17 @@ app = FastAPI(
     title="Voyager API",
     version="0.1.0",
     description="Local-first backend for interactive trip planning",
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://voyager.local",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -90,7 +101,6 @@ app.include_router(trips.router)
 app.include_router(days.router)
 app.include_router(activities.router)
 app.include_router(places.router)
-app.include_router(events.router)
 app.include_router(proposals.router)
 app.include_router(jobs.router)
 app.include_router(offers.router)

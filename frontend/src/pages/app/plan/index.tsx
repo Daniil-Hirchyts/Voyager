@@ -6,9 +6,5 @@ export default function PlanPage() {
 
   if (!tripId) return null
 
-  return (
-    <div className="flex flex-col" style={{ height: '100%', minHeight: '100vh' }}>
-      <PlannerBoard tripId={tripId} />
-    </div>
-  )
+  return <div className="flex h-full min-h-0 flex-col"><PlannerBoard tripId={tripId} /></div>
 }

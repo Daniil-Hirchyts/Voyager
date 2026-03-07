@@ -95,6 +95,8 @@ async def _load_trip_events(db: AsyncSession, *, trip_id: uuid.UUID) -> list[Eve
     rows = await db.execute(
         select(EventSnapshot)
         .where(EventSnapshot.trip_id == trip_id)
+        .where(EventSnapshot.provider == "tripadvisor")
+        .where(EventSnapshot.entity_type.in_(("attraction", "restaurant")))
         .order_by(EventSnapshot.start_at.asc().nulls_last(), EventSnapshot.created_at.desc())
     )
     return list(rows.scalars().all())
@@ -112,7 +114,32 @@ def _activity_tags(activity: Activity) -> list[str]:
 
 
 def _event_tags(event: EventSnapshot) -> list[str]:
-    return [value for value in (event.segment, event.genre, "event") if value]
+    return [
+        value
+        for value in ([event.entity_type] + list(event.tags_json or []) + [event.segment, event.genre, "event"])
+        if value
+    ]
+
+
+def _candidate_day_id_for_event(
+    *,
+    event: EventSnapshot,
+    scope_days_by_date: dict[Any, uuid.UUID],
+    scoped_day_ids: set[uuid.UUID],
+) -> uuid.UUID | None:
+    if event.trip_day_id and event.trip_day_id in scoped_day_ids:
+        return event.trip_day_id
+    if event.start_at is not None:
+        return scope_days_by_date.get(event.start_at.date())
+    raw_local_date = event.raw_payload_json.get("local_date") if isinstance(event.raw_payload_json, dict) else None
+    if isinstance(raw_local_date, str):
+        try:
+            from datetime import date
+
+            return scope_days_by_date.get(date.fromisoformat(raw_local_date))
+        except ValueError:
+            return None
+    return None
 
 
 def _insert_event_candidate(
@@ -267,6 +294,12 @@ async def execute_itinerary_optimization_job(
     days = await _load_scope_days(db, trip_id=trip.id, day_ids_raw=request.get("day_ids"))
     activities_by_day = await _load_day_activities(db, day_ids=[day.id for day in days])
     events = await _load_trip_events(db, trip_id=trip.id)
+    requested_snapshot_ids = {
+        _as_uuid(raw, field="activity_snapshot_ids")
+        for raw in (request.get("activity_snapshot_ids") or [])
+    }
+    if requested_snapshot_ids:
+        events = [event for event in events if event.id in requested_snapshot_ids]
 
     include_event_candidates = bool(request.get("include_event_candidates", True))
     max_event_candidates_per_day = int(request.get("max_event_candidates_per_day") or 2)
@@ -286,6 +319,39 @@ async def execute_itinerary_optimization_job(
         "locked_activities": 0,
     }
     per_day_scores: dict[str, Any] = {}
+    scoped_day_ids = {day.id for day in days}
+    scope_days_by_date = {day.date: day.id for day in days}
+    day_candidate_map: dict[uuid.UUID, list[EventSnapshot]] = {day.id: [] for day in days}
+    undated_candidates: list[EventSnapshot] = []
+
+    for event in events:
+        if event.id in attached_event_ids:
+            continue
+        matched_day_id = _candidate_day_id_for_event(
+            event=event,
+            scope_days_by_date=scope_days_by_date,
+            scoped_day_ids=scoped_day_ids,
+        )
+        if matched_day_id is not None:
+            day_candidate_map.setdefault(matched_day_id, []).append(event)
+        else:
+            undated_candidates.append(event)
+
+    for index, event in enumerate(
+        sorted(
+            undated_candidates,
+            key=lambda item: (
+                float(item.rating or 0),
+                int(item.review_count or 0),
+                item.created_at,
+            ),
+            reverse=True,
+        )
+    ):
+        if not days:
+            break
+        target_day = days[index % len(days)]
+        day_candidate_map.setdefault(target_day.id, []).append(event)
 
     for day in days:
         current_items = activities_by_day.get(day.id, [])
@@ -316,13 +382,7 @@ async def execute_itinerary_optimization_job(
             summary["preserved_activities"] += 1
 
         if include_event_candidates:
-            candidate_events = [
-                event
-                for event in events
-                if event.id not in attached_event_ids
-                and event.start_at is not None
-                and event.start_at.date() == day.date
-            ]
+            candidate_events = day_candidate_map.get(day.id, [])
             inserted = 0
             for event in candidate_events:
                 if inserted >= max_event_candidates_per_day:

@@ -1,0 +1,292 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@400;500;600&display=swap');
+
+:root {
+  --color-bg: #F4EBDD;
+  --color-bg-deep: #E7D8C3;
+  --color-surface: #FDFAF5;
+  --color-border: #CDBEA8;
+  --color-text: #1D2430;
+  --color-text-muted: #526072;
+  --color-primary: #2F6F73;
+  --color-primary-hover: #266063;
+  --radius-md: 18px;
+  --radius-sm: 10px;
+}
+
+body {
+  font-family: 'Manrope', system-ui, sans-serif !important;
+  color: var(--color-text) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: var(--color-bg) !important;
+}
+
+/* Background gradient and flex centering */
+.login-pf-page {
+  background: 
+    radial-gradient(ellipse at 30% 20%, rgba(47, 111, 115, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 70%, rgba(197, 106, 61, 0.08) 0%, transparent 50%),
+    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%) !important;
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 2rem !important;
+  position: relative !important;
+}
+
+/* Back to Website Link */
+.voyager-back-link {
+  position: absolute !important;
+  top: 2.5rem !important;
+  left: 3rem !important;
+  color: var(--color-primary) !important;
+  font-family: 'Manrope', system-ui, sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+  text-decoration: none !important;
+  transition: opacity 0.2s ease !important;
+  z-index: 10 !important;
+}
+.voyager-back-link:hover {
+  text-decoration: underline !important;
+  opacity: 0.8 !important;
+}
+@media (max-width: 768px) {
+  .voyager-back-link {
+    top: 1.5rem !important;
+    left: 1.5rem !important;
+  }
+}
+
+/* Hide the ugly beige header stripe that PatternFly adds */
+#kc-header {
+  display: none !important;
+}
+
+/* Main Auth Card */
+.card-pf {
+  background-color: var(--color-surface) !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: 0 10px 40px -10px rgba(29, 36, 48, 0.1) !important;
+  padding: 3rem 2.5rem !important;
+  width: 100% !important;
+  max-width: 440px !important;
+  margin: 0 !important;
+  position: relative !important;
+  z-index: 5 !important;
+}
+
+/* Header typography */
+.login-pf-header {
+  margin-bottom: 2rem !important;
+  text-align: center !important;
+}
+
+#kc-page-title {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 2.25rem !important;
+  color: var(--color-text) !important;
+  font-weight: 600 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Form Styles */
+.form-group {
+  margin-bottom: 1.5rem !important;
+}
+
+.pf-c-form__label {
+  color: var(--color-text) !important;
+  font-weight: 500 !important;
+  display: block !important;
+  margin-bottom: 0.5rem !important;
+  font-size: 0.875rem !important;
+}
+
+.pf-c-form-control {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--color-border) !important;
+  background-color: transparent !important;
+  font-family: 'Manrope', system-ui, sans-serif !important;
+  padding: 0.75rem 1rem !important;
+  width: 100% !important;
+  color: var(--color-text) !important;
+  font-size: 1rem !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
+  height: auto !important;
+}
+
+.pf-c-form-control:focus, .pf-c-form-control:focus-within {
+  border-color: var(--color-primary) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 1px var(--color-primary) !important;
+}
+
+/* Password Input Group */
+.pf-c-input-group {
+  display: flex !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-sm) !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+  transition: all 0.2s ease !important;
+  align-items: stretch !important;
+}
+
+.pf-c-input-group:focus-within {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 1px var(--color-primary) !important;
+}
+
+.pf-c-input-group .pf-c-form-control {
+  border: none !important;
+  box-shadow: none !important;
+  flex: 1 !important;
+}
+
+.pf-c-input-group .pf-c-button {
+  background: transparent !important;
+  border: none !important;
+  border-left: none !important;
+  color: var(--color-text-muted) !important;
+  padding: 0 1rem !important;
+  cursor: pointer !important;
+  outline: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+}
+.pf-c-input-group .pf-c-button:hover {
+  color: var(--color-primary) !important;
+}
+.pf-c-input-group .pf-c-button::before,
+.pf-c-input-group .pf-c-button::after {
+  display: none !important;
+}
+
+/* Form Settings (Remember me, Forgot password) */
+.login-pf-settings {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 2rem !important;
+  margin-top: -0.5rem !important;
+}
+
+#kc-form-options .checkbox {
+  margin: 0 !important;
+}
+
+#kc-form-options label {
+  color: var(--color-text-muted) !important;
+  font-size: 0.875rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  accent-color: var(--color-primary) !important;
+  width: 1rem !important;
+  height: 1rem !important;
+  cursor: pointer !important;
+  margin-top: 2px !important;
+}
+
+/* Primary Button */
+.pf-c-button.pf-m-primary,
+input[type="submit"],
+button[type="submit"] {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+  padding: 0.875rem 1.5rem !important;
+  width: 100% !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  font-family: 'Manrope', system-ui, sans-serif !important;
+}
+
+.pf-c-button.pf-m-primary:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover {
+  background-color: var(--color-primary-hover) !important;
+  box-shadow: 0 4px 12px rgba(47, 111, 115, 0.2) !important;
+}
+
+/* Links */
+a {
+  color: var(--color-primary) !important;
+  font-size: 0.875rem !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+}
+a:hover {
+  color: var(--color-primary-hover) !important;
+  text-decoration: underline !important;
+}
+
+/* Alerts & Messages */
+.alert, .pf-c-alert {
+  background-color: rgba(47, 111, 115, 0.05) !important;
+  border: 1px solid rgba(47, 111, 115, 0.2) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: 1rem 1.25rem !important;
+  margin-bottom: 2rem !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.75rem !important;
+  color: var(--color-primary) !important;
+}
+
+.alert-error, .pf-m-danger {
+  background-color: rgba(197, 106, 61, 0.05) !important;
+  border-color: rgba(197, 106, 61, 0.2) !important;
+  color: #C56A3D !important;
+  fill: #C56A3D !important;
+}
+.alert-error .pf-c-alert__icon {
+  color: #C56A3D !important;
+}
+
+.alert-warning, .pf-m-warning {
+  background-color: rgba(245, 158, 11, 0.05) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
+  color: #D97706 !important;
+  fill: #D97706 !important;
+}
+.alert-warning .pf-c-alert__icon {
+  color: #D97706 !important;
+}
+
+.alert-success, .pf-m-success {
+  background-color: rgba(47, 111, 115, 0.05) !important;
+  border-color: rgba(47, 111, 115, 0.2) !important;
+  color: var(--color-primary) !important;
+}
+.alert-success .pf-c-alert__icon {
+  color: var(--color-primary) !important;
+}
+
+.pf-c-alert__icon {
+  margin-top: 0.125rem !important;
+}
+
+.kc-feedback-text, .pf-c-alert__title {
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}

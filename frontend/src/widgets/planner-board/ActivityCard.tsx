@@ -2,35 +2,33 @@ import { useState } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  Clock,
-  DollarSign,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
   GripVertical,
   MapPin,
   MessageSquare,
   Pencil,
+  Sparkles,
   Star,
   Tag,
   Trash2,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
-import { usePlace } from '@/entities/place/queries'
+import { Button } from '@/components/ui/button'
 import { formatMoney } from '@/shared/lib/format'
-import type { Activity } from '@/shared/api/types'
+import type { PlannerActivity } from '@/shared/api/types'
 
 interface Props {
-  activity: Activity
-  onEdit: (activity: Activity) => void
+  activity: PlannerActivity
+  onEdit: (activity: PlannerActivity) => void
   onDelete: (activityId: string) => void
-  onToggleFavorite: (activity: Activity) => void
+  onToggleFavorite: (activity: PlannerActivity) => void
   isDragging?: boolean
 }
 
 export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isDragging }: Props) {
   const [expanded, setExpanded] = useState(false)
-  const { data: place } = usePlace(activity.place_id)
-
   const {
     attributes,
     listeners,
@@ -43,151 +41,164 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isSortableDragging ? 0.4 : 1,
+    opacity: isSortableDragging ? 0.42 : 1,
   }
 
-  const isAI = activity.source !== 'manual'
-  const placeName = place?.name
+  const sourceLabel = activity.source === 'manual' ? 'Manual' : 'Generated'
+  const photo =
+    activity.place?.primary_photo?.thumbnail_url || activity.place?.primary_photo?.image_url || null
 
   return (
     <div
       ref={setNodeRef}
-      style={{
-        ...style,
-        background: 'var(--color-surface)',
-        borderColor: activity.is_favorite ? 'rgba(197, 106, 61, 0.4)' : 'var(--color-border)',
-        boxShadow: isSortableDragging ? '0 8px 24px rgba(0,0,0,0.15)' : undefined,
-      }}
+      style={style}
       className={cn(
-        'group relative rounded-[14px] border transition-all',
-        isSortableDragging && 'shadow-lg ring-2 ring-[#2F6F73]/30',
-        isDragging && 'rotate-1',
+        'group overflow-hidden rounded-[24px] border bg-[var(--color-surface-elevated)] transition-all',
+        isSortableDragging && 'shadow-[0_18px_48px_rgba(13,20,28,0.2)] ring-2 ring-[var(--color-primary)]/25',
+        isDragging && 'rotate-[1.4deg]',
       )}
       aria-label={`Activity: ${activity.title}`}
     >
-      <div className="flex items-start gap-2 p-3">
+      <div className="relative">
+        <div
+          className="h-32 w-full bg-[linear-gradient(135deg,rgba(47,111,115,0.18),rgba(197,106,61,0.2))]"
+          style={
+            photo
+              ? {
+                  backgroundImage: `linear-gradient(180deg, rgba(11, 18, 24, 0.12), rgba(11, 18, 24, 0.72)), url(${photo})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                }
+              : undefined
+          }
+        />
+
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-white/88 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--color-text)] shadow-sm">
+            <Sparkles className="h-3 w-3 text-[var(--color-primary)]" />
+            {sourceLabel}
+          </div>
+
+          <div className="flex items-center gap-1 rounded-full bg-[#0f1821]/44 p-1 text-white backdrop-blur-sm">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onToggleFavorite(activity)}
+              className={cn(
+                'h-8 w-8 rounded-full text-white hover:bg-white/12',
+                activity.is_favorite && 'text-[#ffca73]',
+              )}
+              aria-label={activity.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <Star className={cn('h-4 w-4', activity.is_favorite && 'fill-current')} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onEdit(activity)}
+              className="h-8 w-8 rounded-full text-white hover:bg-white/12"
+              aria-label="Edit activity"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onDelete(activity.id)}
+              className="h-8 w-8 rounded-full text-white hover:bg-white/12"
+              aria-label="Delete activity"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
         <button
           {...attributes}
           {...listeners}
-          className="mt-0.5 p-0.5 rounded cursor-grab active:cursor-grabbing text-[#CDBEA8] hover:text-[#526072] transition-colors shrink-0"
+          className="absolute bottom-3 left-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/90 text-[var(--color-text)] shadow-sm transition-colors hover:bg-white"
           aria-label="Drag to reorder"
         >
-          <GripVertical className="w-3.5 h-3.5" />
+          <GripVertical className="h-4 w-4" />
         </button>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span
-                className={cn(
-                  'shrink-0 w-1.5 h-1.5 rounded-full mt-1',
-                  isAI ? 'bg-[#6EA4A6]' : 'bg-[#6B7A4B]',
-                )}
-                title={isAI ? 'AI generated' : 'Manual'}
-                aria-label={isAI ? 'AI generated activity' : 'Manual activity'}
-              />
-              <h3 className="font-medium text-sm text-[#1D2430] leading-snug">{activity.title}</h3>
-            </div>
-
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => onToggleFavorite(activity)}
-                className={cn(
-                  'p-1 rounded-lg transition-colors',
-                  activity.is_favorite
-                    ? 'text-[#C56A3D]'
-                    : 'text-[#CDBEA8] hover:text-[#C56A3D] opacity-0 group-hover:opacity-100',
-                )}
-                aria-label={activity.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
-                aria-pressed={activity.is_favorite}
-              >
-                <Star className={cn('w-3.5 h-3.5', activity.is_favorite && 'fill-current')} />
-              </button>
-              <button
-                onClick={() => onEdit(activity)}
-                className="p-1 rounded-lg text-[#CDBEA8] hover:text-[#526072] transition-colors opacity-0 group-hover:opacity-100"
-                aria-label="Edit activity"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onDelete(activity.id)}
-                className="p-1 rounded-lg text-[#CDBEA8] hover:text-[#C56A3D] transition-colors opacity-0 group-hover:opacity-100"
-                aria-label="Delete activity"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            {activity.start_time && (
-              <span
-                className="flex items-center gap-1 text-xs text-[#526072]"
-                aria-label={`Start time: ${activity.start_time}`}
-              >
-                <Clock className="w-3 h-3" />
-                {activity.start_time}
-                {activity.duration_min && ` · ${activity.duration_min}m`}
-              </span>
-            )}
-            {activity.estimated_cost_amount != null && (
-              <span className="flex items-center gap-1 text-xs text-[#526072]">
-                <DollarSign className="w-3 h-3" />
-                {formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency)}
-              </span>
-            )}
-            {activity.tags.length > 0 && (
-              <span className="flex items-center gap-1 text-xs text-[#526072]">
-                <Tag className="w-3 h-3" />
-                {activity.tags.join(', ')}
-              </span>
-            )}
-          </div>
-
-          {placeName && (
-            <div className="mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 bg-[#2F6F73]/6 text-xs text-[#2F6F73]">
-              <MapPin className="w-3 h-3" />
-              {placeName}
-            </div>
-          )}
-
-          {(activity.notes || activity.description) && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="mt-1.5 flex items-center gap-1 text-xs text-[#526072] hover:text-[#2F6F73] transition-colors"
-              aria-expanded={expanded}
-            >
-              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-              {expanded ? 'Less' : 'More'}
-            </button>
-          )}
-
-          {expanded && (
-            <div
-              className="mt-2 pt-2 border-t space-y-1.5"
-              style={{ borderColor: 'var(--color-border)' }}
-            >
-              {activity.description && (
-                <p className="text-xs text-[#526072] leading-relaxed">{activity.description}</p>
-              )}
-              {activity.notes && (
-                <div className="flex items-start gap-1.5">
-                  <MessageSquare className="w-3 h-3 shrink-0 mt-0.5 text-[#2F6F73]" />
-                  <p className="text-xs text-[#526072]">{activity.notes}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
-      {isAI && (
-        <div
-          className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-[#6EA4A6]/60"
-          aria-hidden
-        />
-      )}
+      <div className="space-y-3 p-4">
+        <div>
+          <h3 className="text-[1rem] font-semibold leading-snug text-[var(--color-text)]">
+            {activity.title}
+          </h3>
+          {activity.description ? (
+            <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--color-text-muted)]">
+              {activity.description}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {activity.start_time ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(47,111,115,0.08)] px-3 py-1 text-xs text-[var(--color-primary)]">
+              <Clock3 className="h-3.5 w-3.5" />
+              {activity.start_time}
+              {activity.duration_min ? ` · ${activity.duration_min}m` : ''}
+            </span>
+          ) : null}
+          {activity.place?.name ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(197,106,61,0.08)] px-3 py-1 text-xs text-[var(--color-accent)]">
+              <MapPin className="h-3.5 w-3.5" />
+              {activity.place.name}
+            </span>
+          ) : null}
+          {activity.estimated_cost_amount != null ? (
+            <span className="inline-flex items-center rounded-full bg-[rgba(16,24,32,0.06)] px-3 py-1 text-xs text-[var(--color-text-muted)]">
+              {formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency)}
+            </span>
+          ) : null}
+        </div>
+
+        {activity.tags.length ? (
+          <div className="flex flex-wrap gap-2">
+            {activity.tags.slice(0, expanded ? activity.tags.length : 4).map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[11px] text-[var(--color-text-muted)]"
+              >
+                <Tag className="h-3 w-3" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        {(activity.notes || activity.description || activity.tags.length > 4) ? (
+          <button
+            type="button"
+            onClick={() => setExpanded((current) => !current)}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-primary)]"
+            aria-expanded={expanded}
+          >
+            {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {expanded ? 'Collapse details' : 'Expand details'}
+          </button>
+        ) : null}
+
+        {expanded ? (
+          <div className="space-y-3 rounded-[18px] border border-[var(--color-border)] bg-[rgba(248,244,236,0.75)] p-3">
+            {activity.notes ? (
+              <div className="flex items-start gap-2 text-sm text-[var(--color-text-muted)]">
+                <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+                <p>{activity.notes}</p>
+              </div>
+            ) : null}
+            {activity.place?.address_text ? (
+              <div className="flex items-start gap-2 text-sm text-[var(--color-text-muted)]">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-primary)]" />
+                <p>{activity.place.address_text}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }

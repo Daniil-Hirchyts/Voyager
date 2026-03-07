@@ -258,7 +258,7 @@ export default function MapWorkspace({ tripId }: Props) {
     'px-3 py-2 rounded-[10px] border text-sm transition-colors hover:bg-[#F4EBDD]'
 
   return (
-    <div className="h-full min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
+    <div className="flex h-full min-h-0 flex-col" style={{ background: 'var(--color-bg)' }}>
       <div
         className="px-6 py-4 border-b flex flex-col gap-4 shrink-0"
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}

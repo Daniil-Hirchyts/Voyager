@@ -165,6 +165,10 @@ class Place(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all,delete",
         order_by="PlacePhoto.rank.asc()",
     )
+    lodging_offers: Mapped[list["LodgingOffer"]] = relationship(
+        "LodgingOffer",
+        back_populates="place",
+    )
     proposal_activities: Mapped[list["ItineraryProposalActivity"]] = relationship(
         "ItineraryProposalActivity",
         back_populates="place",
@@ -271,6 +275,7 @@ class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    entity_type: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     provider_event_ref: Mapped[str] = mapped_column(String(255), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -279,6 +284,9 @@ class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     timezone: Mapped[str | None] = mapped_column(String(64), nullable=True)
     venue_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     venue_address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    rating: Mapped[Decimal | None] = mapped_column(Numeric(4, 2), nullable=True)
+    review_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    price_label: Mapped[str | None] = mapped_column(String(128), nullable=True)
     place_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("place.id", ondelete="SET NULL"),
@@ -287,6 +295,8 @@ class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     segment: Mapped[str | None] = mapped_column(String(128), nullable=True)
     genre: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    tags_json: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    status_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
     min_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     max_price: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
@@ -295,6 +305,7 @@ class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     sales_status: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     raw_payload_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    provider_detail_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="event_snapshots")
@@ -595,6 +606,12 @@ class LodgingOffer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     checkin_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     checkout_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     nights: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    place_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("place.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -612,6 +629,7 @@ class LodgingOffer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="lodging_offers")
     trip_day: Mapped["TripDay"] = relationship("TripDay", back_populates="lodging_offers")
+    place: Mapped["Place | None"] = relationship("Place", back_populates="lodging_offers")
 
     __table_args__ = (
         Index("ix_lodging_offer_trip_created", "trip_id", "created_at"),

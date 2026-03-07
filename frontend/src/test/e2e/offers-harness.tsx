@@ -13,7 +13,7 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById('root')!).render(
   <QueryClientProvider client={queryClient}>
-    <MemoryRouter initialEntries={['/app/trips/trip-e2e/offers']}>
+    <MemoryRouter initialEntries={[`/app/trips/trip-e2e/offers${window.location.search}`]}>
       <Routes>
         <Route path="/app/trips/:tripId/offers" element={<OffersWorkspace tripId="trip-e2e" />} />
       </Routes>

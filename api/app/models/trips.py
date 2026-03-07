@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.places import PlacePhotoSummary
+
 
 class TripCreateRequest(BaseModel):
     title: str
@@ -72,6 +74,17 @@ class DayListResponse(BaseModel):
     items: list[DayResponse]
 
 
+class PlannerPlaceSummary(BaseModel):
+    id: UUID
+    name: str
+    category: str | None
+    address_text: str | None
+    lat: float | None
+    lon: float | None
+    photo_count: int = 0
+    primary_photo: PlacePhotoSummary | None = None
+
+
 class ActivityResponse(BaseModel):
     id: UUID
     trip_day_id: UUID
@@ -84,6 +97,28 @@ class ActivityResponse(BaseModel):
     estimated_cost_amount: Decimal | None
     estimated_cost_currency: str | None
     place_id: UUID | None
+    event_snapshot_id: UUID | None
+    notes: str | None
+    is_favorite: bool
+    source: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlannerActivityResponse(BaseModel):
+    id: UUID
+    trip_day_id: UUID
+    order_index: int
+    title: str
+    description: str | None
+    start_time: time | None
+    end_time: time | None
+    duration_min: int | None
+    tags: list[str]
+    estimated_cost_amount: Decimal | None
+    estimated_cost_currency: str | None
+    place_id: UUID | None
+    place: PlannerPlaceSummary | None = None
     event_snapshot_id: UUID | None
     notes: str | None
     is_favorite: bool
@@ -139,6 +174,15 @@ class ActivityReorderRequest(BaseModel):
 class ActivityMoveRequest(BaseModel):
     target_day_id: UUID
     target_index: int
+
+
+class PlannerDayResponse(DayResponse):
+    activities: list[PlannerActivityResponse] = Field(default_factory=list)
+
+
+class TripPlannerResponse(BaseModel):
+    trip: TripResponse
+    days: list[PlannerDayResponse]
 
 
 class GenerationMode(StrEnum):

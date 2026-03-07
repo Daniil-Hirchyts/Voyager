@@ -1397,6 +1397,10 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Raw Payload Json */
+            raw_payload_json?: {
+                [key: string]: unknown;
+            } | null;
             /** Transport Mode */
             transport_mode?: string | null;
             /** Origin Text */

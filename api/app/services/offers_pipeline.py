@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cache.redis_helpers import build_cache_key, cache_get_json, cache_set_json
 from app.config import get_settings
 from app.db.models import Job, LodgingOffer, TransportOffer, Trip
-from app.db.repositories import OfferRepository
+from app.db.repositories import OfferRepository, PlaceRepository
 from app.db.session import redis_client
 from app.models.offers import OfferKind
 from app.rate_limit.limiter import enforce_limit
@@ -139,6 +139,22 @@ async def _create_lodging_snapshot_from_candidate(
     request_fingerprint: str | None,
     candidate: dict[str, Any],
 ) -> LodgingOffer:
+    place_id = candidate.get("place_id")
+    if place_id is None and isinstance(candidate.get("place_payload"), dict):
+        place_payload = candidate["place_payload"]
+        place = await PlaceRepository.get_or_create_external_place(
+            db,
+            source=str(place_payload.get("source") or "amadeus_hotel"),
+            external_id=place_payload.get("external_id"),
+            name=str(place_payload.get("name") or candidate.get("title") or "Hotel"),
+            category=place_payload.get("category"),
+            address_text=place_payload.get("address_text"),
+            lat=place_payload.get("lat"),
+            lon=place_payload.get("lon"),
+            metadata=place_payload.get("metadata"),
+        )
+        place_id = place.id
+
     return await OfferRepository.create_lodging_snapshot(
         db,
         trip_id=trip_id,
@@ -153,6 +169,7 @@ async def _create_lodging_snapshot_from_candidate(
         checkin_date=candidate.get("checkin_date"),
         checkout_date=candidate.get("checkout_date"),
         nights=candidate.get("nights"),
+        place_id=place_id,
         price_amount=candidate["price_amount"],
         currency=candidate["currency"],
         deep_link=candidate.get("deep_link"),
@@ -339,6 +356,7 @@ def _lodging_as_refresh_payload(offer: LodgingOffer) -> dict[str, Any]:
         "checkin_date": offer.checkin_date,
         "checkout_date": offer.checkout_date,
         "nights": offer.nights,
+        "place_id": str(offer.place_id) if offer.place_id else None,
         "price_amount": offer.price_amount,
         "currency": offer.currency,
         "deep_link": offer.deep_link,
