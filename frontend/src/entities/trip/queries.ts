@@ -9,10 +9,11 @@ export const tripKeys = {
   detail: (id: string) => ['trip', id] as const,
 }
 
-export function useTrips(params?: TripListParams) {
+export function useTrips(params?: TripListParams, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: tripKeys.lists(params),
     queryFn: () => getTrips(params),
+    enabled: options?.enabled ?? true,
   })
 }
 

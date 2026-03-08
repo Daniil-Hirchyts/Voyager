@@ -48,13 +48,13 @@
     --input: rgba(255, 255, 255, 0.8);
     --ring: rgba(114, 174, 230, 0.52);
     --radius: 22px;
-    --sidebar-background: rgba(255, 255, 255, 0.36);
+    --sidebar-background: rgba(255, 255, 255, 0.72);
     --sidebar-foreground: #1a1615;
     --sidebar-primary: #1a1615;
     --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: rgba(255, 255, 255, 0.45);
+    --sidebar-accent: rgba(26, 22, 21, 0.05);
     --sidebar-accent-foreground: #1a1615;
-    --sidebar-border: rgba(255, 255, 255, 0.56);
+    --sidebar-border: rgba(255, 255, 255, 0.82);
     --sidebar-ring: rgba(114, 174, 230, 0.52);
   }
 
@@ -90,6 +90,46 @@
     color: var(--color-text);
   }
 
+  html.voyager-app-scroll-lock,
+  body.voyager-app-scroll-lock {
+    height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  body.voyager-app-scroll-lock {
+    min-height: 100dvh;
+  }
+
+  html.voyager-app-shell,
+  body.voyager-app-shell {
+    background: #f3f5f7;
+  }
+
+  .voyager-app-shell * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .voyager-app-shell *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
+  .voyager-app-shell [data-radix-scroll-area-scrollbar] {
+    display: none !important;
+  }
+
+  body.voyager-app-shell {
+    background-image: none;
+  }
+
+  body.voyager-app-shell::before,
+  body.voyager-app-shell::after {
+    content: none;
+  }
+
   body::before {
     content: "";
     position: fixed;
@@ -118,6 +158,11 @@
   #root {
     min-height: 100%;
     isolation: isolate;
+  }
+
+  body.voyager-app-scroll-lock #root {
+    height: 100dvh;
+    overflow: hidden;
   }
 
   a {
@@ -173,6 +218,11 @@
     width: 100%;
     max-width: 80rem;
     padding: 8rem 1rem 5rem;
+  }
+
+  .voyager-app-page {
+    width: 100%;
+    padding: 1rem;
   }
 
   .voyager-surface {
@@ -343,6 +393,10 @@
 
     .voyager-public-page {
       padding: 10rem 1.5rem 7rem;
+    }
+
+    .voyager-app-page {
+      padding: 1.5rem;
     }
 
     .voyager-copy {

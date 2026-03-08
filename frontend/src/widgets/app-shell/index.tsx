@@ -1,19 +1,25 @@
-import { Link, Outlet, useLocation, useMatch, useParams, useResolvedPath } from 'react-router-dom'
+import { Link, Outlet, useLocation, useMatch, useOutletContext, useParams, useResolvedPath, useSearchParams } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
 import Cookies from 'js-cookie'
+import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
 import {
   type LucideIcon,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
   Compass,
   Download,
-  MapPin,
   LayoutGrid,
   LogOut,
   Map,
-  Plus,
+  MapPin,
+  MoreVertical,
+  PlusCircle,
   ScrollText,
   Ticket,
 } from 'lucide-react'
+import { useTrips } from '@/entities/trip/queries'
+import { SIDEBAR_RECENT_TRIPS_LIMIT, TRIP_LIST_PAGE_SIZE } from '@/entities/trip/constants'
 import { useProfile } from '@/entities/user/queries'
 import { config } from '@/app/config'
 import { VoyagerLogo } from './logo'
@@ -44,7 +50,9 @@ import {
   SidebarMenuItem,
   SidebarProvider,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar'
+import type { Trip } from '@/shared/api/types'
 
 type NavItem = {
   to: string
@@ -58,6 +66,42 @@ type AppShellLayoutProps = {
   userName: string
   userEmail?: string
   onSignOut: () => void
+  recentTrips?: Trip[]
+  tripsPagination?: {
+    currentPage: number
+    totalPages: number
+    totalItems: number
+    startItem: number
+    endItem: number
+    isFetching: boolean
+    onPreviousPage: () => void
+    onNextPage: () => void
+  }
+}
+
+export type AppShellOutletContext = {
+  setHeaderActions?: (actions: ReactNode | null) => void
+}
+
+const APP_SCROLL_LOCK_CLASS = 'voyager-app-scroll-lock'
+const APP_SHELL_CLASS = 'voyager-app-shell'
+
+export function useAppShellHeaderActions(actions: ReactNode | null) {
+  const setHeaderActions = useOutletContext<AppShellOutletContext | null>()?.setHeaderActions
+
+  useEffect(() => {
+    if (!setHeaderActions) {
+      return
+    }
+
+    setHeaderActions(actions)
+
+    return () => {
+      setHeaderActions(null)
+    }
+  }, [actions, setHeaderActions])
+
+  return Boolean(setHeaderActions)
 }
 
 function getSectionLabel(pathname: string, tripId?: string) {
@@ -79,6 +123,8 @@ function getSectionLabel(pathname: string, tripId?: string) {
     { path: `/app/trips/${tripId}/map`, label: 'Map' },
     { path: `/app/trips/${tripId}/offers`, label: 'Offers' },
     { path: `/app/trips/${tripId}/activities`, label: 'Activities' },
+    { path: `/app/trips/${tripId}/events`, label: 'Events' },
+    { path: `/app/trips/${tripId}/proposals`, label: 'Proposals' },
     { path: `/app/trips/${tripId}/exports`, label: 'Exports' },
     { path: `/app/trips/${tripId}/audit`, label: 'Audit' },
   ]
@@ -105,23 +151,166 @@ function AppSidebarLink({ to, label, icon: Icon, end = false }: NavItem) {
     <SidebarMenuItem>
       <SidebarMenuButton
         asChild
-        size="lg"
         isActive={!!match}
-        tooltip={label}
         className={cn(
-          'h-11 rounded-[18px] border border-transparent px-3 text-[0.92rem] font-medium text-[var(--color-text-muted)] transition-all',
-          'hover:bg-white/48 hover:text-[var(--color-text)]',
-          'data-[active=true]:border-[var(--color-border-strong)] data-[active=true]:bg-white/76 data-[active=true]:shadow-[0_18px_34px_-24px_rgba(32,56,83,0.32)] data-[active=true]:backdrop-blur-md',
-          'data-[active=true]:text-[var(--color-text)]',
-          'group-data-[collapsible=icon]:!size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-[16px] group-data-[collapsible=icon]:!p-0',
+          'h-8 rounded-[8px] px-2 text-[0.92rem] font-normal text-[#5f6b7a] transition-colors [&>svg]:size-[0.95rem]',
+          'hover:bg-transparent hover:text-[var(--color-text)]',
+          'data-[active=true]:bg-transparent data-[active=true]:font-medium data-[active=true]:text-[var(--color-text)] data-[active=true]:shadow-none',
         )}
       >
         <Link to={to}>
           <Icon />
-          <span className="group-data-[collapsible=icon]:hidden">{label}</span>
+          <span>{label}</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
+  )
+}
+
+function AppRecentTripLink({
+  trip,
+  isActive,
+}: {
+  trip: Trip
+  isActive: boolean
+}) {
+  return (
+    <SidebarMenuItem>
+      <Link
+        to={`/app/trips/${trip.id}`}
+        className={cn(
+          'flex min-h-8 items-center rounded-[8px] px-2 py-1.5 text-[0.84rem] transition-colors',
+          'hover:bg-black/3',
+          isActive ? 'bg-black/4' : 'bg-transparent',
+        )}
+      >
+        <span className={cn('truncate text-[#5f6b7a]', isActive ? 'font-medium text-[var(--color-text)]' : 'font-normal')}>
+          {trip.title}
+        </span>
+      </Link>
+    </SidebarMenuItem>
+  )
+}
+
+function AppShellPagination({
+  pagination,
+}: {
+  pagination: NonNullable<AppShellLayoutProps['tripsPagination']>
+}) {
+  if (pagination.totalItems === 0) {
+    return null
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="hidden text-[0.72rem] text-[#8b94a3] md:block">
+        {pagination.startItem}-{pagination.endItem} of {pagination.totalItems}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5 shadow-none"
+        onClick={pagination.onPreviousPage}
+        disabled={pagination.currentPage <= 1 || pagination.isFetching}
+        aria-label="Previous page"
+      >
+        <ChevronLeft className="size-3.5" />
+      </Button>
+      <span className="min-w-[3.5rem] text-center text-[0.78rem] font-medium text-[#5f6b7a]">
+        {pagination.currentPage} / {pagination.totalPages}
+      </span>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5 shadow-none"
+        onClick={pagination.onNextPage}
+        disabled={pagination.currentPage >= pagination.totalPages || pagination.isFetching}
+        aria-label="Next page"
+      >
+        <ChevronRight className="size-3.5" />
+      </Button>
+    </div>
+  )
+}
+
+function AppShellUserMenu({
+  userName,
+  userEmail,
+  onSignOut,
+}: Pick<AppShellLayoutProps, 'userName' | 'userEmail' | 'onSignOut'>) {
+  const { isMobile } = useSidebar()
+  const userInitials = getInitials(userName)
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              className={cn(
+                'h-auto min-h-0 rounded-[10px] border border-transparent px-1.5 py-1.5 text-[var(--color-text)] transition-colors',
+                'hover:bg-transparent hover:shadow-none',
+                'data-[state=open]:bg-transparent data-[state=open]:shadow-none',
+              )}
+            >
+              <Avatar className="size-8 rounded-[10px] border border-white/80 bg-white/80 shadow-none">
+                <AvatarFallback className="rounded-[10px] text-[0.72rem] font-medium">
+                  {userInitials}
+                </AvatarFallback>
+              </Avatar>
+
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate text-[0.92rem] font-medium">{userName}</span>
+              </div>
+
+              <MoreVertical className="size-[0.95rem] text-[#7b8794]" />
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-[14px] border-black/8 p-1.5 shadow-[0_12px_28px_rgba(15,23,42,0.08)] backdrop-blur-none"
+            side={isMobile ? 'bottom' : 'right'}
+            align="end"
+            sideOffset={6}
+          >
+            <DropdownMenuLabel className="px-2 py-2 normal-case tracking-normal text-inherit">
+              <div className="flex items-center gap-3">
+                <Avatar className="size-9 rounded-[12px] border border-white/80 bg-white/80 shadow-none">
+                  <AvatarFallback className="rounded-[12px] text-xs font-medium">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+
+                <div className="grid min-w-0 flex-1 gap-0.5 text-left">
+                  <span className="truncate text-[0.95rem] font-medium text-[var(--color-text)]">
+                    {userName}
+                  </span>
+                  <span className="truncate text-xs font-normal normal-case tracking-normal text-[#6b7280]">
+                    {userEmail || 'Signed in'}
+                  </span>
+                </div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-black/8" />
+            <DropdownMenuGroup>
+              <DropdownMenuItem
+                className="rounded-[10px] px-2.5 py-2 font-medium"
+                onSelect={(event) => {
+                  event.preventDefault()
+                  onSignOut()
+                }}
+              >
+                <LogOut />
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   )
 }
 
@@ -130,10 +319,31 @@ export function AppShellLayout({
   userName,
   userEmail,
   onSignOut,
+  recentTrips = [],
+  tripsPagination,
 }: AppShellLayoutProps) {
   const location = useLocation()
   const currentSection = getSectionLabel(location.pathname, tripId)
-  const userInitials = getInitials(userName)
+  const [headerActions, setHeaderActions] = useState<ReactNode | null>(null)
+  const shouldShowRecentTrips = location.pathname === '/app/trips' && recentTrips.length > 0
+
+  useEffect(() => {
+    document.documentElement.classList.add(APP_SCROLL_LOCK_CLASS)
+    document.documentElement.classList.add(APP_SHELL_CLASS)
+    document.body.classList.add(APP_SCROLL_LOCK_CLASS)
+    document.body.classList.add(APP_SHELL_CLASS)
+
+    return () => {
+      document.documentElement.classList.remove(APP_SCROLL_LOCK_CLASS)
+      document.documentElement.classList.remove(APP_SHELL_CLASS)
+      document.body.classList.remove(APP_SCROLL_LOCK_CLASS)
+      document.body.classList.remove(APP_SHELL_CLASS)
+    }
+  }, [])
+
+  useEffect(() => {
+    setHeaderActions(null)
+  }, [location.pathname])
 
   const primaryNavItems: NavItem[] = [
     { to: '/app/trips', icon: LayoutGrid, label: 'Trips', end: true },
@@ -162,56 +372,60 @@ export function AppShellLayout({
   const defaultOpen = sidebarState ? sidebarState === 'true' : true
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen} className="relative h-dvh overflow-hidden bg-transparent">
-      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(114,174,230,0.18),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.68),transparent_24%)]" />
+    <SidebarProvider
+      defaultOpen={defaultOpen}
+      className="relative h-dvh overflow-hidden bg-transparent text-[var(--color-text)]"
+      style={
+        {
+          '--sidebar-width': '14.75rem',
+          '--sidebar-width-icon': '3.5rem',
+        } as CSSProperties
+      }
+    >
       <Sidebar
-        variant="sidebar"
-        collapsible="icon"
-        className="border-none bg-transparent [&>div[data-sidebar=sidebar]]:bg-transparent [&>div[data-sidebar=sidebar]]:border-none"
+        variant="inset"
+        collapsible="offcanvas"
+        className={cn(
+          'border-none bg-transparent md:pr-0',
+          '[&>div[data-sidebar=sidebar]]:border-none [&>div[data-sidebar=sidebar]]:bg-transparent',
+          '[&>div[data-sidebar=sidebar]]:shadow-none [&>div[data-sidebar=sidebar]]:backdrop-blur-none',
+          '[&>div[data-sidebar=sidebar]]:md:rounded-none',
+        )}
         data-testid="app-shell-sidebar"
       >
-        <SidebarHeader className="gap-6 px-4 py-6 group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:pt-6">
-          <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-            <Link
-              to="/"
-              className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-cta)] text-white shadow-[0_18px_32px_-24px_rgba(26,22,21,0.72)]"
-            >
-              <VoyagerLogo className="size-[1.2rem] translate-y-[1px]" />
-            </Link>
+        <SidebarHeader className="gap-2.5 px-1.5 py-1.5">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="h-auto min-h-0 rounded-[8px] px-1 py-1 hover:bg-transparent">
+                <Link to="/app/trips">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--color-cta)] text-white shadow-none">
+                    <VoyagerLogo className="size-[1rem] translate-y-[1px]" />
+                  </span>
 
-            <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="text-[0.65rem] uppercase tracking-[0.25em] text-[var(--color-text-muted)]">
-                Voyager
-              </p>
-              <p className="mt-0.5 font-display text-[1.2rem] font-medium leading-none text-[var(--color-text)]">
-                Workspace
-              </p>
-            </div>
-          </div>
+                  <div className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-[0.98rem] font-medium tracking-[-0.01em] text-[var(--color-text)]">
+                      Voyager
+                    </span>
+                  </div>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
 
-          <div className="group-data-[collapsible=icon]:hidden">
-            <Button asChild className="h-11 w-full justify-start rounded-[14px] px-4 text-sm font-medium shadow-sm transition-transform active:scale-[0.98]">
+          <div className="flex items-center gap-1">
+            <Button asChild className="h-[2.125rem] flex-1 justify-start rounded-[10px] px-2.5 text-[0.92rem] font-medium shadow-none transition-colors duration-150 hover:bg-[var(--color-cta)] hover:text-white hover:shadow-none active:translate-y-0 [&_svg]:size-[0.95rem]">
               <Link to="/app/trips/new">
-                <Plus data-icon="inline-start" className="mr-2 size-4" />
-                New Trip
-              </Link>
-            </Button>
-          </div>
-
-          <div className="hidden h-11 w-full items-center justify-center group-data-[collapsible=icon]:flex">
-            <Button asChild size="icon" className="size-10 rounded-[12px] shadow-sm transition-transform active:scale-[0.98]">
-              <Link to="/app/trips/new" aria-label="New Trip">
-                <Plus className="size-4" />
+                <PlusCircle data-icon="inline-start" />
+                Quick Create
               </Link>
             </Button>
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="gap-4 px-3 py-4">
-          <SidebarGroup className="gap-2 p-0">
-            <SidebarGroupLabel className="px-3 text-[var(--color-text-muted)]">Navigation</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-2">
+        <SidebarContent className="gap-3 px-1.5 pb-2.5">
+          <SidebarGroup className="p-0">
+            <SidebarGroupContent className="flex flex-col gap-0.5">
+              <SidebarMenu className="gap-0">
                 {primaryNavItems.map((item) => (
                   <AppSidebarLink key={item.to} {...item} />
                 ))}
@@ -219,11 +433,28 @@ export function AppShellLayout({
             </SidebarGroupContent>
           </SidebarGroup>
 
-          {tripNavItems.length > 0 ? (
-            <SidebarGroup className="gap-2 p-0">
-              <SidebarGroupLabel className="px-3 text-[var(--color-text-muted)]">Current Trip</SidebarGroupLabel>
+          {shouldShowRecentTrips ? (
+            <SidebarGroup className="p-0">
+              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium normal-case tracking-normal text-[#8b94a3]">
+                Recent trips
+              </SidebarGroupLabel>
               <SidebarGroupContent>
-                <SidebarMenu className="gap-2">
+                <SidebarMenu className="gap-0.5">
+                  {recentTrips.map((trip) => (
+                    <AppRecentTripLink key={trip.id} trip={trip} isActive={trip.id === tripId} />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ) : null}
+
+          {tripNavItems.length > 0 ? (
+            <SidebarGroup className="p-0">
+              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium normal-case tracking-normal text-[#8b94a3]">
+                Current trip
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0">
                   {tripNavItems.map((item) => (
                     <AppSidebarLink key={item.to} {...item} />
                   ))}
@@ -233,80 +464,33 @@ export function AppShellLayout({
           ) : null}
         </SidebarContent>
 
-        <SidebarFooter
-          className="border-t border-white/45 bg-transparent px-3 py-3"
-          data-testid="app-shell-sidebar-footer"
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-[20px] border border-transparent px-3 py-3 text-left shadow-none transition-all hover:border-[var(--color-border-strong)] hover:bg-white/52 hover:backdrop-blur-md hover:shadow-[0_18px_34px_-24px_rgba(32,56,83,0.32)]',
-                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]',
-                  'group-data-[collapsible=icon]:!size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:rounded-[16px]',
-                  'group-data-[collapsible=icon]:hover:border-transparent group-data-[collapsible=icon]:hover:bg-transparent group-data-[collapsible=icon]:hover:shadow-none',
-                )}
-              >
-                <Avatar className="size-10 rounded-[16px] border-white/70 bg-white/80">
-                  <AvatarFallback className="rounded-[16px] text-xs">
-                    {userInitials}
-                  </AvatarFallback>
-                </Avatar>
-
-                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{userName}</p>
-                  <p className="truncate text-xs text-[var(--color-text-muted)]">{userEmail || 'Signed in'}</p>
-                </div>
-              </button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent className="w-64 rounded-[18px] p-2" side="right" align="end">
-              <DropdownMenuLabel className="px-2 py-2">
-                <div className="grid gap-1">
-                  <span className="truncate text-sm font-semibold text-[var(--color-text)]">{userName}</span>
-                  <span className="truncate text-xs font-normal text-[var(--color-text-muted)]">
-                    {userEmail || 'Signed in'}
-                  </span>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem
-                  onSelect={(event) => {
-                    event.preventDefault()
-                    onSignOut()
-                  }}
-                >
-                  <LogOut />
-                  Sign out
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <SidebarFooter className="px-1.5 pb-1.5 pt-1.5" data-testid="app-shell-sidebar-footer">
+          <AppShellUserMenu userName={userName} userEmail={userEmail} onSignOut={onSignOut} />
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="m-2 min-h-0 flex-1 overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.74),rgba(244,248,252,0.86))] shadow-[0_24px_64px_-26px_rgba(32,56,83,0.18)] backdrop-blur-2xl transition-[margin,border-radius] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:m-2 md:rounded-[36px] group-data-[collapsible=icon]:ml-0 group-[[data-state=collapsed]]:ml-0">
-        <header className="relative z-20 flex h-[4.75rem] shrink-0 items-center justify-between gap-4 border-b border-white/55 bg-white/42 px-4 backdrop-blur-md md:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <SidebarTrigger className="relative z-30 size-11 rounded-[18px] border border-white/70 bg-white/70 text-[var(--color-text-muted)] shadow-[0_16px_28px_-24px_rgba(32,56,83,0.32)] hover:bg-white hover:text-[var(--color-text)]" />
-            <Separator orientation="vertical" className="hidden h-8 bg-white/55 md:block" />
+      <SidebarInset className="min-h-0 flex-1 overflow-hidden bg-white shadow-none md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:rounded-[12px] md:border md:border-black/8">
+        <header className="relative z-20 flex h-11 shrink-0 items-center gap-2 border-b border-black/8 bg-transparent px-3.5 md:h-12 md:px-4">
+          <div className="flex min-w-0 items-center gap-2">
+            <SidebarTrigger className="-ml-1 size-7 rounded-[8px] border-none bg-transparent text-[#5f6b7a] shadow-none hover:bg-black/4 hover:text-[var(--color-text)]" />
+            <Separator orientation="vertical" className="mx-1.5 hidden h-4 bg-black/8 md:block" />
             <div className="min-w-0">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                Voyager workspace
+              <p className="truncate text-[1rem] font-medium tracking-[-0.01em] text-[var(--color-text)]">
+                {currentSection}
               </p>
-              <p className="truncate text-base font-medium text-[var(--color-text)]">{currentSection}</p>
             </div>
           </div>
+          {headerActions || tripsPagination ? (
+            <div className="ml-auto flex items-center gap-2">
+              {headerActions}
+              {tripsPagination ? <AppShellPagination pagination={tripsPagination} /> : null}
+            </div>
+          ) : null}
         </header>
 
-        <div
-          className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
-          data-testid="app-shell-content"
-        >
-          <div className="min-h-full">
-            <Outlet />
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain" data-testid="app-shell-content">
+          <div className="@container/main flex min-h-full flex-col">
+            <Outlet context={{ setHeaderActions }} />
           </div>
         </div>
       </SidebarInset>
@@ -318,12 +502,38 @@ export default function AppShell() {
   const auth = useAuth()
   const { data: profile } = useProfile()
   const { tripId } = useParams()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const isTripsIndex = location.pathname === '/app/trips'
+  const requestedPage = Number.parseInt(searchParams.get('page') ?? '1', 10)
+  const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1
+  const tripsOffset = (currentPage - 1) * TRIP_LIST_PAGE_SIZE
+  const recentTripsQuery = useTrips({ limit: SIDEBAR_RECENT_TRIPS_LIMIT, offset: 0 })
+  const pagedTripsQuery = useTrips(
+    { limit: TRIP_LIST_PAGE_SIZE, offset: tripsOffset },
+    { enabled: isTripsIndex },
+  )
 
   const userName = (auth.user?.profile?.name as string | undefined) || 'Traveler'
   const userEmail =
     (auth.user?.profile?.email as string | undefined) ||
     profile?.keycloak_sub ||
     undefined
+  const recentTrips = (recentTripsQuery.data?.items ?? []).filter((trip) => trip.id !== tripId)
+  const pagedTrips = pagedTripsQuery.data
+  const totalPages = Math.max(1, Math.ceil((pagedTrips?.total ?? 0) / TRIP_LIST_PAGE_SIZE))
+  const startItem = pagedTrips?.total ? tripsOffset + 1 : 0
+  const endItem = pagedTrips?.total ? Math.min(tripsOffset + TRIP_LIST_PAGE_SIZE, pagedTrips.total) : 0
+
+  const updateTripsPage = (page: number) => {
+    const next = new URLSearchParams(searchParams)
+    if (page <= 1) {
+      next.delete('page')
+    } else {
+      next.set('page', String(page))
+    }
+    setSearchParams(next)
+  }
 
   return (
     <AppShellLayout
@@ -331,6 +541,21 @@ export default function AppShell() {
       userName={userName}
       userEmail={userEmail}
       onSignOut={() => auth.signoutRedirect()}
+      recentTrips={recentTrips}
+      tripsPagination={
+        isTripsIndex
+          ? {
+              currentPage,
+              totalPages,
+              totalItems: pagedTrips?.total ?? 0,
+              startItem,
+              endItem,
+              isFetching: pagedTripsQuery.isFetching,
+              onPreviousPage: () => updateTripsPage(Math.max(1, currentPage - 1)),
+              onNextPage: () => updateTripsPage(Math.min(totalPages, currentPage + 1)),
+            }
+          : undefined
+      }
     />
   )
 }

@@ -22,7 +22,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 const SIDEBAR_COOKIE_NAME = 'sidebar_state'
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = '18rem'
-const SIDEBAR_WIDTH_MOBILE = '19.5rem'
+const SIDEBAR_WIDTH_MOBILE = 'min(92vw, 18rem)'
 const SIDEBAR_WIDTH_ICON = '4.25rem'
 const SIDEBAR_KEYBOARD_SHORTCUT = 'b'
 
@@ -188,7 +188,7 @@ const Sidebar = React.forwardRef<
             side={side}
             data-sidebar="sidebar"
             data-mobile="true"
-            className="w-[var(--sidebar-width)] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
+            className="w-[var(--sidebar-width)] border-r border-black/8 bg-[#f3f5f7] p-0 text-sidebar-foreground shadow-none backdrop-blur-none data-[state=closed]:duration-150 data-[state=open]:duration-200 will-change-transform [&>button]:hidden"
             style={{ '--sidebar-width': SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
           >
             <SheetHeader className="sr-only">

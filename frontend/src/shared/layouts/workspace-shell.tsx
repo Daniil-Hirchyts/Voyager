@@ -24,7 +24,7 @@ type WorkspaceStatCardProps = {
 }
 
 export function WorkspacePage({ children, className }: WorkspacePageProps) {
-  return <div className={cn('voyager-page flex flex-col gap-8', className)}>{children}</div>
+  return <div className={cn('voyager-app-page flex flex-col gap-6', className)}>{children}</div>
 }
 
 export function WorkspaceHeader({

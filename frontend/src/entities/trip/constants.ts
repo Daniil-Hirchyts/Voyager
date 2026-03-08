@@ -1,0 +1,2 @@
+export const TRIP_LIST_PAGE_SIZE = 9
+export const SIDEBAR_RECENT_TRIPS_LIMIT = 3

@@ -1,20 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, Loader2, Search } from 'lucide-react'
+import { Loader2, Search } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { useDestinationAutocomplete } from '@/entities/place/queries'
-import { createTrip } from '@/entities/trip/api'
-import { tripKeys } from '@/entities/trip/queries'
-import { isApiError } from '@/shared/api/client'
-import { cn } from '@/shared/lib/cn'
-import { WorkspaceHeader, WorkspacePage } from '@/shared/layouts/workspace-shell'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
   Field,
@@ -34,8 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
+import { useDestinationAutocomplete } from '@/entities/place/queries'
+import { createTrip } from '@/entities/trip/api'
+import { tripKeys } from '@/entities/trip/queries'
+import { isApiError } from '@/shared/api/client'
+import { cn } from '@/shared/lib/cn'
+import { WorkspacePage } from '@/shared/layouts/workspace-shell'
+import { useAppShellHeaderActions } from '@/widgets/app-shell'
 
 const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD'] as const
 const TRIP_TYPES = [
@@ -108,9 +106,13 @@ type DestinationSuggestion = {
 }
 
 const controlClassName =
-  'h-12 rounded-[20px] border-[var(--color-border-strong)] bg-white/76 px-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]'
+  'h-10 rounded-[10px] border-[rgba(0,0,0,0.08)] bg-white px-3.5 text-sm shadow-none placeholder:text-[var(--color-text-muted)]/80 focus:border-[rgba(0,0,0,0.12)] focus:ring-4 focus:ring-[rgba(26,22,21,0.06)]'
 const invalidFieldClassName =
   'aria-invalid:border-[var(--color-danger)] aria-invalid:ring-4 aria-invalid:ring-[rgba(196,95,79,0.12)]'
+const sectionClassName = 'rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-5'
+const sectionTitleClassName = 'text-[0.96rem] font-medium text-[var(--color-text)]'
+const fieldLabelClassName =
+  'text-[0.78rem] font-medium normal-case tracking-normal text-[var(--color-text-muted)]'
 
 function toTitleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
@@ -216,6 +218,7 @@ export default function TripCreatePage() {
   }, [destinationSearch.data?.items])
 
   const parsedPreferences = useMemo(() => parsePreferences(preferencesText), [preferencesText])
+  const hasPreferenceInput = preferencesText.trim().length > 0
   const showDestinationPopover = destinationOpen && deferredDestinationQuery.length >= 2
   const isDestinationLoading = deferredDestinationQuery.length >= 2 && destinationSearch.isFetching
 
@@ -286,321 +289,361 @@ export default function TripCreatePage() {
     }, 140)
   }
 
+  const headerActions = useMemo(
+    () => (
+      <>
+        <Button
+          asChild
+          variant="ghost"
+          className="h-8 rounded-[8px] px-3 text-[0.84rem] font-medium text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)]"
+        >
+          <Link to="/app/trips">Cancel</Link>
+        </Button>
+        <Button
+          type="submit"
+          form="trip-create-form"
+          disabled={isWorking}
+          className="h-8 rounded-[8px] px-3.5 text-[0.84rem] font-medium shadow-none hover:shadow-none"
+        >
+          {isWorking ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+          Create trip
+        </Button>
+      </>
+    ),
+    [isWorking],
+  )
+  const hasShellHeaderActions = useAppShellHeaderActions(headerActions)
+
   return (
-    <WorkspacePage className="max-w-6xl">
-      <Button
-        asChild
-        variant="ghost"
-        className="w-fit px-0 text-[var(--color-text-muted)] hover:bg-transparent hover:text-[var(--color-text)]"
+    <WorkspacePage className="max-w-none gap-4">
+      <form
+        id="trip-create-form"
+        onSubmit={handleSubmit((data) => mutation.mutate(data))}
+        className="grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_minmax(18rem,0.82fr)]"
       >
-        <Link to="/app/trips">
-          <ArrowLeft data-icon="inline-start" />
-          Back to trips
-        </Link>
-      </Button>
+        <section className={sectionClassName}>
+          <div className="mb-4">
+            <h2 className={sectionTitleClassName}>Trip details</h2>
+          </div>
 
-      <WorkspaceHeader
-        eyebrow="Trip builder"
-        title="New Trip"
-        description="Define the trip once, then let Voyager generate a workspace-ready itinerary around the details you care about."
-      />
-
-      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col">
-        <Card variant="solid" className="overflow-hidden border-white/60 shadow-[0_32px_80px_-48px_rgba(32,56,83,0.25)]">
-          <CardHeader className="border-b border-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,253,0.92))]">
-            <CardTitle className="text-[2rem] tracking-tight">Trip details</CardTitle>
-          </CardHeader>
-
-          <CardContent className="pt-6">
-            <FieldGroup className="gap-8">
-              <div className="flex items-center gap-3">
-                <Badge variant="neutral">Basics</Badge>
-                <Separator className="flex-1 bg-white/55" />
-              </div>
-
-              <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
-                <Field data-invalid={!!errors.title} className="gap-3">
-                  <FieldLabel htmlFor="title">Trip Title *</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="title"
-                      placeholder="Tokyo Adventure 2026"
-                      aria-invalid={!!errors.title}
-                      className={cn(controlClassName, invalidFieldClassName)}
-                      {...register('title')}
-                    />
-                    <FieldError errors={[errors.title]} />
-                  </FieldContent>
-                </Field>
-
-                <Controller
-                  control={control}
-                  name="destination_text"
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={!!fieldState.error} className="gap-3">
-                      <FieldLabel htmlFor="destination_text">Destination *</FieldLabel>
-                      <FieldContent>
-                        <Popover open={showDestinationPopover} onOpenChange={setDestinationOpen}>
-                          <PopoverAnchor asChild>
-                            <div className="relative">
-                              <Input
-                                {...field}
-                                id="destination_text"
-                                placeholder="Paris, France"
-                                aria-invalid={!!fieldState.error}
-                                className={cn(controlClassName, 'pr-12', invalidFieldClassName)}
-                                onFocus={openDestinationSuggestions}
-                                onBlur={scheduleDestinationSuggestionsClose}
-                                onChange={(event) => {
-                                  field.onChange(event.target.value)
-                                  openDestinationSuggestions()
-                                }}
-                              />
-                              <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
-                                {isDestinationLoading ? (
-                                  <Loader2 className="animate-spin text-[var(--color-text-muted)]" />
-                                ) : (
-                                  <Search className="text-[var(--color-text-muted)]" />
-                                )}
-                              </div>
-                            </div>
-                          </PopoverAnchor>
-
-                          <PopoverContent
-                            align="start"
-                            sideOffset={10}
-                            onOpenAutoFocus={(event) => event.preventDefault()}
-                            className="w-[min(30rem,calc(100vw-2.5rem))] rounded-[24px] border-[var(--color-border-strong)] p-2"
-                          >
-                            <ScrollArea className="max-h-72">
-                              <div className="flex flex-col gap-1">
-                                {destinationSuggestions.length > 0 ? (
-                                  destinationSuggestions.map((suggestion) => (
-                                    <Button
-                                      key={suggestion.id}
-                                      type="button"
-                                      variant="ghost"
-                                      className="h-auto w-full justify-start rounded-[16px] px-3 py-3 text-left text-sm font-semibold hover:bg-[rgba(114,174,230,0.12)]"
-                                      onMouseDown={(event) => event.preventDefault()}
-                                      onClick={() => {
-                                        setValue('destination_text', suggestion.value, {
-                                          shouldDirty: true,
-                                          shouldValidate: true,
-                                        })
-                                        setDestinationOpen(false)
-                                      }}
-                                    >
-                                      {suggestion.value}
-                                    </Button>
-                                  ))
-                                ) : (
-                                  <div className="rounded-[16px] px-3 py-4 text-sm text-[var(--color-text-muted)]">
-                                    No matches
-                                  </div>
-                                )}
-                              </div>
-                            </ScrollArea>
-                          </PopoverContent>
-                        </Popover>
-                        <FieldError errors={[fieldState.error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-
-              <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
-                <Controller
-                  control={control}
-                  name="start_date"
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={!!fieldState.error} className="gap-3">
-                      <FieldLabel htmlFor="start-date">Start Date *</FieldLabel>
-                      <FieldContent>
-                        <DatePicker
-                          id="start-date"
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select start date"
-                          invalid={!!fieldState.error}
-                          className={cn(controlClassName, 'justify-between px-4')}
-                        />
-                        <FieldError errors={[fieldState.error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="end_date"
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={!!fieldState.error} className="gap-3">
-                      <FieldLabel htmlFor="end-date">End Date *</FieldLabel>
-                      <FieldContent>
-                        <DatePicker
-                          id="end-date"
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select end date"
-                          invalid={!!fieldState.error}
-                          className={cn(controlClassName, 'justify-between px-4')}
-                        />
-                        <FieldError errors={[fieldState.error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-
-              <div className="flex items-center gap-3">
-                <Badge variant="neutral">Profile</Badge>
-                <Separator className="flex-1 bg-white/55" />
-              </div>
-
-              <FieldGroup className="gap-4 xl:grid xl:grid-cols-[1.1fr_0.7fr_0.85fr]">
-                <Field data-invalid={!!errors.budget_amount} className="gap-3">
-                  <FieldLabel htmlFor="budget_amount">Budget</FieldLabel>
-                  <FieldContent>
-                    <Input
-                      id="budget_amount"
-                      type="number"
-                      min="0"
-                      step="any"
-                      inputMode="decimal"
-                      placeholder="5000"
-                      aria-invalid={!!errors.budget_amount}
-                      className={cn(controlClassName, 'text-lg tracking-tight', invalidFieldClassName)}
-                      {...register('budget_amount', { valueAsNumber: true })}
-                    />
-                    <FieldError errors={[errors.budget_amount]} />
-                  </FieldContent>
-                </Field>
-
-                <Controller
-                  control={control}
-                  name="budget_currency"
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={!!fieldState.error} className="gap-3">
-                      <FieldLabel htmlFor="budget-currency">Currency</FieldLabel>
-                      <FieldContent>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger
-                            id="budget-currency"
-                            aria-invalid={!!fieldState.error}
-                            className={cn(controlClassName, invalidFieldClassName)}
-                          >
-                            <SelectValue placeholder="Select currency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {CURRENCIES.map((currency) => (
-                                <SelectItem key={currency} value={currency}>
-                                  {currency}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FieldError errors={[fieldState.error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-
-                <Controller
-                  control={control}
-                  name="trip_type"
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={!!fieldState.error} className="gap-3">
-                      <FieldLabel htmlFor="trip-type">Trip Type</FieldLabel>
-                      <FieldContent>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger
-                            id="trip-type"
-                            aria-invalid={!!fieldState.error}
-                            className={cn(controlClassName, invalidFieldClassName)}
-                          >
-                            <SelectValue placeholder="Select trip type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              {TRIP_TYPES.map((tripType) => (
-                                <SelectItem key={tripType} value={tripType}>
-                                  {toTitleCase(tripType)}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                        <FieldError errors={[fieldState.error]} />
-                      </FieldContent>
-                    </Field>
-                  )}
-                />
-              </FieldGroup>
-
-              <div className="flex items-center gap-3">
-                <Badge variant="neutral">Preferences</Badge>
-                <Separator className="flex-1 bg-white/55" />
-              </div>
-
-              <Field data-invalid={!!errors.preferences} className="gap-3">
-                <FieldLabel htmlFor="preferences">Preferences</FieldLabel>
+          <FieldGroup className="gap-4">
+            <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
+              <Field data-invalid={!!errors.title} className="gap-2">
+                <FieldLabel htmlFor="title" className={fieldLabelClassName}>
+                  Trip title *
+                </FieldLabel>
                 <FieldContent>
-                  <Textarea
-                    id="preferences"
-                    rows={5}
-                    placeholder="food museums walkable neighborhoods"
-                    aria-invalid={!!errors.preferences}
-                    className={cn(
-                      'min-h-36 rounded-[24px] bg-white/76 p-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]',
-                      invalidFieldClassName,
-                    )}
-                    {...register('preferences')}
+                  <Input
+                    id="title"
+                    placeholder="Tokyo Adventure 2026"
+                    aria-invalid={!!errors.title}
+                    className={cn(controlClassName, invalidFieldClassName)}
+                    {...register('title')}
                   />
-
-                  <div className="rounded-[24px] border border-dashed border-[var(--color-border-strong)] bg-white/62 p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-[var(--color-text)]">Detected</span>
-                      <Badge variant="neutral">
-                        {parsedPreferences.length}
-                      </Badge>
-                    </div>
-
-                    {parsedPreferences.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {parsedPreferences.map((preference) => (
-                          <Badge
-                            key={preference}
-                            variant="secondary"
-                            className="rounded-full px-3 py-1 text-sm normal-case tracking-normal"
-                          >
-                            {preference}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-sm text-[var(--color-text-muted)]">None</div>
-                    )}
-                  </div>
-
-                  <FieldError errors={[errors.preferences]} />
+                  <FieldError errors={[errors.title]} />
                 </FieldContent>
               </Field>
-            </FieldGroup>
-          </CardContent>
 
-          <CardFooter className="flex items-center justify-end gap-3 border-t border-white/55 bg-[rgba(255,255,255,0.52)] pt-5">
-            <Button asChild variant="ghost" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
-              <Link to="/app/trips">Cancel</Link>
-            </Button>
-            <Button type="submit" disabled={isWorking} className="h-12 min-w-40 rounded-[18px] px-6 text-base">
-              {isWorking ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
-              Create Trip
-            </Button>
-          </CardFooter>
-        </Card>
+              <Controller
+                control={control}
+                name="destination_text"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={!!fieldState.error} className="gap-2">
+                    <FieldLabel htmlFor="destination_text" className={fieldLabelClassName}>
+                      Destination *
+                    </FieldLabel>
+                    <FieldContent>
+                      <Popover open={showDestinationPopover} onOpenChange={setDestinationOpen}>
+                        <PopoverAnchor asChild>
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              id="destination_text"
+                              placeholder="Paris, France"
+                              aria-invalid={!!fieldState.error}
+                              className={cn(controlClassName, 'pr-10', invalidFieldClassName)}
+                              onFocus={openDestinationSuggestions}
+                              onBlur={scheduleDestinationSuggestionsClose}
+                              onChange={(event) => {
+                                field.onChange(event.target.value)
+                                openDestinationSuggestions()
+                              }}
+                            />
+                            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                              {isDestinationLoading ? (
+                                <Loader2 className="size-4 animate-spin text-[var(--color-text-muted)]" />
+                              ) : (
+                                <Search className="size-4 text-[var(--color-text-muted)]" />
+                              )}
+                            </div>
+                          </div>
+                        </PopoverAnchor>
+
+                        <PopoverContent
+                          align="start"
+                          sideOffset={8}
+                          onOpenAutoFocus={(event) => event.preventDefault()}
+                          className="w-[min(28rem,calc(100vw-2rem))] rounded-[12px] border-[rgba(0,0,0,0.08)] bg-white p-1.5 shadow-[0_16px_36px_-28px_rgba(26,22,21,0.35)] backdrop-blur-none"
+                        >
+                          <ScrollArea className="max-h-64">
+                            <div className="flex flex-col gap-1">
+                              {destinationSuggestions.length > 0 ? (
+                                destinationSuggestions.map((suggestion) => (
+                                  <Button
+                                    key={suggestion.id}
+                                    type="button"
+                                    variant="ghost"
+                                    className="h-10 w-full justify-start rounded-[8px] px-3 text-left text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-secondary-surface)]"
+                                    onMouseDown={(event) => event.preventDefault()}
+                                    onClick={() => {
+                                      setValue('destination_text', suggestion.value, {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      })
+                                      setDestinationOpen(false)
+                                    }}
+                                  >
+                                    {suggestion.value}
+                                  </Button>
+                                ))
+                              ) : (
+                                <div className="rounded-[8px] px-3 py-2.5 text-sm text-[var(--color-text-muted)]">
+                                  No matches found
+                                </div>
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                      <FieldError errors={[fieldState.error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+
+            <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
+              <Controller
+                control={control}
+                name="start_date"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={!!fieldState.error} className="gap-2">
+                    <FieldLabel htmlFor="start-date" className={fieldLabelClassName}>
+                      Start date *
+                    </FieldLabel>
+                    <FieldContent>
+                      <DatePicker
+                        id="start-date"
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select start date"
+                        invalid={!!fieldState.error}
+                        className={cn(controlClassName, 'justify-between px-3.5')}
+                      />
+                      <FieldError errors={[fieldState.error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="end_date"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={!!fieldState.error} className="gap-2">
+                    <FieldLabel htmlFor="end-date" className={fieldLabelClassName}>
+                      End date *
+                    </FieldLabel>
+                    <FieldContent>
+                      <DatePicker
+                        id="end-date"
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Select end date"
+                        invalid={!!fieldState.error}
+                        className={cn(controlClassName, 'justify-between px-3.5')}
+                      />
+                      <FieldError errors={[fieldState.error]} />
+                    </FieldContent>
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </FieldGroup>
+        </section>
+
+        <section className={sectionClassName}>
+          <div className="mb-4">
+            <h2 className={sectionTitleClassName}>Budget and type</h2>
+          </div>
+
+          <FieldGroup className="gap-4">
+            <Field data-invalid={!!errors.budget_amount} className="gap-2">
+              <FieldLabel htmlFor="budget_amount" className={fieldLabelClassName}>
+                Budget
+              </FieldLabel>
+              <FieldContent>
+                <Input
+                  id="budget_amount"
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="5000"
+                  aria-invalid={!!errors.budget_amount}
+                  className={cn(controlClassName, invalidFieldClassName)}
+                  {...register('budget_amount', { valueAsNumber: true })}
+                />
+                <FieldError errors={[errors.budget_amount]} />
+              </FieldContent>
+            </Field>
+
+            <Controller
+              control={control}
+              name="budget_currency"
+              render={({ field, fieldState }) => (
+                <Field data-invalid={!!fieldState.error} className="gap-2">
+                  <FieldLabel htmlFor="budget-currency" className={fieldLabelClassName}>
+                    Currency
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger
+                        id="budget-currency"
+                        aria-invalid={!!fieldState.error}
+                        className={cn(controlClassName, invalidFieldClassName)}
+                      >
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-[12px] border-[rgba(0,0,0,0.08)] bg-white shadow-[0_16px_36px_-28px_rgba(26,22,21,0.35)] backdrop-blur-none">
+                        <SelectGroup>
+                          {CURRENCIES.map((currency) => (
+                            <SelectItem
+                              key={currency}
+                              value={currency}
+                              className="rounded-[8px] text-sm font-normal"
+                            >
+                              {currency}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={[fieldState.error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="trip_type"
+              render={({ field, fieldState }) => (
+                <Field data-invalid={!!fieldState.error} className="gap-2">
+                  <FieldLabel htmlFor="trip-type" className={fieldLabelClassName}>
+                    Trip type
+                  </FieldLabel>
+                  <FieldContent>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger
+                        id="trip-type"
+                        aria-invalid={!!fieldState.error}
+                        className={cn(controlClassName, invalidFieldClassName)}
+                      >
+                        <SelectValue placeholder="Select trip type" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-[12px] border-[rgba(0,0,0,0.08)] bg-white shadow-[0_16px_36px_-28px_rgba(26,22,21,0.35)] backdrop-blur-none">
+                        <SelectGroup>
+                          {TRIP_TYPES.map((tripType) => (
+                            <SelectItem
+                              key={tripType}
+                              value={tripType}
+                              className="rounded-[8px] text-sm font-normal"
+                            >
+                              {toTitleCase(tripType)}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FieldError errors={[fieldState.error]} />
+                  </FieldContent>
+                </Field>
+              )}
+            />
+          </FieldGroup>
+        </section>
+
+        <section className={cn(sectionClassName, 'xl:col-span-2')}>
+          <div className="mb-4">
+            <h2 className={sectionTitleClassName}>Preferences</h2>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+            <Field data-invalid={!!errors.preferences} className="gap-2">
+              <FieldLabel htmlFor="preferences" className="sr-only">
+                Preferences
+              </FieldLabel>
+              <FieldContent>
+                <Textarea
+                  id="preferences"
+                  rows={7}
+                  placeholder="Museums, good coffee, walkable neighborhoods, quiet hotel"
+                  aria-invalid={!!errors.preferences}
+                  className={cn(
+                    'min-h-44 rounded-[10px] border-[rgba(0,0,0,0.08)] bg-white px-3.5 py-3 text-sm shadow-none placeholder:text-[var(--color-text-muted)]/80 focus:border-[rgba(0,0,0,0.12)] focus:ring-4 focus:ring-[rgba(26,22,21,0.06)]',
+                    invalidFieldClassName,
+                  )}
+                  {...register('preferences')}
+                />
+                <FieldError errors={[errors.preferences]} />
+              </FieldContent>
+            </Field>
+
+            <div className="rounded-[10px] border border-black/8 bg-white p-3.5">
+              <div className="text-[0.78rem] font-medium normal-case tracking-normal text-[var(--color-text-muted)]">
+                Parsed preferences
+              </div>
+
+              {hasPreferenceInput && parsedPreferences.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {parsedPreferences.map((preference) => (
+                    <span
+                      key={preference}
+                      className="rounded-full border border-[rgba(0,0,0,0.08)] bg-[var(--color-secondary-surface)] px-2.5 py-1 text-sm text-[var(--color-text)]"
+                    >
+                      {preference}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+                  Structured preferences will appear here.
+                </p>
+              )}
+            </div>
+          </div>
+
+          {!hasShellHeaderActions ? (
+            <div className="mt-4 flex items-center justify-end gap-2 border-t border-black/8 pt-4">
+              <Button
+                asChild
+                variant="ghost"
+                className="h-10 rounded-[8px] px-3.5 text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+              >
+                <Link to="/app/trips">Cancel</Link>
+              </Button>
+              <Button
+                type="submit"
+                disabled={isWorking}
+                className="h-10 rounded-[8px] px-4 text-sm font-medium shadow-none hover:shadow-none"
+              >
+                {isWorking ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+                Create trip
+              </Button>
+            </div>
+          ) : null}
+        </section>
       </form>
     </WorkspacePage>
   )
