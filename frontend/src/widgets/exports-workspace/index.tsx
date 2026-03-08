@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
+  type LucideIcon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTrip, tripKeys } from '@/entities/trip/queries'
@@ -20,12 +21,14 @@ import { isConflict, isRateLimit } from '@/shared/api/client'
 import { isJobRunning, isJobSuccessful } from '@/shared/lib/jobs'
 import { useExportsStore } from '@/shared/stores/exports.store'
 import { cn } from '@/shared/lib/cn'
+import { WorkspaceHeader, WorkspacePage, WorkspaceStatCard, WorkspaceStatGrid } from '@/shared/layouts/workspace-shell'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ExportFormat } from '@/shared/api/types'
 
-const FORMAT_META: Record<ExportFormat, { label: string; description: string; icon: React.FC<{ className?: string }> }> = {
+const FORMAT_META: Record<ExportFormat, { label: string; description: string; icon: LucideIcon }> = {
   json: {
     label: 'JSON',
     description: 'Machine-readable snapshot of the full trip',
@@ -89,60 +92,58 @@ function ExportStatusRow({ jobId }: { jobId: string }) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-[10px] border"
-      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+      className="flex items-center gap-3 rounded-[20px] border border-[var(--color-border-strong)] bg-white/72 px-4 py-3"
     >
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-[#1D2430]">
+          <span className="text-sm font-medium text-[var(--color-text)]">
             {exportRecord
               ? FORMAT_META[exportRecord.format]?.label ?? exportRecord.format.toUpperCase()
               : '—'}
           </span>
           {exportRecord?.trip_version != null && (
-            <span className="text-xs text-[#526072]">v{exportRecord.trip_version}</span>
+            <span className="text-xs text-[var(--color-text-muted)]">v{exportRecord.trip_version}</span>
           )}
           {sizeLabel && (
-            <span className="text-xs text-[#526072]">{sizeLabel}</span>
+            <span className="text-xs text-[var(--color-text-muted)]">{sizeLabel}</span>
           )}
         </div>
         {isRunning && (
-          <p className="text-xs text-[#526072] mt-0.5">Generating…</p>
+          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">Generating…</p>
         )}
         {isFailed && (
-          <p className="text-xs text-red-600 mt-0.5">
+          <p className="mt-0.5 text-xs text-[var(--color-danger)]">
             {job?.error && typeof job.error === 'object' && 'message' in job.error
               ? String(job.error.message)
               : 'Export failed'}
           </p>
         )}
         {isSuccess && exportRecord && !exportRecord.download_url && !exportId && (
-          <p className="text-xs text-[#526072] mt-0.5">File unavailable</p>
+          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">File unavailable</p>
         )}
       </div>
 
-      {/* Status badge */}
       <div className="flex items-center gap-1.5 shrink-0">
         {isRunning && (
-          <Badge aria-live="polite" className="flex items-center gap-1 bg-amber-50 text-amber-600 border-0">
+          <Badge variant="warning" aria-live="polite" className="flex items-center gap-1 border-0">
             <Loader2 className="w-3 h-3 animate-spin" />
             Generating
           </Badge>
         )}
         {isSuccess && (
-          <Badge className="flex items-center gap-1 bg-emerald-50 text-emerald-700 border-0">
+          <Badge variant="success" className="flex items-center gap-1 border-0">
             <CheckCircle2 className="w-3 h-3" />
             Ready
           </Badge>
         )}
         {isFailed && (
-          <Badge className="flex items-center gap-1 bg-red-50 text-red-700 border-0">
+          <Badge variant="danger" className="flex items-center gap-1 border-0">
             <XCircle className="w-3 h-3" />
             Failed
           </Badge>
         )}
         {!job && (
-          <Badge variant="secondary" className="flex items-center gap-1">
+          <Badge variant="neutral" className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             Pending
           </Badge>
@@ -216,44 +217,57 @@ export default function ExportsWorkspace({ tripId }: Props) {
   const sessionExports = pendingExports
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div
-        className="px-6 py-4 border-b"
-        style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
-      >
-        <h1 className="font-display text-xl text-[#1D2430]">Exports</h1>
-        <p className="text-sm text-[#526072] mt-0.5">
-          Export a deterministic snapshot of your trip at its current version.
-        </p>
-      </div>
-
-      <div className="flex-1 overflow-auto px-6 py-6 space-y-6">
-        {/* Conflict banner */}
-        {conflictBanner && (
-          <Alert variant="warning">
-            <AlertCircle className="w-5 h-5 text-amber-600" />
-            <div>
-              <AlertTitle>Version conflict</AlertTitle>
-              <AlertDescription>
-                Your local trip view is behind the server version. The page has been refreshed — please review and retry the export.
-              </AlertDescription>
-            </div>
-          </Alert>
+    <WorkspacePage className="gap-6">
+      <WorkspaceHeader
+        eyebrow="Exports"
+        title="Create deterministic trip snapshots."
+        description="Freeze the current trip version into a shareable file format without leaving the workspace."
+        actions={(
+          <Button onClick={handleSubmit} disabled={isPending || isRateLimited || !trip}>
+            {isPending ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+            Export {FORMAT_META[selectedFormat].label}
+          </Button>
         )}
+        meta={trip ? <span className="voyager-pill">Trip version {trip.version}</span> : undefined}
+      />
 
-        {/* Rate-limit banner */}
-        {isRateLimited && (
-          <Alert variant="destructive">
-            <AlertCircle className="w-5 h-5" />
-            <p className="text-sm">Export requests are being paced. Please wait before retrying.</p>
-          </Alert>
-        )}
+      <WorkspaceStatGrid className="md:grid-cols-3">
+        <WorkspaceStatCard label="Format" value={FORMAT_META[selectedFormat].label} detail={FORMAT_META[selectedFormat].description} icon={FORMAT_META[selectedFormat].icon} />
+        <WorkspaceStatCard label="Session queue" value={sessionExports.length} detail="Exports requested in this browser session" icon={Download} />
+        <WorkspaceStatCard label="Behavior" value="Read only" detail="Exports capture the current trip state and cannot be undone" icon={FileText} />
+      </WorkspaceStatGrid>
 
-        {/* Format chooser */}
-        <section>
-          <h2 className="text-sm font-semibold text-[#1D2430] mb-3">Choose format</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {conflictBanner ? (
+        <Alert variant="warning">
+          <AlertCircle className="w-5 h-5" />
+          <div>
+            <AlertTitle>Version conflict</AlertTitle>
+            <AlertDescription>
+              Your local trip view is behind the server version. The page has been refreshed. Review the latest changes and retry the export.
+            </AlertDescription>
+          </div>
+        </Alert>
+      ) : null}
+
+      {isRateLimited ? (
+        <Alert variant="destructive">
+          <AlertCircle className="w-5 h-5" />
+          <AlertDescription>
+            Export requests are being paced. Please wait before retrying.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <Card variant="solid">
+        <CardHeader className="gap-3">
+          <Badge variant="neutral" className="w-fit">Choose format</Badge>
+          <CardTitle>Select the snapshot output</CardTitle>
+          <CardDescription>
+            Use JSON for machine-readable state, ICS for calendar import, or PDF for a printable itinerary handoff.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {(Object.keys(FORMAT_META) as ExportFormat[]).map((fmt) => {
               const meta = FORMAT_META[fmt]
               const Icon = meta.icon
@@ -262,67 +276,50 @@ export default function ExportsWorkspace({ tripId }: Props) {
                   key={fmt}
                   onClick={() => setSelectedFormat(fmt)}
                   className={cn(
-                    'flex flex-col items-start gap-2 p-4 rounded-[10px] border text-left transition-colors',
+                    'flex flex-col items-start gap-2 rounded-[20px] border px-4 py-4 text-left transition-colors',
                     selectedFormat === fmt
-                      ? 'border-[#2F6F73] bg-[#2F6F73]/5'
-                      : 'border-[var(--color-border)] hover:border-[#2F6F73]/50 hover:bg-[#F4EBDD]',
+                      ? 'border-[var(--color-primary)] bg-[rgba(114,174,230,0.12)]'
+                      : 'border-[var(--color-border-strong)] bg-white/70 hover:border-[rgba(114,174,230,0.4)] hover:bg-white/88',
                   )}
                   aria-pressed={selectedFormat === fmt}
                 >
-                  <Icon className={cn('w-5 h-5', selectedFormat === fmt ? 'text-[#2F6F73]' : 'text-[#526072]')} />
-                  <span className={cn('text-sm font-medium', selectedFormat === fmt ? 'text-[#2F6F73]' : 'text-[#1D2430]')}>
+                  <Icon className={cn('w-5 h-5', selectedFormat === fmt ? 'text-[var(--color-primary-foreground)]' : 'text-[var(--color-text-muted)]')} />
+                  <span className={cn('text-sm font-medium', selectedFormat === fmt ? 'text-[var(--color-primary-foreground)]' : 'text-[var(--color-text)]')}>
                     {meta.label}
                   </span>
-                  <span className="text-xs text-[#526072]">{meta.description}</span>
+                  <span className="text-xs leading-5 text-[var(--color-text-muted)]">{meta.description}</span>
                 </button>
               )
             })}
           </div>
-        </section>
+          <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+            Exports are deterministic snapshots tied to the current trip version.
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Submit */}
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleSubmit}
-            disabled={isPending || isRateLimited || !trip}
-          >
-            {isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-            Export {FORMAT_META[selectedFormat].label}
-          </Button>
-          {trip && (
-            <span className="text-xs text-[#526072]">
-              Trip version {trip.version} will be captured
-            </span>
-          )}
-        </div>
-
-        {/* Undo not available notice */}
-        <p className="text-xs text-[#526072]">
-          Exports are read-only snapshots. Undo is not available for export operations.
-        </p>
-
-        {/* Recent exports */}
-        {sessionExports.length > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold text-[#1D2430] mb-3">Recent exports</h2>
-            <div className="space-y-2">
-              {sessionExports.map((entry) => (
-                <ExportStatusRow key={entry.jobId} jobId={entry.jobId} />
-              ))}
+      <Card variant="solid">
+        <CardHeader className="gap-3">
+          <Badge variant="accent" className="w-fit">Recent exports</Badge>
+          <CardTitle>Track export jobs in this session</CardTitle>
+          <CardDescription>
+            Completed exports are ready for download as soon as the background job resolves.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          {sessionExports.length > 0 ? (
+            sessionExports.map((entry) => <ExportStatusRow key={entry.jobId} jobId={entry.jobId} />)
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-[24px] border border-dashed border-[var(--color-border-strong)] bg-white/58 py-10 text-center">
+              <Download className="w-8 h-8 text-[var(--color-text-muted)]/50" />
+              <p className="text-sm font-medium text-[var(--color-text)]">No exports yet</p>
+              <p className="max-w-xs text-xs leading-5 text-[var(--color-text-muted)]">
+                Choose a format above and submit an export. Each export is a deterministic snapshot tied to the current trip version.
+              </p>
             </div>
-          </section>
-        )}
-
-        {sessionExports.length === 0 && (
-          <section className="flex flex-col items-center gap-2 py-10 text-center">
-            <Download className="w-8 h-8 text-[#526072]/50" />
-            <p className="text-sm font-medium text-[#526072]">No exports yet</p>
-            <p className="text-xs text-[#526072]/70 max-w-xs">
-              Choose a format above and submit an export. Each export is a deterministic snapshot tied to the current trip version.
-            </p>
-          </section>
-        )}
-      </div>
-    </div>
+          )}
+        </CardContent>
+      </Card>
+    </WorkspacePage>
   )
 }

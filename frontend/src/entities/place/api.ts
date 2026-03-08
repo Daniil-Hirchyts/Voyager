@@ -11,6 +11,23 @@ export interface PlaceListParams {
   offset?: number
 }
 
+export interface DestinationAutocompleteItem {
+  id: string
+  label: string
+  name?: string | null
+  country?: string | null
+  region?: string | null
+  lat?: number | null
+  lon?: number | null
+}
+
+export interface DestinationAutocompleteResponse {
+  total: number
+  limit: number
+  offset: number
+  items: DestinationAutocompleteItem[]
+}
+
 export interface NearbyPlaceParams {
   lat: number
   lon: number
@@ -48,6 +65,10 @@ export async function listPlaces(params: PlaceListParams = {}) {
 
 export async function searchPlaces(params: PlaceListParams = {}) {
   return requestJson<PlaceListResponse>(buildQuery('/places/search', params))
+}
+
+export async function autocompleteDestinations(params: PlaceListParams = {}) {
+  return requestJson<DestinationAutocompleteResponse>(buildQuery('/places/autocomplete', params))
 }
 
 export async function getNearbyPlaces(params: NearbyPlaceParams) {

@@ -5,14 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { addDays, format } from 'date-fns'
 import { z } from 'zod'
 import { useSearchParams } from 'react-router-dom'
-import Map, {
-  Layer,
-  Marker,
-  NavigationControl,
-  Source,
-  type MapRef,
-} from 'react-map-gl/maplibre'
-import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   ArrowRightLeft,
   Calendar,
@@ -45,10 +37,20 @@ import {
   useTripOffers,
 } from '@/entities/offer/queries'
 import { useTrip } from '@/entities/trip/queries'
+import { useTripMapLayers } from '@/entities/trip-map-layer/queries'
 import { isIntegrationNotConfigured, isRateLimit } from '@/shared/api/client'
 import { cn } from '@/shared/lib/cn'
 import { formatMoney } from '@/shared/lib/format'
 import { getJobResultErrors, isJobRunning, isJobSuccessful, isJobTerminal } from '@/shared/lib/jobs'
+import { resolvePhotoUrl } from '@/shared/lib/media'
+import {
+  GoogleMapCanvas,
+  GooglePolyline,
+  MapFitBounds,
+  TripMapLayerRenderer,
+  VoyagerMarker,
+  VoyagerMarkerClusterLayer,
+} from '@/shared/layouts/google-maps'
 import type {
   Day,
   LodgingOfferDetails,
@@ -56,6 +58,7 @@ import type {
   Offer,
   OfferKind,
   Trip,
+  TripMapLayer,
   TripOffersRefreshInput,
   TransportOfferDetails,
   TransportOfferSearchInput,
@@ -422,7 +425,8 @@ function getHotelCoordinates(offer: Offer) {
   return { latitude: details.latitude, longitude: details.longitude }
 }
 
-function getHotelNightlyPrice(offer: Offer) {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function getHotelNightlyPrice(offer: Offer) {
   return numericPrice(getHotelDetails(offer)?.nightly_rate_amount)
 }
 
@@ -614,8 +618,8 @@ function SummarySurface({
       className={cn(
         'rounded-[22px] border px-4 py-4 text-left transition-all',
         active
-          ? 'border-[#2F6F73] bg-[#EEF6F3] shadow-[0_18px_40px_rgba(47,111,115,0.12)]'
-          : 'border-[var(--color-border)] bg-white/85 hover:border-[#2F6F73]/35',
+          ? 'border-[var(--color-primary)] bg-[rgba(114,174,230,0.12)] shadow-[0_18px_40px_rgba(32,56,83,0.12)]'
+          : 'border-[var(--color-border)] bg-white/85 hover:border-[var(--color-primary)]/35',
       )}
     >
       <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">{label}</p>
@@ -635,8 +639,8 @@ function SummarySurface({
 
 function MapUnavailable({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-[26px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(244,235,221,0.7))] px-6 text-center">
-      <MapPin className="h-8 w-8 text-[#2F6F73]" />
+    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-[26px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(228,240,251,0.72))] px-6 text-center">
+      <MapPin className="h-8 w-8 text-[var(--color-primary-foreground)]" />
       <div>
         <p className="text-base font-semibold text-[var(--color-text)]">Map unavailable</p>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">{message}</p>
@@ -651,16 +655,15 @@ function OfferMapCanvas({
   hotelOffers,
   selectedHotelId,
   onSelectHotel,
+  tripLayers,
 }: {
   mode: OfferMode
   selectedFlight: Offer | null
   hotelOffers: Offer[]
   selectedHotelId: string | null
   onSelectHotel: (offerId: string) => void
+  tripLayers: TripMapLayer[]
 }) {
-  const mapRef = useRef<MapRef | null>(null)
-  const [mapError, setMapError] = useState<string | null>(null)
-
   const hotelMarkers = useMemo(
     () =>
       hotelOffers
@@ -677,135 +680,100 @@ function OfferMapCanvas({
     const details = selectedFlight?.transport_details
     if (!details?.origin_geo || !details.destination_geo) return null
 
-    return {
-      type: 'FeatureCollection' as const,
-      features: [
-        {
-          type: 'Feature' as const,
-          geometry: {
-            type: 'LineString' as const,
-            coordinates: [
-              [details.origin_geo.longitude, details.origin_geo.latitude],
-              [details.destination_geo.longitude, details.destination_geo.latitude],
-            ],
-          },
-          properties: {},
-        },
-      ],
-    }
+    return [
+      { lat: details.origin_geo.latitude, lng: details.origin_geo.longitude },
+      { lat: details.destination_geo.latitude, lng: details.destination_geo.longitude },
+    ]
   }, [selectedFlight])
+  const selectedHotelMarker = hotelMarkers.find((item) => item.offer.id === selectedHotelId) ?? null
+  const clusteredHotelMarkers = hotelMarkers
+    .filter((item) => item.offer.id !== selectedHotelId)
+    .map((item) => ({
+      id: item.offer.id,
+      position: { lat: item.latitude, lng: item.longitude },
+      title: item.offer.title,
+      label: formatMoney(item.offer.price_amount, item.offer.currency) || 'Offer',
+      color: '#17344C',
+    }))
 
-  const hotelMarkerSignature = hotelMarkers
-    .map((item) => `${item.offer.id}:${item.latitude}:${item.longitude}`)
-    .join('|')
-
-  useEffect(() => {
-    if (!config.map.styleUrl || mapError || !mapRef.current) return
-
-    if (mode === 'transport' && selectedFlight?.transport_details?.origin_geo && selectedFlight.transport_details.destination_geo) {
-      const { origin_geo: origin, destination_geo: destination } = selectedFlight.transport_details
-      mapRef.current.fitBounds(
-        [
-          [origin.longitude, origin.latitude],
-          [destination.longitude, destination.latitude],
-        ],
-        { padding: 64, duration: 0 },
-      )
-      return
-    }
-
-    if (mode === 'lodging' && hotelMarkers.length > 0) {
-      const longitudes = hotelMarkers.map((item) => item.longitude)
-      const latitudes = hotelMarkers.map((item) => item.latitude)
-      mapRef.current.fitBounds(
-        [
-          [Math.min(...longitudes), Math.min(...latitudes)],
-          [Math.max(...longitudes), Math.max(...latitudes)],
-        ],
-        { padding: 64, duration: 0 },
-      )
-    }
-  }, [hotelMarkerSignature, hotelMarkers.length, mapError, mode, selectedFlight])
-
-  if (!config.map.styleUrl || mapError) {
+  if (!config.map.apiKey) {
     return (
       <MapUnavailable
-        message={
-          config.map.styleUrl
-            ? mapError || 'The atlas canvas could not be loaded.'
-            : 'Set `VITE_MAP_STYLE_URL` to enable the interactive map canvas.'
-        }
+        message="Set `VITE_GOOGLE_MAPS_API_KEY` to enable the interactive map canvas."
       />
     )
   }
 
+  const lodgingBoundsPoints = hotelMarkers.map((item) => ({
+    lat: item.latitude,
+    lng: item.longitude,
+  }))
+
   return (
     <div className="overflow-hidden rounded-[26px] border border-[var(--color-border)]">
-      <Map
-        ref={mapRef}
-        initialViewState={{ latitude: 48.8566, longitude: 2.3522, zoom: 4.1 }}
-        mapStyle={config.map.styleUrl}
-        onError={(event) => setMapError(String(event.error?.message || 'Map failed to load'))}
+      <GoogleMapCanvas
+        defaultCenter={{ lat: 48.8566, lng: 2.3522 }}
+        defaultZoom={4.1}
         style={{ minHeight: 280 }}
+        disableDefaultUI={false}
+        streetViewControl={false}
+        mapTypeControl={false}
+        fullscreenControl={false}
       >
-        <NavigationControl position="top-right" />
+        <TripMapLayerRenderer layers={tripLayers} />
         {mode === 'transport' && selectedFlightRoute ? (
           <>
-            <Source id="flight-route" type="geojson" data={selectedFlightRoute}>
-              <Layer
-                id="flight-route-line"
-                type="line"
-                paint={{
-                  'line-color': '#2F6F73',
-                  'line-width': 3,
-                  'line-opacity': 0.8,
-                }}
-              />
-            </Source>
+            <MapFitBounds points={selectedFlightRoute} />
+            <GooglePolyline
+              path={selectedFlightRoute}
+              strokeColor="#17344C"
+              strokeOpacity={0.8}
+              strokeWeight={3}
+            />
             {selectedFlight?.transport_details?.origin_geo ? (
-              <Marker
-                latitude={selectedFlight.transport_details.origin_geo.latitude}
-                longitude={selectedFlight.transport_details.origin_geo.longitude}
-                anchor="bottom"
-              >
-                <div className="flex size-4 items-center justify-center rounded-full border-2 border-white bg-[#2F6F73]" />
-              </Marker>
+              <VoyagerMarker
+                position={{
+                  lat: selectedFlight.transport_details.origin_geo.latitude,
+                  lng: selectedFlight.transport_details.origin_geo.longitude,
+                }}
+                label="Origin"
+                color="#17344C"
+              />
             ) : null}
             {selectedFlight?.transport_details?.destination_geo ? (
-              <Marker
-                latitude={selectedFlight.transport_details.destination_geo.latitude}
-                longitude={selectedFlight.transport_details.destination_geo.longitude}
-                anchor="bottom"
-              >
-                <div className="flex size-4 items-center justify-center rounded-full border-2 border-white bg-[#C56A3D]" />
-              </Marker>
+              <VoyagerMarker
+                position={{
+                  lat: selectedFlight.transport_details.destination_geo.latitude,
+                  lng: selectedFlight.transport_details.destination_geo.longitude,
+                }}
+                label="Destination"
+                selected
+              />
             ) : null}
           </>
         ) : null}
-        {mode === 'lodging'
-          ? hotelMarkers.map((item) => (
-            <Marker
-              key={item.offer.id}
-              latitude={item.latitude}
-              longitude={item.longitude}
-              anchor="bottom"
-            >
-              <button
-                type="button"
-                onClick={() => onSelectHotel(item.offer.id)}
-                className={cn(
-                  'rounded-full border px-2 py-1 text-xs font-semibold shadow-sm transition-all',
-                  item.offer.id === selectedHotelId
-                    ? 'border-[#2F6F73] bg-[#2F6F73] text-white'
-                    : 'border-white bg-white text-[#1D2430]',
-                )}
-              >
-                {formatMoney(item.offer.price_amount, item.offer.currency)}
-              </button>
-            </Marker>
-          ))
-          : null}
-      </Map>
+        {mode === 'lodging' && lodgingBoundsPoints.length > 0 ? (
+          <MapFitBounds points={lodgingBoundsPoints} />
+        ) : null}
+        {mode === 'lodging' ? (
+          <>
+            <VoyagerMarkerClusterLayer
+              items={clusteredHotelMarkers}
+              onMarkerClick={(item) => onSelectHotel(item.id)}
+            />
+            {selectedHotelMarker ? (
+              <VoyagerMarker
+                position={{ lat: selectedHotelMarker.latitude, lng: selectedHotelMarker.longitude }}
+                title={selectedHotelMarker.offer.title}
+                label={formatMoney(selectedHotelMarker.offer.price_amount, selectedHotelMarker.offer.currency) || 'Offer'}
+                selected
+                onClick={() => onSelectHotel(selectedHotelMarker.offer.id)}
+                zIndex={3}
+              />
+            ) : null}
+          </>
+        ) : null}
+      </GoogleMapCanvas>
     </div>
   )
 }
@@ -842,7 +810,7 @@ function FlightTimeline({
             <div className="grid gap-3 rounded-[18px] border border-[var(--color-border)] bg-white/85 px-4 py-3 md:grid-cols-[1fr_auto]">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
-                  <Plane className="h-4 w-4 text-[#2F6F73]" />
+                  <Plane className="h-4 w-4 text-[var(--color-primary-foreground)]" />
                   {segment.airline_name ?? segment.airline_code ?? 'Carrier'} {segment.flight_number ?? ''}
                 </div>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -883,11 +851,11 @@ function FlightTimeline({
 function HotelHero({ offer }: { offer: Offer }) {
   const photo = getHotelDetails(offer)?.primary_photo
 
-  if (photo?.image_url) {
+  if (resolvePhotoUrl(photo, 'full')) {
     return (
       <div className="overflow-hidden rounded-[22px] border border-[var(--color-border)]">
         <img
-          src={photo.image_url}
+          src={resolvePhotoUrl(photo, 'full') || ''}
           alt={offer.title}
           className="h-48 w-full object-cover"
         />
@@ -896,9 +864,9 @@ function HotelHero({ offer }: { offer: Offer }) {
   }
 
   return (
-    <div className="flex h-48 items-center justify-center rounded-[22px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(244,235,221,0.95),rgba(238,246,243,0.95))]">
+    <div className="flex h-48 items-center justify-center rounded-[22px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(228,240,251,0.78))]">
       <div className="text-center">
-        <Hotel className="mx-auto h-8 w-8 text-[#2F6F73]" />
+        <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
         <p className="mt-3 text-sm font-medium text-[var(--color-text)]">{offer.title}</p>
         <p className="mt-1 text-xs text-[var(--color-text-muted)]">Photos will appear once the linked place has imagery.</p>
       </div>
@@ -933,6 +901,7 @@ export default function OffersWorkspace({ tripId }: Props) {
 
   const { data: trip, isLoading: tripLoading } = useTrip(tripId)
   const { data: daysData, isLoading: daysLoading } = useDays(tripId)
+  const { data: tripLayersData } = useTripMapLayers(tripId)
   const {
     data: offersData,
     isLoading: offersLoading,
@@ -1179,6 +1148,7 @@ export default function OffersWorkspace({ tripId }: Props) {
     visibleTransportOffers.find((offer) => offer.id === selectedTransportId) ?? null
   const selectedLodgingOffer =
     visibleLodgingOffers.find((offer) => offer.id === selectedLodgingId) ?? null
+  const tripLayers = tripLayersData?.items ?? []
 
   const bestTransportOffer = visibleTransportOffers[0] ?? null
   const cheapestTransportOffer = [...visibleTransportOffers].sort(
@@ -1381,7 +1351,7 @@ export default function OffersWorkspace({ tripId }: Props) {
   const lodgingSearchPending = lodgingSearchMutation.isPending || (queuedMode === 'lodging' && activeJobRunning)
 
   return (
-    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top_left,rgba(244,235,221,0.82),transparent_38%),linear-gradient(180deg,#fbf8f2_0%,#f5efe7_100%)]">
+    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.82),transparent_38%),linear-gradient(180deg,#dbeaf8_0%,#eef5fc_100%)]">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 py-5 md:px-6 md:py-6">
         <section className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(244,235,221,0.82))] shadow-[0_24px_80px_rgba(26,38,48,0.08)]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(47,111,115,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(197,106,61,0.1),transparent_30%)]" />
@@ -1466,7 +1436,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                               }}
                             >
                               <SelectTrigger id="transport-trip-type" className="h-11 rounded-[18px] bg-white/85">
-                                <ArrowRightLeft className="mr-2 h-4 w-4 text-[#526072]" />
+                                <ArrowRightLeft className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1567,7 +1537,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                           render={({ field }) => (
                             <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
                               <SelectTrigger id="transport-adults" className="h-11 rounded-[18px] bg-white/85">
-                                <Users className="mr-2 h-4 w-4 text-[#526072]" />
+                                <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1704,7 +1674,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                           render={({ field }) => (
                             <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
                               <SelectTrigger id="hotel-guests" className="h-11 rounded-[18px] bg-white/85">
-                                <Users className="mr-2 h-4 w-4 text-[#526072]" />
+                                <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -1805,7 +1775,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         {offersFetching ? ' · refreshing' : ''}
                       </CardDescription>
                     </div>
-                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[#fbf8f2] px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
                       <Checkbox
                         checked={transportCurrentOnly}
                         onCheckedChange={(checked) => setTransportCurrentOnly(checked === true)}
@@ -1819,14 +1789,14 @@ export default function OffersWorkspace({ tripId }: Props) {
                     <SummarySurface
                       active={transportSort === 'best'}
                       label="Best"
-                      value={bestTransportOffer ? formatMoney(bestTransportOffer.price_amount, bestTransportOffer.currency) : 'No offers'}
+                      value={bestTransportOffer ? (formatMoney(bestTransportOffer.price_amount, bestTransportOffer.currency) || '') : 'No offers'}
                       detail={bestTransportOffer ? `${getFlightPrimaryAirline(bestTransportOffer)} · ${formatDurationMinutes(getFlightDuration(bestTransportOffer))}` : 'Run a flight search'}
                       onClick={() => setTransportSort('best')}
                     />
                     <SummarySurface
                       active={transportSort === 'cheapest'}
                       label="Cheapest"
-                      value={cheapestTransportOffer ? formatMoney(cheapestTransportOffer.price_amount, cheapestTransportOffer.currency) : 'No offers'}
+                      value={cheapestTransportOffer ? (formatMoney(cheapestTransportOffer.price_amount, cheapestTransportOffer.currency) || '') : 'No offers'}
                       detail={cheapestTransportOffer ? `${getFlightStopsCount(cheapestTransportOffer) === 0 ? 'Nonstop' : `${getFlightStopsCount(cheapestTransportOffer)} stop`}${getFlightStopsCount(cheapestTransportOffer) === 1 ? '' : getFlightStopsCount(cheapestTransportOffer) > 1 ? 's' : ''}` : 'Waiting for search'}
                       onClick={() => setTransportSort('cheapest')}
                     />
@@ -1911,7 +1881,7 @@ export default function OffersWorkspace({ tripId }: Props) {
               ) : visibleTransportOffers.length === 0 ? (
                 <Card className="rounded-[30px] border-dashed border-[var(--color-border)] bg-white/88">
                   <CardContent className="flex flex-col gap-3 p-8 text-center">
-                    <Plane className="mx-auto h-8 w-8 text-[#2F6F73]" />
+                    <Plane className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                     <div>
                       <p className="text-lg font-semibold text-[var(--color-text)]">No flights match the current filters</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
@@ -1937,7 +1907,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         key={offer.id}
                         className={cn(
                           'overflow-hidden rounded-[30px] border-white/60 bg-white/92 shadow-[0_22px_70px_rgba(26,38,48,0.05)]',
-                          selected && 'border-[#2F6F73] shadow-[0_24px_80px_rgba(47,111,115,0.14)]',
+                          selected && 'border-[var(--color-primary)] shadow-[0_24px_80px_rgba(32,56,83,0.14)]',
                         )}
                       >
                         <button
@@ -2087,6 +2057,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                     hotelOffers={[]}
                     selectedHotelId={null}
                     onSelectHotel={() => undefined}
+                    tripLayers={tripLayers}
                   />
                 </CardHeader>
 
@@ -2106,7 +2077,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         <ValuePill
                           icon={Sparkles}
                           label="Price"
-                          value={formatMoney(selectedTransportOffer.price_amount, selectedTransportOffer.currency)}
+                          value={formatMoney(selectedTransportOffer.price_amount, selectedTransportOffer.currency) || ''}
                         />
                         <ValuePill
                           icon={Clock3}
@@ -2154,7 +2125,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                     </>
                   ) : (
                     <div className="py-8 text-center">
-                      <Plane className="mx-auto h-8 w-8 text-[#2F6F73]" />
+                      <Plane className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                       <p className="mt-3 text-lg font-semibold text-[var(--color-text)]">No flight selected</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
                         Choose a flight result to inspect the detailed timeline and route rendering.
@@ -2178,7 +2149,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         {offersFetching ? ' · refreshing' : ''}
                       </CardDescription>
                     </div>
-                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[#fbf8f2] px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
                       <Checkbox
                         checked={hotelCurrentOnly}
                         onCheckedChange={(checked) => setHotelCurrentOnly(checked === true)}
@@ -2199,7 +2170,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                     <SummarySurface
                       active={hotelSort === 'price'}
                       label="Cheapest"
-                      value={cheapestHotelOffer ? formatMoney(cheapestHotelOffer.price_amount, cheapestHotelOffer.currency) : 'No offers'}
+                      value={cheapestHotelOffer ? (formatMoney(cheapestHotelOffer.price_amount, cheapestHotelOffer.currency) || '') : 'No offers'}
                       detail={cheapestHotelOffer ? cheapestHotelOffer.title : 'Waiting for search'}
                       onClick={() => setHotelSort('price')}
                     />
@@ -2271,7 +2242,7 @@ export default function OffersWorkspace({ tripId }: Props) {
               ) : visibleLodgingOffers.length === 0 ? (
                 <Card className="rounded-[30px] border-dashed border-[var(--color-border)] bg-white/88">
                   <CardContent className="flex flex-col gap-3 p-8 text-center">
-                    <Hotel className="mx-auto h-8 w-8 text-[#2F6F73]" />
+                    <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                     <div>
                       <p className="text-lg font-semibold text-[var(--color-text)]">No hotels match the current filters</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
@@ -2292,7 +2263,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         key={offer.id}
                         className={cn(
                           'overflow-hidden rounded-[30px] border-white/60 bg-white/92 shadow-[0_22px_70px_rgba(26,38,48,0.05)]',
-                          selected && 'border-[#2F6F73] shadow-[0_24px_80px_rgba(47,111,115,0.14)]',
+                          selected && 'border-[var(--color-primary)] shadow-[0_24px_80px_rgba(32,56,83,0.14)]',
                         )}
                       >
                         <button
@@ -2301,16 +2272,16 @@ export default function OffersWorkspace({ tripId }: Props) {
                           className="w-full text-left"
                         >
                           <CardContent className="grid gap-4 p-5 md:grid-cols-[168px_1fr_auto]">
-                            <div className="overflow-hidden rounded-[22px] border border-[var(--color-border)] bg-[#fbf8f2]">
-                              {photo?.thumbnail_url || photo?.image_url ? (
+                            <div className="overflow-hidden rounded-[22px] border border-[var(--color-border)] bg-[var(--color-bg-soft)]">
+                              {resolvePhotoUrl(photo, 'thumb') ? (
                                 <img
-                                  src={photo.thumbnail_url ?? photo.image_url}
+                                  src={resolvePhotoUrl(photo, 'thumb') || ''}
                                   alt={offer.title}
                                   className="h-full min-h-[136px] w-full object-cover"
                                 />
                               ) : (
-                                <div className="flex min-h-[136px] items-center justify-center bg-[linear-gradient(135deg,rgba(244,235,221,0.95),rgba(238,246,243,0.95))]">
-                                  <Hotel className="h-8 w-8 text-[#2F6F73]" />
+                                <div className="flex min-h-[136px] items-center justify-center bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(228,240,251,0.78))]">
+                                  <Hotel className="h-8 w-8 text-[var(--color-primary-foreground)]" />
                                 </div>
                               )}
                             </div>
@@ -2417,6 +2388,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                     hotelOffers={visibleLodgingOffers}
                     selectedHotelId={selectedLodgingId}
                     onSelectHotel={setSelectedLodgingId}
+                    tripLayers={tripLayers}
                   />
                 </CardHeader>
 
@@ -2438,7 +2410,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         <ValuePill
                           icon={Sparkles}
                           label="Total"
-                          value={formatMoney(selectedLodgingOffer.price_amount, selectedLodgingOffer.currency)}
+                          value={formatMoney(selectedLodgingOffer.price_amount, selectedLodgingOffer.currency) || ''}
                         />
                         <ValuePill
                           icon={Calendar}
@@ -2520,7 +2492,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                     </>
                   ) : (
                     <div className="py-8 text-center">
-                      <Hotel className="mx-auto h-8 w-8 text-[#2F6F73]" />
+                      <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                       <p className="mt-3 text-lg font-semibold text-[var(--color-text)]">No stay selected</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
                         Select a hotel result to inspect the map marker, room policy, and linked imagery.

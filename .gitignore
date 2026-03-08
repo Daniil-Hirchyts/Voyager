@@ -38,3 +38,8 @@ docs/
 scripts/
 
 frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+
+# Vite cache
+.vite/

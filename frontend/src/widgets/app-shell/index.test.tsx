@@ -9,7 +9,7 @@ describe('AppShellLayout', () => {
     const user = userEvent.setup()
 
     render(
-      <MemoryRouter initialEntries={['/app/trips/trip-123/offers']}>
+      <MemoryRouter initialEntries={['/app/trips/trip-123/activities']}>
         <Routes>
           <Route
             path="/app"
@@ -22,15 +22,15 @@ describe('AppShellLayout', () => {
               />
             )}
           >
-            <Route path="trips/trip-123/offers" element={<div>Offers Workspace</div>} />
+            <Route path="trips/trip-123/activities" element={<div>Activities Workspace</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
     )
 
     expect(screen.getByRole('link', { name: 'Trips' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Offers' })).toBeInTheDocument()
-    expect(screen.getByText('Offers Workspace')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Activities' })).toBeInTheDocument()
+    expect(screen.getByText('Activities Workspace')).toBeInTheDocument()
     expect(screen.getByTestId('app-shell-content')).toBeInTheDocument()
 
     const trigger = screen

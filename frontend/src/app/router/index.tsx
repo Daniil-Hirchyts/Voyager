@@ -1,9 +1,11 @@
 import { createBrowserRouter, RouterProvider, Navigate, useParams } from 'react-router-dom'
-import { RequireAuth } from '@/features/auth/RequireAuth'
+import { RequireAuth } from '@/app/auth/RequireAuth'
 import { ErrorBoundary } from 'react-error-boundary'
 import { lazy, Suspense } from 'react'
 import { config } from '@/app/config'
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 // Public pages
 const LandingPage = lazy(() => import('@/pages/public/landing'))
@@ -20,6 +22,7 @@ const TripDetailPage = lazy(() => import('@/pages/app/trip-detail'))
 const PlanPage = lazy(() => import('@/pages/app/plan'))
 const MapPage = lazy(() => import('@/pages/app/map'))
 const OffersPage = lazy(() => import('@/pages/app/offers'))
+const ActivitiesPage = lazy(() => import('@/pages/app/activities'))
 const ExportsPage = lazy(() => import('@/pages/app/exports'))
 const AuditPage = lazy(() => import('@/pages/app/audit'))
 const EventsPage = lazy(() => import('@/pages/app/events'))
@@ -31,11 +34,11 @@ function PageLoader() {
   if (!showLoading) return null
 
   return (
-    <div
-      className="flex items-center justify-center min-h-screen animate-in fade-in duration-300"
-      style={{ background: 'var(--color-bg)' }}
-    >
-      <div className="w-6 h-6 border-2 border-[#2F6F73] border-t-transparent rounded-full animate-spin" />
+    <div className="voyager-page flex min-h-[100dvh] items-center justify-center animate-in fade-in duration-300">
+      <div className="voyager-panel flex items-center gap-3 px-5 py-4 text-sm font-medium text-[var(--color-text-muted)]">
+        <div className="size-5 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+        Loading workspace
+      </div>
     </div>
   )
 }
@@ -43,32 +46,29 @@ function PageLoader() {
 function RouteErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary?: () => void }) {
   const traceId = (error as { traceId?: string }).traceId
   return (
-    <div
-      className="flex flex-col items-center justify-center min-h-[60vh] gap-4 p-8"
-      style={{ background: 'var(--color-bg)' }}
-    >
-      <h1 className="font-display text-3xl text-[#1D2430]">Something went wrong</h1>
-      <p className="text-[#526072] max-w-md text-center">{error.message}</p>
-      {traceId && (
-        <p className="text-xs text-[#526072]/60 font-mono">Trace: {traceId}</p>
-      )}
-      <div className="flex items-center gap-3">
-        {resetErrorBoundary && (
-          <button
-            onClick={resetErrorBoundary}
-            className="px-5 py-2.5 bg-[#2F6F73] text-white rounded-[10px] text-sm font-medium hover:bg-[#266063] transition-colors"
-          >
-            Retry
-          </button>
-        )}
-        <button
-          onClick={() => (window.location.href = '/')}
-          className="px-5 py-2.5 border text-[#526072] rounded-[10px] text-sm font-medium hover:bg-[#F4EBDD] transition-colors"
-          style={{ borderColor: 'var(--color-border)' }}
-        >
-          Return Home
-        </button>
-      </div>
+    <div className="voyager-page flex min-h-[72dvh] items-center justify-center">
+      <Card variant="solid" className="w-full max-w-2xl">
+        <CardHeader className="gap-3">
+          <span className="voyager-eyebrow w-fit">Route error</span>
+          <CardTitle className="text-[2rem] md:text-[2.4rem]">Something went wrong</CardTitle>
+          <CardDescription className="max-w-xl text-base">{error.message}</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-5">
+          {traceId ? (
+            <p className="rounded-[18px] border border-[var(--color-border-strong)] bg-white/72 px-4 py-3 font-mono text-xs text-[var(--color-text-muted)]">
+              Trace: {traceId}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            {resetErrorBoundary ? (
+              <Button onClick={resetErrorBoundary}>Retry</Button>
+            ) : null}
+            <Button asChild variant="outline">
+              <a href="/">Return home</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -220,9 +220,21 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: 'trips/:tripId/activities',
+        element: (
+          <FeatureRouteGate enabled={config.features.activitiesUI}>
+            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
+              <Suspense fallback={<PageLoader />}>
+                <ActivitiesPage />
+              </Suspense>
+            </ErrorBoundary>
+          </FeatureRouteGate>
+        ),
+      },
+      {
         path: 'trips/:tripId/events',
         element: (
-          <FeatureRouteGate enabled={config.features.eventsUI}>
+          <FeatureRouteGate enabled={config.features.activitiesUI}>
             <ErrorBoundary FallbackComponent={RouteErrorFallback}>
               <Suspense fallback={<PageLoader />}>
                 <EventsPage />
@@ -234,7 +246,7 @@ const router = createBrowserRouter([
       {
         path: 'trips/:tripId/proposals',
         element: (
-          <FeatureRouteGate enabled={config.features.proposalsUI}>
+          <FeatureRouteGate enabled={config.features.activitiesUI}>
             <ErrorBoundary FallbackComponent={RouteErrorFallback}>
               <Suspense fallback={<PageLoader />}>
                 <ProposalsPage />
@@ -248,15 +260,21 @@ const router = createBrowserRouter([
   {
     path: '*',
     element: (
-      <div
-        className="flex flex-col items-center justify-center min-h-screen gap-4"
-        style={{ background: 'var(--color-bg)' }}
-      >
-        <h1 className="font-display text-6xl text-[#1D2430]">404</h1>
-        <p className="text-[#526072]">Page not found</p>
-        <a href="/" className="text-[#2F6F73] underline text-sm">
-          Go home
-        </a>
+      <div className="voyager-page flex min-h-[100dvh] items-center justify-center">
+        <Card variant="solid" className="w-full max-w-xl text-center">
+          <CardHeader className="items-center gap-3">
+            <span className="voyager-eyebrow">404</span>
+            <CardTitle className="text-[2.5rem] md:text-[3rem]">Page not found</CardTitle>
+            <CardDescription className="text-base">
+              This route does not exist or is no longer available.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex justify-center">
+            <Button asChild>
+              <a href="/">Go home</a>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     ),
   },

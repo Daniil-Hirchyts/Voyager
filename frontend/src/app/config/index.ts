@@ -1,4 +1,6 @@
 const mapFeatureFlag = import.meta.env.VITE_ENABLE_MAP_UI
+const mapExperimentsFlag = import.meta.env.VITE_ENABLE_MAP_EXPERIMENTS
+const map3DFlag = import.meta.env.VITE_ENABLE_MAP_3D
 
 export const config = {
   keycloak: {
@@ -8,21 +10,31 @@ export const config = {
     silentRedirectUri: import.meta.env.VITE_OIDC_SILENT_REDIRECT_URI,
   },
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+    baseUrl: import.meta.env.VITE_API_BASE_URL || '/api',
   },
   map: {
-    styleUrl: import.meta.env.VITE_MAP_STYLE_URL,
+    apiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
+    mapId: import.meta.env.VITE_GOOGLE_MAPS_MAP_ID,
+    language: import.meta.env.VITE_GOOGLE_MAPS_LANGUAGE,
+    region: import.meta.env.VITE_GOOGLE_MAPS_REGION,
   },
   features: {
     mapUI:
       mapFeatureFlag === 'false'
         ? false
-        : mapFeatureFlag === 'true' || Boolean(import.meta.env.VITE_MAP_STYLE_URL),
+        : mapFeatureFlag === 'true' || Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
     landingMotion: import.meta.env.VITE_ENABLE_LANDING_MOTION === 'true',
+    activitiesUI: import.meta.env.VITE_ENABLE_ACTIVITIES_UI !== 'false',
     offersUI: import.meta.env.VITE_ENABLE_OFFERS_UI === 'true',
-    eventsUI: import.meta.env.VITE_ENABLE_EVENTS_UI === 'true',
-    proposalsUI: import.meta.env.VITE_ENABLE_PROPOSALS_UI === 'true',
     exportsUI: import.meta.env.VITE_ENABLE_EXPORTS_UI === 'true',
     auditUI: import.meta.env.VITE_ENABLE_AUDIT_UI === 'true',
+    mapExperiments:
+      mapExperimentsFlag === 'true' ||
+      (mapExperimentsFlag !== 'false' && Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID)),
+    map3D:
+      map3DFlag === 'true' ||
+      (map3DFlag !== 'false' &&
+        Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID) &&
+        (mapExperimentsFlag === 'true' || Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID))),
   },
 }

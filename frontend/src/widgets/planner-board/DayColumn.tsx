@@ -27,7 +27,11 @@ export function DayColumn({
   onDeleteActivity,
   onToggleFavorite,
 }: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: `day-${day.id}` })
+  const { setNodeRef, isOver } = useDroppable({ id: day.id, data: { type: 'container', dayId: day.id } })
+  const { setNodeRef: setEndZoneRef, isOver: isOverEnd } = useDroppable({
+    id: `${day.id}::end`,
+    data: { type: 'end-zone', dayId: day.id },
+  })
   const sortedActivities = [...day.activities].sort((a, b) => a.order_index - b.order_index)
 
   return (
@@ -106,7 +110,19 @@ export function DayColumn({
               Use generated ideas as a base or start with a manual activity for this day.
             </p>
           </div>
-        ) : null}
+        ) : (
+          <div
+            ref={setEndZoneRef}
+            className={cn(
+              'rounded-[20px] border border-dashed px-3 py-3 text-center text-xs transition-all',
+              isOverEnd
+                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/8 text-[var(--color-primary)]'
+                : 'border-[var(--color-border)] text-[var(--color-text-muted)]',
+            )}
+          >
+            Drop here to place at the end of the day
+          </div>
+        )}
       </div>
 
       <div className="border-t border-[var(--color-border)] bg-white/72 p-4">

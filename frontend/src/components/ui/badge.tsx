@@ -3,17 +3,22 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/shared/lib/cn'
 
 const badgeVariants = cva(
-  'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors',
+  'inline-flex items-center rounded-full border px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] transition-colors',
   {
     variants: {
       variant: {
-        default: 'bg-[#2F6F73]/10 text-[#2F6F73]',
-        secondary: 'bg-[#F4EBDD] text-[#526072]',
-        outline: 'border border-[var(--color-border)] text-[#526072]',
-        destructive: 'bg-[#C56A3D]/10 text-[#C56A3D]',
-        entity: 'bg-blue-50 text-blue-700',
-        action: 'bg-purple-50 text-purple-700',
-        status: 'bg-[#F4EBDD] text-[#526072]',
+        default: 'border-[rgba(114,174,230,0.2)] bg-[rgba(114,174,230,0.14)] text-[var(--color-primary-foreground)]',
+        accent: 'border-[rgba(114,174,230,0.2)] bg-[rgba(114,174,230,0.14)] text-[var(--color-primary-foreground)]',
+        neutral: 'border-[var(--color-border-strong)] bg-white/70 text-[var(--color-text-muted)]',
+        secondary: 'border-[var(--color-border-strong)] bg-white/70 text-[var(--color-text-muted)]',
+        outline: 'border-[var(--color-border-strong)] bg-transparent text-[var(--color-text-muted)]',
+        destructive: 'border-[rgba(196,95,79,0.2)] bg-[rgba(196,95,79,0.12)] text-[var(--color-danger)]',
+        danger: 'border-[rgba(196,95,79,0.2)] bg-[rgba(196,95,79,0.12)] text-[var(--color-danger)]',
+        success: 'border-[rgba(45,124,99,0.22)] bg-[rgba(45,124,99,0.12)] text-[var(--color-success)]',
+        warning: 'border-[rgba(201,138,55,0.24)] bg-[rgba(201,138,55,0.14)] text-[var(--color-warning)]',
+        entity: 'border-[rgba(114,174,230,0.2)] bg-[rgba(114,174,230,0.14)] text-[var(--color-primary-foreground)]',
+        action: 'border-[rgba(90,102,118,0.18)] bg-[rgba(255,255,255,0.78)] text-[var(--color-text-muted)]',
+        status: 'border-[var(--color-border-strong)] bg-white/70 text-[var(--color-text-muted)]',
       },
     },
     defaultVariants: {

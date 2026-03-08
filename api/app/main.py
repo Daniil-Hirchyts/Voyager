@@ -14,6 +14,7 @@ from app.routers import (
     exports,
     health,
     jobs,
+    map_layers,
     offers,
     places,
     proposals,
@@ -37,6 +38,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://voyager.local",
     ],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|voyager\.local)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -101,6 +103,7 @@ app.include_router(trips.router)
 app.include_router(days.router)
 app.include_router(activities.router)
 app.include_router(places.router)
+app.include_router(map_layers.router)
 app.include_router(proposals.router)
 app.include_router(jobs.router)
 app.include_router(offers.router)

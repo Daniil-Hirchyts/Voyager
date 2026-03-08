@@ -20,6 +20,8 @@ class PlacePhotoSummary(BaseModel):
     source: str
     image_url: str
     thumbnail_url: str | None
+    display_url: str | None = None
+    display_thumbnail_url: str | None = None
     license_code: str | None
     license_url: str | None
     attribution_text: str | None
@@ -53,6 +55,23 @@ class PlaceListResponse(BaseModel):
     items: list[PlaceResponse]
 
 
+class DestinationAutocompleteItem(BaseModel):
+    id: str
+    label: str
+    name: str | None = None
+    country: str | None = None
+    region: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+
+
+class DestinationAutocompleteResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[DestinationAutocompleteItem]
+
+
 class PlaceMetadataPatchRequest(BaseModel):
     metadata: dict = Field(default_factory=dict)
 
@@ -81,6 +100,8 @@ class PlacePhotoResponse(BaseModel):
     source_media_ref: str
     image_url: str
     thumbnail_url: str | None
+    display_url: str | None = None
+    display_thumbnail_url: str | None = None
     width: int | None
     height: int | None
     license_code: str | None

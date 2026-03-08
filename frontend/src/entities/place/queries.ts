@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  autocompleteDestinations,
   createPlace,
   getNearbyPlaces,
   getPlace,
@@ -8,6 +9,7 @@ import {
   searchPlaces,
 } from './api'
 import type {
+  DestinationAutocompleteResponse,
   NearbyPlaceParams,
   PlaceListParams,
   ViewportPlaceParams,
@@ -18,6 +20,7 @@ export const placeKeys = {
   all: ['places'] as const,
   list: (params: PlaceListParams) => ['places', 'list', params] as const,
   search: (params: PlaceListParams) => ['places', 'search', params] as const,
+  autocomplete: (params: PlaceListParams) => ['places', 'autocomplete', params] as const,
   nearby: (params: NearbyPlaceParams | null) => ['places', 'nearby', params] as const,
   viewport: (params: ViewportPlaceParams | null) => ['places', 'viewport', params] as const,
   detail: (placeId: string) => ['place', placeId] as const,
@@ -34,6 +37,17 @@ export function usePlaceSearch(params: PlaceListParams, enabled = true) {
   return useQuery({
     queryKey: placeKeys.search(params),
     queryFn: () => searchPlaces(params),
+    enabled,
+  })
+}
+
+export function useDestinationAutocomplete(
+  params: PlaceListParams,
+  enabled = true,
+) {
+  return useQuery<DestinationAutocompleteResponse>({
+    queryKey: placeKeys.autocomplete(params),
+    queryFn: () => autocompleteDestinations(params),
     enabled,
   })
 }

@@ -105,6 +105,96 @@ async def test_fetch_wikimedia_filters_to_open_license(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_fetch_wikidata_candidates_resolves_entity_images(monkeypatch):
+    place = _place_fixture()
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.base_url = str(kwargs.get("base_url", ""))
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, path, params=None):
+            request = httpx.Request("GET", f"{self.base_url}{path}")
+            action = params.get("action") if params else None
+
+            if "wikidata.org" in self.base_url and action == "wbsearchentities":
+                return httpx.Response(
+                    200,
+                    json={"search": [{"id": "Q243"}]},
+                    request=request,
+                )
+
+            if "wikidata.org" in self.base_url and action == "wbgetentities":
+                return httpx.Response(
+                    200,
+                    json={
+                        "entities": {
+                            "Q243": {
+                                "claims": {
+                                    "P18": [
+                                        {
+                                            "mainsnak": {
+                                                "datavalue": {
+                                                    "value": "Eiffel Tower from below.jpg"
+                                                }
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    request=request,
+                )
+
+            if "commons.wikimedia.org" in self.base_url and action == "query":
+                return httpx.Response(
+                    200,
+                    json={
+                        "query": {
+                            "pages": {
+                                "1": {
+                                    "pageid": 1,
+                                    "title": "File:Eiffel Tower from below.jpg",
+                                    "imageinfo": [
+                                        {
+                                            "url": "https://img.open/eiffel-wikidata.jpg",
+                                            "thumburl": "https://img.open/eiffel-wikidata-thumb.jpg",
+                                            "width": 1400,
+                                            "height": 1800,
+                                            "extmetadata": {
+                                                "LicenseShortName": {"value": "CC BY"},
+                                                "LicenseUrl": {"value": "https://license.example/by"},
+                                                "Artist": {"value": "Commons Photographer"},
+                                            },
+                                        }
+                                    ],
+                                }
+                            }
+                        }
+                    },
+                    request=request,
+                )
+
+            raise AssertionError(f"Unexpected request: base={self.base_url} action={action} params={params}")
+
+    monkeypatch.setattr(place_photos.httpx, "AsyncClient", _FakeClient)
+
+    photos = await place_photos._fetch_wikidata_candidates(place)
+
+    assert len(photos) == 1
+    assert photos[0]["source"] == "wikidata_commons"
+    assert photos[0]["source_media_ref"] == "1"
+    assert photos[0]["image_url"] == "https://img.open/eiffel-wikidata.jpg"
+    assert photos[0]["license_code"] == "cc-by"
+
+
+@pytest.mark.anyio
 async def test_place_photo_fetch_falls_back_to_openverse(monkeypatch):
     place = _place_fixture()
 

@@ -81,7 +81,7 @@ export function GenerationControls({
       <div className="flex items-center gap-2">
         {isRunning ? (
           <div
-            className="flex items-center gap-2 px-4 py-2 rounded-[10px] bg-[#2F6F73]/10 border border-[#2F6F73]/30 text-sm text-[#2F6F73]"
+            className="flex items-center gap-2 rounded-[16px] border border-[rgba(114,174,230,0.32)] bg-[rgba(114,174,230,0.12)] px-4 py-2 text-sm text-[var(--color-primary-foreground)]"
             aria-live="polite"
             aria-label={`Generation in progress: ${jobStatus}`}
           >
@@ -103,7 +103,7 @@ export function GenerationControls({
                 <Button
                   variant="outline"
                   onClick={() => openDialog('reset')}
-                  className="hover:bg-[#C56A3D]/10 hover:border-[#C56A3D]/30"
+                  className="hover:border-[rgba(196,95,79,0.28)] hover:bg-[rgba(196,95,79,0.08)]"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Reset
@@ -115,12 +115,12 @@ export function GenerationControls({
 
         {/* Job terminal states */}
         {jobStatus === 'SUCCEEDED' && (
-          <span className="text-xs text-[#6B7A4B] font-medium" aria-live="polite">
+          <span className="text-xs font-medium text-[var(--color-success)]" aria-live="polite">
             Generation complete
           </span>
         )}
         {jobStatus === 'FAILED' && (
-          <span className="text-xs text-[#C56A3D] font-medium" aria-live="polite">
+          <span className="text-xs font-medium text-[var(--color-danger)]" aria-live="polite">
             Generation failed
           </span>
         )}
@@ -139,7 +139,7 @@ export function GenerationControls({
           <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-4 space-y-4">
             {action !== 'reset' && (
               <div>
-                <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
+                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                   Mode
                 </label>
                 <div className="space-y-2">
@@ -147,10 +147,11 @@ export function GenerationControls({
                     <label
                       key={m}
                       className={cn(
-                        'flex items-start gap-3 p-3 rounded-[10px] border cursor-pointer transition-colors',
-                        mode === m ? 'border-[#2F6F73] bg-[#2F6F73]/5' : 'hover:bg-[#F4EBDD]',
+                        'flex cursor-pointer items-start gap-3 rounded-[16px] border p-3 transition-colors',
+                        mode === m
+                          ? 'border-[var(--color-primary)] bg-[rgba(114,174,230,0.12)]'
+                          : 'border-[var(--color-border-strong)] bg-white/70 hover:bg-white/88',
                       )}
-                      style={{ borderColor: mode === m ? '#2F6F73' : 'var(--color-border)' }}
                     >
                       <input
                         type="radio"
@@ -159,10 +160,10 @@ export function GenerationControls({
                         className="mt-0.5"
                       />
                       <div>
-                        <p className="text-sm font-medium text-[#1D2430]">
+                        <p className="text-sm font-medium text-[var(--color-text)]">
                           {MODE_LABELS[m].label}
                         </p>
-                        <p className="text-xs text-[#526072]">{MODE_LABELS[m].desc}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">{MODE_LABELS[m].desc}</p>
                       </div>
                     </label>
                   ))}
@@ -173,7 +174,7 @@ export function GenerationControls({
             {/* Day selection */}
             {days.length > 0 && (
               <div>
-                <label className="block text-xs font-medium text-[#526072] uppercase tracking-wider mb-2">
+                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
                   Scope to specific days (optional)
                 </label>
                 <div className="space-y-1.5 max-h-36 overflow-y-auto">
@@ -181,7 +182,7 @@ export function GenerationControls({
                     <label
                       key={day.id}
                       htmlFor={`day-${day.id}`}
-                      className="flex items-center gap-2 text-sm text-[#1D2430] cursor-pointer"
+                      className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text)]"
                     >
                       <Checkbox
                         id={`day-${day.id}`}
@@ -202,7 +203,7 @@ export function GenerationControls({
             )}
 
             {action === 'reset' && (
-              <p className="text-sm text-[#526072]">
+              <p className="text-sm text-[var(--color-text-muted)]">
                 This will remove all generated activities from the selected days. Manually
                 added activities will be preserved.
               </p>

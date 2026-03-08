@@ -1,7 +1,8 @@
-import { useAuth } from 'react-oidc-context'
+import { ArrowRight, Compass, ShieldCheck } from 'lucide-react'
 import { Navigate } from 'react-router-dom'
+import { useAuth } from 'react-oidc-context'
 import { useAuthStore } from '@/shared/stores/auth.store'
-import { ArrowRight, Compass } from 'lucide-react'
+import { VoyagerLogo } from '@/widgets/app-shell/logo'
 
 export default function SignInPage() {
   const auth = useAuth()
@@ -18,99 +19,101 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--color-bg)' }}>
-      {/* Left panel - branding */}
-      <div
-        className="hidden lg:flex flex-col justify-between w-1/2 p-16 relative overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, #1D2430 0%, #2F6F73 100%)' }}
-      >
-        {/* Background texture */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 40px, #FFFFFF 40px, #FFFFFF 41px)`,
-          }}
-        />
+    <div className="voyager-container flex min-h-[100dvh] items-center py-10">
+      <div className="grid w-full gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(26rem,0.92fr)]">
+        <section className="voyager-panel-strong voyager-noise overflow-hidden p-8 md:p-10">
+          <div className="flex flex-col gap-8">
+            <div className="flex items-center gap-3">
+              <span className="flex size-11 items-center justify-center rounded-full bg-[var(--color-cta)] text-white">
+                <VoyagerLogo className="size-5" />
+              </span>
+              <div>
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Voyager
+                </p>
+                <p className="text-xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+                  Landing-derived workspace
+                </p>
+              </div>
+            </div>
 
-        <div className="relative z-10">
-          <span className="font-display text-3xl text-white">Voyager</span>
-        </div>
+            <div className="flex flex-col gap-4">
+              <span className="voyager-eyebrow w-fit">Secure access</span>
+              <h1 className="voyager-heading-lg max-w-2xl">
+                Sign in to continue planning with the same design language you started with.
+              </h1>
+              <p className="voyager-copy max-w-xl">
+                The visual redesign now carries from the public surface into the authenticated
+                product, so your first interaction and your daily planning environment feel like
+                the same system.
+              </p>
+            </div>
 
-        <div className="relative z-10">
-          <p className="text-xs tracking-[0.3em] uppercase text-[#6EA4A6] mb-6 font-medium">
-            Travel Planning
-          </p>
-          <h2 className="font-display text-5xl text-white leading-tight mb-6">
-            Plan journeys
-            <br />
-            worth telling
-          </h2>
-          <p className="text-[#6EA4A6] leading-relaxed max-w-sm">
-            AI-powered itineraries built around your preferences, then shaped by you. Every
-            activity is real data you can edit, reorder, and map.
-          </p>
-        </div>
-
-        <p className="text-[#526072] text-sm relative z-10">Voyager Travel Planning</p>
-      </div>
-
-      {/* Right panel - sign in */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="lg:hidden mb-8">
-            <span className="font-display text-3xl text-[#2F6F73]">Voyager</span>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-[24px] border border-white/60 bg-white/62 p-5">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Structured planning
+                </p>
+                <p className="mt-3 text-base leading-7 text-[var(--color-text)]">
+                  Sign in to access trip boards, maps, offers, exports, and audit history.
+                </p>
+              </div>
+              <div className="rounded-[24px] border border-white/60 bg-white/62 p-5">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Protected identity
+                </p>
+                <p className="mt-3 text-base leading-7 text-[var(--color-text)]">
+                  Voyager uses OpenID Connect with Keycloak and returns you to the exact route you
+                  intended to open.
+                </p>
+              </div>
+            </div>
           </div>
+        </section>
 
-          <h1 className="text-2xl font-semibold text-[#1D2430] mb-2">Welcome back</h1>
-          <p className="text-[#526072] text-sm mb-8">
-            Sign in to access your trips and planner
+        <section className="voyager-panel-solid flex flex-col justify-center p-8 md:p-10">
+          <span className="voyager-eyebrow w-fit">
+            <ShieldCheck className="size-4" />
+            Authentication
+          </span>
+          <h2 className="mt-5 text-4xl font-semibold tracking-[-0.05em] text-[var(--color-text)]">
+            Welcome back
+          </h2>
+          <p className="mt-3 text-base leading-7 text-[var(--color-text-muted)]">
+            Sign in to continue from where you left off.
           </p>
 
-          {auth.isLoading && (
-            <div className="flex items-center gap-2 text-sm text-[#526072] mb-4 p-3 rounded-[10px] border" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-              <div className="w-4 h-4 border-2 border-[#2F6F73] border-t-transparent rounded-full animate-spin shrink-0" />
+          {auth.isLoading ? (
+            <div className="mt-6 rounded-[22px] border border-[var(--color-border-strong)] bg-white/72 px-4 py-4 text-sm text-[var(--color-text-muted)]">
               Connecting to authentication…
             </div>
-          )}
+          ) : null}
 
-          {auth.error && (
-            <div
-              className="mb-4 p-3 rounded-[10px] border text-sm text-[#C56A3D]"
-              style={{
-                background: 'rgba(197, 106, 61, 0.08)',
-                borderColor: 'rgba(197, 106, 61, 0.2)',
-              }}
-            >
+          {auth.error ? (
+            <div className="mt-6 rounded-[22px] border border-[rgba(196,95,79,0.22)] bg-[rgba(255,240,238,0.92)] px-4 py-4 text-sm text-[var(--color-danger)]">
               Authentication error: {auth.error.message}
             </div>
-          )}
+          ) : null}
 
           <button
+            type="button"
             onClick={handleSignIn}
             disabled={auth.isLoading}
-            className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-[#2F6F73] text-white font-medium rounded-[10px] hover:bg-[#266063] transition-all disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-[#2F6F73]/20"
+            className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-[20px] bg-[var(--color-cta)] px-6 text-base font-medium text-white shadow-[0_24px_52px_-28px_rgba(26,22,21,0.75)] transition-transform duration-200 hover:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Compass className="w-4 h-4" />
+            <Compass className="size-4" />
             Continue with Keycloak
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="size-4" />
           </button>
 
-          <div
-            className="mt-6 p-4 rounded-[10px] border text-xs text-[#526072] space-y-1"
-            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-          >
-            <p className="font-medium text-[#1D2430]">About sign in</p>
-            <p>
-              Voyager uses OpenID Connect via Keycloak for secure authentication. You'll be
-              redirected to sign in and then returned to your destination.
+          <div className="mt-8 rounded-[24px] border border-[var(--color-border-strong)] bg-white/64 p-5">
+            <p className="text-sm font-semibold text-[var(--color-text)]">About sign in</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+              Voyager authenticates through Keycloak using OpenID Connect. After sign-in you are
+              redirected back to the route you originally requested.
             </p>
           </div>
-
-          <p className="mt-6 text-center text-xs text-[#526072]">
-            Protected with OpenID Connect via Keycloak
-          </p>
-        </div>
+        </section>
       </div>
     </div>
   )

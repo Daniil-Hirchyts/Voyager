@@ -84,6 +84,73 @@ async def test_tripadvisor_restaurant_discovery_normalizes_items(monkeypatch):
     assert "Steakhouse" in item["tags"]
 
 
+@pytest.mark.anyio
+async def test_tripadvisor_attraction_discovery_handles_null_award(monkeypatch):
+    settings = get_settings()
+    settings.activities_tripadvisor_api_key = "tripadvisor-test-key"
+    provider = TripAdvisorActivityProvider()
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.base_url = kwargs.get("base_url")
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, path, params=None):
+            assert path == "/attractions/list"
+            assert params["query"] == "Paris"
+            return httpx.Response(
+                200,
+                json={
+                    "count": 1,
+                    "results": [
+                        {
+                            "tripadvisor_entity_id": 105127,
+                            "name": "Central Park",
+                            "link": "https://example.com/attraction",
+                            "description": "Large urban park",
+                            "rating": 4.7,
+                            "reviews": 134359,
+                            "categories": [{"name": "Parks"}],
+                            "award": None,
+                            "featured_image": "https://example.com/attraction.jpg",
+                            "pricing_text": None,
+                            "experiences": None,
+                            "coordinates": {"latitude": 40.78, "longitude": -73.96},
+                        }
+                    ],
+                },
+                request=httpx.Request("GET", "https://example.test/attractions/list"),
+            )
+
+    monkeypatch.setattr(
+        "app.services.activity_discovery_provider.httpx.AsyncClient",
+        _FakeClient,
+    )
+
+    total, items, _payload = await provider.discover(
+        entity_type="attraction",
+        query="Paris",
+        page=1,
+        locale="en-US",
+        currency="USD",
+        trip_dates=None,
+    )
+
+    assert total == 1
+    assert len(items) == 1
+    item = items[0]
+    assert item["provider_ref"] == "105127"
+    assert item["title"] == "Central Park"
+    assert item["status_text"] is None
+    assert item["tags"] == ["Parks"]
+    assert item["is_attachable"] is True
+
+
 def test_activity_provider_availability_reports_missing_key(monkeypatch):
     settings = get_settings()
     monkeypatch.setattr(settings, "activities_tripadvisor_api_key", None)

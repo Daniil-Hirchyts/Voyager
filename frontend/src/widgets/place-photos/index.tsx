@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { usePlacePhotos, useRefreshPlacePhotos } from '@/entities/photo/queries'
 import { useJob } from '@/entities/job/queries'
 import { isJobRunning, isJobSuccessful } from '@/shared/lib/jobs'
+import { resolvePhotoUrl } from '@/shared/lib/media'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { PlacePhoto } from '@/shared/api/types'
@@ -60,7 +61,7 @@ function Lightbox({
 
       {/* Main image */}
       <img
-        src={photo.image_url}
+        src={resolvePhotoUrl(photo, 'full') || photo.image_url}
         alt={photo.attribution_text ?? `Photo ${index + 1}`}
         className="max-h-[80vh] max-w-[90vw] object-contain rounded-[8px]"
       />
@@ -188,7 +189,7 @@ export default function PlacePhotos({
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-[#526072] uppercase tracking-wide">Photos</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">Photos</p>
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -202,7 +203,7 @@ export default function PlacePhotos({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-[#526072] uppercase tracking-wide">
+        <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           Photos{placeName ? ` — ${placeName}` : ''}
         </p>
         <Button
@@ -220,8 +221,8 @@ export default function PlacePhotos({
 
       {photos.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <Image className="w-8 h-8 text-[#526072]/30" />
-          <p className="text-xs text-[#526072]">No photos yet</p>
+          <Image className="w-8 h-8 text-[var(--color-text-muted)]/30" />
+          <p className="text-xs text-[var(--color-text-muted)]">No photos yet</p>
           <Button
             variant="link"
             size="sm"
@@ -241,11 +242,11 @@ export default function PlacePhotos({
               key={photo.id}
               role="listitem"
               onClick={() => setLightboxIndex(i)}
-              className="w-24 h-24 rounded-[8px] overflow-hidden shrink-0 focus:outline-none focus:ring-2 focus:ring-[#2F6F73]"
+              className="h-24 w-24 shrink-0 overflow-hidden rounded-[12px] border border-[var(--color-border-strong)] focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
               aria-label={photo.attribution_text ?? `Photo ${i + 1}`}
             >
               <img
-                src={photo.thumbnail_url ?? photo.image_url}
+                src={resolvePhotoUrl(photo, 'thumb') || photo.thumbnail_url || photo.image_url}
                 alt=""
                 aria-hidden="true"
                 className="w-full h-full object-cover hover:scale-105 transition-transform"

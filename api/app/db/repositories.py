@@ -1,7 +1,7 @@
+import re
 import uuid
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-import re
 from typing import Any
 
 from sqlalchemy import case, func, or_, select, text, update
@@ -23,11 +23,13 @@ from app.db.models import (
     Trip,
     TripDay,
     TripExport,
+    TripMapLayer,
     UserProfile,
 )
 from app.errors import ConflictError, NotFoundError, ValidationApiError
 from app.models.activity_discovery import ActivityDiscoveryDetail, ActivityDiscoveryItem
 from app.models.jobs import JobResponse
+from app.models.map_layers import TripMapLayerCreateRequest, TripMapLayerPatchRequest
 from app.models.offers import (
     LodgingOfferDetails,
     OfferGeoPoint,
@@ -38,6 +40,7 @@ from app.models.offers import (
     TransportSegmentDetail,
 )
 from app.models.places import PlaceCreateRequest, PlacePhotoResponse, PlacePhotoSummary
+from app.services.place_photo_assets import build_place_photo_asset_url
 from app.models.proposals import ProposalActivityResponse, ProposalResponse
 from app.models.trips import (
     ActivityCreateRequest,
@@ -48,7 +51,6 @@ from app.models.trips import (
     TripCreateRequest,
     TripPatchRequest,
 )
-
 
 _ISO_DURATION_RE = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?)?$"
@@ -425,6 +427,139 @@ class DayRepository:
         await db.flush()
         await db.refresh(day)
         return day
+
+
+class TripMapLayerRepository:
+    @staticmethod
+    async def list_trip_map_layers(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        limit: int,
+        offset: int,
+    ) -> tuple[int, list[TripMapLayer]]:
+        await TripRepository.get_trip(db, user_id, trip_id)
+
+        total = int(
+            (
+                await db.execute(
+                    select(func.count(TripMapLayer.id)).where(TripMapLayer.trip_id == trip_id)
+                )
+            ).scalar_one()
+        )
+        rows = await db.execute(
+            select(TripMapLayer)
+            .where(TripMapLayer.trip_id == trip_id)
+            .order_by(TripMapLayer.order_index.asc(), TripMapLayer.created_at.asc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return total, list(rows.scalars().all())
+
+    @staticmethod
+    async def get_trip_map_layer(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        layer_id: uuid.UUID,
+    ) -> TripMapLayer:
+        await TripRepository.get_trip(db, user_id, trip_id)
+
+        row = await db.execute(
+            select(TripMapLayer)
+            .where(TripMapLayer.id == layer_id)
+            .where(TripMapLayer.trip_id == trip_id)
+        )
+        item = row.scalar_one_or_none()
+        if not item:
+            raise NotFoundError("Trip map layer not found")
+        return item
+
+    @staticmethod
+    async def create_trip_map_layer(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        payload: TripMapLayerCreateRequest,
+    ) -> TripMapLayer:
+        await TripRepository.get_trip(db, user_id, trip_id)
+
+        order_index = payload.order_index
+        if order_index is None:
+            max_order = (
+                await db.execute(
+                    select(func.max(TripMapLayer.order_index)).where(
+                        TripMapLayer.trip_id == trip_id
+                    )
+                )
+            ).scalar_one_or_none()
+            order_index = (int(max_order) if max_order is not None else -1) + 1
+
+        item = TripMapLayer(
+            trip_id=trip_id,
+            name=payload.name,
+            source=payload.source.value,
+            renderer=payload.renderer.value,
+            feature_collection_json=payload.feature_collection,
+            style_json=payload.style,
+            metadata_json=payload.metadata,
+            is_visible=payload.is_visible,
+            is_locked=payload.is_locked,
+            order_index=order_index,
+        )
+        db.add(item)
+        await db.flush()
+        await db.refresh(item)
+        return item
+
+    @staticmethod
+    async def patch_trip_map_layer(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        layer_id: uuid.UUID,
+        payload: TripMapLayerPatchRequest,
+    ) -> TripMapLayer:
+        item = await TripMapLayerRepository.get_trip_map_layer(
+            db, user_id=user_id, trip_id=trip_id, layer_id=layer_id
+        )
+        update_data = payload.model_dump(exclude_unset=True)
+
+        for key, value in update_data.items():
+            if key == "feature_collection":
+                item.feature_collection_json = value or {}
+            elif key == "style":
+                item.style_json = value or {}
+            elif key == "metadata":
+                item.metadata_json = value or {}
+            elif key == "source" and value is not None:
+                item.source = value.value
+            elif key == "renderer" and value is not None:
+                item.renderer = value.value
+            else:
+                setattr(item, key, value)
+
+        await db.flush()
+        await db.refresh(item)
+        return item
+
+    @staticmethod
+    async def delete_trip_map_layer(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        layer_id: uuid.UUID,
+    ) -> None:
+        item = await TripMapLayerRepository.get_trip_map_layer(
+            db, user_id=user_id, trip_id=trip_id, layer_id=layer_id
+        )
+        await db.delete(item)
+        await db.flush()
 
 
 class ActivityRepository:
@@ -1545,6 +1680,8 @@ class PlacePhotoRepository:
             source=item.source,
             image_url=item.image_url,
             thumbnail_url=item.thumbnail_url,
+            display_url=build_place_photo_asset_url(item.id, "full"),
+            display_thumbnail_url=build_place_photo_asset_url(item.id, "thumb"),
             license_code=item.license_code,
             license_url=item.license_url,
             attribution_text=item.attribution_text,
@@ -1559,6 +1696,8 @@ class PlacePhotoRepository:
             source_media_ref=item.source_media_ref,
             image_url=item.image_url,
             thumbnail_url=item.thumbnail_url,
+            display_url=build_place_photo_asset_url(item.id, "full"),
+            display_thumbnail_url=build_place_photo_asset_url(item.id, "thumb"),
             width=item.width,
             height=item.height,
             license_code=item.license_code,
@@ -1625,6 +1764,18 @@ class PlacePhotoRepository:
             .order_by(PlacePhoto.rank.asc(), PlacePhoto.created_at.asc(), PlacePhoto.id.asc())
         )
         return list(rows.scalars().all())
+
+    @staticmethod
+    async def get_photo(
+        db: AsyncSession,
+        *,
+        photo_id: uuid.UUID,
+    ) -> PlacePhoto:
+        row = await db.execute(select(PlacePhoto).where(PlacePhoto.id == photo_id))
+        photo = row.scalar_one_or_none()
+        if photo is None:
+            raise NotFoundError("PLACE_PHOTO_NOT_FOUND", "Place photo not found")
+        return photo
 
     @staticmethod
     async def get_photo_summary(
@@ -2573,6 +2724,35 @@ class ExportRepository:
 
 
 class AuditRepository:
+    @staticmethod
+    async def create_entry(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID | None,
+        trip_id: uuid.UUID | None,
+        entity_type: str,
+        entity_id: uuid.UUID | None,
+        action: str,
+        before: dict | None,
+        after: dict | None,
+        correlation_id: str | None = None,
+        request_path: str | None = None,
+    ) -> AuditLog:
+        entry = AuditLog(
+            user_id=user_id,
+            trip_id=trip_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            before_json=before,
+            after_json=after,
+            correlation_id=correlation_id,
+            request_path=request_path,
+        )
+        db.add(entry)
+        await db.flush()
+        return entry
+
     @staticmethod
     async def list_trip_audit(
         db: AsyncSession,

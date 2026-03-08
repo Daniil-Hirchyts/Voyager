@@ -33,6 +33,7 @@ markers = [
   "phase4: phase 4 integration coverage",
   "phase5: phase 5 integration coverage",
   "phase6: phase 6 integration coverage",
+  "phase7: phase 7 integration coverage",
   "integration: integration tests",
 ]
 

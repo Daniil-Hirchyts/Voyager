@@ -4,10 +4,10 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-const { mockNavigate, mockCreateTrip, mockUsePlaceSearch, toastSuccess, toastError, toastInfo } = vi.hoisted(() => ({
+const { mockNavigate, mockCreateTrip, mockUseDestinationAutocomplete, toastSuccess, toastError, toastInfo } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockCreateTrip: vi.fn(),
-  mockUsePlaceSearch: vi.fn(),
+  mockUseDestinationAutocomplete: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('@/entities/trip/api', () => ({
 }))
 
 vi.mock('@/entities/place/queries', () => ({
-  usePlaceSearch: (...args: unknown[]) => mockUsePlaceSearch(...args),
+  useDestinationAutocomplete: (...args: unknown[]) => mockUseDestinationAutocomplete(...args),
 }))
 
 vi.mock('sonner', () => ({
@@ -85,11 +85,11 @@ describe('TripCreatePage', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockCreateTrip.mockReset()
-    mockUsePlaceSearch.mockReset()
+    mockUseDestinationAutocomplete.mockReset()
     toastSuccess.mockReset()
     toastError.mockReset()
     toastInfo.mockReset()
-    mockUsePlaceSearch.mockReturnValue({
+    mockUseDestinationAutocomplete.mockReturnValue({
       data: { items: [] },
       isFetching: false,
     })
@@ -129,14 +129,12 @@ describe('TripCreatePage', () => {
   it('shows destination suggestions and fills the field from a selected place', async () => {
     const user = userEvent.setup()
 
-    mockUsePlaceSearch.mockReturnValue({
+    mockUseDestinationAutocomplete.mockReturnValue({
       data: {
         items: [
           {
             id: 'place-1',
-            name: 'Paris',
-            address_text: 'Paris, France',
-            category: 'city',
+            label: 'Paris, France',
           },
         ],
       },
@@ -147,7 +145,7 @@ describe('TripCreatePage', () => {
 
     await user.type(screen.getByLabelText(/destination/i), 'Par')
 
-    await user.click(await screen.findByRole('button', { name: /paris paris, france/i }))
+    await user.click(await screen.findByRole('button', { name: /^paris, france$/i }))
 
     expect(screen.getByLabelText(/destination/i)).toHaveValue('Paris, France')
   })

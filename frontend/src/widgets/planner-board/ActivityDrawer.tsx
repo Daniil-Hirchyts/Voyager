@@ -15,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { config } from '@/app/config'
 import { useCreatePlace, usePlace, usePlaceSearch } from '@/entities/place/queries'
+import { resolvePhotoUrl } from '@/shared/lib/media'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -204,26 +205,24 @@ export function ActivityDrawer({
     navigate(`/app/trips/${tripId}/map?${params.toString()}`)
   }
 
-  const labelClass = 'block text-xs font-medium text-[#526072] mb-1 uppercase tracking-wider'
+  const labelClass = 'mb-1 block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]'
 
   if (!open) return null
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-[#1D2430]/30" onClick={onClose} aria-hidden />
+      <div className="fixed inset-0 z-40 bg-[rgba(18,33,50,0.24)] backdrop-blur-sm" onClick={onClose} aria-hidden />
 
       <aside
         role="dialog"
         aria-modal
         aria-label={isCreate ? 'Create activity' : 'Edit activity'}
-        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-md flex flex-col shadow-2xl"
-        style={{ background: 'var(--color-surface)' }}
+        className="fixed right-0 top-0 bottom-0 z-50 flex w-full max-w-md flex-col border-l border-white/70 bg-[rgba(255,255,255,0.94)] shadow-[0_32px_80px_-30px_rgba(32,56,83,0.32)] backdrop-blur-xl"
       >
         <div
-          className="flex items-center justify-between px-5 py-4 border-b"
-          style={{ borderColor: 'var(--color-border)' }}
+          className="flex items-center justify-between border-b border-[var(--color-border-strong)] px-5 py-4"
         >
-          <h2 className="font-semibold text-[#1D2430]">
+          <h2 className="font-semibold text-[var(--color-text)]">
             {isCreate ? 'Add Activity' : 'Edit Activity'}
           </h2>
           <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close">
@@ -237,10 +236,10 @@ export function ActivityDrawer({
             <Input
               {...register('title')}
               placeholder="Activity title"
-              className={errors.title ? 'border-[#C56A3D]' : ''}
-              style={{ background: 'var(--color-bg)' }}
+              className={errors.title ? 'border-[var(--color-danger)]' : ''}
+              style={{ background: 'var(--color-bg-soft)' }}
             />
-            {errors.title && <p className="mt-1 text-xs text-[#C56A3D]">{errors.title.message}</p>}
+            {errors.title && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.title.message}</p>}
           </div>
 
           <div>
@@ -249,7 +248,7 @@ export function ActivityDrawer({
               {...register('description')}
               rows={2}
               placeholder="Brief description..."
-              style={{ background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg-soft)' }}
             />
           </div>
 
@@ -259,7 +258,7 @@ export function ActivityDrawer({
               <Input
                 type="time"
                 {...register('start_time')}
-                style={{ background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg-soft)' }}
               />
             </div>
             <div>
@@ -270,7 +269,7 @@ export function ActivityDrawer({
                 min={1}
                 max={1440}
                 placeholder="60"
-                style={{ background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg-soft)' }}
               />
             </div>
           </div>
@@ -284,7 +283,7 @@ export function ActivityDrawer({
                 min={0}
                 step={0.01}
                 placeholder="0.00"
-                style={{ background: 'var(--color-bg)' }}
+                style={{ background: 'var(--color-bg-soft)' }}
               />
             </div>
             <div>
@@ -294,7 +293,7 @@ export function ActivityDrawer({
                 name="estimated_cost_currency"
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger style={{ background: 'var(--color-bg)' }}>
+                    <SelectTrigger style={{ background: 'var(--color-bg-soft)' }}>
                       <SelectValue placeholder="Currency" />
                     </SelectTrigger>
                     <SelectContent>
@@ -313,7 +312,7 @@ export function ActivityDrawer({
             <Input
               {...register('tags')}
               placeholder="food, outdoor, culture"
-              style={{ background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg-soft)' }}
             />
           </div>
 
@@ -323,7 +322,7 @@ export function ActivityDrawer({
               {...register('notes')}
               rows={3}
               placeholder="Personal notes..."
-              style={{ background: 'var(--color-bg)' }}
+              style={{ background: 'var(--color-bg-soft)' }}
             />
           </div>
 
@@ -336,20 +335,20 @@ export function ActivityDrawer({
                   id="is_favorite"
                   checked={field.value}
                   onCheckedChange={field.onChange}
-                  className="data-[state=checked]:bg-[#C56A3D] data-[state=checked]:border-[#C56A3D]"
+                  className="data-[state=checked]:border-[var(--color-primary)] data-[state=checked]:bg-[var(--color-primary)]"
                 />
               )}
             />
-            <label htmlFor="is_favorite" className="text-sm text-[#1D2430] cursor-pointer">
+            <label htmlFor="is_favorite" className="cursor-pointer text-sm text-[var(--color-text)]">
               Mark as favorite
             </label>
           </div>
 
-          <div className="pt-2 border-t space-y-3" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="space-y-3 border-t border-[var(--color-border-strong)] pt-2">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-[#1D2430]">Place</p>
-                <p className="text-xs text-[#526072]">
+                <p className="text-sm font-medium text-[var(--color-text)]">Place</p>
+                <p className="text-xs text-[var(--color-text-muted)]">
                   Search the catalog, create a custom place, or continue in the map workspace.
                 </p>
               </div>
@@ -357,7 +356,7 @@ export function ActivityDrawer({
                 <button
                   type="button"
                   onClick={() => setSelectedPlaceId(null)}
-                  className="inline-flex items-center gap-1 text-xs text-[#C56A3D] hover:underline"
+                  className="inline-flex items-center gap-1 text-xs text-[var(--color-danger)] hover:underline"
                 >
                   <Trash2 className="w-3 h-3" />
                   Clear
@@ -367,24 +366,23 @@ export function ActivityDrawer({
 
             {selectedPlace && (
               <div
-                className="rounded-[14px] border overflow-hidden"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                className="overflow-hidden rounded-[16px] border border-[var(--color-border-strong)] bg-white/78"
               >
-                {selectedPlace.primary_photo?.thumbnail_url || selectedPlace.primary_photo?.image_url ? (
+                {resolvePhotoUrl(selectedPlace.primary_photo, 'thumb') ? (
                   <img
-                    src={selectedPlace.primary_photo?.thumbnail_url || selectedPlace.primary_photo?.image_url || ''}
+                    src={resolvePhotoUrl(selectedPlace.primary_photo, 'thumb') || ''}
                     alt={selectedPlace.name}
                     className="w-full h-28 object-cover"
                   />
                 ) : null}
                 <div className="p-3">
-                  <div className="flex items-center gap-1.5 text-[#2F6F73] text-xs font-medium mb-1">
+                  <div className="mb-1 flex items-center gap-1.5 text-xs font-medium text-[var(--color-primary-foreground)]">
                     <MapPin className="w-3 h-3" />
                     Selected place
                   </div>
-                  <p className="text-sm font-medium text-[#1D2430]">{selectedPlace.name}</p>
+                  <p className="text-sm font-medium text-[var(--color-text)]">{selectedPlace.name}</p>
                   {selectedPlace.address_text && (
-                    <p className="text-xs text-[#526072] mt-1">{selectedPlace.address_text}</p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">{selectedPlace.address_text}</p>
                   )}
                 </div>
               </div>
@@ -393,35 +391,34 @@ export function ActivityDrawer({
             <div>
               <Label className={labelClass}>Search Places</Label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#526072]" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
                 <Input
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Louvre Museum, brunch, viewpoint..."
                   className="pl-9"
-                  style={{ background: 'var(--color-bg)' }}
+                  style={{ background: 'var(--color-bg-soft)' }}
                 />
               </div>
             </div>
 
             {searchQuery.trim().length >= 2 && (
               <div
-                className="max-h-44 overflow-y-auto rounded-[14px] border"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                className="max-h-44 overflow-y-auto rounded-[16px] border border-[var(--color-border-strong)] bg-white/78"
               >
                 {isSearchingPlaces ? (
-                  <div className="p-3 text-sm text-[#526072]">Searching places…</div>
+                  <div className="p-3 text-sm text-[var(--color-text-muted)]">Searching places…</div>
                 ) : placeResults?.items.length ? (
-                  <div className="divide-y" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="divide-y divide-[var(--color-border-strong)]">
                     {placeResults.items.map((place) => (
                       <button
                         key={place.id}
                         type="button"
                         onClick={() => setSelectedPlaceId(place.id)}
-                        className="w-full text-left p-3 hover:bg-[#F4EBDD] transition-colors"
+                        className="w-full p-3 text-left transition-colors hover:bg-[rgba(114,174,230,0.08)]"
                       >
-                        <p className="text-sm font-medium text-[#1D2430]">{place.name}</p>
-                        <p className="text-xs text-[#526072]">
+                        <p className="text-sm font-medium text-[var(--color-text)]">{place.name}</p>
+                        <p className="text-xs text-[var(--color-text-muted)]">
                           {place.category || 'place'}
                           {place.address_text ? ` · ${place.address_text}` : ''}
                         </p>
@@ -429,7 +426,7 @@ export function ActivityDrawer({
                     ))}
                   </div>
                 ) : (
-                  <div className="p-3 text-sm text-[#526072]">
+                  <div className="p-3 text-sm text-[var(--color-text-muted)]">
                     No places found. Try a broader query or create a custom place.
                   </div>
                 )}
@@ -443,7 +440,7 @@ export function ActivityDrawer({
                 size="sm"
                 onClick={() => setShowCreatePlace((value) => !value)}
               >
-                <Plus className="w-4 h-4 text-[#2F6F73]" />
+                <Plus className="w-4 h-4 text-[var(--color-primary-foreground)]" />
                 {showCreatePlace ? 'Hide Custom Place Form' : 'Create Custom Place'}
               </Button>
               {config.features.mapUI && activity && (
@@ -453,7 +450,7 @@ export function ActivityDrawer({
                   size="sm"
                   onClick={openInMap}
                 >
-                  <ExternalLink className="w-4 h-4 text-[#2F6F73]" />
+                  <ExternalLink className="w-4 h-4 text-[var(--color-primary-foreground)]" />
                   Browse on Map
                 </Button>
               )}
@@ -461,15 +458,14 @@ export function ActivityDrawer({
 
             {showCreatePlace && (
               <div
-                className="rounded-[14px] border p-3 space-y-3"
-                style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
+                className="space-y-3 rounded-[16px] border border-[var(--color-border-strong)] bg-white/78 p-3"
               >
                 <div>
                   <Label className={labelClass}>Place Name *</Label>
                   <Input
                     {...placeForm.register('name')}
-                    className={placeForm.formState.errors.name ? 'border-[#C56A3D]' : ''}
-                    style={{ background: 'var(--color-surface)' }}
+                    className={placeForm.formState.errors.name ? 'border-[var(--color-danger)]' : ''}
+                    style={{ background: 'var(--color-bg-soft)' }}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -477,14 +473,14 @@ export function ActivityDrawer({
                     <Label className={labelClass}>Category</Label>
                     <Input
                       {...placeForm.register('category')}
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-bg-soft)' }}
                     />
                   </div>
                   <div>
                     <Label className={labelClass}>Address</Label>
                     <Input
                       {...placeForm.register('address_text')}
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-bg-soft)' }}
                     />
                   </div>
                 </div>
@@ -495,7 +491,7 @@ export function ActivityDrawer({
                       type="number"
                       step="any"
                       {...placeForm.register('lat', { valueAsNumber: true })}
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-bg-soft)' }}
                     />
                   </div>
                   <div>
@@ -504,7 +500,7 @@ export function ActivityDrawer({
                       type="number"
                       step="any"
                       {...placeForm.register('lon', { valueAsNumber: true })}
-                      style={{ background: 'var(--color-surface)' }}
+                      style={{ background: 'var(--color-bg-soft)' }}
                     />
                   </div>
                 </div>
@@ -521,7 +517,7 @@ export function ActivityDrawer({
           </div>
         </form>
 
-        <div className="px-5 py-4 border-t flex gap-3" style={{ borderColor: 'var(--color-border)' }}>
+        <div className="flex gap-3 border-t border-[var(--color-border-strong)] px-5 py-4">
           <Button type="button" variant="outline" onClick={onClose} className="flex-1">
             Cancel
           </Button>

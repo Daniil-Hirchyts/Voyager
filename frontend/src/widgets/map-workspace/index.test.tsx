@@ -1,28 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { screen } from '@testing-library/react'
-import { forwardRef, type ReactNode } from 'react'
 import MapWorkspace from './index'
 import { renderWithQueryClient } from '@/test/utils'
 import { server } from '@/test/msw/server'
 import { buildPlace, listResponse } from '@/test/fixtures/api'
-
-vi.mock('react-map-gl/maplibre', () => ({
-  default: forwardRef<HTMLDivElement, { children?: ReactNode }>(function MapStub(
-    { children },
-    ref,
-  ) {
-    return (
-      <div ref={ref} data-testid="map-stub">
-        {children}
-      </div>
-    )
-  }),
-  Marker: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  NavigationControl: () => <div />,
-}))
 
 describe('MapWorkspace', () => {
   it('restores planner context from the deep link and assigns the selected place back to the planner', async () => {

@@ -1,8 +1,10 @@
 import type {
   Activity,
+  ActivityDiscoveryDetail,
+  ActivityDiscoveryItem,
+  ActivityRecommendationItem,
   AuditLogEntry,
   Day,
-  EventResponse,
   ExportResponse,
   Job,
   Offer,
@@ -14,6 +16,7 @@ import type {
   ProposalActivityResponse,
   ProposalResponse,
   Trip,
+  TripMapLayer,
 } from '@/shared/api/types'
 
 const NOW = '2026-03-06T09:00:00.000Z'
@@ -150,6 +153,49 @@ export function buildPlace(overrides: Partial<Place> = {}): Place {
       attribution_text: null,
     },
     distance_m: 120,
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildTripMapLayer(overrides: Partial<TripMapLayer> = {}): TripMapLayer {
+  return {
+    id: 'layer-1',
+    trip_id: 'trip-1',
+    name: 'Primary walking corridor',
+    source: 'manual_draw',
+    renderer: 'native',
+    feature_collection: {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: {
+            source: 'manual_draw',
+            mode: 'linestring',
+          },
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [2.3376, 48.8606],
+              [2.3333, 48.86],
+            ],
+          },
+        },
+      ],
+    },
+    style: {
+      strokeColor: '#2F6F73',
+      strokeWeight: 4,
+      strokeOpacity: 0.9,
+    },
+    metadata: {
+      distance_m: 420,
+    },
+    is_visible: true,
+    is_locked: false,
+    order_index: 0,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
@@ -306,32 +352,92 @@ export function listResponse<T>(items: T[]) {
   }
 }
 
-export function buildEvent(overrides: Partial<EventResponse> = {}): EventResponse {
+export function buildActivityDiscoveryItem(
+  overrides: Partial<ActivityDiscoveryItem> = {},
+): ActivityDiscoveryItem {
   return {
-    id: 'event-1',
+    id: 'activity-discovery-1',
+    snapshot_id: null,
     trip_id: 'trip-1',
     trip_day_id: null,
-    provider: 'ticketmaster',
-    provider_event_ref: 'tm-ref-1',
-    title: 'Jazz at the Philharmonie',
-    summary: 'A night of classic jazz in Paris.',
-    start_at: '2026-04-10T20:00:00+02:00',
-    end_at: '2026-04-10T22:30:00+02:00',
-    timezone: 'Europe/Paris',
-    venue_name: 'Philharmonie de Paris',
-    venue_address: '221 Avenue Jean Jaurès, 75019 Paris',
     place_id: null,
-    segment: 'Music',
-    genre: 'Jazz',
-    min_price: '25.00',
-    max_price: '95.00',
-    currency: 'EUR',
-    image_url: null,
-    deep_link: 'https://provider.example.com/event-1',
-    sales_status: 'onsale',
-    expires_at: null,
+    entity_type: 'attraction',
+    provider: 'tripadvisor',
+    provider_ref: 'tripadvisor-ref-1',
+    title: 'Louvre Museum',
+    summary: 'A shortlist-worthy art and history anchor in central Paris.',
+    rating: 4.8,
+    review_count: 18342,
+    price_label: '$$',
+    image_url: 'https://images.example.com/louvre.jpg',
+    detail_url: 'https://tripadvisor.com/louvre',
+    address_text: 'Rue de Rivoli, Paris, France',
+    lat: 48.8606,
+    lon: 2.3376,
+    tags: ['museum', 'culture'],
+    status_text: 'Open now',
+    is_attachable: true,
     created_at: NOW,
     updated_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildActivityDiscoveryDetail(
+  overrides: Partial<ActivityDiscoveryDetail> = {},
+): ActivityDiscoveryDetail {
+  return {
+    ...buildActivityDiscoveryItem(),
+    photos: [
+      {
+        image_url: 'https://images.example.com/louvre-detail.jpg',
+        thumbnail_url: 'https://images.example.com/louvre-detail-thumb.jpg',
+        width: 1200,
+        height: 800,
+        caption: 'Glass pyramid at dusk',
+      },
+    ],
+    reviews: [
+      {
+        review_id: 'review-1',
+        title: 'Excellent curation',
+        text: 'Give yourself a full morning if you want to cover the highlights.',
+        rating: 5,
+        published_at: '2026-02-14',
+        reviewer_name: 'Alex',
+        reviewer_username: 'alex-travels',
+        review_url: 'https://tripadvisor.com/review-1',
+      },
+    ],
+    hours: [
+      {
+        day: 'Monday',
+        times: [{ open: '09:00', close: '18:00' }],
+      },
+    ],
+    booking_links: [
+      {
+        label: 'Tickets',
+        url: 'https://tripadvisor.com/louvre/tickets',
+      },
+    ],
+    provider_payload: { source: 'fixture' },
+    ...overrides,
+  }
+}
+
+export function buildActivityRecommendationItem(
+  overrides: Partial<ActivityRecommendationItem> = {},
+): ActivityRecommendationItem {
+  return {
+    snapshot_id: 'snapshot-1',
+    trip_day_id: 'day-1',
+    score: 0.91,
+    rationale: 'High rating, central location, and a strong cultural match for the day.',
+    item: buildActivityDiscoveryItem({
+      snapshot_id: 'snapshot-1',
+      id: 'snapshot-1',
+    }),
     ...overrides,
   }
 }

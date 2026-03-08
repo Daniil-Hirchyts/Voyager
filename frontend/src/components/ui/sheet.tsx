@@ -15,7 +15,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      'fixed inset-0 z-50 bg-[#1D2430]/30 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'fixed inset-0 z-50 bg-[rgba(18,33,50,0.24)] backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
       className,
     )}
     {...props}
@@ -25,16 +25,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const sheetVariants = cva(
-  'fixed z-50 gap-4 bg-[var(--color-surface)] shadow-2xl transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
+  'fixed z-50 gap-4 bg-[rgba(255,255,255,0.92)] shadow-[0_34px_90px_-42px_rgba(32,56,83,0.28)] backdrop-blur-xl transition ease-in-out data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
   {
     variants: {
       side: {
-        top: 'inset-x-0 top-0 border-b border-[var(--color-border)] data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
+        top: 'inset-x-0 top-0 border-b border-[var(--color-border-strong)] data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top',
         bottom:
-          'inset-x-0 bottom-0 border-t border-[var(--color-border)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
-        left: 'inset-y-0 left-0 h-full w-3/4 border-r border-[var(--color-border)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
+          'inset-x-0 bottom-0 border-t border-[var(--color-border-strong)] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+        left: 'inset-y-0 left-0 h-full w-3/4 border-r border-[var(--color-border-strong)] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm',
         right:
-          'inset-y-0 right-0 h-full w-3/4 border-l border-[var(--color-border)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md',
+          'inset-y-0 right-0 h-full w-3/4 border-l border-[var(--color-border-strong)] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md',
       },
     },
     defaultVariants: {
@@ -55,7 +55,7 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content ref={ref} className={cn(sheetVariants({ side }), className)} {...props}>
       {children}
-      <SheetPrimitive.Close className="absolute right-4 top-4 rounded-[8px] p-1.5 text-[#526072] opacity-70 transition-opacity hover:opacity-100 hover:bg-[#F4EBDD] focus:outline-none">
+      <SheetPrimitive.Close className="absolute right-5 top-5 rounded-full border border-[var(--color-border-strong)] bg-white/78 p-2 text-[var(--color-text-muted)] opacity-80 transition-colors hover:bg-white hover:text-[var(--color-text)] focus:outline-none">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
@@ -66,7 +66,7 @@ SheetContent.displayName = SheetPrimitive.Content.displayName
 
 const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex flex-col space-y-2 px-5 py-4 border-b border-[var(--color-border)]', className)}
+    className={cn('flex flex-col space-y-2 border-b border-[var(--color-border-strong)] px-6 py-5', className)}
     {...props}
   />
 )
@@ -74,7 +74,7 @@ SheetHeader.displayName = 'SheetHeader'
 
 const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn('flex items-center gap-3 px-5 py-4 border-t border-[var(--color-border)]', className)}
+    className={cn('flex items-center gap-3 border-t border-[var(--color-border-strong)] px-6 py-5', className)}
     {...props}
   />
 )
@@ -86,7 +86,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn('font-semibold text-[#1D2430]', className)}
+    className={cn('font-display text-[1.35rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]', className)}
     {...props}
   />
 ))
@@ -98,7 +98,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn('text-sm text-[#526072]', className)}
+    className={cn('text-sm leading-6 text-[var(--color-text-muted)]', className)}
     {...props}
   />
 ))

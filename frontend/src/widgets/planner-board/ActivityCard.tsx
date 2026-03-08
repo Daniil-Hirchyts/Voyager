@@ -15,53 +15,43 @@ import {
   Trash2,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
+import { resolvePhotoUrl } from '@/shared/lib/media'
 import { Button } from '@/components/ui/button'
 import { formatMoney } from '@/shared/lib/format'
 import type { PlannerActivity } from '@/shared/api/types'
 
-interface Props {
+interface BaseProps {
   activity: PlannerActivity
   onEdit: (activity: PlannerActivity) => void
   onDelete: (activityId: string) => void
   onToggleFavorite: (activity: PlannerActivity) => void
   isDragging?: boolean
+  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>
 }
 
-export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isDragging }: Props) {
+export function ActivityCardView({
+  activity,
+  onEdit,
+  onDelete,
+  onToggleFavorite,
+  isDragging,
+  dragHandleProps,
+}: BaseProps) {
   const [expanded, setExpanded] = useState(false)
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging: isSortableDragging,
-  } = useSortable({ id: activity.id })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isSortableDragging ? 0.42 : 1,
-  }
-
   const sourceLabel = activity.source === 'manual' ? 'Manual' : 'Generated'
-  const photo =
-    activity.place?.primary_photo?.thumbnail_url || activity.place?.primary_photo?.image_url || null
+  const photo = resolvePhotoUrl(activity.place?.primary_photo, 'thumb')
 
   return (
     <div
-      ref={setNodeRef}
-      style={style}
       className={cn(
         'group overflow-hidden rounded-[24px] border bg-[var(--color-surface-elevated)] transition-all',
-        isSortableDragging && 'shadow-[0_18px_48px_rgba(13,20,28,0.2)] ring-2 ring-[var(--color-primary)]/25',
-        isDragging && 'rotate-[1.4deg]',
+        isDragging && 'shadow-[0_18px_48px_rgba(13,20,28,0.2)] ring-2 ring-[var(--color-primary)]/25 rotate-[1.4deg]',
       )}
       aria-label={`Activity: ${activity.title}`}
     >
       <div className="relative">
         <div
-          className="h-32 w-full bg-[linear-gradient(135deg,rgba(47,111,115,0.18),rgba(197,106,61,0.2))]"
+          className="h-32 w-full bg-[linear-gradient(135deg,rgba(114,174,230,0.18),rgba(182,214,242,0.22))]"
           style={
             photo
               ? {
@@ -79,14 +69,14 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
             {sourceLabel}
           </div>
 
-          <div className="flex items-center gap-1 rounded-full bg-[#0f1821]/44 p-1 text-white backdrop-blur-sm">
+          <div className="flex items-center gap-1 rounded-full bg-[rgba(26,22,21,0.44)] p-1 text-white backdrop-blur-sm">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => onToggleFavorite(activity)}
               className={cn(
                 'h-8 w-8 rounded-full text-white hover:bg-white/12',
-                activity.is_favorite && 'text-[#ffca73]',
+                activity.is_favorite && 'text-[var(--color-warning)]',
               )}
               aria-label={activity.is_favorite ? 'Remove from favorites' : 'Add to favorites'}
             >
@@ -114,8 +104,8 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
         </div>
 
         <button
-          {...attributes}
-          {...listeners}
+          type="button"
+          {...dragHandleProps}
           className="absolute bottom-3 left-3 inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/50 bg-white/90 text-[var(--color-text)] shadow-sm transition-colors hover:bg-white"
           aria-label="Drag to reorder"
         >
@@ -137,14 +127,14 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
 
         <div className="flex flex-wrap gap-2">
           {activity.start_time ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(47,111,115,0.08)] px-3 py-1 text-xs text-[var(--color-primary)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(114,174,230,0.08)] px-3 py-1 text-xs text-[var(--color-primary)]">
               <Clock3 className="h-3.5 w-3.5" />
               {activity.start_time}
               {activity.duration_min ? ` · ${activity.duration_min}m` : ''}
             </span>
           ) : null}
           {activity.place?.name ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(197,106,61,0.08)] px-3 py-1 text-xs text-[var(--color-accent)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[rgba(182,214,242,0.08)] px-3 py-1 text-xs text-[var(--color-accent)]">
               <MapPin className="h-3.5 w-3.5" />
               {activity.place.name}
             </span>
@@ -170,7 +160,7 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
           </div>
         ) : null}
 
-        {(activity.notes || activity.description || activity.tags.length > 4) ? (
+        {activity.notes || activity.description || activity.tags.length > 4 ? (
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
@@ -199,6 +189,53 @@ export function ActivityCard({ activity, onEdit, onDelete, onToggleFavorite, isD
           </div>
         ) : null}
       </div>
+    </div>
+  )
+}
+
+interface SortableProps extends Omit<BaseProps, 'dragHandleProps'> {}
+
+export function ActivityCard({
+  activity,
+  onEdit,
+  onDelete,
+  onToggleFavorite,
+  isDragging,
+}: SortableProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: activity.id,
+    data: { type: 'activity', dayId: activity.trip_day_id },
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isSortableDragging ? 0.42 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        isSortableDragging && 'shadow-[0_18px_48px_rgba(13,20,28,0.2)] ring-2 ring-[var(--color-primary)]/25',
+      )}
+    >
+      <ActivityCardView
+        activity={activity}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleFavorite={onToggleFavorite}
+        isDragging={isDragging}
+        dragHandleProps={{ ...attributes, ...listeners }}
+      />
     </div>
   )
 }

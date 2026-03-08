@@ -31,11 +31,14 @@ class Settings(BaseSettings):
     rate_limit_places_geo_per_min: int = Field(
         default=60, alias="VOYAGER_RATE_LIMIT_PLACES_GEO_PER_MIN"
     )
+    rate_limit_places_autocomplete_per_min: int = Field(
+        default=60, alias="VOYAGER_RATE_LIMIT_PLACES_AUTOCOMPLETE_PER_MIN"
+    )
     rate_limit_places_dedup_per_hour: int = Field(
         default=6, alias="VOYAGER_RATE_LIMIT_PLACES_DEDUP_PER_HOUR"
     )
     rate_limit_activities_discover_per_hour: int = Field(
-        default=20,
+        default=240,
         validation_alias=AliasChoices(
             "VOYAGER_RATE_LIMIT_ACTIVITIES_DISCOVER_PER_HOUR",
             "VOYAGER_RATE_LIMIT_EVENTS_SUBMIT_PER_HOUR",
@@ -145,6 +148,22 @@ class Settings(BaseSettings):
     media_user_agent: str = Field(
         default="Voyager/0.1 (+https://localhost)",
         alias="VOYAGER_MEDIA_USER_AGENT",
+    )
+    places_autocomplete_base_url: str = Field(
+        default="https://photon.komoot.io/api",
+        alias="VOYAGER_PLACES_AUTOCOMPLETE_BASE_URL",
+    )
+    places_autocomplete_timeout_sec: int = Field(
+        default=10,
+        alias="VOYAGER_PLACES_AUTOCOMPLETE_TIMEOUT_SEC",
+    )
+    places_autocomplete_lang: str = Field(
+        default="en",
+        alias="VOYAGER_PLACES_AUTOCOMPLETE_LANG",
+    )
+    media_cache_dir: str = Field(
+        default="/var/lib/voyager/exports/media-cache",
+        alias="VOYAGER_MEDIA_CACHE_DIR",
     )
 
     def transport_provider_order(self) -> list[str]:

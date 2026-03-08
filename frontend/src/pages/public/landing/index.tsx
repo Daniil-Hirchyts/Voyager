@@ -1,107 +1,183 @@
 import { useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
-import { ArrowRight, Compass, Map, Zap } from 'lucide-react'
-import { config } from '@/app/config'
+import { ArrowRight, Compass, Map, Zap, Calendar, Sparkles } from 'lucide-react'
+import {
+  PUBLIC_CLOUD_COMPACT_SRC,
+  PUBLIC_CLOUD_PRIMARY_SRC,
+  PUBLIC_CLOUD_SECONDARY_SRC,
+  PUBLIC_CLOUD_TERTIARY_SRC,
+} from '@/shared/lib/public-assets'
+import { MarketingImagePlaceholder } from '@/shared/layouts/marketing-image-placeholder'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import gsap from 'gsap'
+import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 export default function LandingPage() {
   const auth = useAuth()
-  const heroRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!config.features.landingMotion) return
+    if (!document.getElementById('premium-font')) {
+      const link = document.createElement('link')
+      link.id = 'premium-font'
+      link.rel = 'stylesheet'
+      link.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap'
+      document.head.appendChild(link)
+    }
 
-    let ctx: any
-    let isCancelled = false
-
-    Promise.all([
-      import('gsap'),
-      import('gsap/ScrollTrigger')
-    ]).then(([{ gsap }, { ScrollTrigger }]) => {
-      if (isCancelled) return
-
-      gsap.registerPlugin(ScrollTrigger)
-
-      ctx = gsap.context(() => {
-        gsap.from('.hero-headline', {
-          y: 60,
-          opacity: 0,
-          duration: 1.2,
-          ease: 'power3.out',
-          delay: 0.3,
-        })
-        gsap.from('.hero-sub', {
-          y: 30,
-          opacity: 0,
-          duration: 1,
-          ease: 'power3.out',
-          delay: 0.6,
-        })
-        gsap.from('.hero-cta', {
-          y: 20,
-          opacity: 0,
-          duration: 0.8,
-          ease: 'power3.out',
-          delay: 0.9,
+    gsap.registerPlugin(ScrollTrigger)
+    
+    let ctx = gsap.context(() => {
+      // 1. Clouds Parallax & Floating
+      gsap.utils.toArray('.parallax-cloud').forEach((cloud: any, i) => {
+        // Continuous organic floating
+        gsap.to(cloud, {
+          y: () => (i % 2 === 0 ? -40 : 40),
+          x: () => (i % 3 === 0 ? 30 : -30),
+          rotation: () => (i % 2 === 0 ? 3 : -3),
+          duration: 20 + i * 5,
+          yoyo: true,
+          repeat: -1,
+          ease: 'sine.inOut'
         })
 
-        gsap.from('.feature-card', {
+        // Scroll Parallax (Clouds move up/down dynamically as you scroll)
+        gsap.to(cloud, {
+          yPercent: i % 2 === 0 ? 60 : -40,
+          ease: 'none',
           scrollTrigger: {
-            trigger: '.features-section',
-            start: 'top 80%',
+            trigger: containerRef.current,
+            start: 'top top',
+            end: 'bottom bottom',
+            scrub: 1,
           },
+        })
+      })
+
+      // 2. Hero Text Reveal
+      gsap.from('.hero-word', {
+        y: 80,
+        opacity: 0,
+        rotation: 2,
+        duration: 1.4,
+        stagger: 0.1,
+        ease: 'power3.out',
+        delay: 0.2,
+      })
+
+      gsap.from('.hero-fade-in', {
+        y: 30,
+        opacity: 0,
+        duration: 1.5,
+        ease: 'power3.out',
+        delay: 0.6,
+      })
+
+      // 3. Dashboard Image Zoom Parallax
+      gsap.fromTo(
+        '.dashboard-mockup',
+        { scale: 0.92, opacity: 0, y: 80 },
+        {
+          scale: 1,
+          opacity: 1,
+          y: 0,
+          duration: 1.5,
+          ease: 'power3.out',
+          scrollTrigger: {
+            trigger: '.dashboard-trigger',
+            start: 'top 95%',
+            end: 'top 40%',
+            scrub: 2,
+          },
+        }
+      )
+
+      // 4. Section Fade ins (Faster)
+      gsap.utils.toArray('.fade-section').forEach((section: any) => {
+        gsap.from(section, {
+          opacity: 0,
+          y: 40,
+          duration: 0.8,
+          ease: 'power2.out',
+          scrollTrigger: {
+            trigger: section,
+            start: 'top 85%',
+            toggleActions: "play none none reverse"
+          }
+        })
+      })
+
+      // 5. Smooth Asymmetric Bento Scroll Reveal
+      const bentoCards = gsap.utils.toArray('.bento-card')
+      bentoCards.forEach((card: any, i) => {
+        gsap.from(card, {
           y: 40,
           opacity: 0,
-          duration: 0.8,
-          stagger: 0.15,
+          duration: 0.7,
+          delay: i * 0.1,
           ease: 'power2.out',
+          scrollTrigger: {
+            trigger: '.bento-trigger-container',
+            start: 'top 75%',
+            toggleActions: "play none none none"
+          },
         })
-      }, heroRef)
-    })
+      })
 
-    return () => {
-      isCancelled = true
-      if (ctx) ctx.revert()
-    }
+    }, containerRef)
+
+    return () => ctx.revert()
   }, [])
 
   return (
-    <div ref={heroRef} className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.72),transparent_34%),linear-gradient(180deg,#F3E9D8_0%,#EDE0CE_100%)] text-[#18212B]">
-      {/* Navigation */}
+    <div 
+      ref={containerRef} 
+      className="min-h-screen text-[#1A1615] overflow-x-hidden relative selection:bg-[#72AEE6] selection:text-white"
+      style={{ fontFamily: '"Outfit", sans-serif' }}
+    >
+      <div className="fixed inset-0 -z-20 w-full h-full bg-[#E4F0FB]">
+        <div className="absolute inset-0 bg-gradient-to-b from-[#B6D6F2]/40 via-[#E4F0FB] to-[#F1F7FD] opacity-90" />
+        <div className="absolute top-[-10%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.9)_0%,transparent_70%)] blur-[80px]" />
+        <div className="absolute top-[20%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-[#9CC1E7] blur-[150px] opacity-40 mix-blend-multiply" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[70vw] h-[70vw] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,1)_0%,transparent_60%)] blur-[100px]" />
+        <div className="absolute top-[60%] right-[10%] w-[45vw] h-[45vw] rounded-full bg-[#72AEE6] blur-[160px] opacity-30 mix-blend-multiply" />
+      </div>
+
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+        <div className="parallax-cloud absolute top-[4%] -right-[9%] w-[760px] md:w-[1120px] opacity-58 mix-blend-multiply">
+          <img src={PUBLIC_CLOUD_PRIMARY_SRC} className="w-full h-full object-cover" style={{ WebkitMaskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)', maskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)' }} alt="cloud" />
+        </div>
+        <div className="parallax-cloud absolute top-[17%] -left-[18%] w-[860px] md:w-[1280px] opacity-48 mix-blend-multiply">
+           <img src={PUBLIC_CLOUD_SECONDARY_SRC} className="w-full h-full object-cover" style={{ WebkitMaskImage: 'radial-gradient(ellipse closest-side, black 20%, transparent 100%)', maskImage: 'radial-gradient(ellipse closest-side, black 20%, transparent 100%)' }} alt="cloud" />
+        </div>
+        <div className="parallax-cloud absolute top-[35%] right-[6%] w-[440px] md:w-[680px] opacity-64 mix-blend-multiply">
+          <img src={PUBLIC_CLOUD_COMPACT_SRC} className="w-full h-full object-cover" style={{ WebkitMaskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)', maskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)' }} alt="cloud" />
+        </div>
+        <div className="parallax-cloud absolute top-[56%] -left-[10%] w-[680px] md:w-[1040px] opacity-46 mix-blend-multiply">
+          <img src={PUBLIC_CLOUD_TERTIARY_SRC} className="w-full h-full object-cover" style={{ WebkitMaskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)', maskImage: 'radial-gradient(closest-side, black 20%, transparent 100%)' }} alt="cloud" />
+        </div>
+      </div>
+
       <div className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4 w-full">
-        <nav
-          className="flex w-full max-w-5xl items-center justify-between px-6 py-3 rounded-full border border-white/60 bg-white/40 shadow-sm backdrop-blur-xl"
-        >
-          <Link to="/" className="flex items-center gap-2 font-display text-2xl font-medium text-[#20454A] tracking-tight">
-            <VoyagerLogo className="size-6 text-[#214F52]" />
+        <nav className="flex w-full max-w-5xl items-center justify-between px-6 py-3 rounded-full bg-white/50 backdrop-blur-2xl border border-white/60 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_10px_30px_-10px_rgba(0,0,0,0.08)] transition-all">
+          <Link to="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight text-[#1A1615]">
+            <VoyagerLogo className="size-6 text-[#1A1615]" />
             Voyager
           </Link>
-          <div className="flex items-center gap-6">
-            <Link
-              to="/product"
-              className="hidden md:block text-sm font-medium text-[#5D6A7B] hover:text-[#18212B] transition-colors"
-            >
+          <div className="flex items-center gap-8">
+            <Link to="/product" className="hidden md:block text-sm font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
               Product
             </Link>
-            <Link
-              to="/how-it-works"
-              className="hidden md:block text-sm font-medium text-[#5D6A7B] hover:text-[#18212B] transition-colors"
-            >
+            <Link to="/how-it-works" className="hidden md:block text-sm font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
               How It Works
             </Link>
             {auth.isAuthenticated ? (
-              <Link
-                to="/app/trips"
-                className="flex items-center gap-2 px-5 py-2 bg-[#214F52] text-white text-sm font-medium rounded-full hover:bg-[#173E43] transition-all hover:shadow-md"
-              >
+              <Link to="/app/trips" className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1615] text-white text-sm font-medium rounded-full hover:scale-95 transition-transform duration-300 shadow-[0_8px_16px_rgba(26,22,21,0.2)]">
                 Open Planner <ArrowRight className="w-4 h-4" />
               </Link>
             ) : (
-              <Link
-                to="/signin"
-                className="flex items-center gap-2 px-5 py-2 bg-[#214F52] text-white text-sm font-medium rounded-full hover:bg-[#173E43] transition-all hover:shadow-md"
-              >
+              <Link to="/signin" className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1615] text-white text-sm font-medium rounded-full hover:scale-95 transition-transform duration-300 shadow-[0_8px_16px_rgba(26,22,21,0.2)]">
                 Sign In <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -109,199 +185,149 @@ export default function LandingPage() {
         </nav>
       </div>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-28 pb-16 px-4">
-        {/* Decorative contour lines */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{
-            backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 48px, #214F52 48px, #214F52 49px)`,
-          }}
-        />
+      <section className="hero-section relative z-10 min-h-[100dvh] flex flex-col items-center justify-start pt-[20vh] px-4">
+        <div className="max-w-6xl w-full text-center flex flex-col items-center">
+          <div className="hero-fade-in inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-xl border border-white/80 text-[#1A1615] text-xs font-bold uppercase tracking-[0.2em] mb-8 shadow-[0_4px_12px_rgba(0,0,0,0.03)]">
+            <Sparkles className="w-4 h-4" />
+            <span>Intelligent Travel</span>
+          </div>
 
-        <div className="relative z-10 w-full max-w-5xl mx-auto rounded-[2.5rem] border border-white/60 bg-white/60 backdrop-blur-2xl shadow-[0_12px_48px_-12px_rgba(33,79,82,0.15)] ring-1 ring-black/5 p-8 md:p-16 lg:p-24 text-center">
-          <p className="hero-sub text-xs tracking-[0.3em] uppercase text-[#7A6A58] mb-6 font-semibold">
-            AI-Powered Travel Planning
-          </p>
-          <h1
-            className="hero-headline font-display leading-[0.95] mb-8"
-            style={{ fontSize: 'clamp(3rem, 8vw, 6rem)', color: '#20454A' }}
-          >
-            Plan Journeys
-            <br />
-            <span style={{ color: '#214F52', opacity: 0.8 }}>Worth Remembering</span>
+          <h1 className="leading-[1.1] tracking-tighter mb-8 font-semibold text-[#1A1615]" style={{ fontSize: 'clamp(4rem, 10vw, 8rem)' }}>
+            <div className="overflow-hidden pb-4 -mb-4">
+              <div className="hero-word inline-block">Plan</div>{' '}
+              <div className="hero-word inline-block">Journeys</div>
+            </div>
+            <div className="overflow-hidden pb-4 -mb-4 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.1)] [text-shadow:_0_1px_3px_rgb(0_0_0_/_15%)]">
+              <div className="hero-word inline-block">Worth</div>{' '}
+              <div className="hero-word inline-block">Remembering.</div>
+            </div>
           </h1>
-          <p className="hero-sub text-lg text-[#5D6A7B] max-w-xl mx-auto mb-10 leading-relaxed">
-            Voyager builds rich, editable itineraries from your preferences — then lets you shape
-            every day exactly as you want in a beautiful workspace.
+
+          <p className="hero-fade-in text-xl md:text-2xl text-[#1A1615]/80 max-w-2xl font-medium leading-relaxed mb-12 drop-shadow-sm">
+            Voyager builds rich, editable itineraries from your preferences — then lets you shape every day exactly as you want in a beautiful workspace.
           </p>
-          <div className="hero-cta flex flex-wrap items-center gap-4 justify-center">
-            <Link
-              to="/signin"
-              className="inline-flex items-center gap-2.5 px-8 py-4 bg-[#214F52] text-white font-medium rounded-[18px] hover:bg-[#173E43] transition-all hover:-translate-y-0.5 shadow-[0_8px_16px_-6px_rgba(33,79,82,0.4)]"
-              style={{ fontSize: '0.95rem' }}
-            >
-              Start Planning <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/how-it-works"
-              className="inline-flex items-center gap-2 px-6 py-4 text-[#5D6A7B] hover:text-[#18212B] hover:bg-white/50 rounded-[18px] transition-all text-sm font-medium"
-            >
-              See how it works
+
+          <div className="hero-fade-in flex flex-wrap items-center gap-4">
+            <Link to="/signin" className="inline-flex items-center gap-2.5 px-10 py-5 bg-[#1A1615] text-white font-medium rounded-[2rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-lg">
+              Start Planning <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-60">
-          <div className="w-px h-12 bg-[#7A6A58] animate-pulse" />
-          <p className="text-[0.65rem] text-[#7A6A58] tracking-[0.25em] uppercase font-semibold">Scroll</p>
+        <div className="dashboard-trigger w-full max-w-6xl mx-auto mt-24 relative z-20">
+          <div className="dashboard-mockup rounded-[2.5rem] border border-white/80 bg-white/40 backdrop-blur-3xl shadow-[inset_0_1px_0_rgba(255,255,255,1),0_40px_80px_-20px_rgba(0,0,0,0.1)] p-3 md:p-5">
+            <MarketingImagePlaceholder label="Image placeholder" className="aspect-[36/25] w-full rounded-[1.5rem]" />
+          </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="features-section py-24 px-4 relative">
-        <div className="max-w-5xl mx-auto">
-          <h2
-            className="font-display text-center mb-16"
-            style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)', color: '#20454A' }}
-          >
-            Built for the deliberate traveler
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {[
-              {
-                icon: Zap,
-                title: 'AI Itinerary Generation',
-                desc: 'Describe your trip and let Voyager build a rich, day-by-day itinerary. Replace, merge, or append to any section.',
-              },
-              {
-                icon: Compass,
-                title: 'Structured Planner',
-                desc: 'Every activity is editable, reorderable, and moveable. Your itinerary is durable data, not a text blob.',
-              },
-              {
-                icon: Map,
-                title: 'Places & Geospatial',
-                desc: "Explore destinations on an atlas-style map. Attach real places to activities and discover what's nearby.",
-              },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="feature-card p-8 rounded-[2rem] border border-white/60 bg-white/50 backdrop-blur-xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 rounded-[14px] bg-[#214F52]/10 flex items-center justify-center mb-6 border border-[#214F52]/20 shadow-inner">
-                  <f.icon className="w-6 h-6 text-[#214F52]" />
+      <section className="fade-section bento-trigger-container relative z-10 py-32 px-4 mt-10">
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-20 md:w-1/2">
+            <h2 className="text-4xl md:text-6xl tracking-tighter font-semibold leading-[1.1] mb-6 pb-2">
+              Built for the <br/><span className="text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.1)] [text-shadow:_0_1px_3px_rgb(0_0_0_/_15%)]">deliberate traveler</span>
+            </h2>
+            <p className="text-xl text-[#1A1615]/80 max-w-md leading-relaxed font-medium">
+              Smart tools that adapt to your travel style, built into a premium, frictionless workspace.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-10">
+            <div className="md:col-span-7 flex flex-col gap-8 lg:gap-10">
+              <div className="bento-card relative rounded-[3rem] bg-white/50 backdrop-blur-2xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_-15px_rgba(0,0,0,0.05)] overflow-hidden min-h-[500px] p-12 md:p-16 group transition-all duration-500 hover:bg-white/70">
+              <div className="relative z-10">
+                  <div className="w-16 h-16 rounded-3xl bg-white border border-white/80 shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center mb-8 transform group-hover:scale-110 transition-transform duration-500">
+                    <Zap className="w-7 h-7 text-[#1A1615]" />
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-semibold mb-4 tracking-tight leading-[1.1] pb-1">AI Itinerary Generation</h3>
+                  <p className="text-[#453F3D] text-lg max-w-md leading-relaxed font-medium">
+                    Describe your trip and let Voyager build a rich, day-by-day itinerary. Replace, merge, or append to any section in seconds.
+                  </p>
                 </div>
-                <h3 className="font-semibold text-[#18212B] mb-3 text-lg">{f.title}</h3>
-                <p className="text-sm text-[#5D6A7B] leading-relaxed">{f.desc}</p>
+                <div className="absolute bottom-[-15%] right-[-10%] w-[75%] drop-shadow-2xl group-hover:-translate-y-6 group-hover:-translate-x-6 transition-transform duration-700 ease-out">
+                  <MarketingImagePlaceholder label="Image placeholder" className="aspect-[1016/1230] w-full rounded-[2rem]" />
+                </div>
               </div>
-            ))}
+
+              <div className="bento-card relative rounded-[3rem] bg-white/50 backdrop-blur-2xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_-15px_rgba(0,0,0,0.05)] overflow-hidden p-12 md:p-16 group transition-all duration-500 hover:bg-white/70">
+                <div className="w-16 h-16 rounded-3xl bg-white border border-white/80 shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center mb-8 transform group-hover:scale-110 transition-transform duration-500">
+                  <Calendar className="w-7 h-7 text-[#1A1615]" />
+                </div>
+                <h3 className="text-3xl md:text-4xl font-semibold mb-4 tracking-tight leading-[1.1] pb-1">Day-by-Day Flow</h3>
+                <p className="text-[#453F3D] text-lg leading-relaxed max-w-md font-medium">
+                  Visual timelines that make sense. Understand your pace, easily spot gaps, and manage overbooked days effortlessly.
+                </p>
+              </div>
+            </div>
+
+            <div className="md:col-span-5 flex flex-col gap-8 lg:gap-10 md:mt-32">
+              <div className="bento-card relative rounded-[3rem] bg-white/50 backdrop-blur-2xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_-15px_rgba(0,0,0,0.05)] overflow-hidden min-h-[600px] p-12 md:p-16 group flex flex-col transition-all duration-500 hover:bg-white/70">
+                <div className="relative z-10 mb-10">
+                  <div className="w-16 h-16 rounded-3xl bg-white border border-white/80 shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center mb-8 transform group-hover:scale-110 transition-transform duration-500">
+                    <Map className="w-7 h-7 text-[#1A1615]" />
+                  </div>
+                  <h3 className="text-3xl md:text-4xl font-semibold mb-4 tracking-tight leading-[1.1] pb-1">Places & Geospatial</h3>
+                  <p className="text-[#453F3D] text-lg leading-relaxed font-medium">
+                    Explore destinations on an atlas-style map. Attach real places to activities and discover what's nearby seamlessly.
+                  </p>
+                </div>
+                <div className="relative flex-grow w-full mt-auto">
+                  <div className="absolute top-4 right-[-20%] w-[140%] group-hover:scale-105 group-hover:-translate-y-4 transition-transform duration-700 ease-out origin-top-left">
+                    <MarketingImagePlaceholder label="Image placeholder" className="aspect-[1016/1228] w-full rounded-[2rem]" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bento-card relative rounded-[3rem] bg-white/50 backdrop-blur-2xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_20px_50px_-15px_rgba(0,0,0,0.05)] p-12 md:p-16 group transition-all duration-500 hover:bg-white/70">
+                <div className="w-16 h-16 rounded-3xl bg-white border border-white/80 shadow-[0_8px_16px_-6px_rgba(0,0,0,0.05)] flex items-center justify-center mb-8 transform group-hover:scale-110 transition-transform duration-500">
+                  <Compass className="w-7 h-7 text-[#1A1615]" />
+                </div>
+                <h3 className="text-3xl md:text-4xl font-semibold mb-3 tracking-tight leading-[1.1] pb-1">Structured Data</h3>
+                <p className="text-[#453F3D] text-lg leading-relaxed font-medium">
+                  Every activity is editable, reorderable, and moveable. Your itinerary is durable data, not a text blob.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* How It Works preview */}
-      <section className="py-24 px-4">
-        <div className="max-w-5xl mx-auto rounded-[2.5rem] border border-white/60 bg-white/40 backdrop-blur-xl shadow-sm p-10 md:p-16">
-          <h2
-            className="font-display text-center mb-4"
-            style={{ fontSize: 'clamp(2rem, 4vw, 3.5rem)', color: '#20454A' }}
-          >
-            From idea to itinerary in minutes
-          </h2>
-          <p className="text-center text-[#5D6A7B] mb-16 max-w-xl mx-auto">
-            Three steps to a beautiful trip worth taking.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 relative">
-            {/* connector line */}
-            <div
-              className="hidden md:block absolute top-[2.25rem] left-[16.6%] right-[16.6%] h-px border-t border-dashed border-[#214F52]/20"
-            />
-            {[
-              {
-                num: '01',
-                title: 'Describe your trip',
-                desc: 'Enter destination, dates, interests, and any constraints. Voyager understands natural language.',
-              },
-              {
-                num: '02',
-                title: 'Generate itinerary',
-                desc: 'Our AI builds a complete day-by-day itinerary structured as real, editable block data in a premium workspace.',
-              },
-              {
-                num: '03',
-                title: 'Refine and go',
-                desc: 'Drag activities, edit full details, attach places, and export as a PDF when you are ready.',
-              },
-            ].map((step) => (
-              <div key={step.num} className="text-center relative z-10">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-white shadow-sm border border-white/80 ring-4 ring-[#F3E9D8]/50 text-[#214F52]"
-                >
-                  <span className="font-display text-2xl font-semibold tracking-tight">{step.num}</span>
-                </div>
-                <h3 className="font-semibold text-[#18212B] mb-2 text-lg">{step.title}</h3>
-                <p className="text-sm text-[#5D6A7B] leading-relaxed">{step.desc}</p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-16 pt-8 border-t border-[#D7CCBC]/50">
-            <Link
-              to="/how-it-works"
-              className="inline-flex items-center gap-2 text-sm text-[#214F52] hover:text-[#173E43] font-medium py-2 px-4 rounded-full hover:bg-white/50 transition-colors"
-            >
-              See the full walkthrough <ArrowRight className="w-4 h-4" />
+      <section className="fade-section relative z-10 py-48 px-4 flex justify-center">
+        <div className="relative w-full max-w-6xl rounded-[4rem] overflow-hidden bg-white/60 backdrop-blur-3xl border border-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,1),0_40px_80px_-20px_rgba(0,0,0,0.1)] p-16 md:p-32 text-center text-[#1A1615]">
+          <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-white/80 blur-[100px] rounded-full mix-blend-screen pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <h2 className="tracking-tighter font-semibold mb-8 leading-[1.1] pb-2" style={{ fontSize: 'clamp(3.5rem, 7vw, 6rem)' }}>
+              Your next journey <br/> starts here.
+            </h2>
+            <p className="text-[#453F3D] mb-14 text-xl md:text-2xl max-w-2xl font-medium leading-relaxed">
+              Sign in to create your first trip and experience what premium AI-assisted travel planning should feel like.
+            </p>
+            <Link to="/signin" className="inline-flex items-center gap-3 px-12 py-6 bg-[#1A1615] text-white font-semibold rounded-[2.5rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-xl">
+              Get Started Now <ArrowRight className="w-6 h-6" />
             </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-32 px-4 text-center">
-        <div className="max-w-2xl mx-auto">
-          <h2
-            className="font-display mb-6"
-            style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', color: '#20454A' }}
-          >
-            Your next journey starts here
-          </h2>
-          <p className="text-[#5D6A7B] mb-10 leading-relaxed text-lg">
-            Sign in to create your first trip and experience what AI-assisted travel planning should
-            feel like.
-          </p>
-          <Link
-            to="/signin"
-            className="inline-flex items-center gap-2.5 px-10 py-5 bg-[#214F52] text-white font-medium rounded-[18px] hover:bg-[#173E43] transition-all hover:scale-[1.02] shadow-[0_8px_16px_-6px_rgba(33,79,82,0.4)]"
-          >
-            Get Started <ArrowRight className="w-5 h-5" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-[#D7CCBC]/70 py-10 px-6 backdrop-blur-lg bg-white/20">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-             <VoyagerLogo className="size-5 text-[#214F52]" />
-             <span className="font-display text-xl font-medium text-[#20454A] tracking-tight">Voyager</span>
+      <footer className="relative z-10 py-16 px-8 mt-20">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="flex items-center gap-3 opacity-90 hover:opacity-100 transition-opacity">
+             <VoyagerLogo className="size-8 text-[#1A1615]" />
+             <span className="text-3xl font-semibold tracking-tight text-[#1A1615]">Voyager</span>
           </div>
           
-          <div className="flex items-center gap-8">
-            <Link
-              to="/product"
-              className="text-sm font-medium text-[#7A6A58] hover:text-[#18212B] transition-colors"
-            >
+          <div className="flex items-center gap-12">
+            <Link to="/product" className="text-lg font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
               Product
             </Link>
-            <Link
-              to="/how-it-works"
-              className="text-sm font-medium text-[#7A6A58] hover:text-[#18212B] transition-colors"
-            >
+            <Link to="/how-it-works" className="text-lg font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
               How It Works
             </Link>
           </div>
-          <p className="text-[0.8rem] text-[#7A6A58] uppercase tracking-widest font-semibold">AI-powered travel planning</p>
+          <p className="text-base text-[#453F3D] font-medium">
+            © 2026 Voyager. Built for the deliberate traveler.
+          </p>
         </div>
       </footer>
     </div>

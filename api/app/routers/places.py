@@ -1,8 +1,9 @@
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, Header, Query, Request
-from fastapi.responses import JSONResponse
+import httpx
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import FileResponse, JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +20,7 @@ from app.db.session import get_db_session, get_redis
 from app.errors import ValidationApiError
 from app.models.jobs import JobAcceptedResponse
 from app.models.places import (
+    DestinationAutocompleteResponse,
     PlaceCreateRequest,
     PlaceDedupRunRequest,
     PlaceListResponse,
@@ -28,6 +30,7 @@ from app.models.places import (
     PlacePhotoListResponse,
     PlaceResponse,
 )
+from app.services.place_autocomplete import search_destination_suggestions
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import payload_fingerprint
 from app.security.dependencies import (
@@ -35,6 +38,7 @@ from app.security.dependencies import (
     get_admin_auth_context,
     get_auth_context,
 )
+from app.services.place_photo_assets import ensure_place_photo_asset
 
 router = APIRouter(prefix="/places", tags=["places"])
 
@@ -153,8 +157,22 @@ async def create_place(
             fingerprint=fingerprint,
             status_code=201,
             response_body=response.model_dump(mode="json"),
-        )
+    )
     return response
+
+
+@router.get("/photos/{photo_id}/asset")
+async def get_place_photo_asset(
+    photo_id: uuid.UUID,
+    variant: str = Query(default="full", pattern="^(full|thumb)$"),
+    db: AsyncSession = Depends(get_db_session),
+) -> FileResponse:
+    photo = await PlacePhotoRepository.get_photo(db, photo_id=photo_id)
+    try:
+        asset_path = await ensure_place_photo_asset(photo, variant=variant)
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Failed to fetch photo asset") from exc
+    return FileResponse(asset_path)
 
 
 @router.get("", response_model=PlaceListResponse)
@@ -233,6 +251,47 @@ async def search_places(
         cache_key,
         response.model_dump(mode="json"),
         get_settings().place_cache_ttl_sec,
+    )
+    return response
+
+
+@router.get("/autocomplete", response_model=DestinationAutocompleteResponse)
+async def autocomplete_destinations(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=8, ge=1, le=20),
+    offset: int = Query(default=0, ge=0),
+    auth: AuthContext = Depends(get_auth_context),
+    redis: Redis = Depends(get_redis),
+) -> DestinationAutocompleteResponse:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "places:autocomplete",
+        settings.rate_limit_places_autocomplete_per_min,
+    )
+
+    query = (q or "").strip()
+    cache_key = "place:autocomplete:v2:" + build_cache_key(query, str(limit), str(offset))
+    cached = await cache_get_json(redis, cache_key)
+    if cached:
+        return DestinationAutocompleteResponse.model_validate(cached)
+
+    fetch_limit = min(limit + offset, 20)
+    suggestions = await search_destination_suggestions(query, fetch_limit)
+    page_items = suggestions[offset : offset + limit]
+
+    response = DestinationAutocompleteResponse(
+        total=len(suggestions),
+        limit=limit,
+        offset=offset,
+        items=page_items,
+    )
+    await cache_set_json(
+        redis,
+        cache_key,
+        response.model_dump(mode="json"),
+        settings.place_cache_ttl_sec,
     )
     return response
 

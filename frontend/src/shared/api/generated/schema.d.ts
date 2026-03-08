@@ -110,6 +110,23 @@ export interface paths {
         patch: operations["patch_trip_trips__trip_id__patch"];
         trace?: never;
     };
+    "/trips/{trip_id}/planner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trip Planner */
+        get: operations["get_trip_planner_trips__trip_id__planner_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips/{trip_id}/duplicate": {
         parameters: {
             query?: never;
@@ -299,6 +316,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{trip_id}/activities/discover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Discover Activities */
+        get: operations["discover_activities_trips__trip_id__activities_discover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/activities/save": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Save Activity To Shortlist */
+        post: operations["save_activity_to_shortlist_trips__trip_id__activities_save_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Saved Activities */
+        get: operations["list_saved_activities_trips__trip_id__activities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/activities/{snapshot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Saved Activity Detail */
+        get: operations["get_saved_activity_detail_activities__snapshot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/activities/{snapshot_id}/attach-day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Attach Saved Activity To Day */
+        post: operations["attach_saved_activity_to_day_trips__trip_id__activities__snapshot_id__attach_day_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/activities/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Recommend Saved Activities */
+        post: operations["recommend_saved_activities_trips__trip_id__activities_recommendations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/places": {
         parameters: {
             query?: never;
@@ -448,74 +567,6 @@ export interface paths {
         put?: never;
         /** Run Places Dedup */
         post: operations["run_places_dedup_places_dedup_run_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/events/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Search Events */
-        post: operations["search_events_events_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trips/{trip_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Trip Events */
-        get: operations["list_trip_events_trips__trip_id__events_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/events/{event_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Event */
-        get: operations["get_event_events__event_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trips/{trip_id}/events/{event_id}/attach-day": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Attach Event To Day */
-        post: operations["attach_event_to_day_trips__trip_id__events__event_id__attach_day_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -781,6 +832,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** ActivityAttachDayRequest */
+        ActivityAttachDayRequest: {
+            /**
+             * Trip Day Id
+             * Format: uuid
+             */
+            trip_day_id: string;
+        };
         /** ActivityCreateRequest */
         ActivityCreateRequest: {
             /** Title */
@@ -812,6 +871,186 @@ export interface components {
              */
             source: string;
         };
+        /** ActivityDiscoveryBookingLink */
+        ActivityDiscoveryBookingLink: {
+            /** Label */
+            label: string;
+            /** Url */
+            url: string;
+        };
+        /** ActivityDiscoveryDetail */
+        ActivityDiscoveryDetail: {
+            /** Id */
+            id: string;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Trip Id */
+            trip_id?: string | null;
+            /** Trip Day Id */
+            trip_day_id?: string | null;
+            /** Place Id */
+            place_id?: string | null;
+            entity_type: components["schemas"]["ActivityEntityType"];
+            /** Provider */
+            provider: string;
+            /** Provider Ref */
+            provider_ref: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Price Label */
+            price_label?: string | null;
+            /** Image Url */
+            image_url?: string | null;
+            /** Detail Url */
+            detail_url?: string | null;
+            /** Address Text */
+            address_text?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Tags */
+            tags?: string[];
+            /** Status Text */
+            status_text?: string | null;
+            /** Is Attachable */
+            is_attachable: boolean;
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Photos */
+            photos?: components["schemas"]["ActivityDiscoveryPhoto"][];
+            /** Reviews */
+            reviews?: components["schemas"]["ActivityDiscoveryReview"][];
+            /** Hours */
+            hours?: components["schemas"]["ActivityDiscoveryHoursDay"][];
+            /** Booking Links */
+            booking_links?: components["schemas"]["ActivityDiscoveryBookingLink"][];
+            /** Provider Payload */
+            provider_payload?: {
+                [key: string]: unknown;
+            };
+        };
+        /** ActivityDiscoveryHoursDay */
+        ActivityDiscoveryHoursDay: {
+            /** Day */
+            day: string;
+            /** Times */
+            times?: components["schemas"]["ActivityDiscoveryHoursWindow"][];
+        };
+        /** ActivityDiscoveryHoursWindow */
+        ActivityDiscoveryHoursWindow: {
+            /** Open */
+            open?: string | null;
+            /** Close */
+            close?: string | null;
+        };
+        /** ActivityDiscoveryItem */
+        ActivityDiscoveryItem: {
+            /** Id */
+            id: string;
+            /** Snapshot Id */
+            snapshot_id?: string | null;
+            /** Trip Id */
+            trip_id?: string | null;
+            /** Trip Day Id */
+            trip_day_id?: string | null;
+            /** Place Id */
+            place_id?: string | null;
+            entity_type: components["schemas"]["ActivityEntityType"];
+            /** Provider */
+            provider: string;
+            /** Provider Ref */
+            provider_ref: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Price Label */
+            price_label?: string | null;
+            /** Image Url */
+            image_url?: string | null;
+            /** Detail Url */
+            detail_url?: string | null;
+            /** Address Text */
+            address_text?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Tags */
+            tags?: string[];
+            /** Status Text */
+            status_text?: string | null;
+            /** Is Attachable */
+            is_attachable: boolean;
+            /** Created At */
+            created_at?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
+        };
+        /** ActivityDiscoveryListResponse */
+        ActivityDiscoveryListResponse: {
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Page */
+            page: number;
+            entity_type: components["schemas"]["ActivityEntityType"];
+            /** Items */
+            items: components["schemas"]["ActivityDiscoveryItem"][];
+        };
+        /** ActivityDiscoveryPhoto */
+        ActivityDiscoveryPhoto: {
+            /** Image Url */
+            image_url: string;
+            /** Thumbnail Url */
+            thumbnail_url?: string | null;
+            /** Width */
+            width?: number | null;
+            /** Height */
+            height?: number | null;
+            /** Caption */
+            caption?: string | null;
+        };
+        /** ActivityDiscoveryReview */
+        ActivityDiscoveryReview: {
+            /** Review Id */
+            review_id: string;
+            /** Title */
+            title?: string | null;
+            /** Text */
+            text?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Published At */
+            published_at?: string | null;
+            /** Reviewer Name */
+            reviewer_name?: string | null;
+            /** Reviewer Username */
+            reviewer_username?: string | null;
+            /** Review Url */
+            review_url?: string | null;
+        };
+        /**
+         * ActivityEntityType
+         * @enum {string}
+         */
+        ActivityEntityType: "attraction" | "restaurant" | "hotel" | "cruise";
         /** ActivityListResponse */
         ActivityListResponse: {
             /** Total */
@@ -857,6 +1096,48 @@ export interface components {
             is_favorite?: boolean | null;
             /** Source */
             source?: string | null;
+        };
+        /** ActivityRecommendationItem */
+        ActivityRecommendationItem: {
+            /**
+             * Snapshot Id
+             * Format: uuid
+             */
+            snapshot_id: string;
+            /**
+             * Trip Day Id
+             * Format: uuid
+             */
+            trip_day_id: string;
+            /** Score */
+            score: number;
+            /** Rationale */
+            rationale: string;
+            item: components["schemas"]["ActivityDiscoveryItem"];
+        };
+        /** ActivityRecommendationRequest */
+        ActivityRecommendationRequest: {
+            /** Day Ids */
+            day_ids?: string[] | null;
+            /** Snapshot Ids */
+            snapshot_ids?: string[] | null;
+            /**
+             * Limit
+             * @default 6
+             */
+            limit: number;
+            /**
+             * Use Llm Rationale
+             * @default true
+             */
+            use_llm_rationale: boolean;
+        };
+        /** ActivityRecommendationResponse */
+        ActivityRecommendationResponse: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["ActivityRecommendationItem"][];
         };
         /** ActivityReorderItem */
         ActivityReorderItem: {
@@ -921,6 +1202,68 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** ActivityShortlistListResponse */
+        ActivityShortlistListResponse: {
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Items */
+            items: components["schemas"]["ActivityDiscoveryItem"][];
+        };
+        /** ActivityShortlistSaveRequest */
+        ActivityShortlistSaveRequest: {
+            entity_type: components["schemas"]["ActivityEntityType"];
+            /**
+             * Provider
+             * @default tripadvisor
+             */
+            provider: string;
+            /** Provider Ref */
+            provider_ref: string;
+            /** Title */
+            title: string;
+            /** Summary */
+            summary?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Price Label */
+            price_label?: string | null;
+            /** Image Url */
+            image_url?: string | null;
+            /** Detail Url */
+            detail_url?: string | null;
+            /** Address Text */
+            address_text?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Tags */
+            tags?: string[];
+            /** Status Text */
+            status_text?: string | null;
+            /** Start At */
+            start_at?: string | null;
+            /** End At */
+            end_at?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Min Price */
+            min_price?: string | null;
+            /** Max Price */
+            max_price?: string | null;
+            /** Currency */
+            currency?: string | null;
+            /** Raw Payload */
+            raw_payload?: {
+                [key: string]: unknown;
+            };
         };
         /** AuditLogEntry */
         AuditLogEntry: {
@@ -1015,127 +1358,6 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
-        };
-        /** EventAttachDayRequest */
-        EventAttachDayRequest: {
-            /**
-             * Trip Day Id
-             * Format: uuid
-             */
-            trip_day_id: string;
-        };
-        /** EventListResponse */
-        EventListResponse: {
-            /** Total */
-            total: number;
-            /** Limit */
-            limit: number;
-            /** Offset */
-            offset: number;
-            /** Items */
-            items: components["schemas"]["EventResponse"][];
-        };
-        /** EventResponse */
-        EventResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /**
-             * Trip Id
-             * Format: uuid
-             */
-            trip_id: string;
-            /** Trip Day Id */
-            trip_day_id: string | null;
-            /** Provider */
-            provider: string;
-            /** Provider Event Ref */
-            provider_event_ref: string;
-            /** Title */
-            title: string;
-            /** Summary */
-            summary: string | null;
-            /** Start At */
-            start_at: string | null;
-            /** End At */
-            end_at: string | null;
-            /** Timezone */
-            timezone: string | null;
-            /** Venue Name */
-            venue_name: string | null;
-            /** Venue Address */
-            venue_address: string | null;
-            /** Place Id */
-            place_id: string | null;
-            /** Segment */
-            segment: string | null;
-            /** Genre */
-            genre: string | null;
-            /** Min Price */
-            min_price: string | null;
-            /** Max Price */
-            max_price: string | null;
-            /** Currency */
-            currency: string | null;
-            /** Image Url */
-            image_url: string | null;
-            /** Deep Link */
-            deep_link: string | null;
-            /** Sales Status */
-            sales_status: string | null;
-            /** Expires At */
-            expires_at: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-        };
-        /** EventSearchRequest */
-        EventSearchRequest: {
-            /**
-             * Trip Id
-             * Format: uuid
-             */
-            trip_id: string;
-            /** Trip Day Id */
-            trip_day_id?: string | null;
-            /** Day Ids */
-            day_ids?: string[] | null;
-            /** Location Text */
-            location_text?: string | null;
-            /**
-             * Start Date
-             * Format: date
-             */
-            start_date: string;
-            /**
-             * End Date
-             * Format: date
-             */
-            end_date: string;
-            /** Segment */
-            segment?: string | null;
-            /** Keyword */
-            keyword?: string | null;
-            /**
-             * Size
-             * @default 20
-             */
-            size: number;
-            /** Providers */
-            providers?: string[] | null;
-            /** Constraints */
-            constraints?: {
-                [key: string]: unknown;
-            };
         };
         /**
          * ExportFormat
@@ -1275,6 +1497,49 @@ export interface components {
             /** Finished At */
             finished_at: string | null;
         };
+        /** LodgingOfferDetails */
+        LodgingOfferDetails: {
+            /** Hotel Id */
+            hotel_id?: string | null;
+            /** Hotel Name */
+            hotel_name?: string | null;
+            /** Chain Code */
+            chain_code?: string | null;
+            /** Brand */
+            brand?: string | null;
+            /** Star Rating */
+            star_rating?: number | null;
+            /** Sentiment Rating */
+            sentiment_rating?: number | null;
+            /** Amenities */
+            amenities?: string[];
+            /** Address Text */
+            address_text?: string | null;
+            /** Latitude */
+            latitude?: number | null;
+            /** Longitude */
+            longitude?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
+            /** Room Description */
+            room_description?: string | null;
+            /** Payment Type */
+            payment_type?: string | null;
+            /** Cancellation Summary */
+            cancellation_summary?: string | null;
+            /** Nightly Rate Amount */
+            nightly_rate_amount?: string | null;
+            /** Taxes Amount */
+            taxes_amount?: string | null;
+            /** Place Id */
+            place_id?: string | null;
+            /**
+             * Photo Count
+             * @default 0
+             */
+            photo_count: number;
+            primary_photo?: components["schemas"]["PlacePhotoSummary"] | null;
+        };
         /** LodgingOfferSearchRequest */
         LodgingOfferSearchRequest: {
             /**
@@ -1328,6 +1593,13 @@ export interface components {
              * Format: uuid
              */
             trip_day_id: string;
+        };
+        /** OfferGeoPoint */
+        OfferGeoPoint: {
+            /** Latitude */
+            latitude: number;
+            /** Longitude */
+            longitude: number;
         };
         /**
          * OfferKind
@@ -1423,6 +1695,8 @@ export interface components {
             checkout_date?: string | null;
             /** Nights */
             nights?: number | null;
+            transport_details?: components["schemas"]["TransportOfferDetails"] | null;
+            lodging_details?: components["schemas"]["LodgingOfferDetails"] | null;
         };
         /**
          * OptimizeObjective
@@ -1633,6 +1907,116 @@ export interface components {
              */
             updated_at: string;
         };
+        /** PlannerActivityResponse */
+        PlannerActivityResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Trip Day Id
+             * Format: uuid
+             */
+            trip_day_id: string;
+            /** Order Index */
+            order_index: number;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string | null;
+            /** Start Time */
+            start_time: string | null;
+            /** End Time */
+            end_time: string | null;
+            /** Duration Min */
+            duration_min: number | null;
+            /** Tags */
+            tags: string[];
+            /** Estimated Cost Amount */
+            estimated_cost_amount: string | null;
+            /** Estimated Cost Currency */
+            estimated_cost_currency: string | null;
+            /** Place Id */
+            place_id: string | null;
+            place?: components["schemas"]["PlannerPlaceSummary"] | null;
+            /** Event Snapshot Id */
+            event_snapshot_id: string | null;
+            /** Notes */
+            notes: string | null;
+            /** Is Favorite */
+            is_favorite: boolean;
+            /** Source */
+            source: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** PlannerDayResponse */
+        PlannerDayResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /** Day Index */
+            day_index: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Activities */
+            activities?: components["schemas"]["PlannerActivityResponse"][];
+        };
+        /** PlannerPlaceSummary */
+        PlannerPlaceSummary: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Category */
+            category: string | null;
+            /** Address Text */
+            address_text: string | null;
+            /** Lat */
+            lat: number | null;
+            /** Lon */
+            lon: number | null;
+            /**
+             * Photo Count
+             * @default 0
+             */
+            photo_count: number;
+            primary_photo?: components["schemas"]["PlacePhotoSummary"] | null;
+        };
         /** ProposalActivityResponse */
         ProposalActivityResponse: {
             /**
@@ -1772,11 +2156,52 @@ export interface components {
              */
             updated_at: string;
         };
+        /** TransportLayoverDetail */
+        TransportLayoverDetail: {
+            /**
+             * Itinerary Index
+             * @default 0
+             */
+            itinerary_index: number;
+            /** Airport Code */
+            airport_code?: string | null;
+            /** Duration Min */
+            duration_min?: number | null;
+        };
         /**
          * TransportMode
          * @enum {string}
          */
         TransportMode: "flight";
+        /** TransportOfferDetails */
+        TransportOfferDetails: {
+            /** Segments */
+            segments?: components["schemas"]["TransportSegmentDetail"][];
+            /** Layovers */
+            layovers?: components["schemas"]["TransportLayoverDetail"][];
+            /** Stops Count */
+            stops_count?: number | null;
+            /** Total Duration Min */
+            total_duration_min?: number | null;
+            /** Cabin */
+            cabin?: string | null;
+            /** Baggage Summary */
+            baggage_summary?: string | null;
+            /** Validating Airline Codes */
+            validating_airline_codes?: string[];
+            /** Bookable Seats */
+            bookable_seats?: number | null;
+            /** Additional Baggage Price */
+            additional_baggage_price?: string | null;
+            /** Additional Baggage Currency */
+            additional_baggage_currency?: string | null;
+            /** Emissions Kg */
+            emissions_kg?: string | null;
+            /** Emissions Description */
+            emissions_description?: string | null;
+            origin_geo?: components["schemas"]["OfferGeoPoint"] | null;
+            destination_geo?: components["schemas"]["OfferGeoPoint"] | null;
+        };
         /** TransportOfferSearchRequest */
         TransportOfferSearchRequest: {
             /**
@@ -1815,6 +2240,51 @@ export interface components {
             constraints?: {
                 [key: string]: unknown;
             };
+        };
+        /** TransportSegmentDetail */
+        TransportSegmentDetail: {
+            /**
+             * Itinerary Index
+             * @default 0
+             */
+            itinerary_index: number;
+            /**
+             * Sequence
+             * @default 0
+             */
+            sequence: number;
+            /** Airline Code */
+            airline_code?: string | null;
+            /** Airline Name */
+            airline_name?: string | null;
+            /** Operating Airline Code */
+            operating_airline_code?: string | null;
+            /** Operating Airline Name */
+            operating_airline_name?: string | null;
+            /** Flight Number */
+            flight_number?: string | null;
+            /** Departure Iata */
+            departure_iata?: string | null;
+            /** Departure At */
+            departure_at?: string | null;
+            /** Departure Terminal */
+            departure_terminal?: string | null;
+            /** Arrival Iata */
+            arrival_iata?: string | null;
+            /** Arrival At */
+            arrival_at?: string | null;
+            /** Arrival Terminal */
+            arrival_terminal?: string | null;
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Cabin */
+            cabin?: string | null;
+            /** Fare Basis */
+            fare_basis?: string | null;
+            /** Branded Fare */
+            branded_fare?: string | null;
+            /** Baggage Summary */
+            baggage_summary?: string | null;
         };
         /** TripCreateRequest */
         TripCreateRequest: {
@@ -1885,6 +2355,8 @@ export interface components {
         TripOptimizeRequest: {
             /** Day Ids */
             day_ids?: string[] | null;
+            /** Activity Snapshot Ids */
+            activity_snapshot_ids?: string[] | null;
             /** @default balanced_flow */
             objective: components["schemas"]["OptimizeObjective"];
             /**
@@ -1920,6 +2392,12 @@ export interface components {
             trip_type?: string | null;
             /** Preferences */
             preferences?: string[] | null;
+        };
+        /** TripPlannerResponse */
+        TripPlannerResponse: {
+            trip: components["schemas"]["TripResponse"];
+            /** Days */
+            days: components["schemas"]["PlannerDayResponse"][];
         };
         /** TripRegenerateRequest */
         TripRegenerateRequest: {
@@ -2302,6 +2780,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TripResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_planner_trips__trip_id__planner_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripPlannerResponse"];
                 };
             };
             /** @description Validation Error */
@@ -2778,6 +3287,228 @@ export interface operations {
             };
         };
     };
+    discover_activities_trips__trip_id__activities_discover_get: {
+        parameters: {
+            query?: {
+                entity_type?: components["schemas"]["ActivityEntityType"];
+                query?: string | null;
+                page?: number;
+                limit?: number;
+                locale?: string;
+                currency?: string | null;
+                min_rating?: number | null;
+                good_for?: string | null;
+                establishment_type?: string | null;
+                meal_type?: string | null;
+                departure_date?: string | null;
+                cruise_length?: string | null;
+            };
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityDiscoveryListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_activity_to_shortlist_trips__trip_id__activities_save_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityShortlistSaveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityDiscoveryItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_saved_activities_trips__trip_id__activities_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityShortlistListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_saved_activity_detail_activities__snapshot_id__get: {
+        parameters: {
+            query?: {
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityDiscoveryDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attach_saved_activity_to_day_trips__trip_id__activities__snapshot_id__attach_day_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+                "If-Match"?: string | null;
+            };
+            path: {
+                trip_id: string;
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityAttachDayRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recommend_saved_activities_trips__trip_id__activities_recommendations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityRecommendationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityRecommendationResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_places_places_get: {
         parameters: {
             query?: {
@@ -3139,145 +3870,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    search_events_events_search_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EventSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_trip_events_trips__trip_id__events_get: {
-        parameters: {
-            query?: {
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path: {
-                trip_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EventListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_event_events__event_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EventResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    attach_event_to_day_trips__trip_id__events__event_id__attach_day_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-                "If-Match"?: string | null;
-            };
-            path: {
-                trip_id: string;
-                event_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EventAttachDayRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ActivityResponse"];
                 };
             };
             /** @description Validation Error */

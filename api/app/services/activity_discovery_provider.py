@@ -146,6 +146,10 @@ def _extract_coordinates(payload: dict[str, Any]) -> tuple[float | None, float |
     return None, None
 
 
+def _dict_or_empty(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
 def _photo_from_payload(item: dict[str, Any]) -> dict[str, Any] | None:
     image_url = item.get("image_link") or item.get("image_url") or item.get("featured_image") or item.get("url")
     if not isinstance(image_url, str) or not image_url:
@@ -320,6 +324,10 @@ def normalize_provider_item(
     item_id: str | None = None,
 ) -> dict[str, Any]:
     lat, lon = _extract_coordinates(payload)
+    award = _dict_or_empty(payload.get("award"))
+    ranking = _dict_or_empty(payload.get("ranking"))
+    experiences = _dict_or_empty(payload.get("experiences"))
+    cruise_company = _dict_or_empty(payload.get("cruise_company"))
     if entity_type == ActivityEntityType.ATTRACTION:
         provider_ref = str(payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name"))
         return _base_item(
@@ -338,10 +346,10 @@ def normalize_provider_item(
             or payload.get("location_string"),
             lat=lat,
             lon=lon,
-            tags=_string_list(payload.get("categories"), payload.get("award", {}).get("award_name")),
+            tags=_string_list(payload.get("categories"), award.get("award_name")),
             status_text=payload.get("pricing_text")
-            or payload.get("award", {}).get("award_name")
-            or payload.get("experiences", {}).get("experiences_count"),
+            or award.get("award_name")
+            or experiences.get("experiences_count"),
         )
 
     if entity_type == ActivityEntityType.RESTAURANT:
@@ -364,9 +372,9 @@ def normalize_provider_item(
             tags=_string_list(
                 payload.get("cuisines"),
                 payload.get("establishment_types"),
-                payload.get("award", {}).get("award_name"),
+                award.get("award_name"),
             ),
-            status_text=payload.get("status_text") or payload.get("award", {}).get("award_name"),
+            status_text=payload.get("status_text") or award.get("award_name"),
         )
 
     if entity_type == ActivityEntityType.HOTEL:
@@ -391,8 +399,8 @@ def normalize_provider_item(
             address_text=_extract_address(detailed_address) or payload.get("address"),
             lat=lat,
             lon=lon,
-            tags=_string_list(payload.get("hotel_styles"), payload.get("labels"), payload.get("award", {}).get("award_name")),
-            status_text=payload.get("ranking", {}).get("text") or payload.get("award", {}).get("award_name"),
+            tags=_string_list(payload.get("hotel_styles"), payload.get("labels"), award.get("award_name")),
+            status_text=ranking.get("text") or award.get("award_name"),
         )
 
     ship = payload.get("ship") if isinstance(payload.get("ship"), dict) else {}
@@ -413,7 +421,7 @@ def normalize_provider_item(
         title=str(payload.get("cruise_title") or ship.get("ship_name") or "Cruise"),
         summary=(
             f"{payload.get('duration_nights') or '?'} night sailing with "
-            f"{payload.get('cruise_company', {}).get('cruise_company_name') or 'TripAdvisor cruises'}"
+            f"{cruise_company.get('cruise_company_name') or 'TripAdvisor cruises'}"
         ),
         rating=ship.get("rating"),
         review_count=ship.get("reviews"),
@@ -425,7 +433,7 @@ def normalize_provider_item(
         lon=None,
         tags=_string_list(
             destination.get("destination_name"),
-            payload.get("cruise_company", {}).get("cruise_company_name"),
+            cruise_company.get("cruise_company_name"),
             ship.get("amenities"),
         ),
         status_text=first_sailing.get("departure_date"),

@@ -4,8 +4,8 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, Header, Query
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_helpers import (
     IdempotencyService,
@@ -51,7 +51,6 @@ from app.services.activity_discovery_provider import (
     ActivityProviderNonRetryableError,
     ActivityProviderRetryableError,
     TripAdvisorActivityProvider,
-    normalize_provider_item,
     resolve_activity_provider_availability,
 )
 from app.services.activity_recommendations import recommend_shortlist_items
@@ -293,36 +292,67 @@ async def discover_activities(
     redis: Redis = Depends(get_redis),
 ) -> ActivityDiscoveryListResponse:
     settings = get_settings()
-    await limit_user_request(
-        redis,
-        str(auth.user_id),
-        "activities:discover",
-        settings.rate_limit_activities_discover_per_hour,
-        window_seconds=3600,
-    )
-
     _raise_if_provider_unavailable()
     trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
     provider = TripAdvisorActivityProvider()
     search_query = (query or trip.destination_text or "").strip()
-
-    try:
-        total, items, _payload = await provider.discover(
-            entity_type=entity_type,
-            query=search_query,
-            page=page,
-            locale=locale,
-            currency=currency or trip.budget_currency or "USD",
-            trip_dates=(trip.start_date.isoformat(), trip.end_date.isoformat()),
-            min_rating=min_rating,
-            good_for=good_for,
-            establishment_type=establishment_type,
-            meal_type=meal_type,
-            departure_date=departure_date,
-            cruise_length=cruise_length,
+    resolved_currency = currency or trip.budget_currency or "USD"
+    cache_key = "activity:discover:v1:" + build_cache_key(
+        str(auth.user_id),
+        str(trip_id),
+        str(entity_type),
+        search_query,
+        str(page),
+        str(limit),
+        locale,
+        str(resolved_currency),
+        str(min_rating or ""),
+        str(good_for or ""),
+        str(establishment_type or ""),
+        str(meal_type or ""),
+        str(departure_date or ""),
+        str(cruise_length or ""),
+    )
+    cached = await cache_get_json(redis, cache_key)
+    if cached is not None:
+        total = int(cached.get("total") or 0)
+        items = cached.get("items") if isinstance(cached.get("items"), list) else []
+    else:
+        discover_limit = settings.rate_limit_activities_discover_per_hour
+        if settings.env == "dev":
+            discover_limit = max(discover_limit, 240)
+        await limit_user_request(
+            redis,
+            str(auth.user_id),
+            "activities:discover",
+            discover_limit,
+            window_seconds=3600,
         )
-    except Exception as exc:  # pragma: no cover - routed through deterministic helper
-        _provider_errors_to_api(exc)
+
+        try:
+            total, items, _payload = await provider.discover(
+                entity_type=entity_type,
+                query=search_query,
+                page=page,
+                locale=locale,
+                currency=resolved_currency,
+                trip_dates=(trip.start_date.isoformat(), trip.end_date.isoformat()),
+                min_rating=min_rating,
+                good_for=good_for,
+                establishment_type=establishment_type,
+                meal_type=meal_type,
+                departure_date=departure_date,
+                cruise_length=cruise_length,
+            )
+        except Exception as exc:  # pragma: no cover - routed through deterministic helper
+            _provider_errors_to_api(exc)
+
+        await cache_set_json(
+            redis,
+            cache_key,
+            {"total": total, "items": items},
+            settings.activity_cache_ttl_sec,
+        )
 
     refs = [item["provider_ref"] for item in items if item.get("provider_ref")]
     existing_by_ref: dict[str, EventSnapshot] = {}
@@ -501,20 +531,31 @@ async def get_saved_activity_detail(
         snapshot_id=snapshot_id,
     )
     if snapshot.provider == "tripadvisor":
-        _raise_if_provider_unavailable()
-        provider = TripAdvisorActivityProvider()
-        try:
-            detail_bundle = await provider.detail_bundle(
-                entity_type=ActivityEntityType(snapshot.entity_type or "attraction"),
-                query=snapshot.provider_event_ref,
-                locale=locale,
+        availability = resolve_activity_provider_availability()
+        if availability.configured:
+            provider = TripAdvisorActivityProvider()
+            try:
+                detail_bundle = await provider.detail_bundle(
+                    entity_type=ActivityEntityType(snapshot.entity_type or "attraction"),
+                    query=snapshot.provider_event_ref,
+                    locale=locale,
+                )
+                snapshot.provider_detail_json = detail_bundle | {
+                    "provider_payload": detail_bundle.get("detail_payload") or {}
+                }
+                await db.flush()
+            except Exception as exc:  # pragma: no cover - routed through deterministic helper
+                if not snapshot.provider_detail_json:
+                    _provider_errors_to_api(exc)
+        elif not snapshot.provider_detail_json:
+            raise ServiceUnavailableError(
+                "INTEGRATION_NOT_CONFIGURED",
+                "TripAdvisor activities are unavailable",
+                {
+                    "missing_env_vars": availability.missing_env_vars,
+                    "providers": ["tripadvisor"],
+                },
             )
-            snapshot.provider_detail_json = detail_bundle | {
-                "provider_payload": detail_bundle.get("detail_payload") or {}
-            }
-            await db.flush()
-        except Exception as exc:  # pragma: no cover - routed through deterministic helper
-            _provider_errors_to_api(exc)
 
     response = EventRepository.to_discovery_detail(snapshot)
     await cache_set_json(

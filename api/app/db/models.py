@@ -97,6 +97,12 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all,delete",
         order_by="ItineraryProposal.created_at.desc()",
     )
+    map_layers: Mapped[list["TripMapLayer"]] = relationship(
+        "TripMapLayer",
+        back_populates="trip",
+        cascade="all,delete",
+        order_by="TripMapLayer.order_index",
+    )
 
     __table_args__ = (CheckConstraint("end_date >= start_date", name="trip_valid_date_range"),)
 
@@ -134,6 +140,29 @@ class TripDay(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("trip_id", "day_index", name="uq_trip_day_trip_id_day_index"),
+    )
+
+
+class TripMapLayer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "trip_map_layer"
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    renderer: Mapped[str] = mapped_column(String(32), nullable=False)
+    feature_collection_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    style_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    is_visible: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="map_layers")
+
+    __table_args__ = (
+        Index("ix_trip_map_layer_trip_order", "trip_id", "order_index"),
     )
 
 

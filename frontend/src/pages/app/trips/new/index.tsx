@@ -1,40 +1,24 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import {
-  ArrowLeft,
-  CalendarRange,
-  Loader2,
-  MapPinned,
-  Search,
-  Sparkles,
-  Wallet,
-} from 'lucide-react'
+import { ArrowLeft, Loader2, Search } from 'lucide-react'
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
-import { usePlaceSearch } from '@/entities/place/queries'
+import { useDestinationAutocomplete } from '@/entities/place/queries'
 import { createTrip } from '@/entities/trip/api'
 import { tripKeys } from '@/entities/trip/queries'
 import { isApiError } from '@/shared/api/client'
-import type { Place } from '@/shared/api/types'
 import { cn } from '@/shared/lib/cn'
+import { WorkspaceHeader, WorkspacePage } from '@/shared/layouts/workspace-shell'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
   Field,
   FieldContent,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -120,32 +104,16 @@ type FormValues = z.infer<typeof schema>
 
 type DestinationSuggestion = {
   id: string
-  primary: string
-  secondary: string
   value: string
 }
 
-const largeControlClassName =
-  'h-12 rounded-[18px] bg-[rgba(244,235,221,0.76)] px-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]'
-const invalidFieldClassName = 'aria-invalid:border-[#C56A3D] aria-invalid:ring-[#C56A3D]/10'
+const controlClassName =
+  'h-12 rounded-[20px] border-[var(--color-border-strong)] bg-white/76 px-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]'
+const invalidFieldClassName =
+  'aria-invalid:border-[var(--color-danger)] aria-invalid:ring-4 aria-invalid:ring-[rgba(196,95,79,0.12)]'
 
 function toTitleCase(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
-}
-
-function formatDestinationValue(place: Place) {
-  const name = place.name.trim()
-  const address = place.address_text?.trim()
-
-  if (!address) {
-    return name
-  }
-
-  if (address.toLowerCase().includes(name.toLowerCase())) {
-    return address
-  }
-
-  return `${name}, ${address}`
 }
 
 function normalizePreferenceSegment(segment: string) {
@@ -233,33 +201,18 @@ export default function TripCreatePage() {
   const preferencesText = useWatch({ control: form.control, name: 'preferences' }) ?? ''
   const deferredDestinationQuery = useDeferredValue(destinationText.trim())
 
-  const destinationSearch = usePlaceSearch(
-    { q: deferredDestinationQuery, limit: 6, offset: 0 },
+  const destinationSearch = useDestinationAutocomplete(
+    { q: deferredDestinationQuery, limit: 8, offset: 0 },
     deferredDestinationQuery.length >= 2,
   )
 
   const destinationSuggestions = useMemo<DestinationSuggestion[]>(() => {
-    const seen = new Set<string>()
-
     return (destinationSearch.data?.items ?? [])
-      .map((place) => {
-        const value = formatDestinationValue(place)
-        const key = value.toLowerCase()
-
-        if (seen.has(key)) {
-          return null
-        }
-
-        seen.add(key)
-
-        return {
-          id: place.id,
-          primary: place.name,
-          secondary: place.address_text || place.category || 'Known destination',
-          value,
-        }
-      })
-      .filter((place): place is DestinationSuggestion => place !== null)
+      .map((item) => ({
+        id: item.id,
+        value: item.label,
+      }))
+      .slice(0, 6)
   }, [destinationSearch.data?.items])
 
   const parsedPreferences = useMemo(() => parsePreferences(preferencesText), [preferencesText])
@@ -315,8 +268,6 @@ export default function TripCreatePage() {
 
   const isWorking = isSubmitting || mutation.isPending
 
-  const onSubmit = (data: FormValues) => mutation.mutate(data)
-
   const openDestinationSuggestions = () => {
     if (destinationBlurTimeoutRef.current) {
       clearTimeout(destinationBlurTimeoutRef.current)
@@ -336,11 +287,11 @@ export default function TripCreatePage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8 xl:px-10">
+    <WorkspacePage className="max-w-6xl">
       <Button
         asChild
         variant="ghost"
-        className="w-fit px-0 text-[#556476] hover:bg-transparent hover:text-[#18212B]"
+        className="w-fit px-0 text-[var(--color-text-muted)] hover:bg-transparent hover:text-[var(--color-text)]"
       >
         <Link to="/app/trips">
           <ArrowLeft data-icon="inline-start" />
@@ -348,154 +299,26 @@ export default function TripCreatePage() {
         </Link>
       </Button>
 
-      <div className="flex max-w-3xl flex-col gap-3">
-        <Badge
-          variant="outline"
-          className="w-fit rounded-full border-[#D7CCBC] bg-white/72 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-        >
-          Trip builder
-        </Badge>
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-[#18212B] md:text-[3.25rem]">
-            New Trip
-          </h1>
-          <p className="mt-2 max-w-2xl text-base leading-7 text-[#556476]">
-            Start with the brief, then let Voyager shape the first itinerary draft with cleaner
-            destination, budget, and preference inputs.
-          </p>
-        </div>
-      </div>
+      <WorkspaceHeader
+        eyebrow="Trip builder"
+        title="New Trip"
+        description="Define the trip once, then let Voyager generate a workspace-ready itinerary around the details you care about."
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)] xl:items-start">
-        <Card className="overflow-hidden border-[#D7CCBC] bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,235,223,0.92))] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)] xl:sticky xl:top-6">
-          <CardHeader className="gap-4">
-            <Badge className="w-fit rounded-full bg-[#214F52]/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#214F52]">
-              Trip Brief
-            </Badge>
-            <CardTitle className="font-display text-[2.6rem] leading-none text-[#173E43]">
-              Build the brief once.
-            </CardTitle>
-            <CardDescription className="text-base leading-7 text-[#556476]">
-              Destination proposals, cleaner budget entry, and natural-language preferences all
-              feed the first itinerary draft.
-            </CardDescription>
+      <form onSubmit={handleSubmit((data) => mutation.mutate(data))} className="flex flex-col">
+        <Card variant="solid" className="overflow-hidden border-white/60 shadow-[0_32px_80px_-48px_rgba(32,56,83,0.25)]">
+          <CardHeader className="border-b border-white/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,253,0.92))]">
+            <CardTitle className="text-[2rem] tracking-tight">Trip details</CardTitle>
           </CardHeader>
 
-          <CardContent className="flex flex-col gap-4">
-            <div className="grid gap-3">
-              <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-[#214F52]/10 text-[#214F52]">
-                    <MapPinned />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-semibold text-[#18212B]">Destination search</p>
-                    <p className="text-sm leading-6 text-[#556476]">
-                      Type a city, region, or landmark and pick from known places instead of
-                      guessing the exact formatting.
-                    </p>
-                  </div>
-                </div>
+          <CardContent className="pt-6">
+            <FieldGroup className="gap-8">
+              <div className="flex items-center gap-3">
+                <Badge variant="neutral">Basics</Badge>
+                <Separator className="flex-1 bg-white/55" />
               </div>
 
-              <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-[#214F52]/10 text-[#214F52]">
-                    <Sparkles />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-semibold text-[#18212B]">Preference parsing</p>
-                    <p className="text-sm leading-6 text-[#556476]">
-                      Write naturally. Voyager extracts themes like food, museums, quiet stays, or
-                      walkable neighborhoods without requiring separators.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-[#214F52]/10 text-[#214F52]">
-                    <Wallet />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm font-semibold text-[#18212B]">Budget without clutter</p>
-                    <p className="text-sm leading-6 text-[#556476]">
-                      Keep the amount numeric only. Currency lives in its own selector, so the
-                      field stays clean and readable.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-[#D7CCBC]" />
-
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-[#18212B]">Live preference preview</p>
-                <Badge
-                  variant="outline"
-                  className="rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.14em] text-[#556476]"
-                >
-                  {parsedPreferences.length} detected
-                </Badge>
-              </div>
-
-              <div className="rounded-[20px] border border-dashed border-[#D7CCBC] bg-[rgba(255,255,255,0.6)] p-4">
-                {parsedPreferences.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {parsedPreferences.map((preference) => (
-                      <Badge
-                        key={preference}
-                        variant="secondary"
-                        className="rounded-full bg-[#EFE4D4] px-3 py-1 text-sm text-[#435366]"
-                      >
-                        {preference}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm leading-6 text-[#556476]">
-                    Try something like “good food, quiet stays near museums, walkable neighborhoods”
-                    and Voyager will structure it automatically.
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col">
-          <Card className="overflow-hidden border-[#D7CCBC] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)]">
-            <CardHeader className="gap-4 border-b border-[#D7CCBC] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(253,250,245,0.98))]">
-              <Badge
-                variant="outline"
-                className="w-fit rounded-full border-[#D7CCBC] bg-white/75 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-              >
-                Trip Foundation
-              </Badge>
-              <div className="flex flex-col gap-2">
-                <CardTitle className="text-[2rem] tracking-tight">Plan the essentials</CardTitle>
-                <CardDescription className="max-w-3xl text-sm leading-7">
-                  The structure below is lighter, faster to scan, and built entirely from shadcn
-                  form primitives. Fill in the trip basics first, then add tone and priorities.
-                </CardDescription>
-              </div>
-            </CardHeader>
-
-            <CardContent className="pt-6">
-              <FieldGroup className="gap-8">
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-                  >
-                    Essentials
-                  </Badge>
-                  <Separator className="flex-1 bg-[#D7CCBC]" />
-                </div>
-
+              <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
                 <Field data-invalid={!!errors.title} className="gap-3">
                   <FieldLabel htmlFor="title">Trip Title *</FieldLabel>
                   <FieldContent>
@@ -503,7 +326,7 @@ export default function TripCreatePage() {
                       id="title"
                       placeholder="Tokyo Adventure 2026"
                       aria-invalid={!!errors.title}
-                      className={cn(largeControlClassName, invalidFieldClassName)}
+                      className={cn(controlClassName, invalidFieldClassName)}
                       {...register('title')}
                     />
                     <FieldError errors={[errors.title]} />
@@ -523,13 +346,9 @@ export default function TripCreatePage() {
                               <Input
                                 {...field}
                                 id="destination_text"
-                                placeholder="Start typing a city, region, or landmark"
+                                placeholder="Paris, France"
                                 aria-invalid={!!fieldState.error}
-                                className={cn(
-                                  largeControlClassName,
-                                  'pr-12',
-                                  invalidFieldClassName,
-                                )}
+                                className={cn(controlClassName, 'pr-12', invalidFieldClassName)}
                                 onFocus={openDestinationSuggestions}
                                 onBlur={scheduleDestinationSuggestionsClose}
                                 onChange={(event) => {
@@ -539,9 +358,9 @@ export default function TripCreatePage() {
                               />
                               <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                                 {isDestinationLoading ? (
-                                  <Loader2 className="animate-spin text-[#556476]" />
+                                  <Loader2 className="animate-spin text-[var(--color-text-muted)]" />
                                 ) : (
-                                  <Search className="text-[#556476]" />
+                                  <Search className="text-[var(--color-text-muted)]" />
                                 )}
                               </div>
                             </div>
@@ -551,287 +370,238 @@ export default function TripCreatePage() {
                             align="start"
                             sideOffset={10}
                             onOpenAutoFocus={(event) => event.preventDefault()}
-                            className="w-[min(32rem,calc(100vw-2.5rem))] rounded-[20px] border-[#D7CCBC] p-2"
+                            className="w-[min(30rem,calc(100vw-2.5rem))] rounded-[24px] border-[var(--color-border-strong)] p-2"
                           >
-                            <div className="flex flex-col gap-2">
-                              <div className="px-2 pt-1">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7A6A58]">
-                                  Suggested destinations
-                                </p>
+                            <ScrollArea className="max-h-72">
+                              <div className="flex flex-col gap-1">
+                                {destinationSuggestions.length > 0 ? (
+                                  destinationSuggestions.map((suggestion) => (
+                                    <Button
+                                      key={suggestion.id}
+                                      type="button"
+                                      variant="ghost"
+                                      className="h-auto w-full justify-start rounded-[16px] px-3 py-3 text-left text-sm font-semibold hover:bg-[rgba(114,174,230,0.12)]"
+                                      onMouseDown={(event) => event.preventDefault()}
+                                      onClick={() => {
+                                        setValue('destination_text', suggestion.value, {
+                                          shouldDirty: true,
+                                          shouldValidate: true,
+                                        })
+                                        setDestinationOpen(false)
+                                      }}
+                                    >
+                                      {suggestion.value}
+                                    </Button>
+                                  ))
+                                ) : (
+                                  <div className="rounded-[16px] px-3 py-4 text-sm text-[var(--color-text-muted)]">
+                                    No matches
+                                  </div>
+                                )}
                               </div>
-
-                              <ScrollArea className="max-h-72">
-                                <div className="flex flex-col gap-1">
-                                  {destinationSuggestions.length > 0 ? (
-                                    destinationSuggestions.map((suggestion) => (
-                                      <Button
-                                        key={suggestion.id}
-                                        type="button"
-                                        variant="ghost"
-                                        className="h-auto w-full justify-start rounded-[16px] px-3 py-3 text-left hover:bg-[#F3ECDF]"
-                                        onMouseDown={(event) => event.preventDefault()}
-                                        onClick={() => {
-                                          setValue('destination_text', suggestion.value, {
-                                            shouldDirty: true,
-                                            shouldValidate: true,
-                                          })
-                                          setDestinationOpen(false)
-                                        }}
-                                      >
-                                        <div className="flex flex-col gap-1">
-                                          <span className="text-sm font-semibold text-[#18212B]">
-                                            {suggestion.primary}
-                                          </span>
-                                          <span className="text-xs leading-5 text-[#556476]">
-                                            {suggestion.secondary}
-                                          </span>
-                                        </div>
-                                      </Button>
-                                    ))
-                                  ) : (
-                                    <div className="rounded-[16px] px-3 py-4 text-sm leading-6 text-[#556476]">
-                                      {isDestinationLoading
-                                        ? 'Searching known destinations…'
-                                        : 'No suggestions yet. You can still keep a manual destination.'}
-                                    </div>
-                                  )}
-                                </div>
-                              </ScrollArea>
-                            </div>
+                            </ScrollArea>
                           </PopoverContent>
                         </Popover>
+                        <FieldError errors={[fieldState.error]} />
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
 
-                        <FieldDescription>
-                          Voyager proposes destinations as you type, but manual text still works.
-                        </FieldDescription>
+              <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
+                <Controller
+                  control={control}
+                  name="start_date"
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={!!fieldState.error} className="gap-3">
+                      <FieldLabel htmlFor="start-date">Start Date *</FieldLabel>
+                      <FieldContent>
+                        <DatePicker
+                          id="start-date"
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select start date"
+                          invalid={!!fieldState.error}
+                          className={cn(controlClassName, 'justify-between px-4')}
+                        />
                         <FieldError errors={[fieldState.error]} />
                       </FieldContent>
                     </Field>
                   )}
                 />
 
-                <FieldGroup className="gap-4 lg:grid lg:grid-cols-2">
-                  <Controller
-                    control={control}
-                    name="start_date"
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={!!fieldState.error} className="gap-3">
-                        <FieldLabel htmlFor="start-date">Start Date *</FieldLabel>
-                        <FieldContent>
-                          <DatePicker
-                            id="start-date"
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select start date"
-                            invalid={!!fieldState.error}
-                            className={cn(largeControlClassName, 'justify-between px-4')}
-                          />
-                          <FieldError errors={[fieldState.error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
+                <Controller
+                  control={control}
+                  name="end_date"
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={!!fieldState.error} className="gap-3">
+                      <FieldLabel htmlFor="end-date">End Date *</FieldLabel>
+                      <FieldContent>
+                        <DatePicker
+                          id="end-date"
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Select end date"
+                          invalid={!!fieldState.error}
+                          className={cn(controlClassName, 'justify-between px-4')}
+                        />
+                        <FieldError errors={[fieldState.error]} />
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+              </FieldGroup>
 
-                  <Controller
-                    control={control}
-                    name="end_date"
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={!!fieldState.error} className="gap-3">
-                        <FieldLabel htmlFor="end-date">End Date *</FieldLabel>
-                        <FieldContent>
-                          <DatePicker
-                            id="end-date"
-                            value={field.value}
-                            onChange={field.onChange}
-                            placeholder="Select end date"
-                            invalid={!!fieldState.error}
-                            className={cn(largeControlClassName, 'justify-between px-4')}
-                          />
-                          <FieldError errors={[fieldState.error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                </FieldGroup>
+              <div className="flex items-center gap-3">
+                <Badge variant="neutral">Profile</Badge>
+                <Separator className="flex-1 bg-white/55" />
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-                  >
-                    Budget & tone
-                  </Badge>
-                  <Separator className="flex-1 bg-[#D7CCBC]" />
-                </div>
-
-                <FieldGroup className="gap-4 xl:grid xl:grid-cols-[1.1fr_0.7fr_0.85fr]">
-                  <Field data-invalid={!!errors.budget_amount} className="gap-3">
-                    <FieldLabel htmlFor="budget_amount">Budget</FieldLabel>
-                    <FieldContent>
-                      <Input
-                        id="budget_amount"
-                        type="number"
-                        min="0"
-                        step="any"
-                        inputMode="decimal"
-                        placeholder="5000"
-                        aria-invalid={!!errors.budget_amount}
-                        className={cn(
-                          largeControlClassName,
-                          'text-lg tracking-tight',
-                          invalidFieldClassName,
-                        )}
-                        {...register('budget_amount', { valueAsNumber: true })}
-                      />
-                      <FieldDescription>
-                        Optional. Keep the amount numeric only, and choose the currency separately.
-                      </FieldDescription>
-                      <FieldError errors={[errors.budget_amount]} />
-                    </FieldContent>
-                  </Field>
-
-                  <Controller
-                    control={control}
-                    name="budget_currency"
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={!!fieldState.error} className="gap-3">
-                        <FieldLabel htmlFor="budget-currency">Currency</FieldLabel>
-                        <FieldContent>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger
-                              id="budget-currency"
-                              aria-invalid={!!fieldState.error}
-                              className={cn(largeControlClassName, invalidFieldClassName)}
-                            >
-                              <SelectValue placeholder="Select currency" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {CURRENCIES.map((currency) => (
-                                  <SelectItem key={currency} value={currency}>
-                                    {currency}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          <FieldError errors={[fieldState.error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-
-                  <Controller
-                    control={control}
-                    name="trip_type"
-                    render={({ field, fieldState }) => (
-                      <Field data-invalid={!!fieldState.error} className="gap-3">
-                        <FieldLabel htmlFor="trip-type">Trip Type</FieldLabel>
-                        <FieldContent>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <SelectTrigger
-                              id="trip-type"
-                              aria-invalid={!!fieldState.error}
-                              className={cn(largeControlClassName, invalidFieldClassName)}
-                            >
-                              <SelectValue placeholder="Select trip type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                {TRIP_TYPES.map((tripType) => (
-                                  <SelectItem key={tripType} value={tripType}>
-                                    {toTitleCase(tripType)}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                          <FieldError errors={[fieldState.error]} />
-                        </FieldContent>
-                      </Field>
-                    )}
-                  />
-                </FieldGroup>
-
-                <div className="flex items-center gap-3">
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-                  >
-                    Preferences
-                  </Badge>
-                  <Separator className="flex-1 bg-[#D7CCBC]" />
-                </div>
-
-                <Field data-invalid={!!errors.preferences} className="gap-3">
-                  <FieldLabel htmlFor="preferences">Preferences</FieldLabel>
+              <FieldGroup className="gap-4 xl:grid xl:grid-cols-[1.1fr_0.7fr_0.85fr]">
+                <Field data-invalid={!!errors.budget_amount} className="gap-3">
+                  <FieldLabel htmlFor="budget_amount">Budget</FieldLabel>
                   <FieldContent>
-                    <Textarea
-                      id="preferences"
-                      rows={5}
-                      placeholder="Good food, quiet stays near museums, walkable neighborhoods, maybe a little nightlife."
-                      aria-invalid={!!errors.preferences}
-                      className={cn(
-                        'min-h-36 rounded-[20px] bg-[rgba(244,235,221,0.76)] p-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]',
-                        invalidFieldClassName,
-                      )}
-                      {...register('preferences')}
+                    <Input
+                      id="budget_amount"
+                      type="number"
+                      min="0"
+                      step="any"
+                      inputMode="decimal"
+                      placeholder="5000"
+                      aria-invalid={!!errors.budget_amount}
+                      className={cn(controlClassName, 'text-lg tracking-tight', invalidFieldClassName)}
+                      {...register('budget_amount', { valueAsNumber: true })}
                     />
-
-                    <FieldDescription>
-                      Write naturally. Voyager applies regex-based theme detection and uses the
-                      parsed list shown below.
-                    </FieldDescription>
-
-                    <div className="rounded-[20px] border border-dashed border-[#D7CCBC] bg-[rgba(255,255,255,0.66)] p-4">
-                      <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-[#18212B]">
-                        <CalendarRange className="text-[#214F52]" />
-                        Parsed preferences
-                      </div>
-
-                      {parsedPreferences.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {parsedPreferences.map((preference) => (
-                            <Badge
-                              key={preference}
-                              variant="secondary"
-                              className="rounded-full bg-[#EFE4D4] px-3 py-1 text-sm text-[#435366]"
-                            >
-                              {preference}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm leading-6 text-[#556476]">
-                          No structured preferences detected yet.
-                        </p>
-                      )}
-                    </div>
-
-                    <FieldError errors={[errors.preferences]} />
+                    <FieldError errors={[errors.budget_amount]} />
                   </FieldContent>
                 </Field>
+
+                <Controller
+                  control={control}
+                  name="budget_currency"
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={!!fieldState.error} className="gap-3">
+                      <FieldLabel htmlFor="budget-currency">Currency</FieldLabel>
+                      <FieldContent>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger
+                            id="budget-currency"
+                            aria-invalid={!!fieldState.error}
+                            className={cn(controlClassName, invalidFieldClassName)}
+                          >
+                            <SelectValue placeholder="Select currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {CURRENCIES.map((currency) => (
+                                <SelectItem key={currency} value={currency}>
+                                  {currency}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FieldError errors={[fieldState.error]} />
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
+
+                <Controller
+                  control={control}
+                  name="trip_type"
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={!!fieldState.error} className="gap-3">
+                      <FieldLabel htmlFor="trip-type">Trip Type</FieldLabel>
+                      <FieldContent>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger
+                            id="trip-type"
+                            aria-invalid={!!fieldState.error}
+                            className={cn(controlClassName, invalidFieldClassName)}
+                          >
+                            <SelectValue placeholder="Select trip type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              {TRIP_TYPES.map((tripType) => (
+                                <SelectItem key={tripType} value={tripType}>
+                                  {toTitleCase(tripType)}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                        <FieldError errors={[fieldState.error]} />
+                      </FieldContent>
+                    </Field>
+                  )}
+                />
               </FieldGroup>
-            </CardContent>
 
-            <CardFooter className="flex flex-col items-start justify-between gap-4 border-t border-[#D7CCBC] bg-[rgba(243,235,223,0.56)] pt-5 sm:flex-row sm:items-center">
-              <p className="text-sm text-[#556476]">
-                Required fields are marked with <span className="font-medium text-[#18212B]">*</span>
-              </p>
-
-              <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
-                <Button asChild variant="ghost" className="text-[#556476] hover:text-[#18212B]">
-                  <Link to="/app/trips">Cancel</Link>
-                </Button>
-                <Button type="submit" disabled={isWorking} className="h-12 min-w-40 rounded-[18px] px-6 text-base">
-                  {isWorking ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
-                  Create Trip
-                </Button>
+              <div className="flex items-center gap-3">
+                <Badge variant="neutral">Preferences</Badge>
+                <Separator className="flex-1 bg-white/55" />
               </div>
-            </CardFooter>
-          </Card>
-        </form>
-      </div>
-    </div>
+
+              <Field data-invalid={!!errors.preferences} className="gap-3">
+                <FieldLabel htmlFor="preferences">Preferences</FieldLabel>
+                <FieldContent>
+                  <Textarea
+                    id="preferences"
+                    rows={5}
+                    placeholder="food museums walkable neighborhoods"
+                    aria-invalid={!!errors.preferences}
+                    className={cn(
+                      'min-h-36 rounded-[24px] bg-white/76 p-4 text-[0.98rem] shadow-[inset_0_1px_0_rgba(255,255,255,0.92)]',
+                      invalidFieldClassName,
+                    )}
+                    {...register('preferences')}
+                  />
+
+                  <div className="rounded-[24px] border border-dashed border-[var(--color-border-strong)] bg-white/62 p-4">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span className="text-sm font-semibold text-[var(--color-text)]">Detected</span>
+                      <Badge variant="neutral">
+                        {parsedPreferences.length}
+                      </Badge>
+                    </div>
+
+                    {parsedPreferences.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {parsedPreferences.map((preference) => (
+                          <Badge
+                            key={preference}
+                            variant="secondary"
+                            className="rounded-full px-3 py-1 text-sm normal-case tracking-normal"
+                          >
+                            {preference}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-[var(--color-text-muted)]">None</div>
+                    )}
+                  </div>
+
+                  <FieldError errors={[errors.preferences]} />
+                </FieldContent>
+              </Field>
+            </FieldGroup>
+          </CardContent>
+
+          <CardFooter className="flex items-center justify-end gap-3 border-t border-white/55 bg-[rgba(255,255,255,0.52)] pt-5">
+            <Button asChild variant="ghost" className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]">
+              <Link to="/app/trips">Cancel</Link>
+            </Button>
+            <Button type="submit" disabled={isWorking} className="h-12 min-w-40 rounded-[18px] px-6 text-base">
+              {isWorking ? <Loader2 className="animate-spin" data-icon="inline-start" /> : null}
+              Create Trip
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </WorkspacePage>
   )
 }

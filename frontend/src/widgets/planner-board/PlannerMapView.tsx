@@ -1,10 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import MapView, { Marker, NavigationControl, type MapRef } from 'react-map-gl/maplibre'
-import 'maplibre-gl/dist/maplibre-gl.css'
-import { ExternalLink, Loader2, MapPin, Search, Sparkles, Target } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ExternalLink, Loader2, Search, Sparkles, Target } from 'lucide-react'
 import { config } from '@/app/config'
 import { usePlaceSearch } from '@/entities/place/queries'
+import { useTripMapLayers } from '@/entities/trip-map-layer/queries'
 import { cn } from '@/shared/lib/cn'
+import { resolvePhotoUrl } from '@/shared/lib/media'
+import {
+  GoogleMapCanvas,
+  MapPanTo,
+  TripMapLayerRenderer,
+  VoyagerInfoWindow,
+  VoyagerMarker,
+} from '@/shared/layouts/google-maps'
 import type { Place, PlannerActivity, PlannerPlaceSummary } from '@/shared/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,7 +34,7 @@ function isPlannerPlace(value: MarkerPlace): value is PlannerPlaceSummary {
 }
 
 function markerPhoto(place: MarkerPlace) {
-  return place.primary_photo?.thumbnail_url || place.primary_photo?.image_url || null
+  return resolvePhotoUrl(place.primary_photo, 'thumb')
 }
 
 function markerAddress(place: MarkerPlace) {
@@ -44,7 +51,6 @@ export function PlannerMapView({
   onAssignPlace,
   isAssigning,
 }: Props) {
-  const mapRef = useRef<MapRef | null>(null)
   const [searchText, setSearchText] = useState('')
 
   const plannerPlaces = useMemo(() => {
@@ -64,6 +70,7 @@ export function PlannerMapView({
     { q: searchText.trim(), limit: 20, offset: 0 },
     searchText.trim().length >= 2,
   )
+  const { data: tripLayersData } = useTripMapLayers(tripId)
 
   const markerPlaces = useMemo<MarkerPlace[]>(() => {
     if (searchText.trim().length >= 2) {
@@ -76,6 +83,8 @@ export function PlannerMapView({
     markerPlaces.find((place) => place.id === selectedPlaceId) ||
     plannerPlaces.find((place) => place.id === selectedPlaceId) ||
     null
+  const tripLayers = tripLayersData?.items ?? []
+  const mapPlaces = markerPlaces.filter((place) => place.lat != null && place.lon != null)
 
   useEffect(() => {
     if (!selectedPlace && selectedActivity?.place_id) {
@@ -83,32 +92,13 @@ export function PlannerMapView({
     }
   }, [onSelectPlaceId, selectedActivity, selectedPlace])
 
-  useEffect(() => {
-    const focusPlace = selectedPlace || plannerPlaces[0] || null
-    if (
-      !focusPlace ||
-      focusPlace.lat == null ||
-      focusPlace.lon == null ||
-      !mapRef.current ||
-      !config.map.styleUrl
-    ) {
-      return
-    }
-
-    mapRef.current.flyTo({
-      center: [focusPlace.lon, focusPlace.lat],
-      zoom: 12.5,
-      duration: 900,
-    })
-  }, [plannerPlaces, selectedPlace])
-
   const mapCenter = selectedPlace || plannerPlaces[0] || null
-  const hasMap = Boolean(config.map.styleUrl)
+  const hasMap = Boolean(config.map.apiKey)
 
   return (
     <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
       <div className="space-y-4">
-        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_60px_rgba(14,25,35,0.08)]">
+        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
           <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
             Planner Map
           </p>
@@ -174,15 +164,15 @@ export function PlannerMapView({
         </div>
 
         {selectedPlace ? (
-          <div className="overflow-hidden rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_60px_rgba(14,25,35,0.08)]">
+          <div className="overflow-hidden rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
             {markerPhoto(selectedPlace) ? (
               <div
                 className="h-44 bg-cover bg-center"
-                style={{ backgroundImage: `url(${markerPhoto(selectedPlace)})` }}
+                style={{ backgroundImage: `url(${resolvePhotoUrl(selectedPlace.primary_photo, 'full')})` }}
               />
             ) : (
-              <div className="flex h-44 items-center justify-center bg-[linear-gradient(135deg,rgba(47,111,115,0.12),rgba(197,106,61,0.14))]">
-                <MapPin className="h-8 w-8 text-[var(--color-primary)]" />
+              <div className="flex h-44 items-center justify-center bg-[linear-gradient(135deg,rgba(114,174,230,0.12),rgba(182,214,242,0.14))]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">P</div>
               </div>
             )}
             <div className="p-5">
@@ -202,7 +192,7 @@ export function PlannerMapView({
           </div>
         ) : null}
 
-        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-[0_20px_60px_rgba(14,25,35,0.08)]">
+        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
           <div className="max-h-[420px] space-y-2 overflow-y-auto p-2">
             {searchText.trim().length >= 2 ? (
               <>
@@ -272,43 +262,67 @@ export function PlannerMapView({
 
       <div className="overflow-hidden rounded-[32px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(14,25,35,0.1)]">
         {hasMap ? (
-          <MapView
-            ref={mapRef}
-            initialViewState={{
-              latitude: mapCenter?.lat ?? 41.9028,
-              longitude: mapCenter?.lon ?? 12.4964,
-              zoom: mapCenter?.lat != null && mapCenter?.lon != null ? 11.5 : 2.5,
+          <GoogleMapCanvas
+            defaultCenter={{
+              lat: mapCenter?.lat ?? 41.9028,
+              lng: mapCenter?.lon ?? 12.4964,
             }}
+            defaultZoom={mapCenter?.lat != null && mapCenter?.lon != null ? 11.5 : 2.5}
             style={{ width: '100%', height: '760px' }}
-            mapStyle={config.map.styleUrl}
+            disableDefaultUI={false}
+            streetViewControl={false}
+            mapTypeControl={false}
+            fullscreenControl={false}
           >
-            <NavigationControl position="top-right" />
-            {markerPlaces
-              .filter((place) => place.lat != null && place.lon != null)
+            <MapPanTo
+              point={
+                mapCenter?.lat != null && mapCenter?.lon != null
+                  ? { lat: mapCenter.lat, lng: mapCenter.lon }
+                  : null
+              }
+              zoom={mapCenter?.lat != null && mapCenter?.lon != null ? 12 : 3}
+            />
+            <TripMapLayerRenderer layers={tripLayers} />
+            {mapPlaces
+              .filter((place) => place.id !== selectedPlaceId)
               .map((place) => (
-                <Marker key={place.id} latitude={place.lat!} longitude={place.lon!}>
-                  <button
-                    type="button"
-                    onClick={() => onSelectPlaceId(place.id)}
-                    className={cn(
-                      'flex h-11 w-11 items-center justify-center rounded-full border shadow-lg transition-all',
-                      selectedPlaceId === place.id
-                        ? 'border-white bg-[var(--color-accent)] text-white'
-                        : 'border-white/80 bg-[var(--color-primary)] text-white',
-                    )}
-                    aria-label={`View ${place.name}`}
-                  >
-                    <MapPin className="h-5 w-5" />
-                  </button>
-                </Marker>
+                <VoyagerMarker
+                  key={place.id}
+                  position={{ lat: place.lat!, lng: place.lon! }}
+                  title={place.name}
+                  color="#17344C"
+                  onClick={() => onSelectPlaceId(place.id)}
+                  zIndex={1}
+                />
               ))}
-          </MapView>
+            {selectedPlace?.lat != null && selectedPlace?.lon != null ? (
+              <>
+                <VoyagerMarker
+                  position={{ lat: selectedPlace.lat, lng: selectedPlace.lon }}
+                  title={selectedPlace.name}
+                  label={selectedPlace.name.length <= 20 ? selectedPlace.name : undefined}
+                  selected
+                  onClick={() => onSelectPlaceId(selectedPlace.id)}
+                  zIndex={3}
+                />
+                <VoyagerInfoWindow
+                  position={{ lat: selectedPlace.lat, lng: selectedPlace.lon }}
+                  onCloseClick={() => onSelectPlaceId(null)}
+                >
+                  <div className="max-w-[220px]">
+                    <p className="text-sm font-semibold text-[var(--color-text)]">{selectedPlace.name}</p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">{markerAddress(selectedPlace)}</p>
+                  </div>
+                </VoyagerInfoWindow>
+              </>
+            ) : null}
+          </GoogleMapCanvas>
         ) : (
-          <div className="flex h-[760px] flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,rgba(47,111,115,0.1),rgba(197,106,61,0.08))] px-8 text-center">
-            <MapPin className="h-8 w-8 text-[var(--color-primary)]" />
+          <div className="flex h-[760px] flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,rgba(114,174,230,0.1),rgba(182,214,242,0.08))] px-8 text-center">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">M</div>
             <p className="text-lg font-semibold text-[var(--color-text)]">Map style is not configured</p>
             <p className="max-w-md text-sm text-[var(--color-text-muted)]">
-              Add `VITE_MAP_STYLE_URL` to render the embedded Planner map. The place search and assignment flow still works without it.
+              Add `VITE_GOOGLE_MAPS_API_KEY` to render the embedded Planner map. The place search and assignment flow still works without it.
             </p>
           </div>
         )}

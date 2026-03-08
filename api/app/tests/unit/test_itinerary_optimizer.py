@@ -26,7 +26,8 @@ def test_insert_event_candidate_avoids_time_conflicts():
     event = EventSnapshot(
         id=uuid4(),
         trip_id=uuid4(),
-        provider="ticketmaster",
+        provider="tripadvisor",
+        entity_type="attraction",
         provider_event_ref="evt-1",
         title="Night concert",
         start_at=datetime(2026, 12, 10, 19, 0),
@@ -57,7 +58,8 @@ def test_insert_event_candidate_adds_non_conflicting_event():
     event = EventSnapshot(
         id=uuid4(),
         trip_id=uuid4(),
-        provider="ticketmaster",
+        provider="tripadvisor",
+        entity_type="restaurant",
         provider_event_ref="evt-2",
         title="Morning exhibit",
         start_at=datetime(2026, 12, 10, 10, 0),

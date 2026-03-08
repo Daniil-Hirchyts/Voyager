@@ -1,3 +1,4 @@
+import type { FeatureCollection, GeoJsonProperties, Geometry } from 'geojson'
 import type { components } from './generated/schema'
 
 export type UserProfile = components['schemas']['UserProfileResponse']
@@ -72,6 +73,57 @@ export type PlannerGenerationReport = {
   error: Record<string, unknown> | null
 }
 
+export type MapLayerRenderer = 'native' | 'deckgl' | 'dds-boundary' | 'dds-dataset'
+export type MapLayerSource = 'manual_draw' | 'routes' | 'places' | 'analytics'
+export type TripMapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>
+
+export interface TripMapLayer {
+  id: string
+  trip_id: string
+  name: string
+  source: MapLayerSource
+  renderer: MapLayerRenderer
+  feature_collection: TripMapFeatureCollection
+  style: Record<string, unknown>
+  metadata: Record<string, unknown>
+  is_visible: boolean
+  is_locked: boolean
+  order_index: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TripMapLayerListResponse {
+  total: number
+  limit: number
+  offset: number
+  items: TripMapLayer[]
+}
+
+export interface TripMapLayerCreateRequest {
+  name: string
+  source: MapLayerSource
+  renderer: MapLayerRenderer
+  feature_collection: TripMapFeatureCollection
+  style?: Record<string, unknown>
+  metadata?: Record<string, unknown>
+  is_visible?: boolean
+  is_locked?: boolean
+  order_index?: number | null
+}
+
+export interface TripMapLayerPatchRequest {
+  name?: string
+  source?: MapLayerSource
+  renderer?: MapLayerRenderer
+  feature_collection?: TripMapFeatureCollection
+  style?: Record<string, unknown>
+  metadata?: Record<string, unknown>
+  is_visible?: boolean
+  is_locked?: boolean
+  order_index?: number
+}
+
 export type Job = components['schemas']['JobResponse']
 export type JobListResponse = components['schemas']['JobListResponse']
 export type JobAcceptedResponse = components['schemas']['JobAcceptedResponse']
@@ -96,6 +148,8 @@ export interface PlacePhotoSummary {
   source: string
   image_url: string
   thumbnail_url: string | null
+  display_url?: string | null
+  display_thumbnail_url?: string | null
   license_code: string | null
   license_url: string | null
   attribution_text: string | null
@@ -193,13 +247,165 @@ export type TripExportCreateInput = components['schemas']['TripExportCreateReque
 export type AuditLogEntry = components['schemas']['AuditLogEntry']
 export type AuditLogListResponse = components['schemas']['AuditLogListResponse']
 
-export type EventResponse = components['schemas']['EventResponse']
-export type EventListResponse = components['schemas']['EventListResponse']
-export type EventSearchInput = components['schemas']['EventSearchRequest']
-export type EventAttachDayInput = components['schemas']['EventAttachDayRequest']
+export type ActivityEntityType = 'attraction' | 'restaurant' | 'hotel' | 'cruise'
+
+export interface ActivityDiscoveryItem {
+  id: string
+  snapshot_id: string | null
+  trip_id: string | null
+  trip_day_id: string | null
+  place_id: string | null
+  entity_type: ActivityEntityType
+  provider: string
+  provider_ref: string
+  title: string
+  summary: string | null
+  rating: number | null
+  review_count: number | null
+  price_label: string | null
+  image_url: string | null
+  detail_url: string | null
+  address_text: string | null
+  lat: number | null
+  lon: number | null
+  tags: string[]
+  status_text: string | null
+  is_attachable: boolean
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface ActivityDiscoveryPhoto {
+  image_url: string
+  thumbnail_url: string | null
+  width: number | null
+  height: number | null
+  caption: string | null
+}
+
+export interface ActivityDiscoveryReview {
+  review_id: string
+  title: string | null
+  text: string | null
+  rating: number | null
+  published_at: string | null
+  reviewer_name: string | null
+  reviewer_username: string | null
+  review_url: string | null
+}
+
+export interface ActivityDiscoveryHoursWindow {
+  open: string | null
+  close: string | null
+}
+
+export interface ActivityDiscoveryHoursDay {
+  day: string
+  times: ActivityDiscoveryHoursWindow[]
+}
+
+export interface ActivityDiscoveryBookingLink {
+  label: string
+  url: string
+}
+
+export interface ActivityDiscoveryDetail extends ActivityDiscoveryItem {
+  photos: ActivityDiscoveryPhoto[]
+  reviews: ActivityDiscoveryReview[]
+  hours: ActivityDiscoveryHoursDay[]
+  booking_links: ActivityDiscoveryBookingLink[]
+  provider_payload: Record<string, unknown>
+}
+
+export interface ActivityDiscoveryListResponse {
+  total: number
+  limit: number
+  offset: number
+  page: number
+  entity_type: ActivityEntityType
+  items: ActivityDiscoveryItem[]
+}
+
+export interface ActivityDiscoverInput {
+  entity_type: ActivityEntityType
+  query?: string
+  page?: number
+  limit?: number
+  locale?: string
+  currency?: string
+  min_rating?: number
+  good_for?: string
+  establishment_type?: string
+  meal_type?: string
+  departure_date?: string
+  cruise_length?: string
+}
+
+export interface ActivityShortlistSaveInput {
+  entity_type: ActivityEntityType
+  provider: string
+  provider_ref: string
+  title: string
+  summary?: string | null
+  rating?: number | null
+  review_count?: number | null
+  price_label?: string | null
+  image_url?: string | null
+  detail_url?: string | null
+  address_text?: string | null
+  lat?: number | null
+  lon?: number | null
+  tags?: string[]
+  status_text?: string | null
+  start_at?: string | null
+  end_at?: string | null
+  timezone?: string | null
+  min_price?: string | null
+  max_price?: string | null
+  currency?: string | null
+  raw_payload?: Record<string, unknown>
+}
+
+export interface ActivityShortlistListResponse {
+  total: number
+  limit: number
+  offset: number
+  items: ActivityDiscoveryItem[]
+}
+
+export interface ActivityAttachDayInput {
+  trip_day_id: string
+}
+
+export interface ActivityRecommendationInput {
+  day_ids?: string[]
+  snapshot_ids?: string[]
+  limit?: number
+  use_llm_rationale?: boolean
+}
+
+export interface ActivityRecommendationItem {
+  snapshot_id: string
+  trip_day_id: string
+  score: number
+  rationale: string
+  item: ActivityDiscoveryItem
+}
+
+export interface ActivityRecommendationResponse {
+  total: number
+  items: ActivityRecommendationItem[]
+}
 
 export type OptimizeObjective = components['schemas']['OptimizeObjective']
-export type TripOptimizeInput = components['schemas']['TripOptimizeRequest']
+export interface TripOptimizeInput {
+  day_ids?: string[]
+  activity_snapshot_ids?: string[]
+  objective?: OptimizeObjective
+  include_event_candidates?: boolean
+  max_event_candidates_per_day?: number
+  constraints?: Record<string, unknown>
+}
 export type ProposalResponse = components['schemas']['ProposalResponse']
 export type ProposalListResponse = components['schemas']['ProposalListResponse']
 export type ProposalActivityResponse = components['schemas']['ProposalActivityResponse']

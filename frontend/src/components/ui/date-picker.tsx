@@ -55,9 +55,9 @@ export function DatePicker({
           aria-invalid={invalid}
           data-invalid={invalid ? true : undefined}
           className={cn(
-            'h-9 w-full justify-start text-left font-normal',
-            !selected && 'text-[#526072]/60',
-            invalid && 'border-[#C56A3D] ring-1 ring-[#C56A3D]/10',
+            'h-11 w-full justify-start rounded-[18px] text-left font-normal',
+            !selected && 'text-[var(--color-text-muted)]/60',
+            invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(196,95,79,0.12)]',
             className,
           )}
         >

@@ -1,10 +1,10 @@
-import { useParams } from 'react-router-dom'
-import EventsWorkspace from '@/widgets/events-workspace'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
 
 export default function EventsPage() {
   const { tripId } = useParams<{ tripId: string }>()
+  const location = useLocation()
 
   if (!tripId) return null
 
-  return <EventsWorkspace tripId={tripId} />
+  return <Navigate to={`/app/trips/${tripId}/activities${location.search}`} replace />
 }

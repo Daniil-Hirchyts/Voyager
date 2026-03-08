@@ -1,1 +1,0 @@
-import{e,f as r,j as n,N as o}from"./index-B0NwfNKI.js";function i(){const{tripId:a}=e(),s=r();if(!a)return null;const t=new URLSearchParams(s.search);return t.set("view","map"),n.jsx(o,{to:`/app/trips/${a}/plan?${t.toString()}`,replace:!0})}export{i as default};

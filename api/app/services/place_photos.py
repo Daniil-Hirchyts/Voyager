@@ -15,6 +15,7 @@ from app.db.repositories import PlacePhotoRepository, PlaceRepository
 from app.services.itinerary_generation import NonRetryableJobError, RetryableJobError
 
 WIKIMEDIA_BASE_URL = "https://commons.wikimedia.org"
+WIKIDATA_BASE_URL = "https://www.wikidata.org"
 OPENVERSE_BASE_URL = "https://api.openverse.org"
 ALLOWED_LICENSE_CODES = {
     "cc0",
@@ -73,14 +74,21 @@ def _search_term(place) -> str:
     return " ".join(part for part in parts if part).strip()
 
 
-async def _fetch_wikimedia_candidates(place) -> list[dict[str, Any]]:
+def _normalize_file_title(value: str | None) -> str | None:
+    cleaned = _clean_text(value)
+    if not cleaned:
+        return None
+    title = cleaned.replace("_", " ")
+    if not title.lower().startswith("file:"):
+        title = f"File:{title}"
+    return title
+
+
+async def _commons_image_candidates_from_titles(titles: list[str]) -> list[dict[str, Any]]:
     settings = get_settings()
     params = {
         "action": "query",
-        "generator": "search",
-        "gsrsearch": _search_term(place),
-        "gsrnamespace": 6,
-        "gsrlimit": 8,
+        "titles": "|".join(titles[:8]),
         "prop": "imageinfo",
         "iiprop": "url|size|extmetadata",
         "iiurlwidth": 800,
@@ -167,6 +175,166 @@ async def _fetch_wikimedia_candidates(place) -> list[dict[str, Any]]:
     return [item for item in results if item.get("image_url")]
 
 
+async def _resolve_wikidata_image_titles(place) -> list[str]:
+    settings = get_settings()
+    headers = {"User-Agent": settings.media_user_agent}
+    search_params = {
+        "action": "wbsearchentities",
+        "search": _search_term(place),
+        "language": "en",
+        "limit": 5,
+        "format": "json",
+        "origin": "*",
+    }
+    try:
+        async with httpx.AsyncClient(
+            base_url=WIKIDATA_BASE_URL,
+            timeout=15.0,
+            headers=headers,
+        ) as client:
+            search_response = await client.get("/w/api.php", params=search_params)
+    except httpx.TimeoutException as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_TIMEOUT", "Wikidata request timed out") from exc
+    except httpx.HTTPError as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata request failed") from exc
+
+    if search_response.status_code >= 500:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata upstream error")
+    if search_response.status_code >= 400:
+        raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata request rejected")
+
+    search_payload = search_response.json()
+    search_results = search_payload.get("search") if isinstance(search_payload, dict) else None
+    if not isinstance(search_results, list) or not search_results:
+        return []
+
+    entity_ids = [
+        str(item.get("id"))
+        for item in search_results
+        if isinstance(item, dict) and item.get("id")
+    ]
+    if not entity_ids:
+        return []
+
+    entity_params = {
+        "action": "wbgetentities",
+        "ids": "|".join(entity_ids),
+        "props": "claims",
+        "format": "json",
+        "origin": "*",
+    }
+    try:
+        async with httpx.AsyncClient(
+            base_url=WIKIDATA_BASE_URL,
+            timeout=15.0,
+            headers=headers,
+        ) as client:
+            entity_response = await client.get("/w/api.php", params=entity_params)
+    except httpx.TimeoutException as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_TIMEOUT", "Wikidata entity request timed out") from exc
+    except httpx.HTTPError as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata entity request failed") from exc
+
+    if entity_response.status_code >= 500:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata entity upstream error")
+    if entity_response.status_code >= 400:
+        raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata entity request rejected")
+
+    payload = entity_response.json()
+    entities = payload.get("entities") if isinstance(payload, dict) else None
+    if not isinstance(entities, dict):
+        return []
+
+    for entity_id in entity_ids:
+        entity = entities.get(entity_id)
+        if not isinstance(entity, dict):
+            continue
+        claims = entity.get("claims")
+        if not isinstance(claims, dict):
+            continue
+        image_claims = claims.get("P18")
+        if not isinstance(image_claims, list):
+            continue
+        titles: list[str] = []
+        for claim in image_claims:
+            if not isinstance(claim, dict):
+                continue
+            mainsnak = claim.get("mainsnak")
+            if not isinstance(mainsnak, dict):
+                continue
+            datavalue = mainsnak.get("datavalue")
+            if not isinstance(datavalue, dict):
+                continue
+            title = _normalize_file_title(datavalue.get("value"))
+            if title:
+                titles.append(title)
+        if titles:
+            return titles
+
+    return []
+
+
+async def _fetch_wikidata_candidates(place) -> list[dict[str, Any]]:
+    titles = await _resolve_wikidata_image_titles(place)
+    if not titles:
+        return []
+
+    results = await _commons_image_candidates_from_titles(titles)
+    for item in results:
+        item["source"] = "wikidata_commons"
+    return results
+
+
+async def _fetch_wikimedia_candidates(place) -> list[dict[str, Any]]:
+    settings = get_settings()
+    params = {
+        "action": "query",
+        "generator": "search",
+        "gsrsearch": _search_term(place),
+        "gsrnamespace": 6,
+        "gsrlimit": 8,
+        "prop": "imageinfo",
+        "iiprop": "url|size|extmetadata",
+        "iiurlwidth": 800,
+        "format": "json",
+        "origin": "*",
+    }
+    headers = {"User-Agent": settings.media_user_agent}
+    try:
+        async with httpx.AsyncClient(
+            base_url=WIKIMEDIA_BASE_URL,
+            timeout=15.0,
+            headers=headers,
+        ) as client:
+            response = await client.get("/w/api.php", params=params)
+    except httpx.TimeoutException as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_TIMEOUT", "Wikimedia request timed out") from exc
+    except httpx.HTTPError as exc:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikimedia request failed") from exc
+
+    if response.status_code >= 500:
+        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikimedia upstream error")
+    if response.status_code >= 400:
+        raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikimedia request rejected")
+
+    payload = response.json()
+    query = payload.get("query") if isinstance(payload, dict) else None
+    pages = query.get("pages") if isinstance(query, dict) else None
+    if not isinstance(pages, dict):
+        return []
+
+    page_titles = [
+        _normalize_file_title(page.get("title"))
+        for page in pages.values()
+        if isinstance(page, dict)
+    ]
+    normalized_titles = [title for title in page_titles if title]
+    if not normalized_titles:
+        return []
+
+    return await _commons_image_candidates_from_titles(normalized_titles)
+
+
 async def _fetch_openverse_candidates(place) -> list[dict[str, Any]]:
     settings = get_settings()
     params = {
@@ -234,6 +402,7 @@ async def _fetch_openverse_candidates(place) -> list[dict[str, Any]]:
 async def _fetch_place_photos(place) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     errors: list[dict[str, Any]] = []
     for provider_name, fetcher in (
+        ("wikidata_commons", _fetch_wikidata_candidates),
         ("wikimedia_commons", _fetch_wikimedia_candidates),
         ("openverse", _fetch_openverse_candidates),
     ):

@@ -25,6 +25,12 @@ import { formatMoney } from '@/shared/lib/format'
 import { isApiError } from '@/shared/api/client'
 import type { Offer } from '@/shared/api/types'
 import {
+  WorkspaceHeader,
+  WorkspacePage,
+  WorkspaceStatCard,
+  WorkspaceStatGrid,
+} from '@/shared/layouts/workspace-shell'
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -81,50 +87,52 @@ export default function TripDetailPage() {
     return grouped
   }, [offersData?.items])
 
+  const metaPillClass =
+    'inline-flex items-center gap-2 rounded-full border border-[var(--color-border-strong)] bg-white/76 px-4 py-2 text-sm text-[var(--color-text-muted)] shadow-[inset_0_1px_0_rgba(255,255,255,0.94)]'
+  const noteClass = 'text-sm leading-7 text-[var(--color-text-muted)]'
+  const sectionEyebrowClass = 'w-fit'
+
   if (tripLoading) {
     return (
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 md:px-8 md:py-8 xl:px-10">
-        <div className="h-8 w-36 animate-pulse rounded-full bg-[#DCCCB7]/65" />
+      <WorkspacePage className="gap-6">
+        <div className="h-8 w-36 animate-pulse rounded-full bg-[rgba(114,174,230,0.2)]" />
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.9fr)]">
           <div className="flex flex-col gap-4">
-            <div className="h-6 w-28 animate-pulse rounded-full bg-[#DCCCB7]/50" />
-            <div className="h-14 w-2/3 animate-pulse rounded-[24px] bg-[#DCCCB7]/55" />
-            <div className="h-16 w-full animate-pulse rounded-[24px] bg-[#DCCCB7]/45" />
+            <div className="h-6 w-28 animate-pulse rounded-full bg-[rgba(114,174,230,0.14)]" />
+            <div className="h-14 w-2/3 animate-pulse rounded-[24px] bg-[rgba(114,174,230,0.2)]" />
+            <div className="h-16 w-full animate-pulse rounded-[24px] bg-[rgba(114,174,230,0.14)]" />
           </div>
-          <Card className="border-[#D7CCBC]">
+          <Card variant="solid">
             <CardContent className="flex flex-col gap-4 p-6">
-              <div className="h-6 w-1/2 animate-pulse rounded-full bg-[#DCCCB7]/50" />
+              <div className="h-6 w-1/2 animate-pulse rounded-full bg-[rgba(114,174,230,0.14)]" />
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-1">
                 {[1, 2, 3].map((item) => (
                   <div
                     key={item}
-                    className="h-20 animate-pulse rounded-[20px] bg-[#DCCCB7]/40"
+                    className="h-20 animate-pulse rounded-[20px] bg-[rgba(114,174,230,0.12)]"
                   />
                 ))}
               </div>
             </CardContent>
           </Card>
         </div>
-        <Card className="border-[#D7CCBC]">
+        <Card variant="solid">
           <CardContent className="flex flex-col gap-4 p-6">
             {[1, 2, 3].map((item) => (
-              <div key={item} className="h-28 animate-pulse rounded-[20px] bg-[#DCCCB7]/40" />
+              <div key={item} className="h-28 animate-pulse rounded-[20px] bg-[rgba(114,174,230,0.12)]" />
             ))}
           </CardContent>
         </Card>
-      </div>
+      </WorkspacePage>
     )
   }
 
   if (tripError || !trip) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-4 py-6 md:px-8 md:py-8">
-        <Card className="border-[#D7CCBC] shadow-[0_28px_70px_-50px_rgba(24,33,43,0.7)]">
+      <WorkspacePage className="max-w-4xl gap-4">
+        <Card variant="solid">
           <CardHeader>
-            <Badge
-              variant="outline"
-              className="w-fit rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-            >
+            <Badge variant="neutral" className="w-fit">
               Trip unavailable
             </Badge>
             <CardTitle className="text-3xl">Unable to load the trip</CardTitle>
@@ -143,7 +151,7 @@ export default function TripDetailPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </WorkspacePage>
     )
   }
 
@@ -184,134 +192,79 @@ export default function TripDetailPage() {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-4 py-6 md:px-8 md:py-8 xl:px-10">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.9fr)] xl:items-start">
-          <div className="flex flex-col gap-5">
-            <Button
-              asChild
-              variant="ghost"
-              className="w-fit px-0 text-[#556476] hover:bg-transparent hover:text-[#18212B]"
-            >
-              <Link to="/app/trips">
-                <ArrowLeft data-icon="inline-start" />
-                All trips
-              </Link>
-            </Button>
+      <WorkspacePage className="gap-6">
+        <Button asChild variant="ghost" className="w-fit px-0 hover:bg-transparent">
+          <Link to="/app/trips">
+            <ArrowLeft data-icon="inline-start" />
+            All trips
+          </Link>
+        </Button>
 
-            <div className="flex flex-col gap-4">
-              <Badge
+        <WorkspaceHeader
+          eyebrow="Trip dossier"
+          title={trip.title}
+          description="Overview, day structure, offers, and shortcuts now share the same system as the landing page while keeping planning actions close at hand."
+          meta={(
+            <>
+              <div className={metaPillClass}>
+                <MapPin className="size-4 text-[var(--color-primary-foreground)]" />
+                {trip.destination_text}
+              </div>
+              <div className={metaPillClass}>
+                <Calendar className="size-4 text-[var(--color-primary-foreground)]" />
+                {format(new Date(trip.start_date), 'MMM d, yyyy')} to {format(new Date(trip.end_date), 'MMM d, yyyy')}
+              </div>
+              {trip.budget_amount ? (
+                <div className={metaPillClass}>
+                  <Wallet className="size-4 text-[var(--color-primary-foreground)]" />
+                  {formatMoney(trip.budget_amount, trip.budget_currency)}
+                </div>
+              ) : null}
+            </>
+          )}
+          actions={(
+            <>
+              <Button
+                type="button"
                 variant="outline"
-                className="w-fit rounded-full border-[#D7CCBC] bg-white/72 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
+                size="icon"
+                onClick={handleDuplicate}
+                disabled={duplicateTrip.isPending}
+                title="Duplicate trip"
               >
-                Trip dossier
-              </Badge>
+                {duplicateTrip.isPending ? <Loader2 className="animate-spin" /> : <Copy />}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setShowDeleteConfirm(true)}
+                title="Delete trip"
+              >
+                <Trash2 />
+              </Button>
+              <Button asChild>
+                <Link to={`/app/trips/${tripId}/plan`}>
+                  Open Planner
+                  <ArrowRight data-icon="inline-end" />
+                </Link>
+              </Button>
+            </>
+          )}
+        />
 
-              <h1 className="text-[2.75rem] font-semibold leading-none tracking-tight text-[#18212B] md:text-[3.4rem]">
-                {trip.title}
-              </h1>
-
-              <div className="flex flex-wrap gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#D7CCBC] bg-white/72 px-4 py-2 text-sm text-[#435366]">
-                  <MapPin className="text-[#214F52]" />
-                  {trip.destination_text}
-                </div>
-
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#D7CCBC] bg-white/72 px-4 py-2 text-sm text-[#435366]">
-                  <Calendar className="text-[#214F52]" />
-                  {format(new Date(trip.start_date), 'MMM d, yyyy')} to{' '}
-                  {format(new Date(trip.end_date), 'MMM d, yyyy')}
-                </div>
-
-                {trip.budget_amount ? (
-                  <div className="inline-flex items-center gap-2 rounded-full border border-[#D7CCBC] bg-white/72 px-4 py-2 text-sm text-[#435366]">
-                    <Wallet className="text-[#214F52]" />
-                    {formatMoney(trip.budget_amount, trip.budget_currency)}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          <Card className="overflow-hidden border-[#D7CCBC] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,235,223,0.92))] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)]">
-            <CardHeader className="gap-3 border-b border-[#D7CCBC]">
-              <Badge className="w-fit rounded-full bg-[#214F52]/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#214F52]">
-                Trip controls
-              </Badge>
-              <CardTitle className="text-2xl">Keep the trip moving</CardTitle>
-              <CardDescription className="text-sm leading-7">
-                Duplicate the setup, delete the plan, or jump straight into the planner without
-                losing context.
-              </CardDescription>
-            </CardHeader>
-
-            <CardContent className="flex flex-col gap-5 pt-6">
-              <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                  <p className="text-[0.72rem] uppercase tracking-[0.16em] text-[#7A6A58]">Days</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#18212B]">{days.length}</p>
-                </div>
-                <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                  <p className="text-[0.72rem] uppercase tracking-[0.16em] text-[#7A6A58]">
-                    Offers linked
-                  </p>
-                  <p className="mt-2 text-2xl font-semibold text-[#18212B]">{offersCount}</p>
-                </div>
-                <div className="rounded-[20px] border border-[#D7CCBC] bg-white/72 p-4">
-                  <p className="text-[0.72rem] uppercase tracking-[0.16em] text-[#7A6A58]">
-                    Trip type
-                  </p>
-                  <p className="mt-2 text-lg font-semibold capitalize text-[#18212B]">
-                    {trip.trip_type || 'Leisure'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-11 rounded-[18px]"
-                    onClick={handleDuplicate}
-                    disabled={duplicateTrip.isPending}
-                    title="Duplicate trip"
-                  >
-                    {duplicateTrip.isPending ? <Loader2 className="animate-spin" /> : <Copy />}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-11 rounded-[18px]"
-                    onClick={() => setShowDeleteConfirm(true)}
-                    title="Delete trip"
-                  >
-                    <Trash2 />
-                  </Button>
-                </div>
-
-                <Button asChild className="h-12 rounded-[18px] text-base">
-                  <Link to={`/app/trips/${tripId}/plan`}>
-                    Open Planner
-                    <ArrowRight data-icon="inline-end" />
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <WorkspaceStatGrid className="xl:grid-cols-3">
+          <WorkspaceStatCard label="Days" value={days.length} detail="Current itinerary structure" icon={Calendar} />
+          <WorkspaceStatCard label="Offers linked" value={offersCount} detail="Current flight and hotel attachments" icon={Ticket} />
+          <WorkspaceStatCard label="Trip type" value={<span className="capitalize">{trip.trip_type || 'Leisure'}</span>} detail="Planning mode carried into recommendations" icon={FileText} />
+        </WorkspaceStatGrid>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(21rem,0.85fr)] xl:items-start">
-          <Card className="overflow-hidden border-[#D7CCBC] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)]">
-            <CardHeader className="gap-3 border-b border-[#D7CCBC] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(253,250,245,0.98))]">
+          <Card variant="solid" className="overflow-hidden">
+            <CardHeader className="gap-3 border-b border-[var(--color-border-strong)] bg-white/54">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-col gap-2">
-                  <Badge
-                    variant="outline"
-                    className="w-fit rounded-full border-[#D7CCBC] bg-white/70 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-                  >
+                  <Badge variant="neutral" className={sectionEyebrowClass}>
                     Itinerary
                   </Badge>
                   <CardTitle className="text-[2rem] tracking-tight">Itinerary days</CardTitle>
@@ -322,7 +275,7 @@ export default function TripDetailPage() {
                 </div>
 
                 {days.length > 0 ? (
-                  <Badge className="rounded-full bg-[#214F52]/10 px-3 py-1 text-sm text-[#214F52]">
+                  <Badge variant="accent" className="text-sm">
                     {days.length} day{days.length !== 1 ? 's' : ''}
                   </Badge>
                 ) : null}
@@ -331,13 +284,13 @@ export default function TripDetailPage() {
 
             <CardContent className="flex flex-col gap-4 pt-6">
               {daysLoading ? (
-                <p className="text-sm text-[#556476]">Loading itinerary days…</p>
+                <p className={noteClass}>Loading itinerary days…</p>
               ) : null}
 
               {days.length === 0 && !daysLoading ? (
-                <div className="rounded-[22px] border border-dashed border-[#D7CCBC] bg-[rgba(255,255,255,0.6)] p-6 text-center">
-                  <FileText className="mx-auto mb-3 text-[#C8BAA4]" />
-                  <p className="text-sm leading-7 text-[#556476]">
+                <div className="rounded-[24px] border border-dashed border-[var(--color-border-strong)] bg-white/62 p-6 text-center">
+                  <FileText className="mx-auto mb-3 text-[var(--color-primary)]" />
+                  <p className={noteClass}>
                     No days yet. Open the planner to generate an itinerary.
                   </p>
                   <Button asChild className="mt-4">
@@ -355,13 +308,13 @@ export default function TripDetailPage() {
                 return (
                   <Card
                     key={day.id}
-                    className="rounded-[22px] border-[#D7CCBC] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(250,244,236,0.88))]"
+                    className="overflow-hidden rounded-[24px] border-[var(--color-border-strong)] bg-white/70"
                   >
                     <CardContent className="flex flex-col gap-4 p-5">
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                         <div className="flex flex-col gap-1">
-                          <p className="text-xl font-semibold text-[#18212B]">Day {index + 1}</p>
-                          <p className="text-sm text-[#556476]">
+                          <p className="text-xl font-semibold text-[var(--color-text)]">Day {index + 1}</p>
+                          <p className={noteClass}>
                             {format(new Date(day.date), 'EEEE, MMM d, yyyy')}
                           </p>
                         </div>
@@ -420,7 +373,7 @@ export default function TripDetailPage() {
                             value={dayNotesValue}
                             onChange={(event) => setDayNotesValue(event.target.value)}
                             rows={3}
-                            className="min-h-24 rounded-[18px] bg-[rgba(244,235,221,0.78)] p-4 text-sm"
+                            className="min-h-24 rounded-[20px] border-[var(--color-border-strong)] bg-white/88 p-4 text-sm"
                             placeholder="Notes for this day…"
                             autoFocus
                           />
@@ -447,11 +400,11 @@ export default function TripDetailPage() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-sm leading-7 text-[#556476]">
+                        <p className={noteClass}>
                           {day.notes ? (
                             day.notes
                           ) : (
-                            <span className="italic text-[#B8A995]">No notes for this day.</span>
+                            <span className="italic text-[var(--color-text-muted)]/70">No notes for this day.</span>
                           )}
                         </p>
                       )}
@@ -463,18 +416,18 @@ export default function TripDetailPage() {
           </Card>
 
           <div className="flex flex-col gap-6 xl:sticky xl:top-6 xl:self-start">
-            <Card className="overflow-hidden border-[#D7CCBC] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)]">
-              <CardHeader className="gap-3 border-b border-[#D7CCBC]">
+            <Card variant="solid" className="overflow-hidden">
+              <CardHeader className="gap-3 border-b border-[var(--color-border-strong)]">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex flex-col gap-2">
-                    <Badge className="w-fit rounded-full bg-[#214F52]/10 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#214F52]">
+                    <Badge variant="accent" className={sectionEyebrowClass}>
                       Overview
                     </Badge>
                     <CardTitle className="text-2xl">Trip overview</CardTitle>
                   </div>
 
                   {trip.trip_type ? (
-                    <Badge className="rounded-full bg-[#214F52]/10 px-3 py-1 text-sm capitalize text-[#214F52]">
+                    <Badge variant="accent" className="text-sm capitalize">
                       {trip.trip_type}
                     </Badge>
                   ) : null}
@@ -482,28 +435,28 @@ export default function TripDetailPage() {
               </CardHeader>
 
               <CardContent className="flex flex-col gap-4 pt-6">
-                <div className="flex items-center gap-3 text-sm text-[#435366]">
-                  <MapPin className="text-[#214F52]" />
+                <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+                  <MapPin className="text-[var(--color-primary-foreground)]" />
                   <span>{trip.destination_text}</span>
                 </div>
-                <div className="flex items-center gap-3 text-sm text-[#435366]">
-                  <Calendar className="text-[#214F52]" />
+                <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+                  <Calendar className="text-[var(--color-primary-foreground)]" />
                   <span>
                     {format(new Date(trip.start_date), 'MMM d, yyyy')} to{' '}
                     {format(new Date(trip.end_date), 'MMM d, yyyy')}
                   </span>
                 </div>
                 {trip.budget_amount ? (
-                  <div className="flex items-center gap-3 text-sm text-[#435366]">
-                    <Wallet className="text-[#214F52]" />
+                  <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+                    <Wallet className="text-[var(--color-primary-foreground)]" />
                     <span>{formatMoney(trip.budget_amount, trip.budget_currency)}</span>
                   </div>
                 ) : null}
 
-                <Separator className="bg-[#D7CCBC]" />
+                <Separator className="bg-[var(--color-border-strong)]" />
 
                 <div className="flex flex-col gap-3">
-                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[#7A6A58]">
+                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
                     Preferences
                   </p>
 
@@ -512,15 +465,15 @@ export default function TripDetailPage() {
                       {trip.preferences.map((preference) => (
                         <Badge
                           key={preference}
-                          variant="secondary"
-                          className="rounded-full bg-[#EFE4D4] px-3 py-1 text-sm text-[#435366]"
+                          variant="neutral"
+                          className="rounded-full px-3 py-1 text-sm normal-case tracking-normal"
                         >
                           {preference}
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm leading-7 text-[#556476]">
+                    <p className={noteClass}>
                       No preference profile has been attached to this trip yet.
                     </p>
                   )}
@@ -529,12 +482,9 @@ export default function TripDetailPage() {
             </Card>
 
             {(config.features.mapUI || config.features.offersUI) && (
-              <Card className="overflow-hidden border-[#D7CCBC] shadow-[0_32px_80px_-48px_rgba(24,33,43,0.6)]">
-                <CardHeader className="gap-3 border-b border-[#D7CCBC]">
-                  <Badge
-                    variant="outline"
-                    className="w-fit rounded-full border-[#D7CCBC] bg-white/72 px-3 py-1 text-[0.72rem] uppercase tracking-[0.16em] text-[#556476]"
-                  >
+              <Card variant="solid" className="overflow-hidden">
+                <CardHeader className="gap-3 border-b border-[var(--color-border-strong)]">
+                  <Badge variant="neutral" className={sectionEyebrowClass}>
                     Shortcuts
                   </Badge>
                   <CardTitle className="text-2xl">Continue planning</CardTitle>
@@ -574,7 +524,7 @@ export default function TripDetailPage() {
             )}
           </div>
         </div>
-      </div>
+      </WorkspacePage>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
@@ -589,7 +539,6 @@ export default function TripDetailPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-[#C56A3D] hover:bg-[#B05E35]"
               onClick={(event) => {
                 event.preventDefault()
                 handleDelete()

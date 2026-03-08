@@ -6,13 +6,12 @@ import {
   Calendar,
   Compass,
   Download,
+  MapPin,
   LayoutGrid,
   LogOut,
   Map,
-  Music2,
   Plus,
   ScrollText,
-  Sparkles,
   Ticket,
 } from 'lucide-react'
 import { useProfile } from '@/entities/user/queries'
@@ -20,7 +19,6 @@ import { config } from '@/app/config'
 import { VoyagerLogo } from './logo'
 import { cn } from '@/shared/lib/cn'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -80,8 +78,7 @@ function getSectionLabel(pathname: string, tripId?: string) {
     { path: `/app/trips/${tripId}/plan`, label: 'Planner' },
     { path: `/app/trips/${tripId}/map`, label: 'Map' },
     { path: `/app/trips/${tripId}/offers`, label: 'Offers' },
-    { path: `/app/trips/${tripId}/events`, label: 'Events' },
-    { path: `/app/trips/${tripId}/proposals`, label: 'Proposals' },
+    { path: `/app/trips/${tripId}/activities`, label: 'Activities' },
     { path: `/app/trips/${tripId}/exports`, label: 'Exports' },
     { path: `/app/trips/${tripId}/audit`, label: 'Audit' },
   ]
@@ -112,10 +109,10 @@ function AppSidebarLink({ to, label, icon: Icon, end = false }: NavItem) {
         isActive={!!match}
         tooltip={label}
         className={cn(
-          'h-11 rounded-[16px] border border-transparent px-3 text-[0.92rem] font-medium text-[#435366] transition-all',
-          'hover:bg-[#EFE4D4]/50 hover:text-[#18212B]',
-          'data-[active=true]:bg-white/40 data-[active=true]:border-white/30 data-[active=true]:shadow-sm data-[active=true]:backdrop-blur-md',
-          'data-[active=true]:text-[#173E43]',
+          'h-11 rounded-[18px] border border-transparent px-3 text-[0.92rem] font-medium text-[var(--color-text-muted)] transition-all',
+          'hover:bg-white/48 hover:text-[var(--color-text)]',
+          'data-[active=true]:border-[var(--color-border-strong)] data-[active=true]:bg-white/76 data-[active=true]:shadow-[0_18px_34px_-24px_rgba(32,56,83,0.32)] data-[active=true]:backdrop-blur-md',
+          'data-[active=true]:text-[var(--color-text)]',
           'group-data-[collapsible=icon]:!size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:rounded-[16px] group-data-[collapsible=icon]:!p-0',
         )}
       >
@@ -148,15 +145,13 @@ export function AppShellLayout({
         { to: `/app/trips/${tripId}/plan`, icon: Calendar, label: 'Planner', end: true },
         { to: `/app/trips/${tripId}/map`, icon: Map, label: 'Map', end: true },
         { to: `/app/trips/${tripId}/offers`, icon: Ticket, label: 'Offers', end: true },
-        { to: `/app/trips/${tripId}/events`, icon: Music2, label: 'Events', end: true },
-        { to: `/app/trips/${tripId}/proposals`, icon: Sparkles, label: 'Proposals', end: true },
+        { to: `/app/trips/${tripId}/activities`, icon: MapPin, label: 'Activities', end: true },
         { to: `/app/trips/${tripId}/exports`, icon: Download, label: 'Exports', end: true },
         { to: `/app/trips/${tripId}/audit`, icon: ScrollText, label: 'Audit', end: true },
       ].filter((item) => {
         if (item.label === 'Map') return config.features.mapUI
         if (item.label === 'Offers') return config.features.offersUI
-        if (item.label === 'Events') return config.features.eventsUI
-        if (item.label === 'Proposals') return config.features.proposalsUI
+        if (item.label === 'Activities') return config.features.activitiesUI
         if (item.label === 'Exports') return config.features.exportsUI
         if (item.label === 'Audit') return config.features.auditUI
         return true
@@ -167,7 +162,8 @@ export function AppShellLayout({
   const defaultOpen = sidebarState ? sidebarState === 'true' : true
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen} className="h-dvh overflow-hidden bg-transparent">
+    <SidebarProvider defaultOpen={defaultOpen} className="relative h-dvh overflow-hidden bg-transparent">
+      <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(114,174,230,0.18),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.68),transparent_24%)]" />
       <Sidebar
         variant="sidebar"
         collapsible="icon"
@@ -178,16 +174,16 @@ export function AppShellLayout({
           <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
             <Link
               to="/"
-              className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-[#214F52] text-white shadow-sm"
+              className="flex size-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-cta)] text-white shadow-[0_18px_32px_-24px_rgba(26,22,21,0.72)]"
             >
               <VoyagerLogo className="size-[1.2rem] translate-y-[1px]" />
             </Link>
 
             <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-              <p className="text-[0.65rem] uppercase tracking-[0.25em] text-[#7A6A58]">
+              <p className="text-[0.65rem] uppercase tracking-[0.25em] text-[var(--color-text-muted)]">
                 Voyager
               </p>
-              <p className="mt-0.5 font-display text-[1.2rem] font-medium leading-none text-[#20454A]">
+              <p className="mt-0.5 font-display text-[1.2rem] font-medium leading-none text-[var(--color-text)]">
                 Workspace
               </p>
             </div>
@@ -213,7 +209,7 @@ export function AppShellLayout({
 
         <SidebarContent className="gap-4 px-3 py-4">
           <SidebarGroup className="gap-2 p-0">
-            <SidebarGroupLabel className="px-3 text-[#7A6A58]">Navigation</SidebarGroupLabel>
+            <SidebarGroupLabel className="px-3 text-[var(--color-text-muted)]">Navigation</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="gap-2">
                 {primaryNavItems.map((item) => (
@@ -225,7 +221,7 @@ export function AppShellLayout({
 
           {tripNavItems.length > 0 ? (
             <SidebarGroup className="gap-2 p-0">
-              <SidebarGroupLabel className="px-3 text-[#7A6A58]">Current Trip</SidebarGroupLabel>
+              <SidebarGroupLabel className="px-3 text-[var(--color-text-muted)]">Current Trip</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu className="gap-2">
                   {tripNavItems.map((item) => (
@@ -238,7 +234,7 @@ export function AppShellLayout({
         </SidebarContent>
 
         <SidebarFooter
-          className="border-t border-[#D7CCBC]/85 bg-transparent px-3 py-3"
+          className="border-t border-white/45 bg-transparent px-3 py-3"
           data-testid="app-shell-sidebar-footer"
         >
           <DropdownMenu>
@@ -246,21 +242,21 @@ export function AppShellLayout({
               <button
                 type="button"
                 className={cn(
-                  'flex w-full items-center gap-3 rounded-[20px] border border-transparent hover:border-white/30 hover:bg-white/40 px-3 py-3 text-left shadow-none transition-all hover:backdrop-blur-md hover:shadow-sm',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#214F52]/20',
+                  'flex w-full items-center gap-3 rounded-[20px] border border-transparent px-3 py-3 text-left shadow-none transition-all hover:border-[var(--color-border-strong)] hover:bg-white/52 hover:backdrop-blur-md hover:shadow-[0_18px_34px_-24px_rgba(32,56,83,0.32)]',
+                  'focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--ring)]',
                   'group-data-[collapsible=icon]:!size-11 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:rounded-[16px]',
                   'group-data-[collapsible=icon]:hover:border-transparent group-data-[collapsible=icon]:hover:bg-transparent group-data-[collapsible=icon]:hover:shadow-none',
                 )}
               >
-                <Avatar className="size-10 rounded-[16px] border border-[#D7CCBC] bg-white/80">
-                  <AvatarFallback className="rounded-[16px] bg-[#E6ECEA] text-xs text-[#214F52]">
+                <Avatar className="size-10 rounded-[16px] border-white/70 bg-white/80">
+                  <AvatarFallback className="rounded-[16px] text-xs">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
 
                 <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                  <p className="truncate text-sm font-semibold text-[#18212B]">{userName}</p>
-                  <p className="truncate text-xs text-[#5D6A7B]">{userEmail || 'Signed in'}</p>
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">{userName}</p>
+                  <p className="truncate text-xs text-[var(--color-text-muted)]">{userEmail || 'Signed in'}</p>
                 </div>
               </button>
             </DropdownMenuTrigger>
@@ -268,8 +264,8 @@ export function AppShellLayout({
             <DropdownMenuContent className="w-64 rounded-[18px] p-2" side="right" align="end">
               <DropdownMenuLabel className="px-2 py-2">
                 <div className="grid gap-1">
-                  <span className="truncate text-sm font-semibold text-[#18212B]">{userName}</span>
-                  <span className="truncate text-xs font-normal text-[#5D6A7B]">
+                  <span className="truncate text-sm font-semibold text-[var(--color-text)]">{userName}</span>
+                  <span className="truncate text-xs font-normal text-[var(--color-text-muted)]">
                     {userEmail || 'Signed in'}
                   </span>
                 </div>
@@ -291,25 +287,18 @@ export function AppShellLayout({
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="m-2 min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/60 bg-[linear-gradient(180deg,rgba(255,250,242,0.9),rgba(250,244,236,0.85))] shadow-[0_12px_48px_-12px_rgba(33,79,82,0.15)] ring-1 ring-black/5 backdrop-blur-2xl transition-[margin,border-radius] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:m-2 md:rounded-3xl group-data-[collapsible=icon]:ml-0 group-[[data-state=collapsed]]:ml-0">
-        <header className="relative z-20 flex h-[4.5rem] shrink-0 items-center justify-between gap-4 border-b border-[#E0D3C4]/60 bg-white/40 px-4 backdrop-blur-md md:px-6">
+      <SidebarInset className="m-2 min-h-0 flex-1 overflow-hidden rounded-[32px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,255,255,0.74),rgba(244,248,252,0.86))] shadow-[0_24px_64px_-26px_rgba(32,56,83,0.18)] backdrop-blur-2xl transition-[margin,border-radius] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] md:m-2 md:rounded-[36px] group-data-[collapsible=icon]:ml-0 group-[[data-state=collapsed]]:ml-0">
+        <header className="relative z-20 flex h-[4.75rem] shrink-0 items-center justify-between gap-4 border-b border-white/55 bg-white/42 px-4 backdrop-blur-md md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <SidebarTrigger className="relative z-30 size-10 rounded-[14px] border border-white/60 bg-white/50 text-[#47566A] shadow-sm hover:bg-white hover:text-[#18212B]" />
-            <Separator orientation="vertical" className="hidden h-8 bg-[#D7CCBC] md:block" />
+            <SidebarTrigger className="relative z-30 size-11 rounded-[18px] border border-white/70 bg-white/70 text-[var(--color-text-muted)] shadow-[0_16px_28px_-24px_rgba(32,56,83,0.32)] hover:bg-white hover:text-[var(--color-text)]" />
+            <Separator orientation="vertical" className="hidden h-8 bg-white/55 md:block" />
             <div className="min-w-0">
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[#7A6A58]">
+              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
                 Voyager workspace
               </p>
-              <p className="truncate text-sm font-medium text-[#18212B]">{currentSection}</p>
+              <p className="truncate text-base font-medium text-[var(--color-text)]">{currentSection}</p>
             </div>
           </div>
-
-          <Badge
-            variant="outline"
-            className="hidden rounded-full border-[#D7CCBC] bg-white/72 px-3 py-1 text-[0.68rem] uppercase tracking-[0.18em] text-[#5D6A7B] md:inline-flex"
-          >
-            Balanced layout
-          </Badge>
         </header>
 
         <div
