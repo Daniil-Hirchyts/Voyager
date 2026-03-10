@@ -28,6 +28,25 @@ from app.services.offers_provider import (
 settings = get_settings()
 
 
+def _merge_provider_errors(*groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: list[dict[str, Any]] = []
+    seen: set[tuple[str | None, str | None, str | None]] = set()
+    for group in groups:
+        for item in group:
+            if not isinstance(item, dict):
+                continue
+            key = (
+                str(item.get("provider")) if item.get("provider") is not None else None,
+                str(item.get("code")) if item.get("code") is not None else None,
+                str(item.get("message")) if item.get("message") is not None else None,
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            merged.append(item)
+    return merged
+
+
 @dataclass
 class OffersExecutionResult:
     summary: dict[str, int]
@@ -225,7 +244,11 @@ async def _execute_search_job(
             )
 
     offer_ids: list[str] = []
-    errors = list(availability.unavailable)
+    preflight_unavailable = payload.get("preflight_unavailable")
+    errors = _merge_provider_errors(
+        preflight_unavailable if isinstance(preflight_unavailable, list) else [],
+        list(availability.unavailable),
+    )
     success_count = 0
     completed_provider_count = 0
 

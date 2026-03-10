@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.offers import OfferKind
 from app.models.places import PlacePhotoSummary
 
 
@@ -85,15 +86,33 @@ class PlannerPlaceSummary(BaseModel):
     primary_photo: PlacePhotoSummary | None = None
 
 
+class ActivityCategory(StrEnum):
+    VISIT = "visit"
+    EAT = "eat"
+    ACTIVITY = "activity"
+    HOTEL = "hotel"
+    TRAVEL = "travel"
+
+
+class PlannerLinkedOfferSummary(BaseModel):
+    kind: OfferKind
+    offer_id: UUID
+    title: str
+    deep_link: str | None
+    price_amount: Decimal | None = None
+    currency: str | None = None
+
+
 class ActivityResponse(BaseModel):
     id: UUID
     trip_day_id: UUID | None
     order_index: int
+    category: ActivityCategory
+    category_details: dict = Field(default_factory=dict)
     title: str
     description: str | None
     start_time: time | None
     duration_min: int | None
-    tags: list[str]
     estimated_cost_amount: Decimal | None
     estimated_cost_currency: str | None
     place_id: UUID | None
@@ -101,6 +120,8 @@ class ActivityResponse(BaseModel):
     notes: str | None
     is_favorite: bool
     source: str
+    linked_offer_kind: OfferKind | None = None
+    linked_offer_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -109,12 +130,12 @@ class PlannerActivityResponse(BaseModel):
     id: UUID
     trip_day_id: UUID | None
     order_index: int
+    category: ActivityCategory
+    category_details: dict = Field(default_factory=dict)
     title: str
     description: str | None
     start_time: time | None
-    end_time: time | None
     duration_min: int | None
-    tags: list[str]
     estimated_cost_amount: Decimal | None
     estimated_cost_currency: str | None
     place_id: UUID | None
@@ -123,17 +144,21 @@ class PlannerActivityResponse(BaseModel):
     notes: str | None
     is_favorite: bool
     source: str
+    linked_offer_kind: OfferKind | None = None
+    linked_offer_id: UUID | None = None
+    linked_offer_summary: PlannerLinkedOfferSummary | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class ActivityCreateRequest(BaseModel):
     trip_day_id: UUID | None = None
+    category: ActivityCategory = ActivityCategory.VISIT
+    category_details: dict = Field(default_factory=dict)
     title: str
     description: str | None = None
     start_time: time | None = None
     duration_min: int | None = None
-    tags: list[str] = Field(default_factory=list)
     estimated_cost_amount: Decimal | None = None
     estimated_cost_currency: str | None = None
     place_id: UUID | None = None
@@ -143,11 +168,12 @@ class ActivityCreateRequest(BaseModel):
 
 
 class ActivityPatchRequest(BaseModel):
+    category: ActivityCategory | None = None
+    category_details: dict | None = None
     title: str | None = None
     description: str | None = None
     start_time: time | None = None
     duration_min: int | None = None
-    tags: list[str] | None = None
     estimated_cost_amount: Decimal | None = None
     estimated_cost_currency: str | None = None
     place_id: UUID | None = None
@@ -175,7 +201,12 @@ class ActivityReorderRequest(BaseModel):
 class ActivityMoveRequest(BaseModel):
     target_day_id: UUID | None
     target_index: int
-    start_time: time | None = None
+
+
+class PlannerActivityFromOfferRequest(BaseModel):
+    offer_kind: OfferKind
+    offer_id: UUID
+    trip_day_id: UUID | None = None
 
 
 class PlannerDayResponse(DayResponse):

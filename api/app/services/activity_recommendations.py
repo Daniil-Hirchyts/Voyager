@@ -48,11 +48,12 @@ def _snapshot_terms(snapshot: EventSnapshot) -> set[str]:
 def _day_terms(activities: list[Activity]) -> set[str]:
     terms: set[str] = set()
     for activity in activities:
-        for value in activity.tags_json or []:
+        for value in [activity.category, activity.title, activity.description]:
             if isinstance(value, str):
-                cleaned = value.strip().lower()
-                if cleaned:
-                    terms.add(cleaned)
+                for part in value.replace(",", " ").replace("/", " ").split():
+                    cleaned = part.strip().lower()
+                    if cleaned:
+                        terms.add(cleaned)
     return terms
 
 

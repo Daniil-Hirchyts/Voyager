@@ -1076,11 +1076,6 @@ export interface components {
             target_day_id: string | null;
             /** Target Index */
             target_index: number;
-            /**
-             * Start Time
-             * Format: time
-             */
-            start_time?: string | null;
         };
         /** ActivityPatchRequest */
         ActivityPatchRequest: {
@@ -1937,8 +1932,6 @@ export interface components {
             description: string | null;
             /** Start Time */
             start_time: string | null;
-            /** End Time */
-            end_time: string | null;
             /** Duration Min */
             duration_min: number | null;
             /** Tags */

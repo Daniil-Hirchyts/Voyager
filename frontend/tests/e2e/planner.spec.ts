@@ -1,18 +1,17 @@
 import { expect, test, type Page, type Route } from '@playwright/test'
 
 const NOW = '2026-03-10T09:00:00.000Z'
-const LEGACY_INBOX_TAG = '__voyager_inbox__'
 
 type PlannerActivity = {
   id: string
   trip_day_id: string | null
   order_index: number
+  category: 'visit' | 'eat' | 'activity' | 'hotel' | 'travel'
+  category_details: Record<string, unknown>
   title: string
   description: string | null
   start_time: string | null
-  end_time: string | null
   duration_min: number | null
-  tags: string[]
   estimated_cost_amount: string | null
   estimated_cost_currency: string | null
   place_id: string | null
@@ -21,6 +20,8 @@ type PlannerActivity = {
   notes: string | null
   is_favorite: boolean
   source: string
+  linked_offer_kind: null | 'transport' | 'lodging'
+  linked_offer_id: string | null
   created_at: string
   updated_at: string
 }
@@ -66,12 +67,12 @@ function buildActivity(
     id,
     trip_day_id: tripDayId,
     order_index: 0,
+    category: 'visit',
+    category_details: {},
     title,
     description: null,
     start_time: null,
-    end_time: null,
     duration_min: 60,
-    tags: [],
     estimated_cost_amount: null,
     estimated_cost_currency: null,
     place_id: null,
@@ -80,6 +81,8 @@ function buildActivity(
     notes: null,
     is_favorite: false,
     source: 'manual',
+    linked_offer_kind: null,
+    linked_offer_id: null,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
@@ -118,7 +121,6 @@ function createPlannerState(): PlannerState {
         activities: [
           buildActivity('activity-day-1', 'Morning walk', 'day-1', {
             start_time: '09:00',
-            end_time: '10:00',
           }),
         ],
       },
@@ -133,63 +135,6 @@ function createPlannerState(): PlannerState {
         activities: [
           buildActivity('activity-day-2', 'Gallery stop', 'day-2', {
             start_time: '13:00',
-            end_time: '14:30',
-            duration_min: 90,
-          }),
-        ],
-      },
-    ],
-  }
-}
-
-function createLegacyPlannerState() {
-  return {
-    trip: {
-      id: 'trip-e2e',
-      user_id: 'user-e2e',
-      title: 'Planner E2E Trip',
-      destination_text: 'Paris, France',
-      start_date: '2026-03-24',
-      end_date: '2026-03-26',
-      budget_amount: '1200.00',
-      budget_currency: 'EUR',
-      trip_type: 'city_break',
-      preferences: ['museums', 'cafes'],
-      version: 3,
-      created_at: NOW,
-      updated_at: NOW,
-    },
-    days: [
-      {
-        id: 'day-1',
-        trip_id: 'trip-e2e',
-        day_index: 0,
-        date: '2026-03-24',
-        notes: null,
-        created_at: NOW,
-        updated_at: NOW,
-        activities: [
-          buildActivity('legacy-inbox', 'Legacy inbox shortlist', 'day-1', {
-            tags: [LEGACY_INBOX_TAG],
-          }),
-          buildActivity('legacy-day-1', 'Morning walk', 'day-1', {
-            start_time: '09:00',
-            end_time: '10:00',
-          }),
-        ],
-      },
-      {
-        id: 'day-2',
-        trip_id: 'trip-e2e',
-        day_index: 1,
-        date: '2026-03-25',
-        notes: null,
-        created_at: NOW,
-        updated_at: NOW,
-        activities: [
-          buildActivity('legacy-day-2', 'Gallery stop', 'day-2', {
-            start_time: '13:00',
-            end_time: '14:30',
             duration_min: 90,
           }),
         ],
@@ -204,7 +149,6 @@ function normalizeActivities(activities: PlannerActivity[], tripDayId: string | 
     activity.order_index = index
     if (tripDayId == null) {
       activity.start_time = null
-      activity.end_time = null
     }
   })
 }
@@ -308,138 +252,6 @@ async function installPlannerRoutes(page: Page, state: PlannerState) {
   )
 }
 
-function patchLegacyActivityInState(
-  state: ReturnType<typeof createLegacyPlannerState>,
-  activityId: string,
-  payload: Partial<PlannerActivity>,
-) {
-  for (const day of state.days) {
-    const activity = day.activities.find((item) => item.id === activityId)
-    if (!activity) {
-      continue
-    }
-
-    if (Array.isArray(payload.tags)) {
-      activity.tags = payload.tags
-    }
-    if ('start_time' in payload) {
-      activity.start_time = payload.start_time ?? null
-      if (payload.start_time == null) {
-        activity.end_time = null
-      }
-    }
-
-    state.trip.version += 1
-    state.trip.updated_at = NOW
-    return activity
-  }
-
-  return null
-}
-
-function moveLegacyActivityInState(
-  state: ReturnType<typeof createLegacyPlannerState>,
-  activityId: string,
-  targetDayId: string,
-  targetIndex: number,
-) {
-  let activity: PlannerActivity | null = null
-
-  for (const day of state.days) {
-    const index = day.activities.findIndex((item) => item.id === activityId)
-    if (index >= 0) {
-      activity = day.activities.splice(index, 1)[0] ?? null
-      normalizeActivities(day.activities, day.id)
-      break
-    }
-  }
-
-  if (!activity) {
-    return null
-  }
-
-  const targetDay = state.days.find((day) => day.id === targetDayId)
-  if (!targetDay) {
-    return null
-  }
-
-  const nextIndex = Math.max(0, Math.min(targetIndex, targetDay.activities.length))
-  targetDay.activities.splice(nextIndex, 0, activity)
-  normalizeActivities(targetDay.activities, targetDay.id)
-  state.trip.version += 1
-  state.trip.updated_at = NOW
-  return activity
-}
-
-async function installLegacyPlannerRoutes(
-  page: Page,
-  state: ReturnType<typeof createLegacyPlannerState>,
-) {
-  await page.route('**/api/trips/trip-e2e/planner', (route) =>
-    fulfillJson(route, {
-      trip: state.trip,
-      days: state.days,
-    }),
-  )
-  await page.route('**/api/trips/trip-e2e/offers**', (route) =>
-    fulfillJson(route, {
-      total: 0,
-      limit: 200,
-      offset: 0,
-      items: [],
-    }),
-  )
-  await page.route('**/api/activities/*/move', async (route) => {
-    const payload = route.request().postDataJSON() as {
-      target_day_id: string | null
-      target_index: number
-    }
-    const activityId = route.request().url().split('/activities/')[1]?.split('/move')[0]
-    if (!activityId || !payload.target_day_id) {
-      await route.fulfill({ status: 422 })
-      return
-    }
-
-    const moved = moveLegacyActivityInState(
-      state,
-      activityId,
-      payload.target_day_id,
-      payload.target_index,
-    )
-    if (!moved) {
-      await route.fulfill({ status: 404 })
-      return
-    }
-    await fulfillJson(route, moved)
-  })
-  await page.route('**/api/activities/*', async (route) => {
-    if (route.request().method() !== 'PATCH') {
-      await route.fallback()
-      return
-    }
-
-    const payload = route.request().postDataJSON() as Partial<PlannerActivity>
-    const activityId = route.request().url().split('/activities/')[1]?.split('?')[0]
-    if (!activityId) {
-      await route.fulfill({ status: 404 })
-      return
-    }
-
-    const patched = patchLegacyActivityInState(state, activityId, payload)
-    if (!patched) {
-      await route.fulfill({ status: 404 })
-      return
-    }
-    await fulfillJson(route, patched)
-  })
-  await page.route('**/api/days/*/activities/reorder', (route) =>
-    fulfillJson(route, {
-      total: 0,
-      items: [],
-    }),
-  )
-}
-
 async function dragHandleTo(page: Page, sourceHandleSelector: string, targetSelector: string) {
   const source = page.locator(sourceHandleSelector)
   const target = page.locator(targetSelector)
@@ -525,37 +337,4 @@ test('mobile kanban uses the chip rail to move inbox items across hidden days', 
   await expect(
     page.locator('section[aria-label="Day 1"] [aria-label="Activity: Inbox museum shortlist"]'),
   ).toBeVisible()
-})
-
-test('legacy planner supports inbox and day moves without failing', async ({ page }) => {
-  const plannerState = createLegacyPlannerState()
-  await installLegacyPlannerRoutes(page, plannerState)
-
-  await page.setViewportSize({ width: 1440, height: 960 })
-  await page.goto('/planner-harness.html')
-
-  await expect(page.locator('[aria-label="Inbox"]')).toBeVisible()
-  await expect(page.locator('[aria-label="Activity: Legacy inbox shortlist"]')).toBeVisible()
-
-  await dragHandleTo(
-    page,
-    '[aria-label="Activity: Legacy inbox shortlist"] button[aria-label="Drag activity"]',
-    'section[aria-label="Day 2"]',
-  )
-
-  await expect(
-    page.locator('section[aria-label="Day 2"] [aria-label="Activity: Legacy inbox shortlist"]'),
-  ).toBeVisible()
-  await expect(page.getByText('Failed to move activity')).toHaveCount(0)
-
-  await dragHandleTo(
-    page,
-    'section[aria-label="Day 1"] [aria-label="Activity: Morning walk"] button[aria-label="Drag activity"]',
-    'section[aria-label="Inbox"]',
-  )
-
-  await expect(
-    page.locator('section[aria-label="Inbox"] [aria-label="Activity: Morning walk"]'),
-  ).toBeVisible()
-  await expect(page.getByText('Failed to move activity')).toHaveCount(0)
 })

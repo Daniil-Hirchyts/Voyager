@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models import (
     Activity,
+    ActivityCategory,
     AuditLog,
     EventSnapshot,
     ItineraryProposal,
@@ -47,6 +48,7 @@ from app.models.trips import (
     ActivityPatchRequest,
     ActivityReorderRequest,
     DayPatchRequest,
+    PlannerActivityFromOfferRequest,
     TripCreateRequest,
     TripPatchRequest,
 )
@@ -123,6 +125,101 @@ def _unique_strings(values: list[Any]) -> list[str]:
         seen.add(normalized)
         result.append(item)
     return result
+
+
+def _normalize_category_details(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _infer_activity_category(
+    *,
+    place_category: str | None = None,
+    title: str | None = None,
+    source: str | None = None,
+    linked_offer_kind: str | None = None,
+    event_entity_type: str | None = None,
+) -> ActivityCategory:
+    if linked_offer_kind == OfferKind.LODGING.value:
+        return ActivityCategory.HOTEL
+    if linked_offer_kind == OfferKind.TRANSPORT.value:
+        return ActivityCategory.TRAVEL
+    if event_entity_type == "restaurant":
+        return ActivityCategory.EAT
+    if event_entity_type == "attraction":
+        return ActivityCategory.VISIT
+
+    haystack = " ".join(
+        value for value in [place_category, title, source] if isinstance(value, str) and value.strip()
+    ).lower()
+    if any(token in haystack for token in ("restaurant", "cafe", "food", "bistro", "bar")):
+        return ActivityCategory.EAT
+    if any(
+        token in haystack
+        for token in ("tour", "experience", "activity", "class", "show", "ticket", "event")
+    ):
+        return ActivityCategory.ACTIVITY
+    return ActivityCategory.VISIT
+
+
+def _travel_category_details_from_offer(offer: TransportOffer) -> dict[str, Any]:
+    offer_response = OfferRepository._offer_response_from_transport(offer)
+    details = offer_response.transport_details
+    return {
+        "travel_mode": offer.transport_mode,
+        "origin_text": offer.origin_text,
+        "destination_text": offer.destination_text,
+        "depart_at": offer.depart_at.isoformat() if offer.depart_at else None,
+        "arrive_at": offer.arrive_at.isoformat() if offer.arrive_at else None,
+        "origin_geo": (
+            {
+                "lat": details.origin_geo.latitude,
+                "lon": details.origin_geo.longitude,
+            }
+            if details and details.origin_geo
+            else None
+        ),
+        "destination_geo": (
+            {
+                "lat": details.destination_geo.latitude,
+                "lon": details.destination_geo.longitude,
+            }
+            if details and details.destination_geo
+            else None
+        ),
+        "segments": [segment.model_dump(mode="json") for segment in (details.segments if details else [])],
+        "layovers": [layover.model_dump(mode="json") for layover in (details.layovers if details else [])],
+        "stops_count": details.stops_count if details else None,
+        "total_duration_min": details.total_duration_min if details else None,
+        "cabin": details.cabin if details else None,
+        "baggage_summary": details.baggage_summary if details else None,
+    }
+
+
+def _hotel_category_details_from_offer(offer: LodgingOffer) -> dict[str, Any]:
+    offer_response = OfferRepository._offer_response_from_lodging(offer)
+    details = offer_response.lodging_details
+    return {
+        "location_text": offer.location_text,
+        "lodging_type": offer.lodging_type,
+        "room_type": offer.room_type,
+        "checkin_date": offer.checkin_date.isoformat() if offer.checkin_date else None,
+        "checkout_date": offer.checkout_date.isoformat() if offer.checkout_date else None,
+        "nights": offer.nights,
+        "hotel_name": details.hotel_name if details else None,
+        "address_text": details.address_text if details else None,
+        "latitude": details.latitude if details else None,
+        "longitude": details.longitude if details else None,
+        "star_rating": details.star_rating if details else None,
+        "sentiment_rating": details.sentiment_rating if details else None,
+        "amenities": details.amenities if details else [],
+        "distance_km": details.distance_km if details else None,
+        "room_description": details.room_description if details else None,
+        "payment_type": details.payment_type if details else None,
+        "cancellation_summary": details.cancellation_summary if details else None,
+        "nightly_rate_amount": str(details.nightly_rate_amount) if details and details.nightly_rate_amount is not None else None,
+        "taxes_amount": str(details.taxes_amount) if details and details.taxes_amount is not None else None,
+        "place_id": str(details.place_id) if details and details.place_id else None,
+    }
 
 
 class UserRepository:
@@ -341,11 +438,12 @@ class TripRepository:
                         else None
                     ),
                     order_index=activity.order_index,
+                    category=activity.category,
+                    category_details_json=activity.category_details_json or {},
                     title=activity.title,
                     description=activity.description,
                     start_time=activity.start_time,
                     duration_min=activity.duration_min,
-                    tags_json=activity.tags_json,
                     estimated_cost_amount=activity.estimated_cost_amount,
                     estimated_cost_currency=activity.estimated_cost_currency,
                     place_id=activity.place_id,
@@ -353,6 +451,8 @@ class TripRepository:
                     notes=activity.notes,
                     is_favorite=activity.is_favorite,
                     source=activity.source,
+                    linked_offer_kind=None,
+                    linked_offer_id=None,
                 )
             )
 
@@ -647,6 +747,30 @@ class ActivityRepository:
         )
 
     @staticmethod
+    async def _sync_linked_offer_day(
+        db: AsyncSession,
+        *,
+        linked_offer_kind: str | None,
+        linked_offer_id: uuid.UUID | None,
+        trip_day_id: uuid.UUID | None,
+    ) -> None:
+        if linked_offer_id is None or linked_offer_kind is None:
+            return
+        if linked_offer_kind == OfferKind.TRANSPORT.value:
+            await db.execute(
+                update(TransportOffer)
+                .where(TransportOffer.id == linked_offer_id)
+                .values(trip_day_id=trip_day_id)
+            )
+            return
+        if linked_offer_kind == OfferKind.LODGING.value:
+            await db.execute(
+                update(LodgingOffer)
+                .where(LodgingOffer.id == linked_offer_id)
+                .values(trip_day_id=trip_day_id)
+            )
+
+    @staticmethod
     async def list_day_activities(
         db: AsyncSession,
         user_id: uuid.UUID,
@@ -714,17 +838,20 @@ class ActivityRepository:
             trip_id=trip.id,
             trip_day_id=target_day.id if target_day else None,
             order_index=order_index,
+            category=payload.category,
+            category_details_json=_normalize_category_details(payload.category_details),
             title=payload.title,
             description=payload.description,
             start_time=payload.start_time if target_day else None,
             duration_min=payload.duration_min,
-            tags_json=payload.tags,
             estimated_cost_amount=payload.estimated_cost_amount,
             estimated_cost_currency=payload.estimated_cost_currency,
             place_id=payload.place_id,
             notes=payload.notes,
             is_favorite=payload.is_favorite,
             source=payload.source,
+            linked_offer_kind=None,
+            linked_offer_id=None,
         )
         db.add(activity)
 
@@ -777,8 +904,10 @@ class ActivityRepository:
             db, user_id, activity_id
         )
         update_data = payload.model_dump(exclude_unset=True)
-        if "tags" in update_data:
-            activity.tags_json = update_data.pop("tags")
+        if "category_details" in update_data:
+            activity.category_details_json = _normalize_category_details(
+                update_data.pop("category_details")
+            )
         for key, value in update_data.items():
             setattr(activity, key, value)
 
@@ -794,10 +923,18 @@ class ActivityRepository:
         )
         source_day_id = activity.trip_day_id
         snapshot_id = activity.event_snapshot_id
+        linked_offer_kind = activity.linked_offer_kind
+        linked_offer_id = activity.linked_offer_id
         await db.delete(activity)
         await db.flush()
 
         await ActivityRepository._set_snapshot_day(db, snapshot_id=snapshot_id, trip_day_id=None)
+        await ActivityRepository._sync_linked_offer_day(
+            db,
+            linked_offer_kind=linked_offer_kind,
+            linked_offer_id=linked_offer_id,
+            trip_day_id=None,
+        )
         await ActivityRepository._normalize_bucket_order(
             db,
             trip_id=trip.id,
@@ -931,14 +1068,166 @@ class ActivityRepository:
 
         if target_bucket_day_id is None:
             activity.start_time = None
-        elif "start_time" in payload.model_fields_set:
-            activity.start_time = payload.start_time
         await ActivityRepository._set_snapshot_day(
             db,
             snapshot_id=activity.event_snapshot_id,
             trip_day_id=target_bucket_day_id,
         )
+        await ActivityRepository._sync_linked_offer_day(
+            db,
+            linked_offer_kind=activity.linked_offer_kind,
+            linked_offer_id=activity.linked_offer_id,
+            trip_day_id=target_bucket_day_id,
+        )
 
+        await TripRepository.bump_version(db, trip.id)
+        await db.flush()
+        await db.refresh(activity)
+        return activity
+
+    @staticmethod
+    async def import_offer_activity(
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        payload: PlannerActivityFromOfferRequest,
+    ) -> Activity:
+        trip = await TripRepository.get_trip(db, user_id, trip_id)
+        target_day: TripDay | None = None
+        if payload.trip_day_id is not None:
+            target_day = await DayRepository.get_day_for_user(db, user_id, payload.trip_day_id)
+            if target_day.trip_id != trip.id:
+                raise ValidationApiError("trip_day_id must belong to the trip")
+
+        offer = await OfferRepository.get_offer_for_user(
+            db,
+            user_id=user_id,
+            offer_kind=payload.offer_kind,
+            offer_id=payload.offer_id,
+        )
+        if offer.trip_id != trip.id:
+            raise NotFoundError("Offer not found")
+
+        existing_result = await db.execute(
+            select(Activity)
+            .where(Activity.trip_id == trip.id)
+            .where(Activity.linked_offer_kind == payload.offer_kind.value)
+            .where(Activity.linked_offer_id == offer.id)
+        )
+        activity = existing_result.scalar_one_or_none()
+
+        if payload.offer_kind == OfferKind.TRANSPORT:
+            assert isinstance(offer, TransportOffer)
+            category = ActivityCategory.TRAVEL
+            category_details = _travel_category_details_from_offer(offer)
+            place_id = None
+            start_time = offer.depart_at.time().replace(tzinfo=None) if target_day and offer.depart_at else None
+            duration_min = (
+                max(1, int((offer.arrive_at - offer.depart_at).total_seconds() // 60))
+                if offer.depart_at and offer.arrive_at
+                else None
+            )
+            notes = None
+        else:
+            assert isinstance(offer, LodgingOffer)
+            category = ActivityCategory.HOTEL
+            category_details = _hotel_category_details_from_offer(offer)
+            place_id = offer.place_id
+            start_time = None
+            duration_min = None
+            notes = None
+
+        title = offer.title
+        description = (
+            f"{getattr(offer, 'origin_text', None) or getattr(offer, 'location_text', None) or ''}"
+        ).strip() or None
+        target_bucket_day_id = target_day.id if target_day else None
+
+        if activity is None:
+            order_index = await ActivityRepository._next_order_index(
+                db,
+                trip_id=trip.id,
+                trip_day_id=target_bucket_day_id,
+            )
+            activity = Activity(
+                trip_id=trip.id,
+                trip_day_id=target_bucket_day_id,
+                order_index=order_index,
+                category=category,
+                category_details_json=category_details,
+                title=title,
+                description=description,
+                start_time=start_time,
+                duration_min=duration_min,
+                estimated_cost_amount=offer.price_amount,
+                estimated_cost_currency=offer.currency,
+                place_id=place_id,
+                notes=notes,
+                is_favorite=False,
+                source="offer_import",
+                linked_offer_kind=payload.offer_kind.value,
+                linked_offer_id=offer.id,
+            )
+            db.add(activity)
+        else:
+            source_bucket_day_id = activity.trip_day_id
+            if source_bucket_day_id != target_bucket_day_id:
+                source_ids = [
+                    item_id
+                    for item_id in await ActivityRepository._bucket_ids(
+                        db,
+                        trip_id=trip.id,
+                        trip_day_id=source_bucket_day_id,
+                    )
+                    if item_id != activity.id
+                ]
+                target_ids = await ActivityRepository._bucket_ids(
+                    db,
+                    trip_id=trip.id,
+                    trip_day_id=target_bucket_day_id,
+                )
+                target_ids.append(activity.id)
+                temp_order = await ActivityRepository._temporary_order_sentinel(
+                    db,
+                    trip_id=trip.id,
+                    trip_day_id=target_bucket_day_id,
+                )
+                activity.trip_day_id = target_bucket_day_id
+                activity.order_index = temp_order
+                await db.flush()
+                await ActivityRepository._apply_order_for_bucket(
+                    db,
+                    trip_id=trip.id,
+                    trip_day_id=source_bucket_day_id,
+                    ordered_ids=source_ids,
+                )
+                await ActivityRepository._apply_order_for_bucket(
+                    db,
+                    trip_id=trip.id,
+                    trip_day_id=target_bucket_day_id,
+                    ordered_ids=target_ids,
+                )
+
+            activity.category = category
+            activity.category_details_json = category_details
+            activity.title = title
+            activity.description = description
+            activity.start_time = start_time
+            activity.duration_min = duration_min
+            activity.estimated_cost_amount = offer.price_amount
+            activity.estimated_cost_currency = offer.currency
+            activity.place_id = place_id
+            activity.notes = notes
+            activity.source = "offer_import"
+            activity.linked_offer_kind = payload.offer_kind.value
+            activity.linked_offer_id = offer.id
+
+        await ActivityRepository._sync_linked_offer_day(
+            db,
+            linked_offer_kind=payload.offer_kind.value,
+            linked_offer_id=offer.id,
+            trip_day_id=target_bucket_day_id,
+        )
         await TripRepository.bump_version(db, trip.id)
         await db.flush()
         await db.refresh(activity)
@@ -1558,10 +1847,6 @@ class EventRepository:
             address_text=item.venue_address,
             lat=lat,
             lon=lon,
-            tags=_unique_strings(
-                list(item.tags_json or [])
-                + [item.segment, item.genre]
-            ),
             status_text=item.status_text or item.sales_status,
             is_attachable=EventRepository._is_attachable(item),
             created_at=item.created_at,
@@ -1798,14 +2083,12 @@ class EventRepository:
             trip_id=day.trip_id,
             trip_day_id=day.id,
             order_index=order_index,
+            category=_infer_activity_category(event_entity_type=snapshot.entity_type),
+            category_details_json={},
             title=snapshot.title,
             description=snapshot.summary,
             start_time=start_time,
             duration_min=duration_min,
-            tags_json=_unique_strings(
-                list(snapshot.tags_json or [])
-                + [snapshot.entity_type, snapshot.segment, snapshot.genre]
-            ),
             estimated_cost_amount=snapshot.min_price or snapshot.max_price,
             estimated_cost_currency=snapshot.currency,
             place_id=snapshot.place_id,
@@ -2034,11 +2317,14 @@ class ProposalRepository:
             order_index=item.order_index,
             title=item.title,
             description=item.description,
+            category=_infer_activity_category(
+                title=item.title,
+                source=" ".join(str(value) for value in (item.tags_json or []) if value),
+            ),
             start_time=item.start_time,
             duration_min=item.duration_min,
             estimated_cost_amount=item.estimated_cost_amount,
             estimated_cost_currency=item.estimated_cost_currency,
-            tags=item.tags_json,
             rationale=item.rationale_json,
             score=item.score_json,
             created_at=item.created_at,

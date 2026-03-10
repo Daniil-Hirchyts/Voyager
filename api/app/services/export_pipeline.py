@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import textwrap
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
@@ -128,36 +129,74 @@ def _serialize_pdf(payload: dict[str, Any]) -> bytes:
             )
         lines.append("")
 
-    y_start = 770
-    line_height = 14
-    content_lines = ["BT", "/F1 12 Tf", f"72 {y_start} Td"]
-    first = True
+    wrapped_lines: list[str] = []
     for line in lines:
-        escaped = _escape_pdf_text(line)
-        if first:
-            content_lines.append(f"({escaped}) Tj")
-            first = False
-        else:
-            content_lines.append(f"0 -{line_height} Td")
-            content_lines.append(f"({escaped}) Tj")
-    content_lines.append("ET")
-    stream_content = ("\n".join(content_lines) + "\n").encode("utf-8")
+        if not line:
+            wrapped_lines.append("")
+            continue
+        wrapped = textwrap.wrap(
+            line,
+            width=82,
+            break_long_words=True,
+            break_on_hyphens=False,
+        )
+        wrapped_lines.extend(wrapped or [""])
+
+    y_start = 770
+    bottom_margin = 72
+    line_height = 14
+    lines_per_page = max(int((y_start - bottom_margin) / line_height) + 1, 1)
+    pages = [
+        wrapped_lines[index : index + lines_per_page]
+        for index in range(0, max(len(wrapped_lines), 1), lines_per_page)
+    ]
+    if not pages:
+        pages = [[]]
 
     objects: list[bytes] = []
     objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    objects.append(b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+    page_object_numbers = [4 + (index * 2) for index in range(len(pages))]
+    kids = " ".join(f"{number} 0 R" for number in page_object_numbers).encode("ascii")
     objects.append(
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-        b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        b"<< /Type /Pages /Kids ["
+        + kids
+        + b"] /Count "
+        + str(len(page_object_numbers)).encode("ascii")
+        + b" >>"
     )
     objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
-    objects.append(
-        b"<< /Length "
-        + str(len(stream_content)).encode("ascii")
-        + b" >>\nstream\n"
-        + stream_content
-        + b"endstream"
-    )
+
+    for index, page_lines in enumerate(pages):
+        page_object_number = page_object_numbers[index]
+        content_object_number = page_object_number + 1
+        content_lines = ["BT", "/F1 12 Tf", f"72 {y_start} Td"]
+        first = True
+        for line in page_lines:
+            escaped = _escape_pdf_text(line)
+            if first:
+                content_lines.append(f"({escaped}) Tj")
+                first = False
+            else:
+                content_lines.append(f"0 -{line_height} Td")
+                content_lines.append(f"({escaped}) Tj")
+        if first:
+            content_lines.append("( ) Tj")
+        content_lines.append("ET")
+        stream_content = ("\n".join(content_lines) + "\n").encode("utf-8")
+
+        objects.append(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 3 0 R >> >> /Contents "
+            + str(content_object_number).encode("ascii")
+            + b" 0 R >>"
+        )
+        objects.append(
+            b"<< /Length "
+            + str(len(stream_content)).encode("ascii")
+            + b" >>\nstream\n"
+            + stream_content
+            + b"endstream"
+        )
 
     data = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
     offsets: list[int] = [0]
@@ -240,7 +279,8 @@ async def _load_trip_payload(
                     "is_favorite": activity.is_favorite,
                     "notes": activity.notes,
                     "place_id": str(activity.place_id) if activity.place_id else None,
-                    "tags": list(activity.tags_json or []),
+                    "category": activity.category.value if hasattr(activity.category, "value") else str(activity.category),
+                    "category_details": activity.category_details_json or {},
                 }
             )
 

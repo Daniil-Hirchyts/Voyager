@@ -2,10 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   autocompleteDestinations,
   createPlace,
+  getGooglePlace,
   getNearbyPlaces,
   getPlace,
   getViewportPlaces,
   listPlaces,
+  searchGooglePlaces,
   searchPlaces,
 } from './api'
 import type {
@@ -20,10 +22,12 @@ export const placeKeys = {
   all: ['places'] as const,
   list: (params: PlaceListParams) => ['places', 'list', params] as const,
   search: (params: PlaceListParams) => ['places', 'search', params] as const,
+  googleSearch: (params: PlaceListParams) => ['places', 'google-search', params] as const,
   autocomplete: (params: PlaceListParams) => ['places', 'autocomplete', params] as const,
   nearby: (params: NearbyPlaceParams | null) => ['places', 'nearby', params] as const,
   viewport: (params: ViewportPlaceParams | null) => ['places', 'viewport', params] as const,
   detail: (placeId: string) => ['place', placeId] as const,
+  googleDetail: (placeId: string) => ['places', 'google', placeId] as const,
 }
 
 export function usePlaceList(params: PlaceListParams = {}) {
@@ -37,6 +41,14 @@ export function usePlaceSearch(params: PlaceListParams, enabled = true) {
   return useQuery({
     queryKey: placeKeys.search(params),
     queryFn: () => searchPlaces(params),
+    enabled,
+  })
+}
+
+export function useGooglePlaceSearch(params: PlaceListParams, enabled = true) {
+  return useQuery({
+    queryKey: placeKeys.googleSearch(params),
+    queryFn: () => searchGooglePlaces(params),
     enabled,
   })
 }
@@ -72,6 +84,15 @@ export function usePlace(placeId: string | null | undefined) {
   return useQuery({
     queryKey: placeKeys.detail(placeId ?? '__none__'),
     queryFn: () => getPlace(placeId!),
+    enabled: !!placeId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useGooglePlace(placeId: string | null | undefined) {
+  return useQuery({
+    queryKey: placeKeys.googleDetail(placeId ?? '__none__'),
+    queryFn: () => getGooglePlace(placeId!),
     enabled: !!placeId,
     staleTime: 5 * 60 * 1000,
   })

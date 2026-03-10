@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.trips import ActivityCategory
+
 
 class OptimizeObjective(StrEnum):
     BALANCED_FLOW = "balanced_flow"
@@ -29,11 +31,11 @@ class ProposalActivityResponse(BaseModel):
     order_index: int
     title: str
     description: str | None
+    category: ActivityCategory
     start_time: time | None
     duration_min: int | None
     estimated_cost_amount: Decimal | None
     estimated_cost_currency: str | None
-    tags: list[str]
     rationale: dict
     score: dict
     created_at: datetime

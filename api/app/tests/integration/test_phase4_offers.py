@@ -259,6 +259,124 @@ def test_attach_day_enforces_invariant_and_ownership(api_client, headers_user1, 
     assert attach_foreign_user.status_code in (403, 404)
 
 
+def test_import_offer_backed_planner_cards_syncs_offer_day(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Planner offer import")
+    days = _list_days(api_client, headers_user1, trip["id"])
+    day_1 = days[0]["id"]
+    day_2 = days[1]["id"]
+
+    transport_submit = _submit_transport_search(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        trip_day_id=None,
+        providers=["mock_transport"],
+    )
+    assert transport_submit["status_code"] == 202
+    transport_job = _wait_for_job(api_client, headers_user1, transport_submit["body"]["job_id"])
+    assert transport_job["status"] == "SUCCEEDED"
+
+    lodging_submit = _submit_lodging_search(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        trip_day_id=None,
+        providers=["mock_lodging"],
+    )
+    assert lodging_submit["status_code"] == 202
+    lodging_job = _wait_for_job(api_client, headers_user1, lodging_submit["body"]["job_id"])
+    assert lodging_job["status"] == "SUCCEEDED"
+
+    transport_offer = _list_offers(
+        api_client, headers_user1, trip["id"], kind="transport", current_only=True
+    )["items"][0]
+    lodging_offer = _list_offers(
+        api_client, headers_user1, trip["id"], kind="lodging", current_only=True
+    )["items"][0]
+
+    import_transport = api_client.post(
+        f"/trips/{trip['id']}/planner/activities/from-offer",
+        headers=headers_user1 | {"Idempotency-Key": f"p4-import-transport-{uuid.uuid4()}"},
+        json={"offer_kind": "transport", "offer_id": transport_offer["id"], "trip_day_id": day_1},
+    )
+    assert import_transport.status_code == 201
+    transport_activity = import_transport.json()
+    assert transport_activity["category"] == "travel"
+    assert transport_activity["linked_offer_kind"] == "transport"
+    assert transport_activity["linked_offer_id"] == transport_offer["id"]
+    assert transport_activity["trip_day_id"] == day_1
+
+    import_lodging = api_client.post(
+        f"/trips/{trip['id']}/planner/activities/from-offer",
+        headers=headers_user1 | {"Idempotency-Key": f"p4-import-lodging-{uuid.uuid4()}"},
+        json={"offer_kind": "lodging", "offer_id": lodging_offer["id"], "trip_day_id": day_1},
+    )
+    assert import_lodging.status_code == 201
+    lodging_activity = import_lodging.json()
+    assert lodging_activity["category"] == "hotel"
+    assert lodging_activity["linked_offer_kind"] == "lodging"
+    assert lodging_activity["linked_offer_id"] == lodging_offer["id"]
+
+    planner = api_client.get(f"/trips/{trip['id']}/planner", headers=headers_user1)
+    assert planner.status_code == 200
+    planner_body = planner.json()
+    planner_day = next(day for day in planner_body["days"] if day["id"] == day_1)
+    imported_by_id = {item["id"]: item for item in planner_day["activities"]}
+    assert imported_by_id[transport_activity["id"]]["linked_offer_summary"]["kind"] == "transport"
+    assert imported_by_id[lodging_activity["id"]]["linked_offer_summary"]["kind"] == "lodging"
+
+    version = api_client.get(f"/trips/{trip['id']}", headers=headers_user1).json()["version"]
+    move_transport = api_client.post(
+        f"/activities/{transport_activity['id']}/move",
+        headers=headers_user1 | {"If-Match": str(version)},
+        json={"target_day_id": day_2, "target_index": 0},
+    )
+    assert move_transport.status_code == 200
+    assert move_transport.json()["trip_day_id"] == day_2
+
+    transport_offer_after_day_move = next(
+        item
+        for item in _list_offers(api_client, headers_user1, trip["id"], kind="transport", current_only=True)[
+            "items"
+        ]
+        if item["id"] == transport_offer["id"]
+    )
+    assert transport_offer_after_day_move["trip_day_id"] == day_2
+
+    version = api_client.get(f"/trips/{trip['id']}", headers=headers_user1).json()["version"]
+    move_transport_to_inbox = api_client.post(
+        f"/activities/{transport_activity['id']}/move",
+        headers=headers_user1 | {"If-Match": str(version)},
+        json={"target_day_id": None, "target_index": 0},
+    )
+    assert move_transport_to_inbox.status_code == 200
+    assert move_transport_to_inbox.json()["trip_day_id"] is None
+
+    transport_offer_after_inbox_move = next(
+        item
+        for item in _list_offers(api_client, headers_user1, trip["id"], kind="transport", current_only=True)[
+            "items"
+        ]
+        if item["id"] == transport_offer["id"]
+    )
+    assert transport_offer_after_inbox_move["trip_day_id"] is None
+
+    delete_lodging = api_client.delete(
+        f"/activities/{lodging_activity['id']}",
+        headers=headers_user1,
+    )
+    assert delete_lodging.status_code == 204
+
+    lodging_offer_after_delete = next(
+        item
+        for item in _list_offers(api_client, headers_user1, trip["id"], kind="lodging", current_only=True)[
+            "items"
+        ]
+        if item["id"] == lodging_offer["id"]
+    )
+    assert lodging_offer_after_delete["trip_day_id"] is None
+
+
 def test_refresh_single_and_trip_preserve_snapshot_history(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, title="Refresh lineage")
     day_id = _list_days(api_client, headers_user1, trip["id"])[0]["id"]

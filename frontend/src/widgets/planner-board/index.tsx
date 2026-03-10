@@ -21,7 +21,6 @@ import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import {
-  CalendarDays,
   LayoutGrid,
   MapPinned,
 } from 'lucide-react'
@@ -29,7 +28,7 @@ import { useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useGenerateItinerary, useJob, useRegenerateItinerary, useResetItinerary } from '@/entities/job/queries'
 import { useTripOffers } from '@/entities/offer/queries'
-import { getPlanner, LEGACY_DAY_UNTIMED_TAG, LEGACY_INBOX_TAG } from '@/entities/planner/api'
+import { getPlanner } from '@/entities/planner/api'
 import { plannerKeys, usePlanner } from '@/entities/planner/queries'
 import { isConflict, isRateLimit } from '@/shared/api/client'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
@@ -53,7 +52,6 @@ import { ActivityDetailsDrawer } from './ActivityDetailsDrawer'
 import { ActivityDrawer } from './ActivityDrawer'
 import { DayColumn } from './DayColumn'
 import { GenerationControls } from './GenerationControls'
-import { PlannerCalendarView } from './PlannerCalendarView'
 import { PlannerInbox } from './PlannerInbox'
 import { PlannerMapView } from './PlannerMapView'
 
@@ -61,8 +59,7 @@ interface Props {
   tripId: string
 }
 
-type PlannerView = 'kanban' | 'calendar' | 'map'
-type PlannerCalendarMode = 'day' | 'week'
+type PlannerView = 'kanban' | 'map'
 type PlannerContainerId = 'inbox' | string
 type ActivityLocation = {
   containerId: PlannerContainerId
@@ -81,11 +78,7 @@ const EDGE_SCROLL_THRESHOLD = 80
 const EDGE_SCROLL_STEP = 18
 
 function getView(raw: string | null): PlannerView {
-  return raw === 'calendar' || raw === 'map' ? raw : 'kanban'
-}
-
-function getCalendarView(raw: string | null): PlannerCalendarMode {
-  return raw === 'day' ? 'day' : 'week'
+  return raw === 'map' ? 'map' : 'kanban'
 }
 
 function clonePlanner(planner: PlannerResponse): PlannerResponse {
@@ -98,22 +91,6 @@ function clonePlanner(planner: PlannerResponse): PlannerResponse {
       activities: day.activities.map((activity) => ({ ...activity })),
     })),
   }
-}
-
-function withPlannerInternalTags(
-  tags: string[] | undefined,
-  options: { inbox?: boolean; dayUntimed?: boolean } = {},
-) {
-  const next = (tags ?? []).filter(
-    (tag) => tag !== LEGACY_INBOX_TAG && tag !== LEGACY_DAY_UNTIMED_TAG,
-  )
-  if (options.inbox) {
-    next.push(LEGACY_INBOX_TAG)
-  }
-  if (options.dayUntimed) {
-    next.push(LEGACY_DAY_UNTIMED_TAG)
-  }
-  return next
 }
 
 function getEndZoneId(containerId: PlannerContainerId) {
@@ -133,7 +110,6 @@ function normalizeActivityList(
     trip_day_id: tripDayId,
     order_index: index,
     start_time: tripDayId == null ? null : activity.start_time,
-    end_time: tripDayId == null ? null : activity.end_time,
   }))
 }
 
@@ -298,7 +274,6 @@ function updatePlannerActivityLists(
     ...activity,
     trip_day_id: target.dayId,
     start_time: target.dayId == null ? null : activity.start_time,
-    end_time: target.dayId == null ? null : activity.end_time,
     legacy_source_day_id: target.dayId ?? activity.legacy_source_day_id ?? source.dayId,
     legacy_inbox_item: target.dayId == null,
   }
@@ -306,135 +281,6 @@ function updatePlannerActivityLists(
 
   setContainerActivities(nextPlanner, source.containerId, sourceActivities)
   setContainerActivities(nextPlanner, target.containerId, targetActivities)
-  return nextPlanner
-}
-
-function getLegacyDayHiddenAnchors(
-  planner: PlannerResponse,
-  dayId: string,
-  movedActivityId: string,
-) {
-  const hiddenActivities = planner.inbox_activities
-    .filter((activity) => activity.legacy_source_day_id === dayId && activity.id !== movedActivityId)
-    .sort((left, right) => left.order_index - right.order_index)
-  const visibleActivities =
-    planner.days
-      .find((day) => day.id === dayId)
-      ?.activities.filter((activity) => activity.id !== movedActivityId)
-      .sort((left, right) => left.order_index - right.order_index) ?? []
-  const hiddenIds = new Set(hiddenActivities.map((activity) => activity.id))
-  const orderedBucket = [...visibleActivities, ...hiddenActivities].sort(
-    (left, right) => left.order_index - right.order_index,
-  )
-
-  let visibleBefore = 0
-
-  return orderedBucket.reduce<Array<{ activityId: string; visibleBefore: number }>>(
-    (anchors, activity) => {
-      if (hiddenIds.has(activity.id)) {
-        anchors.push({ activityId: activity.id, visibleBefore })
-        return anchors
-      }
-
-      visibleBefore += 1
-      return anchors
-    },
-    [],
-  )
-}
-
-function getLegacyTargetDayIndex(
-  originPlanner: PlannerResponse,
-  currentPlanner: PlannerResponse,
-  dayId: string,
-  movedActivityId: string,
-) {
-  const currentVisibleIds = [
-    ...(currentPlanner.days.find((day) => day.id === dayId)?.activities ?? []),
-  ]
-    .sort((left, right) => left.order_index - right.order_index)
-    .map((activity) => activity.id)
-  const hiddenAnchors = getLegacyDayHiddenAnchors(originPlanner, dayId, movedActivityId)
-  const orderedIds: string[] = []
-  let visibleCursor = 0
-
-  for (const anchor of hiddenAnchors) {
-    const visibleTarget = Math.min(anchor.visibleBefore, currentVisibleIds.length)
-    while (visibleCursor < visibleTarget) {
-      orderedIds.push(currentVisibleIds[visibleCursor]!)
-      visibleCursor += 1
-    }
-    orderedIds.push(anchor.activityId)
-  }
-
-  while (visibleCursor < currentVisibleIds.length) {
-    orderedIds.push(currentVisibleIds[visibleCursor]!)
-    visibleCursor += 1
-  }
-
-  const targetIndex = orderedIds.indexOf(movedActivityId)
-  return targetIndex >= 0 ? targetIndex : orderedIds.length
-}
-
-function deriveEndTime(startTime: string | null, durationMin: number | null) {
-  if (!startTime || durationMin == null) {
-    return null
-  }
-  const [hoursRaw, minutesRaw = '0'] = startTime.split(':')
-  const hours = Number(hoursRaw)
-  const minutes = Number(minutesRaw)
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return null
-  }
-  const total = hours * 60 + minutes + durationMin
-  if (total >= 24 * 60) {
-    return '24:00'
-  }
-  const endHours = Math.floor(total / 60)
-  const endMinutes = total % 60
-  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`
-}
-
-function applyCalendarScheduleChange(
-  planner: PlannerResponse,
-  payload: {
-    activityId: string
-    targetDayId: string
-    startTime: string | null
-    durationMin: number
-  },
-) {
-  const nextPlanner = clonePlanner(planner)
-  const source = findActivityLocation(nextPlanner, payload.activityId)
-  const targetDay = nextPlanner.days.find((day) => day.id === payload.targetDayId)
-  if (!source || !targetDay) {
-    return null
-  }
-
-  const sourceActivities = [...getContainerActivities(nextPlanner, source.containerId)]
-  const sourceIndex = sourceActivities.findIndex((activity) => activity.id === payload.activityId)
-  const [activity] = sourceActivities.splice(sourceIndex, 1)
-  if (!activity) {
-    return null
-  }
-
-  const updatedActivity: PlannerActivity = {
-    ...activity,
-    trip_day_id: payload.targetDayId,
-    start_time: payload.startTime,
-    duration_min: payload.durationMin,
-    end_time: deriveEndTime(payload.startTime, payload.durationMin),
-  }
-
-  if (source.containerId === targetDay.id) {
-    sourceActivities.splice(source.index, 0, updatedActivity)
-    setContainerActivities(nextPlanner, source.containerId, sourceActivities)
-  } else {
-    const targetActivities = [...targetDay.activities, updatedActivity]
-    setContainerActivities(nextPlanner, source.containerId, sourceActivities)
-    setContainerActivities(nextPlanner, targetDay.id, targetActivities)
-  }
-
   return nextPlanner
 }
 
@@ -546,7 +392,6 @@ export default function PlannerBoard({ tripId }: Props) {
   const latestReport = generationReports[tripId]
   const currentJob = useJob(pendingJobId)
   const currentView = getView(searchParams.get('view'))
-  const currentCalendarView = getCalendarView(searchParams.get('calendarView'))
   const selectedActivityId = searchParams.get('activityId')
   const selectedPlaceId = searchParams.get('placeId')
 
@@ -626,20 +471,6 @@ export default function PlannerBoard({ tripId }: Props) {
     },
     [planner],
   )
-
-  const calendarAnchorDate = useMemo(
-    () => (planner?.days.length ? searchParams.get('date') ?? planner.days[0].date : null),
-    [planner?.days, searchParams],
-  )
-
-  useEffect(() => {
-    if (!planner?.days.length || searchParams.get('date')) {
-      return
-    }
-    const next = new URLSearchParams(searchParams)
-    next.set('date', planner.days[0].date)
-    setSearchParams(next, { replace: true })
-  }, [planner?.days, searchParams, setSearchParams])
 
   useEffect(() => {
     const job = currentJob.data
@@ -741,7 +572,10 @@ export default function PlannerBoard({ tripId }: Props) {
     setSearchParams(next, { replace })
   }
 
-  const invalidatePlanner = () => qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+  const invalidatePlanner = async () => {
+    await qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+    await qc.invalidateQueries({ queryKey: ['offers', tripId] })
+  }
 
   const handleMapSelectActivityId = (activityId: string | null) => {
     const activity = findActivity(planner, activityId)
@@ -771,68 +605,6 @@ export default function PlannerBoard({ tripId }: Props) {
 
   const closeEditor = () => setEditorState(null)
 
-  const handleCalendarScheduleChange = async ({
-    activity,
-    targetDayId,
-    startTime,
-    durationMin,
-  }: {
-    activity: PlannerActivity
-    targetDayId: string
-    targetDate: string
-    startTime: string | null
-    durationMin: number
-  }) => {
-    const currentPlanner = qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner
-    if (!currentPlanner) {
-      return
-    }
-
-    const optimisticPlanner = applyCalendarScheduleChange(currentPlanner, {
-      activityId: activity.id,
-      targetDayId,
-      startTime,
-      durationMin,
-    })
-    if (!optimisticPlanner) {
-      return
-    }
-
-    qc.setQueryData(plannerKeys.detail(tripId), optimisticPlanner)
-
-    try {
-      const { moveActivity, patchActivity } = await import('@/entities/activity/api')
-
-      if (activity.trip_day_id !== targetDayId) {
-        const targetDay = optimisticPlanner.days.find((day) => day.id === targetDayId)
-        const targetIndex = targetDay?.activities.findIndex((item) => item.id === activity.id) ?? 0
-        await moveActivity(
-          activity.id,
-          {
-            target_day_id: targetDayId,
-            target_index: Math.max(targetIndex, 0),
-          },
-          currentPlanner.trip.version,
-        )
-      }
-
-      if (
-        (activity.start_time ?? null) !== startTime ||
-        (activity.duration_min ?? null) !== durationMin
-      ) {
-        await patchActivity(activity.id, {
-          start_time: startTime,
-          duration_min: durationMin,
-        })
-      }
-
-      await invalidatePlanner()
-    } catch {
-      qc.setQueryData(plannerKeys.detail(tripId), currentPlanner)
-      toast.error('Failed to update activity schedule')
-    }
-  }
-
   const handleDrawerSave = async (data: ActivityCreateInput) => {
     if (!planner) {
       return
@@ -842,54 +614,19 @@ export default function PlannerBoard({ tripId }: Props) {
     try {
       if (editorActivity) {
         const { patchActivity } = await import('@/entities/activity/api')
-        const patchPayload =
-          planner.legacy_inbox_mode
-            ? {
-                ...data,
-                tags: withPlannerInternalTags(data.tags, {
-                  inbox: Boolean(editorActivity.legacy_inbox_item),
-                  dayUntimed:
-                    !editorActivity.legacy_inbox_item &&
-                    Boolean(
-                      (editorState?.defaultTripDayId ?? editorActivity.legacy_source_day_id) &&
-                        !data.start_time,
-                    ),
-                }),
-              }
-            : data
-        await patchActivity(editorActivity.id, patchPayload)
+        await patchActivity(editorActivity.id, data)
         toast.success('Activity updated')
       } else if (editorState) {
         const idempotencyKey = crypto.randomUUID()
-        if (planner.legacy_inbox_mode) {
-          const { createActivity } = await import('@/entities/activity/api')
-          const fallbackDayId = editorState.defaultTripDayId ?? planner.days[0]?.id
-          if (!fallbackDayId) {
-            throw new Error('No trip day available for legacy planner fallback')
-          }
-          await createActivity(
-            fallbackDayId,
-            {
-              ...data,
-              start_time: editorState.defaultTripDayId ? data.start_time : null,
-              tags: withPlannerInternalTags(data.tags, {
-                inbox: !editorState.defaultTripDayId,
-                dayUntimed: Boolean(editorState.defaultTripDayId && !data.start_time),
-              }),
-            },
-            idempotencyKey,
-          )
-        } else {
-          const { createPlannerActivity } = await import('@/entities/activity/api')
-          await createPlannerActivity(
-            tripId,
-            {
-              ...data,
-              trip_day_id: editorState.defaultTripDayId,
-            },
-            idempotencyKey,
-          )
-        }
+        const { createPlannerActivity } = await import('@/entities/activity/api')
+        await createPlannerActivity(
+          tripId,
+          {
+            ...data,
+            trip_day_id: editorState.defaultTripDayId,
+          },
+          idempotencyKey,
+        )
         toast.success('Activity added')
       }
 
@@ -1103,49 +840,12 @@ export default function PlannerBoard({ tripId }: Props) {
     }
 
     const persistMove = async (tripVersion: number) => {
-      const { moveActivity, patchActivity, reorderActivities } = await import('@/entities/activity/api')
+      const { moveActivity, reorderActivities } = await import('@/entities/activity/api')
 
-      const isInboxTarget = finalLocation.containerId === INBOX_CONTAINER_ID
       const shouldUseDayReorder =
         startLocation.containerId === finalLocation.containerId &&
         finalLocation.containerId !== INBOX_CONTAINER_ID &&
         finalLocation.dayId != null
-
-      if (currentPlanner.legacy_inbox_mode) {
-        if (isInboxTarget) {
-          await patchActivity(capturedActivity.id, {
-            start_time: null,
-            tags: withPlannerInternalTags(capturedActivity.tags, { inbox: true }),
-          })
-          return
-        }
-
-        if (finalLocation.dayId != null) {
-          const legacyTargetIndex = getLegacyTargetDayIndex(
-            originPlanner,
-            currentPlanner,
-            finalLocation.dayId,
-            capturedActivity.id,
-          )
-
-          await moveActivity(
-            capturedActivity.id,
-            {
-              target_day_id: finalLocation.dayId,
-              target_index: legacyTargetIndex,
-            },
-            tripVersion,
-          )
-
-          if (!capturedActivity.start_time) {
-            await patchActivity(capturedActivity.id, {
-              start_time: null,
-              tags: withPlannerInternalTags(capturedActivity.tags, { dayUntimed: true }),
-            })
-          }
-          return
-        }
-      }
 
       if (shouldUseDayReorder) {
         const reorderedDay = currentPlanner.days.find((day) => day.id === finalLocation.dayId)
@@ -1170,7 +870,6 @@ export default function PlannerBoard({ tripId }: Props) {
         {
           target_day_id: finalLocation.dayId,
           target_index: Math.max(finalLocation.index, 0),
-          start_time: isInboxTarget ? null : undefined,
         },
         tripVersion,
       )
@@ -1205,10 +904,6 @@ export default function PlannerBoard({ tripId }: Props) {
           <TabsTrigger value="kanban" className="h-7 rounded-[6px] px-2.5 text-[0.78rem]">
             <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
             Board
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="h-7 rounded-[6px] px-2.5 text-[0.78rem]">
-            <CalendarDays className="mr-1.5 h-3.5 w-3.5" />
-            Calendar
           </TabsTrigger>
           <TabsTrigger value="map" className="h-7 rounded-[6px] px-2.5 text-[0.78rem]">
             <MapPinned className="mr-1.5 h-3.5 w-3.5" />
@@ -1395,23 +1090,6 @@ export default function PlannerBoard({ tripId }: Props) {
             </>
           ) : null}
 
-          {currentView === 'calendar' ? (
-            <div className="min-h-0 flex-1">
-              <PlannerCalendarView
-                trip={planner.trip}
-                days={planner.days}
-                inboxActivities={planner.inbox_activities}
-                anchorDate={calendarAnchorDate ?? planner.days[0]?.date ?? planner.trip.start_date}
-                calendarView={currentCalendarView}
-                selectedActivityId={selectedActivityId}
-                onDateChange={(date) => updateParams({ date }, false)}
-                onCalendarViewChange={(calendarView) => updateParams({ calendarView }, false)}
-                onSelectActivity={(activity) => handleMapSelectActivityId(activity?.id ?? null)}
-                onCommitScheduleChange={handleCalendarScheduleChange}
-              />
-            </div>
-          ) : null}
-
           {currentView === 'map' ? (
             <div className="min-h-0 flex-1">
               <PlannerMapView
@@ -1440,6 +1118,7 @@ export default function PlannerBoard({ tripId }: Props) {
 
       <ActivityDetailsDrawer
         open={Boolean(detailsActivity)}
+        tripId={tripId}
         activity={detailsActivity}
         dayLabel={detailsDayLabel}
         onClose={() => setDetailsActivityId(null)}

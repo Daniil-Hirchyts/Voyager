@@ -42,6 +42,7 @@ from app.models.trips import (
     ActivityPatchRequest,
     ActivityReorderRequest,
     ActivityResponse,
+    PlannerActivityFromOfferRequest,
 )
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import parse_if_match, payload_fingerprint
@@ -54,6 +55,7 @@ from app.services.activity_discovery_provider import (
     resolve_activity_provider_availability,
 )
 from app.services.activity_recommendations import recommend_shortlist_items
+from app.services.google_maps import GoogleMapsRequestError, geocode_address, resolve_time_zone
 
 router = APIRouter(tags=["activities"])
 
@@ -63,11 +65,12 @@ def _activity_response(activity) -> ActivityResponse:
         id=activity.id,
         trip_day_id=activity.trip_day_id,
         order_index=activity.order_index,
+        category=activity.category,
+        category_details=activity.category_details_json or {},
         title=activity.title,
         description=activity.description,
         start_time=activity.start_time,
         duration_min=activity.duration_min,
-        tags=activity.tags_json,
         estimated_cost_amount=activity.estimated_cost_amount,
         estimated_cost_currency=activity.estimated_cost_currency,
         place_id=activity.place_id,
@@ -75,6 +78,8 @@ def _activity_response(activity) -> ActivityResponse:
         notes=activity.notes,
         is_favorite=activity.is_favorite,
         source=activity.source,
+        linked_offer_kind=activity.linked_offer_kind,
+        linked_offer_id=activity.linked_offer_id,
         created_at=activity.created_at,
         updated_at=activity.updated_at,
     )
@@ -89,6 +94,48 @@ def _coerce_decimal(value: str | None):
         return Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError):
         return None
+
+
+def _string_terms(value) -> list[str]:
+    if isinstance(value, str):
+        normalized = value.strip()
+        return [normalized] if normalized else []
+    if isinstance(value, list):
+        terms: list[str] = []
+        for item in value:
+            if isinstance(item, str):
+                normalized = item.strip()
+            elif isinstance(item, dict):
+                normalized = str(item.get("name") or item.get("label") or "").strip()
+            else:
+                normalized = ""
+            if normalized:
+                terms.append(normalized)
+        return terms
+    return []
+
+
+def _shortlist_snapshot_terms(payload: ActivityShortlistSaveRequest) -> tuple[str, str | None, list[str]]:
+    segment = {
+        ActivityEntityType.RESTAURANT: "dining",
+        ActivityEntityType.ATTRACTION: "sightseeing",
+        ActivityEntityType.HOTEL: "stay",
+        ActivityEntityType.CRUISE: "travel",
+    }.get(payload.entity_type, payload.entity_type.value)
+
+    raw_payload = payload.raw_payload if isinstance(payload.raw_payload, dict) else {}
+    extras: list[str] = []
+    for key in ("categories", "establishment_types", "meal_types", "hotel_styles", "labels"):
+        extras.extend(_string_terms(raw_payload.get(key)))
+
+    deduped: list[str] = []
+    for value in [segment, payload.entity_type.value, *extras]:
+        normalized = str(value).strip().lower()
+        if normalized and normalized not in deduped:
+            deduped.append(normalized)
+
+    genre = deduped[2] if len(deduped) > 2 else None
+    return segment, genre, deduped
 
 
 def _raise_if_provider_unavailable() -> None:
@@ -163,12 +210,65 @@ async def create_trip_activity(
     response = _activity_response(activity)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "offer:list:")
 
     if idempotency_key:
         await idem.store_response(
             user_id=str(auth.user_id),
             method="POST",
             path=f"/trips/{trip_id}/planner/activities",
+            idempotency_key=idempotency_key,
+            fingerprint=fingerprint,
+            status_code=201,
+            response_body=response.model_dump(mode="json"),
+        )
+
+    return response
+
+
+@router.post(
+    "/trips/{trip_id}/planner/activities/from-offer",
+    response_model=ActivityResponse,
+    status_code=201,
+)
+async def import_offer_activity(
+    trip_id: uuid.UUID,
+    payload: PlannerActivityFromOfferRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> ActivityResponse | JSONResponse:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "activities:create",
+        settings.rate_limit_activity_create_per_min,
+    )
+
+    idem = IdempotencyService(redis)
+    fingerprint = payload_fingerprint(payload.model_dump(mode="json") | {"trip_id": str(trip_id)})
+    replay = await idem.check_or_replay(
+        user_id=str(auth.user_id),
+        method="POST",
+        path=f"/trips/{trip_id}/planner/activities/from-offer",
+        idempotency_key=idempotency_key,
+        fingerprint=fingerprint,
+    )
+    if replay:
+        return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
+
+    activity = await ActivityRepository.import_offer_activity(db, auth.user_id, trip_id, payload)
+    response = _activity_response(activity)
+    await cache_delete_prefix(redis, "trip:get:")
+    await cache_delete_prefix(redis, "trip:list:")
+
+    if idempotency_key:
+        await idem.store_response(
+            user_id=str(auth.user_id),
+            method="POST",
+            path=f"/trips/{trip_id}/planner/activities/from-offer",
             idempotency_key=idempotency_key,
             fingerprint=fingerprint,
             status_code=201,
@@ -260,6 +360,7 @@ async def patch_activity(
     activity = await ActivityRepository.patch_activity(db, auth.user_id, activity_id, payload)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "offer:list:")
     return _activity_response(activity)
 
 
@@ -273,6 +374,7 @@ async def delete_activity(
     await ActivityRepository.delete_activity(db, auth.user_id, activity_id)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "offer:list:")
     await cache_delete_prefix(redis, "activity:shortlist:")
 
 
@@ -318,6 +420,7 @@ async def move_activity(
     )
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "offer:list:")
     await cache_delete_prefix(redis, "activity:shortlist:")
     return _activity_response(activity)
 
@@ -394,6 +497,13 @@ async def discover_activities(
                 departure_date=departure_date,
                 cruise_length=cruise_length,
             )
+        except ActivityProviderNonRetryableError as exc:
+            status_code = int(exc.details.get("status_code") or 0)
+            if status_code in {400, 404, 410, 422}:
+                total = 0
+                items = []
+            else:
+                _provider_errors_to_api(exc)
         except Exception as exc:  # pragma: no cover - routed through deterministic helper
             _provider_errors_to_api(exc)
 
@@ -460,21 +570,42 @@ async def save_activity_to_shortlist(
     if replay:
         return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
 
+    resolved_lat = payload.lat
+    resolved_lon = payload.lon
+    resolved_address_text = payload.address_text
+    if resolved_address_text and (resolved_lat is None or resolved_lon is None):
+        try:
+            geocode = await geocode_address(resolved_address_text)
+        except GoogleMapsRequestError:
+            geocode = None
+        if geocode is not None:
+            resolved_address_text = geocode.formatted_address or resolved_address_text
+            resolved_lat = geocode.lat if geocode.lat is not None else resolved_lat
+            resolved_lon = geocode.lng if geocode.lng is not None else resolved_lon
+
+    resolved_timezone = payload.timezone
+    if resolved_timezone is None and resolved_lat is not None and resolved_lon is not None:
+        try:
+            resolved_timezone = await resolve_time_zone(lat=resolved_lat, lng=resolved_lon)
+        except GoogleMapsRequestError:
+            resolved_timezone = None
+
     place_id = None
-    if payload.lat is not None or payload.lon is not None or payload.address_text:
+    if resolved_lat is not None or resolved_lon is not None or resolved_address_text:
         place = await PlaceRepository.get_or_create_external_place(
             db,
             source=f"tripadvisor_{payload.entity_type.value}",
             external_id=payload.provider_ref,
             name=payload.title,
             category=payload.entity_type.value,
-            address_text=payload.address_text,
-            lat=payload.lat,
-            lon=payload.lon,
+            address_text=resolved_address_text,
+            lat=resolved_lat,
+            lon=resolved_lon,
             metadata={"provider": payload.provider, "detail_url": payload.detail_url},
         )
         place_id = place.id
 
+    segment, genre, tags_json = _shortlist_snapshot_terms(payload)
     snapshot = await EventRepository.create_snapshot(
         db,
         trip_id=trip_id,
@@ -486,16 +617,16 @@ async def save_activity_to_shortlist(
         summary=payload.summary,
         start_at=payload.start_at,
         end_at=payload.end_at,
-        timezone=payload.timezone,
+        timezone=resolved_timezone,
         venue_name=payload.title,
-        venue_address=payload.address_text,
+        venue_address=resolved_address_text,
         rating=payload.rating,
         review_count=payload.review_count,
         price_label=payload.price_label,
         place_id=place_id,
-        segment=payload.tags[0] if payload.tags else None,
-        genre=payload.tags[1] if len(payload.tags) > 1 else None,
-        tags_json=payload.tags,
+        segment=segment,
+        genre=genre,
+        tags_json=tags_json,
         status_text=payload.status_text,
         min_price=_coerce_decimal(payload.min_price),
         max_price=_coerce_decimal(payload.max_price),

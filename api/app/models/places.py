@@ -63,6 +63,10 @@ class DestinationAutocompleteItem(BaseModel):
     region: str | None = None
     lat: float | None = None
     lon: float | None = None
+    address_text: str | None = None
+    category: str | None = None
+    timezone: str | None = None
+    metadata: dict = Field(default_factory=dict)
 
 
 class DestinationAutocompleteResponse(BaseModel):
@@ -74,6 +78,27 @@ class DestinationAutocompleteResponse(BaseModel):
 
 class PlaceMetadataPatchRequest(BaseModel):
     metadata: dict = Field(default_factory=dict)
+
+
+class GooglePlaceCandidate(BaseModel):
+    place_id: str
+    label: str
+    name: str
+    address_text: str | None = None
+    category: str | None = None
+    country: str | None = None
+    region: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    timezone: str | None = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class GooglePlaceSearchResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[GooglePlaceCandidate]
 
 
 class PlaceMergeRequest(BaseModel):

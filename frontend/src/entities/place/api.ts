@@ -1,5 +1,7 @@
 import { requestJson } from '@/shared/api/client'
 import type {
+  GooglePlaceCandidate,
+  GooglePlaceSearchResponse,
   Place,
   PlaceCreateInput,
   PlaceListResponse,
@@ -19,6 +21,10 @@ export interface DestinationAutocompleteItem {
   region?: string | null
   lat?: number | null
   lon?: number | null
+  address_text?: string | null
+  category?: string | null
+  timezone?: string | null
+  metadata?: Record<string, unknown>
 }
 
 export interface DestinationAutocompleteResponse {
@@ -69,6 +75,14 @@ export async function searchPlaces(params: PlaceListParams = {}) {
 
 export async function autocompleteDestinations(params: PlaceListParams = {}) {
   return requestJson<DestinationAutocompleteResponse>(buildQuery('/places/autocomplete', params))
+}
+
+export async function searchGooglePlaces(params: PlaceListParams = {}) {
+  return requestJson<GooglePlaceSearchResponse>(buildQuery('/places/google-search', params))
+}
+
+export async function getGooglePlace(placeId: string) {
+  return requestJson<GooglePlaceCandidate>(`/places/google/${encodeURIComponent(placeId)}`)
 }
 
 export async function getNearbyPlaces(params: NearbyPlaceParams) {

@@ -17,12 +17,9 @@ export type Day = components['schemas']['DayResponse']
 export type DayListResponse = components['schemas']['DayListResponse']
 export type DayUpdateInput = components['schemas']['DayPatchRequest']
 
-export type Activity = components['schemas']['ActivityResponse']
-export type ActivityListResponse = components['schemas']['ActivityListResponse']
-export type ActivityCreateInput = components['schemas']['ActivityCreateRequest']
-export type ActivityUpdateInput = components['schemas']['ActivityPatchRequest']
 export type ActivityReorderInput = components['schemas']['ActivityReorderRequest']
 export type ActivityMoveInput = components['schemas']['ActivityMoveRequest']
+export type ActivityCategory = 'visit' | 'eat' | 'activity' | 'hotel' | 'travel'
 
 export type PlannerPlaceSummary = {
   id: string
@@ -35,26 +32,79 @@ export type PlannerPlaceSummary = {
   primary_photo: Place['primary_photo'] | null
 }
 
-export type PlannerActivity = {
+export type PlannerLinkedOfferSummary = {
+  kind: OfferKind
+  offer_id: string
+  title: string
+  deep_link: string | null
+  price_amount: string | null
+  currency: string | null
+}
+
+export interface Activity {
   id: string
   trip_day_id: string | null
   order_index: number
+  category: ActivityCategory
+  category_details: Record<string, unknown>
   title: string
   description: string | null
   start_time: string | null
-  end_time: string | null
   duration_min: number | null
-  tags: string[]
   estimated_cost_amount: string | null
   estimated_cost_currency: string | null
   place_id: string | null
-  place: PlannerPlaceSummary | null
   event_snapshot_id: string | null
   notes: string | null
   is_favorite: boolean
   source: string
+  linked_offer_kind: OfferKind | null
+  linked_offer_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ActivityListResponse {
+  total: number
+  limit: number
+  offset: number
+  items: Activity[]
+}
+
+export interface ActivityCreateInput {
+  trip_day_id?: string | null
+  category: ActivityCategory
+  category_details?: Record<string, unknown>
+  title: string
+  description?: string | null
+  start_time?: string | null
+  duration_min?: number | null
+  estimated_cost_amount?: number | string | null
+  estimated_cost_currency?: string | null
+  place_id?: string | null
+  notes?: string | null
+  is_favorite?: boolean
+  source?: string
+}
+
+export interface ActivityUpdateInput {
+  category?: ActivityCategory | null
+  category_details?: Record<string, unknown> | null
+  title?: string | null
+  description?: string | null
+  start_time?: string | null
+  duration_min?: number | null
+  estimated_cost_amount?: number | string | null
+  estimated_cost_currency?: string | null
+  place_id?: string | null
+  notes?: string | null
+  is_favorite?: boolean | null
+  source?: string | null
+}
+
+export interface PlannerActivity extends Activity {
+  place: PlannerPlaceSummary | null
+  linked_offer_summary?: PlannerLinkedOfferSummary | null
   legacy_source_day_id?: string | null
   legacy_inbox_item?: boolean
 }
@@ -137,6 +187,77 @@ export type PlaceListResponse = components['schemas']['PlaceListResponse']
 export type PlaceCreateInput = components['schemas']['PlaceCreateRequest']
 export type PlacePhoto = components['schemas']['PlacePhotoResponse']
 export type PlacePhotoListResponse = components['schemas']['PlacePhotoListResponse']
+
+export interface GooglePlaceCandidate {
+  place_id: string
+  label: string
+  name: string
+  address_text: string | null
+  category: string | null
+  country: string | null
+  region: string | null
+  lat: number | null
+  lon: number | null
+  timezone: string | null
+  metadata: Record<string, unknown>
+}
+
+export interface GooglePlaceSearchResponse {
+  total: number
+  limit: number
+  offset: number
+  items: GooglePlaceCandidate[]
+}
+
+export type RouteTravelMode = 'WALK' | 'DRIVE' | 'BICYCLE' | 'TRANSIT'
+
+export interface RoutePoint {
+  lat: number
+  lng: number
+}
+
+export interface RoutePreviewInput {
+  origin: RoutePoint
+  destination: RoutePoint
+  waypoints?: RoutePoint[]
+  travel_mode?: RouteTravelMode
+  compute_alternatives?: boolean
+}
+
+export interface RoutePreviewRoute {
+  summary: string | null
+  distance_m: number | null
+  duration_min: number | null
+  static_duration_min: number | null
+  path: RoutePoint[]
+}
+
+export interface RoutePreviewResponse {
+  routes: RoutePreviewRoute[]
+}
+
+export interface RouteLegEstimateRequestItem {
+  from_activity_id: string
+  to_activity_id: string
+  origin: RoutePoint
+  destination: RoutePoint
+}
+
+export interface RouteLegEstimateInput {
+  legs: RouteLegEstimateRequestItem[]
+  travel_mode?: RouteTravelMode
+}
+
+export interface RouteLegEstimateItem {
+  from_activity_id: string
+  to_activity_id: string
+  distance_km: number | null
+  duration_min: number | null
+}
+
+export interface RouteLegEstimateResponse {
+  items: RouteLegEstimateItem[]
+}
 
 export type OfferKind = components['schemas']['OfferKind']
 export type OfferAttachDayInput = components['schemas']['OfferAttachDayRequest']
@@ -269,7 +390,6 @@ export interface ActivityDiscoveryItem {
   address_text: string | null
   lat: number | null
   lon: number | null
-  tags: string[]
   status_text: string | null
   is_attachable: boolean
   created_at: string | null
@@ -356,7 +476,6 @@ export interface ActivityShortlistSaveInput {
   address_text?: string | null
   lat?: number | null
   lon?: number | null
-  tags?: string[]
   status_text?: string | null
   start_at?: string | null
   end_at?: string | null
@@ -398,6 +517,12 @@ export interface ActivityRecommendationResponse {
   items: ActivityRecommendationItem[]
 }
 
+export interface PlannerActivityFromOfferInput {
+  offer_kind: OfferKind
+  offer_id: string
+  trip_day_id?: string | null
+}
+
 export type OptimizeObjective = components['schemas']['OptimizeObjective']
 export interface TripOptimizeInput {
   day_ids?: string[]
@@ -407,7 +532,49 @@ export interface TripOptimizeInput {
   max_event_candidates_per_day?: number
   constraints?: Record<string, unknown>
 }
-export type ProposalResponse = components['schemas']['ProposalResponse']
-export type ProposalListResponse = components['schemas']['ProposalListResponse']
-export type ProposalActivityResponse = components['schemas']['ProposalActivityResponse']
+
+export interface ProposalActivityResponse {
+  id: string
+  proposal_id: string
+  trip_day_id: string
+  source_activity_id: string | null
+  event_snapshot_id: string | null
+  place_id: string | null
+  order_index: number
+  title: string
+  description: string | null
+  category: ActivityCategory
+  start_time: string | null
+  duration_min: number | null
+  estimated_cost_amount: string | null
+  estimated_cost_currency: string | null
+  rationale: Record<string, unknown>
+  score: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalResponse {
+  id: string
+  trip_id: string
+  user_id: string
+  job_id: string
+  based_on_trip_version: number
+  objective: string
+  scope_day_ids: string[]
+  status: string
+  summary: Record<string, unknown>
+  score: Record<string, unknown>
+  items: ProposalActivityResponse[]
+  created_at: string
+  updated_at: string
+}
+
+export interface ProposalListResponse {
+  total: number
+  limit: number
+  offset: number
+  items: ProposalResponse[]
+}
+
 export type ProposalApplyResponse = components['schemas']['ProposalApplyResponse']

@@ -18,6 +18,7 @@ from app.routers import (
     offers,
     places,
     proposals,
+    routing,
     trips,
     users,
 )
@@ -103,6 +104,7 @@ app.include_router(trips.router)
 app.include_router(days.router)
 app.include_router(activities.router)
 app.include_router(places.router)
+app.include_router(routing.router)
 app.include_router(map_layers.router)
 app.include_router(proposals.router)
 app.include_router(jobs.router)

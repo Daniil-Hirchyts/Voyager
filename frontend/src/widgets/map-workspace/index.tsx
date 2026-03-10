@@ -65,10 +65,12 @@ import {
   useGoogleGeometryLibrary,
 } from '@/shared/layouts/google-maps'
 import type {
+  GooglePlaceCandidate,
   MapLayerRenderer,
   MapLayerSource,
   Place,
   PlaceCreateInput,
+  RoutePreviewRoute,
   TripMapFeatureCollection,
   TripMapLayer,
 } from '@/shared/api/types'
@@ -316,17 +318,14 @@ export default function MapWorkspace({ tripId }: Props) {
   const [nearbyParams, setNearbyParams] = useState<NearbyFormValues | null>(null)
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
   const [draftLayer, setDraftLayer] = useState<DraftLayerState | null>(null)
-  const [googlePlaceDraft, setGooglePlaceDraft] = useState<{
-    placeId: string | null
-    place: Record<string, unknown> | null
-  } | null>(null)
+  const [googlePlaceDraft, setGooglePlaceDraft] = useState<GooglePlaceCandidate | null>(null)
   const [boundaryFeatureType, setBoundaryFeatureType] =
     useState<DdsBoundaryFeatureType>('ADMINISTRATIVE_AREA_LEVEL_1')
   const [datasetIdInput, setDatasetIdInput] = useState('')
   const [routeOrigin, setRouteOrigin] = useState<RouteStop | null>(null)
   const [routeDestination, setRouteDestination] = useState<RouteStop | null>(null)
   const [routeWaypoints, setRouteWaypoints] = useState<RouteStop[]>([])
-  const [routeAlternatives, setRouteAlternatives] = useState<google.maps.DirectionsRoute[]>([])
+  const [routeAlternatives, setRouteAlternatives] = useState<RoutePreviewRoute[]>([])
   const [activeRouteIndex, setActiveRouteIndex] = useState(0)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -422,8 +421,7 @@ export default function MapWorkspace({ tripId }: Props) {
   }
 
   const handleCreatePlace = async (values: CreatePlaceValues) => {
-    const googlePlace = googlePlaceDraft?.place ?? null
-    const matchedPlaces = googlePlaceDraft?.placeId
+    const matchedPlaces = googlePlaceDraft?.place_id
       ? await searchPlaces({ q: values.name.trim(), limit: 12, offset: 0 }).catch(() => null)
       : null
     const matchedPlace = matchedPlaces?.items.find((place) => {
@@ -451,8 +449,9 @@ export default function MapWorkspace({ tripId }: Props) {
       lat: values.lat ?? null,
       lon: values.lon ?? null,
       metadata: {
-        ...(googlePlaceDraft?.placeId ? { google_place_id: googlePlaceDraft.placeId } : {}),
-        ...(googlePlace ? { google_place: googlePlace } : {}),
+        ...(googlePlaceDraft?.place_id ? { google_place_id: googlePlaceDraft.place_id } : {}),
+        ...(googlePlaceDraft ? { google_place_candidate: googlePlaceDraft } : {}),
+        ...(googlePlaceDraft?.timezone ? { time_zone_id: googlePlaceDraft.timezone } : {}),
       },
     }
 
@@ -752,7 +751,7 @@ export default function MapWorkspace({ tripId }: Props) {
 
   const handleSaveComputedRoute = async () => {
     const route = routeAlternatives[activeRouteIndex]
-    if (!route || !route.overview_path?.length || !routeOrigin || !routeDestination) {
+    if (!route || !route.path?.length || !routeOrigin || !routeDestination) {
       toast.error('Route preview is not ready yet')
       return
     }
@@ -773,10 +772,12 @@ export default function MapWorkspace({ tripId }: Props) {
                   originPlaceId: routeOrigin.id,
                   destinationPlaceId: routeDestination.id,
                   waypointPlaceIds: routeWaypoints.map((item) => item.id),
+                  distanceMeters: route.distance_m,
+                  durationMin: route.duration_min,
                 },
                 geometry: {
                   type: 'LineString',
-                  coordinates: route.overview_path.map((point) => [point.lng(), point.lat()]),
+                  coordinates: route.path.map((point) => [point.lng, point.lat]),
                 },
               },
             ],
@@ -786,6 +787,8 @@ export default function MapWorkspace({ tripId }: Props) {
             routeSummary: route.summary,
             alternativeIndex: activeRouteIndex,
             waypointCount: routeWaypoints.length,
+            distance_m: route.distance_m,
+            duration_min: route.duration_min,
           },
         },
         idempotencyKey: crypto.randomUUID(),
@@ -1091,40 +1094,13 @@ export default function MapWorkspace({ tripId }: Props) {
                 </p>
                 <div className="mt-3">
                   <GooglePlacesExperimentPanel
-                    selectedPlaceId={googlePlaceDraft?.placeId}
-                    onPlacePicked={({ placeId, place }) => {
-                      const candidate = place as Record<string, unknown> | null
-                      const location = candidate?.location as
-                        | { lat?: number | (() => number); lng?: number | (() => number) }
-                        | undefined
-
-                      const nextLat =
-                        typeof location?.lat === 'function'
-                          ? location.lat()
-                          : typeof location?.lat === 'number'
-                            ? location.lat
-                            : undefined
-                      const nextLng =
-                        typeof location?.lng === 'function'
-                          ? location.lng()
-                          : typeof location?.lng === 'number'
-                            ? location.lng
-                            : undefined
-
-                      setGooglePlaceDraft({
-                        placeId,
-                        place: candidate,
-                      })
-                      createPlaceForm.setValue(
-                        'name',
-                        String(candidate?.displayName ?? candidate?.name ?? ''),
-                      )
-                      createPlaceForm.setValue(
-                        'address_text',
-                        String(candidate?.formattedAddress ?? candidate?.formatted_address ?? ''),
-                      )
-                      if (nextLat != null) createPlaceForm.setValue('lat', nextLat)
-                      if (nextLng != null) createPlaceForm.setValue('lon', nextLng)
+                    selectedPlaceId={googlePlaceDraft?.place_id}
+                    onPlacePicked={(candidate) => {
+                      setGooglePlaceDraft(candidate)
+                      createPlaceForm.setValue('name', candidate?.name ?? '')
+                      createPlaceForm.setValue('address_text', candidate?.address_text ?? '')
+                      if (candidate?.lat != null) createPlaceForm.setValue('lat', candidate.lat)
+                      if (candidate?.lon != null) createPlaceForm.setValue('lon', candidate.lon)
                     }}
                   />
                 </div>

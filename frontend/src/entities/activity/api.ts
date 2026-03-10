@@ -2,6 +2,7 @@ import { requestJson } from '@/shared/api/client'
 import type {
   Activity,
   ActivityCreateInput,
+  PlannerActivityFromOfferInput,
   ActivityListResponse,
   ActivityMoveInput,
   ActivityReorderInput,
@@ -30,6 +31,18 @@ export async function createPlannerActivity(
   idempotencyKey: string,
 ): Promise<Activity> {
   return requestJson<Activity>(`/trips/${tripId}/planner/activities`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(data),
+  })
+}
+
+export async function importOfferToPlanner(
+  tripId: string,
+  data: PlannerActivityFromOfferInput,
+  idempotencyKey: string,
+): Promise<Activity> {
+  return requestJson<Activity>(`/trips/${tripId}/planner/activities/from-offer`, {
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),

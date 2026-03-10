@@ -31,7 +31,6 @@ class ActivityDiscoveryItem(BaseModel):
     address_text: str | None = None
     lat: float | None = None
     lon: float | None = None
-    tags: list[str] = Field(default_factory=list)
     status_text: str | None = None
     is_attachable: bool
     created_at: datetime | None = None
@@ -103,7 +102,6 @@ class ActivityShortlistSaveRequest(BaseModel):
     address_text: str | None = None
     lat: float | None = None
     lon: float | None = None
-    tags: list[str] = Field(default_factory=list)
     status_text: str | None = None
     start_at: datetime | None = None
     end_at: datetime | None = None

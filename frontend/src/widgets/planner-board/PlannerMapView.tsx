@@ -7,6 +7,7 @@ import { cn } from '@/shared/lib/cn'
 import { resolvePhotoUrl } from '@/shared/lib/media'
 import {
   GoogleMapCanvas,
+  GooglePolyline,
   MapPanTo,
   TripMapLayerRenderer,
   VoyagerInfoWindow,
@@ -15,6 +16,7 @@ import {
 import type { Place, PlannerActivity, PlannerPlaceSummary } from '@/shared/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { plannerCategoryDescription, plannerPrimaryPlace, plannerTravelRoute } from './categories'
 import { PlannerInbox } from './PlannerInbox'
 
 type MarkerPlace = PlannerPlaceSummary | Place
@@ -59,8 +61,9 @@ export function PlannerMapView({
   const plannerPlaces = useMemo(() => {
     const items = new globalThis.Map<string, PlannerPlaceSummary>()
     for (const activity of activities) {
-      if (activity.place) {
-        items.set(activity.place.id, activity.place)
+      const place = plannerPrimaryPlace(activity)
+      if (place) {
+        items.set(place.id, place)
       }
     }
     return [...items.values()]
@@ -88,6 +91,7 @@ export function PlannerMapView({
     null
   const tripLayers = tripLayersData?.items ?? []
   const mapPlaces = markerPlaces.filter((place) => place.lat != null && place.lon != null)
+  const selectedActivityRoute = selectedActivity ? plannerTravelRoute(selectedActivity) : []
 
   useEffect(() => {
     if (!selectedPlace && selectedActivity?.place_id) {
@@ -101,83 +105,9 @@ export function PlannerMapView({
   return (
     <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
       <div className="flex min-h-0 flex-col gap-4">
-        <PlannerInbox
-          activities={inboxActivities}
-          selectedActivityId={selectedActivityId}
-          className="min-h-[220px]"
-          onSelectActivity={(activity) => {
-            onSelectActivityId(activity.id)
-            if (activity.place_id) {
-              onSelectPlaceId(activity.place_id)
-            }
-          }}
-        />
+        
 
-        <div className="rounded-[12px] border border-black/8 bg-white p-4">
-          <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-            Place matching
-          </p>
-          <p className="mt-2 text-[1.05rem] font-medium text-[var(--color-text)]">
-            Match each activity to a real place
-          </p>
-          <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Search saved places and attach the selected result to the current activity.
-          </p>
-
-          <div className="relative mt-4">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
-            <Input
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder={`Search ${tripId ? 'places for this trip' : 'places'}`}
-              className="h-10 rounded-[8px] border-black/8 bg-white pl-10"
-            />
-          </div>
-
-          {selectedActivity ? (
-            <div className="mt-4 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-                    Selected activity
-                  </p>
-                  <p className="mt-1 text-sm font-medium text-[var(--color-text)]">
-                    {selectedActivity.title}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSelectActivityId(null)}
-                  className="h-8 rounded-[8px] px-2.5 text-[0.84rem] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                >
-                  Clear
-                </Button>
-              </div>
-
-              {selectedPlaceId ? (
-                <Button
-                  type="button"
-                  className="mt-3 h-9 w-full rounded-[8px] shadow-none hover:shadow-none"
-                  onClick={() => onAssignPlace(selectedActivity.id, selectedPlaceId)}
-                  disabled={isAssigning}
-                >
-                  {isAssigning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Use Selected Place
-                </Button>
-              ) : (
-                <p className="mt-3 text-xs text-[var(--color-text-muted)]">
-                  Pick a place from the list or map to attach it to this activity.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="mt-4 rounded-[10px] border border-dashed border-black/8 p-4 text-sm text-[var(--color-text-muted)]">
-              Select an activity from the itinerary list below to reassign its place.
-            </div>
-          )}
-        </div>
+        
 
         {selectedPlace ? (
           <div className="overflow-hidden rounded-[12px] border border-black/8 bg-white">
@@ -264,7 +194,7 @@ export function PlannerMapView({
                     <div>
                       <p className="text-sm font-semibold text-[var(--color-text)]">{activity.title}</p>
                       <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                        {activity.place?.name || 'No place attached'}
+                        {plannerCategoryDescription(activity) || 'No place attached'}
                       </p>
                     </div>
                     <Target className="mt-0.5 h-4 w-4 text-[var(--color-primary)]" />
@@ -299,6 +229,14 @@ export function PlannerMapView({
               zoom={mapCenter?.lat != null && mapCenter?.lon != null ? 12 : 3}
             />
             <TripMapLayerRenderer layers={tripLayers} />
+            {selectedActivityRoute.length >= 2 ? (
+              <GooglePolyline
+                path={selectedActivityRoute.map((point) => ({ lat: point.lat, lng: point.lon }))}
+                strokeColor="#17344C"
+                strokeOpacity={0.8}
+                strokeWeight={3}
+              />
+            ) : null}
             {mapPlaces
               .filter((place) => place.id !== selectedPlaceId)
               .map((place) => (
@@ -311,6 +249,16 @@ export function PlannerMapView({
                   zIndex={1}
                 />
               ))}
+            {selectedActivityRoute.map((point, index) => (
+              <VoyagerMarker
+                key={`${point.label}-${index}`}
+                position={{ lat: point.lat, lng: point.lon }}
+                title={point.label}
+                label={index === 0 ? 'Origin' : 'Destination'}
+                selected={index === selectedActivityRoute.length - 1}
+                zIndex={2}
+              />
+            ))}
             {selectedPlace?.lat != null && selectedPlace?.lon != null ? (
               <>
                 <VoyagerMarker

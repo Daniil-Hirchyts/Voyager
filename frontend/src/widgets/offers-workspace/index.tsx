@@ -4,7 +4,7 @@ import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { addDays, format } from 'date-fns'
 import { z } from 'zod'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowRightLeft,
   Calendar,
@@ -859,8 +859,12 @@ function OffersLoadingState({ mode }: { mode: OfferMode }) {
 
 export default function OffersWorkspace({ tripId }: Props) {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const focusedDayId = searchParams.get('dayId')
+  const plannerReturnTo = searchParams.get('plannerReturnTo')
+  const plannerDayId = searchParams.get('plannerDayId') ?? focusedDayId
+  const plannerImportMode = Boolean(plannerReturnTo)
 
   const { data: trip, isLoading: tripLoading } = useTrip(tripId)
   const { data: daysData, isLoading: daysLoading } = useDays(tripId)
@@ -970,6 +974,30 @@ export default function OffersWorkspace({ tripId }: Props) {
   })
 
   const { data: activeJob } = useJob(activeJobId)
+
+  const importOfferIntoPlanner = async (offer: Offer) => {
+    try {
+      const { importOfferToPlanner } = await import('@/entities/activity/api')
+      const activity = await importOfferToPlanner(
+        tripId,
+        {
+          offer_kind: offer.kind,
+          offer_id: offer.id,
+          trip_day_id: plannerDayId,
+        },
+        crypto.randomUUID(),
+      )
+      await queryClient.invalidateQueries({ queryKey: ['offers', tripId] })
+      await queryClient.invalidateQueries({ queryKey: ['planner', tripId] })
+      toast.success('Added to planner')
+      if (plannerReturnTo) {
+        const separator = plannerReturnTo.includes('?') ? '&' : '?'
+        navigate(`${plannerReturnTo}${separator}activityId=${activity.id}`)
+      }
+    } catch {
+      toast.error('Unable to add this offer to the planner')
+    }
+  }
 
   const transportOffers = useMemo(
     () => offers.filter((offer) => offer.kind === 'transport'),
@@ -1945,6 +1973,12 @@ export default function OffersWorkspace({ tripId }: Props) {
                               <Ticket data-icon="inline-start" className="h-4 w-4" />
                               Attach to day
                             </Button>
+                            {plannerImportMode ? (
+                              <Button className="h-8 rounded-[8px] px-3.5" onClick={() => importOfferIntoPlanner(offer)}>
+                                <Sparkles data-icon="inline-start" className="h-4 w-4" />
+                                Add to planner
+                              </Button>
+                            ) : null}
                             <Button
                               variant="outline"
                               onClick={() => refreshSingleOffer(offer)}
@@ -2254,6 +2288,12 @@ export default function OffersWorkspace({ tripId }: Props) {
                               <Ticket data-icon="inline-start" className="h-4 w-4" />
                               Attach to day
                             </Button>
+                            {plannerImportMode ? (
+                              <Button className="h-8 rounded-[8px] px-3.5" onClick={() => importOfferIntoPlanner(offer)}>
+                                <Sparkles data-icon="inline-start" className="h-4 w-4" />
+                                Add to planner
+                              </Button>
+                            ) : null}
                             <Button
                               variant="outline"
                               onClick={() => refreshSingleOffer(offer)}

@@ -5,6 +5,7 @@ import { format } from 'date-fns'
 import { Hotel, Plus, Route, Ticket } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { useRouteLegEstimates } from '@/entities/routes/queries'
 import { cn } from '@/shared/lib/cn'
 import type { Offer, PlannerActivity, PlannerDay } from '@/shared/api/types'
 import { ActivityCard } from './ActivityCard'
@@ -27,7 +28,9 @@ interface Props {
 }
 
 function TravelConnector({ leg }: { leg: PlannerTravelLeg }) {
-  const hasEstimate = leg.distanceKm != null && leg.durationMin != null
+  const durationMin = leg.durationMin
+  const distanceKm = leg.distanceKm
+  const hasEstimate = durationMin != null && distanceKm != null
 
   return (
     <div
@@ -45,10 +48,10 @@ function TravelConnector({ leg }: { leg: PlannerTravelLeg }) {
         {hasEstimate ? (
           <>
             <span className="font-medium text-[var(--color-text)]">
-              {formatTravelDuration(leg.durationMin)}
+              {formatTravelDuration(durationMin)}
             </span>
             <span>&middot;</span>
-            <span>{formatTravelDistance(leg.distanceKm)}</span>
+            <span>{formatTravelDistance(distanceKm)}</span>
           </>
         ) : (
           <span>Add places to estimate travel</span>
@@ -77,7 +80,56 @@ export function DayColumn({
   })
 
   const activities = [...day.activities].sort((left, right) => left.order_index - right.order_index)
-  const travelLegs = buildPlannerTravelLegs(activities)
+  const fallbackTravelLegs = buildPlannerTravelLegs(activities)
+  const routeLegPayload = activities.length > 1
+    ? {
+        legs: activities.slice(1).flatMap((activity, index) => {
+          const previousActivity = activities[index]
+          const originLat = previousActivity.place?.lat
+          const originLon = previousActivity.place?.lon
+          const destinationLat = activity.place?.lat
+          const destinationLon = activity.place?.lon
+
+          if (
+            typeof originLat !== 'number' ||
+            typeof originLon !== 'number' ||
+            typeof destinationLat !== 'number' ||
+            typeof destinationLon !== 'number'
+          ) {
+            return []
+          }
+
+          return [
+            {
+              from_activity_id: previousActivity.id,
+              to_activity_id: activity.id,
+              origin: { lat: originLat, lng: originLon },
+              destination: { lat: destinationLat, lng: destinationLon },
+            },
+          ]
+        }),
+        travel_mode: 'WALK' as const,
+      }
+    : null
+  const routeLegEstimates = useRouteLegEstimates(
+    routeLegPayload && routeLegPayload.legs.length > 0 ? routeLegPayload : null,
+    Boolean(routeLegPayload?.legs.length),
+  )
+  const travelLegs = routeLegEstimates.data?.items?.length
+    ? fallbackTravelLegs.map((leg) => {
+        const estimate = routeLegEstimates.data?.items.find(
+          (item) =>
+            item.from_activity_id === leg.fromActivityId && item.to_activity_id === leg.toActivityId,
+        )
+        return estimate
+          ? {
+              ...leg,
+              distanceKm: estimate.distance_km,
+              durationMin: estimate.duration_min,
+            }
+          : leg
+      })
+    : fallbackTravelLegs
   const travelLegsByToActivityId = new Map(travelLegs.map((leg) => [leg.toActivityId, leg]))
   const travelSummary = summarizePlannerTravelLegs(travelLegs)
 

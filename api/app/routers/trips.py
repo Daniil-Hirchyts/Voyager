@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, time, timedelta
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
@@ -15,7 +15,7 @@ from app.cache.redis_helpers import (
     cache_set_json,
 )
 from app.config import get_settings
-from app.db.models import Place
+from app.db.models import LodgingOffer, Place, TransportOffer
 from app.db.repositories import (
     ActivityRepository,
     AuditRepository,
@@ -32,6 +32,7 @@ from app.models.trips import (
     DayResponse,
     PlannerActivityResponse,
     PlannerDayResponse,
+    PlannerLinkedOfferSummary,
     PlannerPlaceSummary,
     TripCreateRequest,
     TripGenerateRequest,
@@ -67,12 +68,6 @@ def _trip_response(trip) -> TripResponse:
     )
 
 
-def _activity_end_time(start_time: time | None, duration_min: int | None) -> time | None:
-    if start_time is None or duration_min is None:
-        return None
-    return (datetime.combine(datetime.min, start_time) + timedelta(minutes=duration_min)).time()
-
-
 def _planner_place_summary(place, *, photo_count: int = 0, primary_photo=None) -> PlannerPlaceSummary:
     return PlannerPlaceSummary(
         id=place.id,
@@ -92,17 +87,18 @@ def _planner_activity_response(
     place=None,
     photo_count: int = 0,
     primary_photo=None,
+    linked_offer_summary: PlannerLinkedOfferSummary | None = None,
 ) -> PlannerActivityResponse:
     return PlannerActivityResponse(
         id=activity.id,
         trip_day_id=activity.trip_day_id,
         order_index=activity.order_index,
+        category=activity.category,
+        category_details=activity.category_details_json or {},
         title=activity.title,
         description=activity.description,
         start_time=activity.start_time,
-        end_time=_activity_end_time(activity.start_time, activity.duration_min),
         duration_min=activity.duration_min,
-        tags=activity.tags_json,
         estimated_cost_amount=activity.estimated_cost_amount,
         estimated_cost_currency=activity.estimated_cost_currency,
         place_id=activity.place_id,
@@ -115,6 +111,9 @@ def _planner_activity_response(
         notes=activity.notes,
         is_favorite=activity.is_favorite,
         source=activity.source,
+        linked_offer_kind=activity.linked_offer_kind,
+        linked_offer_id=activity.linked_offer_id,
+        linked_offer_summary=linked_offer_summary,
         created_at=activity.created_at,
         updated_at=activity.updated_at,
     )
@@ -263,12 +262,46 @@ async def get_trip_planner(
     activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
 
     place_ids = list(dict.fromkeys(activity.place_id for activity in activities if activity.place_id))
+    transport_offer_ids = [
+        activity.linked_offer_id
+        for activity in activities
+        if activity.linked_offer_kind == "transport" and activity.linked_offer_id
+    ]
+    lodging_offer_ids = [
+        activity.linked_offer_id
+        for activity in activities
+        if activity.linked_offer_kind == "lodging" and activity.linked_offer_id
+    ]
     photo_summaries = await PlacePhotoRepository.photo_summaries_for_place_ids(db, place_ids)
 
     places_by_id: dict[uuid.UUID, Place] = {}
     if place_ids:
         rows = await db.execute(select(Place).where(Place.id.in_(place_ids)))
         places_by_id = {place.id: place for place in rows.scalars().all()}
+
+    linked_offer_summaries: dict[uuid.UUID, PlannerLinkedOfferSummary] = {}
+    if transport_offer_ids:
+        rows = await db.execute(select(TransportOffer).where(TransportOffer.id.in_(transport_offer_ids)))
+        for offer in rows.scalars().all():
+            linked_offer_summaries[offer.id] = PlannerLinkedOfferSummary(
+                kind="transport",
+                offer_id=offer.id,
+                title=offer.title,
+                deep_link=offer.deep_link,
+                price_amount=offer.price_amount,
+                currency=offer.currency,
+            )
+    if lodging_offer_ids:
+        rows = await db.execute(select(LodgingOffer).where(LodgingOffer.id.in_(lodging_offer_ids)))
+        for offer in rows.scalars().all():
+            linked_offer_summaries[offer.id] = PlannerLinkedOfferSummary(
+                kind="lodging",
+                offer_id=offer.id,
+                title=offer.title,
+                deep_link=offer.deep_link,
+                price_amount=offer.price_amount,
+                currency=offer.currency,
+            )
 
     activities_by_day: dict[uuid.UUID, list[PlannerActivityResponse]] = {day.id: [] for day in days}
     inbox_activities: list[PlannerActivityResponse] = []
@@ -283,6 +316,11 @@ async def get_trip_planner(
             place=place,
             photo_count=photo_count,
             primary_photo=primary_photo,
+            linked_offer_summary=(
+                linked_offer_summaries.get(activity.linked_offer_id)
+                if activity.linked_offer_id is not None
+                else None
+            ),
         )
         if activity.trip_day_id is None:
             inbox_activities.append(response_activity)

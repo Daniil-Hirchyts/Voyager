@@ -1,4 +1,4 @@
-import { createElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   APIProvider,
   AdvancedMarker,
@@ -31,7 +31,14 @@ import {
 import { TerraDrawGoogleMapsAdapter } from 'terra-draw-google-maps-adapter'
 import type { FeatureCollection, GeoJsonProperties, Geometry, Position } from 'geojson'
 import { config } from '@/app/config'
-import type { TripMapFeatureCollection, TripMapLayer } from '@/shared/api/types'
+import { useRoutePreview } from '@/entities/routes/queries'
+import type {
+  GooglePlaceCandidate,
+  RoutePreviewInput,
+  RoutePreviewRoute,
+  TripMapFeatureCollection,
+  TripMapLayer,
+} from '@/shared/api/types'
 
 export type LatLngPoint = {
   lat: number
@@ -189,7 +196,7 @@ export function GoogleMapsProvider({ children }: { children: ReactNode }) {
       apiKey={config.map.apiKey}
       language={config.map.language || undefined}
       region={config.map.region || undefined}
-      libraries={['marker']}
+      libraries={['marker', 'places', 'geometry', 'maps3d']}
     >
       {children}
     </APIProvider>
@@ -204,14 +211,25 @@ export function fitBoundsForPoints(
   map: google.maps.Map,
   points: LatLngPoint[],
   padding: number | google.maps.Padding = 64,
+  options?: {
+    maxZoom?: number
+    singlePointZoom?: number
+  },
 ) {
   if (!points.length) return
   const bounds = new google.maps.LatLngBounds()
   points.forEach((point) => bounds.extend(point))
   if (points.length === 1) {
     map.panTo(points[0])
-    map.setZoom(Math.max(map.getZoom() ?? 0, 13))
+    map.setZoom(options?.singlePointZoom ?? 13)
     return
+  }
+  if (options?.maxZoom != null) {
+    google.maps.event.addListenerOnce(map, 'idle', () => {
+      if ((map.getZoom() ?? 0) > options.maxZoom!) {
+        map.setZoom(options.maxZoom!)
+      }
+    })
   }
   map.fitBounds(bounds, padding)
 }
@@ -290,17 +308,21 @@ export function MapBoundsSync({
 export function MapFitBounds({
   points,
   padding = 64,
+  maxZoom,
+  singlePointZoom,
 }: {
   points: LatLngPoint[]
   padding?: number | google.maps.Padding
+  maxZoom?: number
+  singlePointZoom?: number
 }) {
   const map = useMap()
   const signature = useMemo(() => stringifyCoordinates(points), [points])
 
   useEffect(() => {
     if (!map || points.length === 0) return
-    fitBoundsForPoints(map, points, padding)
-  }, [map, padding, points, signature])
+    fitBoundsForPoints(map, points, padding, { maxZoom, singlePointZoom })
+  }, [map, maxZoom, padding, signature, singlePointZoom])
 
   return null
 }
@@ -785,7 +807,7 @@ export function GoogleDirectionsRoute({
   origin,
   destination,
   waypoints = [],
-  travelMode = 'WALKING' as google.maps.TravelMode,
+  travelMode = 'WALK' as const,
   activeRouteIndex = 0,
   strokeColor = DEFAULT_VECTOR_MARKER_COLOR,
   alternateStrokeColor = '#B6D6F2',
@@ -794,63 +816,43 @@ export function GoogleDirectionsRoute({
   origin: LatLngPoint | null
   destination: LatLngPoint | null
   waypoints?: LatLngPoint[]
-  travelMode?: google.maps.TravelMode
+  travelMode?: RoutePreviewInput['travel_mode']
   activeRouteIndex?: number
   strokeColor?: string
   alternateStrokeColor?: string
-  onRoutesChange?: (routes: google.maps.DirectionsRoute[]) => void
+  onRoutesChange?: (routes: RoutePreviewRoute[]) => void
 }) {
-  useMapsLibrary('routes')
-  const [routes, setRoutes] = useState<google.maps.DirectionsRoute[]>([])
-  const signature = useMemo(
+  const payload = useMemo<RoutePreviewInput | null>(
     () =>
-      JSON.stringify({
-        origin,
-        destination,
-        waypoints,
-        travelMode,
-      }),
+      origin && destination
+        ? {
+            origin,
+            destination,
+            waypoints,
+            travel_mode: travelMode,
+            compute_alternatives: true,
+          }
+        : null,
     [destination, origin, travelMode, waypoints],
   )
+  const routePreview = useRoutePreview(payload, Boolean(payload))
+  const routes = routePreview.data?.routes ?? []
 
   useEffect(() => {
-    if (!origin || !destination || !isGoogleMapsReady()) return
-    const service = new google.maps.DirectionsService()
-    let cancelled = false
-
-    service
-      .route({
-        origin,
-        destination,
-        travelMode,
-        provideRouteAlternatives: true,
-        waypoints: waypoints.map((point) => ({ location: point, stopover: true })),
-      })
-      .then((result) => {
-        if (cancelled) return
-        setRoutes(result.routes)
-        onRoutesChange?.(result.routes)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setRoutes([])
-          onRoutesChange?.([])
-        }
-      })
-
-    return () => {
-      cancelled = true
+    if (!payload) {
+      onRoutesChange?.([])
+      return
     }
-  }, [destination, onRoutesChange, origin, signature, travelMode, waypoints])
+    onRoutesChange?.(routes)
+  }, [onRoutesChange, payload, routes])
 
   return (
     <>
       {routes.map((route, index) => {
-        const path = route.overview_path.map((point) => ({ lat: point.lat(), lng: point.lng() }))
         return (
           <GooglePolyline
             key={`${route.summary || 'route'}-${index}`}
-            path={path}
+            path={route.path}
             strokeColor={index === activeRouteIndex ? strokeColor : alternateStrokeColor}
             strokeOpacity={index === activeRouteIndex ? 0.92 : 0.48}
             strokeWeight={index === activeRouteIndex ? 5 : 3}
@@ -1009,7 +1011,7 @@ export function GooglePlacesExperimentPanel({
 }: {
   selectedPlaceId?: string | null
   placeholder?: string
-  onPlacePicked?: (payload: { placeId: string | null; place: unknown }) => void
+  onPlacePicked?: (payload: GooglePlaceCandidate | null) => void
 }) {
   const [components, setComponents] = useState<null | {
     PlacePicker: React.ComponentType<Record<string, unknown>>
@@ -1040,10 +1042,61 @@ export function GooglePlacesExperimentPanel({
       <PlacePicker
         placeholder={placeholder}
         onPlaceChange={(event: Event) => {
-          const target = event.target as { value?: { id?: string; placeId?: string } | null }
+          const target = event.target as {
+            value?:
+              | {
+                  id?: string
+                  placeId?: string
+                  formattedAddress?: string
+                  name?: string
+                  displayName?: string | { text?: string }
+                  location?: {
+                    lat?: number | (() => number)
+                    lng?: number | (() => number)
+                  }
+                  types?: string[]
+                }
+              | null
+          }
           const place = target.value ?? null
           const placeId = place?.id ?? place?.placeId ?? null
-          onPlacePicked?.({ placeId, place })
+          if (!placeId || !place) {
+            onPlacePicked?.(null)
+            return
+          }
+          const selectedPlace = place
+          const location = selectedPlace.location
+          const lat =
+            typeof location?.lat === 'function'
+              ? location.lat()
+              : typeof location?.lat === 'number'
+                ? location.lat
+                : null
+          const lon =
+            typeof location?.lng === 'function'
+              ? location.lng()
+              : typeof location?.lng === 'number'
+                ? location.lng
+                : null
+          const displayName =
+            typeof selectedPlace.displayName === 'string'
+              ? selectedPlace.displayName
+              : selectedPlace.displayName?.text
+          onPlacePicked?.({
+            place_id: placeId,
+            label: selectedPlace.formattedAddress ?? displayName ?? selectedPlace.name ?? placeId,
+            name: displayName ?? selectedPlace.name ?? placeId,
+            address_text: selectedPlace.formattedAddress ?? null,
+            category: Array.isArray(selectedPlace.types) ? selectedPlace.types[0] ?? null : null,
+            country: null,
+            region: null,
+            lat,
+            lon,
+            timezone: null,
+            metadata: {
+              types: Array.isArray(selectedPlace.types) ? selectedPlace.types : [],
+            },
+          })
         }}
       />
       {selectedPlaceId ? <PlaceOverview place={selectedPlaceId} /> : null}
@@ -1054,13 +1107,17 @@ export function GooglePlacesExperimentPanel({
 export function GoogleMap3DPreview({
   center,
   marker,
+  markerLabel,
   height = 280,
 }: {
   center: LatLngPoint
   marker?: LatLngPoint | null
+  markerLabel?: string | null
   height?: number
 }) {
   const maps3d = useMapsLibrary('maps3d')
+  const markerLib = useMapsLibrary('marker') as google.maps.MarkerLibrary | null
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   if (!config.features.map3D) {
     return null
@@ -1077,29 +1134,58 @@ export function GoogleMap3DPreview({
     )
   }
 
-  const children = marker
-    ? [
-      createElement('gmp-marker-3d', {
-        key: 'marker',
-        position: marker,
-        label: 'Here',
-        extruded: true,
-      }),
-    ]
-    : null
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) {
+      return
+    }
 
-  return createElement(
-    'gmp-map-3d',
-    {
-      center: { ...center, altitude: 1200 },
-      mode: 'hybrid',
-      tilt: 65,
-      heading: 20,
-      range: 1200,
-      style: { width: '100%', height },
-    },
-    children,
-  )
+    const map3dElement = document.createElement('gmp-map-3d')
+    map3dElement.setAttribute('center', `${center.lat},${center.lng},110`)
+    map3dElement.setAttribute('mode', 'hybrid')
+    map3dElement.setAttribute('tilt', '67.5')
+    map3dElement.setAttribute('heading', '18')
+    map3dElement.setAttribute('range', '820')
+    map3dElement.setAttribute('default-ui-hidden', '')
+    map3dElement.style.width = '100%'
+    map3dElement.style.height = `${height}px`
+
+    if (config.map.mapId) {
+      map3dElement.setAttribute('map-id', config.map.mapId)
+    }
+
+    if (marker) {
+      const marker3dElement = document.createElement('gmp-marker-3d')
+      marker3dElement.setAttribute('position', `${marker.lat},${marker.lng},32`)
+      marker3dElement.setAttribute('altitude-mode', 'relative-to-ground')
+      marker3dElement.setAttribute('extruded', '')
+      marker3dElement.setAttribute('size-preserved', '')
+      marker3dElement.setAttribute('draws-when-occluded', '')
+      if (markerLabel) {
+        marker3dElement.setAttribute('title', markerLabel)
+      }
+
+      if (markerLib?.PinElement) {
+        const pin = new markerLib.PinElement({
+          background: DEFAULT_SELECTED_MARKER_COLOR,
+          borderColor: '#A86819',
+          glyphColor: '#FFFFFF',
+          scale: 1.2,
+        })
+        marker3dElement.appendChild(pin.element)
+      }
+
+      map3dElement.appendChild(marker3dElement)
+    }
+
+    container.replaceChildren(map3dElement)
+
+    return () => {
+      container.replaceChildren()
+    }
+  }, [center.lat, center.lng, height, marker, markerLabel, markerLib])
+
+  return <div ref={containerRef} style={{ height }} />
 }
 
 export function TripMapLayerRenderer({

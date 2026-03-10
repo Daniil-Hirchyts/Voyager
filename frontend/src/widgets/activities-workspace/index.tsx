@@ -578,7 +578,6 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
           address_text: item.address_text,
           lat: item.lat,
           lon: item.lon,
-          tags: item.tags,
           status_text: item.status_text,
           currency: trip?.budget_currency ?? 'USD',
           raw_payload: {

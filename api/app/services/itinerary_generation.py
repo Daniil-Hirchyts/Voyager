@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Activity, Job, Place, Trip, TripDay
+from app.db.models import Activity, ActivityCategory, Job, Place, Trip, TripDay
 from app.db.repositories import (
     ActivityRepository,
     PlacePhotoRepository,
@@ -65,6 +65,21 @@ class CandidateResolutionResult:
 
 def _normalize_title(value: str) -> str:
     return " ".join(value.lower().split())
+
+
+def _candidate_category(candidate: dict[str, Any], place_seed: CatalogPlaceSeed | None) -> ActivityCategory:
+    if place_seed and isinstance(place_seed.category, str):
+        category_text = place_seed.category.lower()
+        if any(token in category_text for token in ("restaurant", "cafe", "food", "bar")):
+            return ActivityCategory.EAT
+        if any(token in category_text for token in ("tour", "experience", "activity", "event")):
+            return ActivityCategory.ACTIVITY
+    title = str(candidate.get("title") or "").lower()
+    if any(token in title for token in ("breakfast", "lunch", "dinner", "cafe", "bistro", "restaurant")):
+        return ActivityCategory.EAT
+    if any(token in title for token in ("tour", "cruise", "workshop", "experience", "show")):
+        return ActivityCategory.ACTIVITY
+    return ActivityCategory.VISIT
 
 
 def _seed_external_id(trip: Trip, place_seed: CatalogPlaceSeed) -> str:
@@ -275,13 +290,14 @@ async def _resolve_candidates_for_scope(
                 )
                 if place is not None:
                     next_row["place_id"] = place.id
+                    next_row["category"] = _candidate_category(candidate, place_seed)
                     resolved_place_ids.add(place.id)
                 else:
                     unresolved_activity_count += 1
-                    next_row["place_id"] = None
+                    continue
             else:
                 unresolved_activity_count += 1
-                next_row["place_id"] = None
+                continue
             resolved_rows.append(next_row)
         resolved_candidates[day.id] = resolved_rows
 
@@ -337,11 +353,12 @@ async def _apply_replace(
                     trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
+                    category=candidate.get("category", ActivityCategory.VISIT),
+                    category_details_json={},
                     title=candidate["title"],
                     description=candidate["description"],
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
-                    tags_json=candidate["tags_json"],
                     estimated_cost_amount=candidate.get("estimated_cost_amount"),
                     estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),
@@ -398,7 +415,8 @@ async def _apply_merge(
                 row.description = candidate["description"]
                 row.start_time = candidate["start_time"]
                 row.duration_min = candidate["duration_min"]
-                row.tags_json = candidate["tags_json"]
+                row.category = candidate.get("category", ActivityCategory.VISIT)
+                row.category_details_json = {}
                 row.estimated_cost_amount = candidate.get("estimated_cost_amount")
                 row.estimated_cost_currency = candidate.get("estimated_cost_currency")
                 row.place_id = candidate.get("place_id")
@@ -419,11 +437,12 @@ async def _apply_merge(
                     trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
+                    category=candidate.get("category", ActivityCategory.VISIT),
+                    category_details_json={},
                     title=candidate["title"],
                     description=candidate["description"],
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
-                    tags_json=candidate["tags_json"],
                     estimated_cost_amount=candidate.get("estimated_cost_amount"),
                     estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),
@@ -481,11 +500,12 @@ async def _apply_append(
                     trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
+                    category=candidate.get("category", ActivityCategory.VISIT),
+                    category_details_json={},
                     title=candidate["title"],
                     description=candidate["description"],
                     start_time=candidate["start_time"],
                     duration_min=candidate["duration_min"],
-                    tags_json=candidate["tags_json"],
                     estimated_cost_amount=candidate.get("estimated_cost_amount"),
                     estimated_cost_currency=candidate.get("estimated_cost_currency"),
                     place_id=candidate.get("place_id"),

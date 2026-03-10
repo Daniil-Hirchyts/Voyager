@@ -1,4 +1,5 @@
 import json
+import logging
 import uuid
 
 import httpx
@@ -17,10 +18,12 @@ from app.cache.redis_helpers import (
 from app.config import get_settings
 from app.db.repositories import JobRepository, PlacePhotoRepository, PlaceRepository
 from app.db.session import get_db_session, get_redis
-from app.errors import ValidationApiError
+from app.errors import NotFoundError, ServiceUnavailableError, ValidationApiError
 from app.models.jobs import JobAcceptedResponse
 from app.models.places import (
     DestinationAutocompleteResponse,
+    GooglePlaceCandidate,
+    GooglePlaceSearchResponse,
     PlaceCreateRequest,
     PlaceDedupRunRequest,
     PlaceListResponse,
@@ -30,7 +33,6 @@ from app.models.places import (
     PlacePhotoListResponse,
     PlaceResponse,
 )
-from app.services.place_autocomplete import search_destination_suggestions
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import payload_fingerprint
 from app.security.dependencies import (
@@ -38,9 +40,20 @@ from app.security.dependencies import (
     get_admin_auth_context,
     get_auth_context,
 )
+from app.services.google_maps import (
+    GoogleMapsNotConfiguredError,
+    GoogleMapsRequestError,
+    geocode_address,
+    lookup_google_place,
+    resolve_time_zone,
+    search_google_places,
+    validate_address,
+)
+from app.services.place_autocomplete import search_destination_suggestions
 from app.services.place_photo_assets import ensure_place_photo_asset
 
 router = APIRouter(prefix="/places", tags=["places"])
+logger = logging.getLogger(__name__)
 
 
 def _quantize(value: float) -> str:
@@ -124,6 +137,84 @@ def _job_accepted(job_id: uuid.UUID) -> JobAcceptedResponse:
     return JobAcceptedResponse(job_id=job_id, status="PENDING", poll_url=f"/jobs/{job_id}")
 
 
+def _merge_metadata(*items: dict | None) -> dict:
+    merged: dict = {}
+    for item in items:
+        if isinstance(item, dict):
+            merged.update(item)
+    return merged
+
+
+def _service_unavailable_for_google() -> ServiceUnavailableError:
+    return ServiceUnavailableError(
+        code="INTEGRATION_NOT_CONFIGURED",
+        message="Google Maps integration is unavailable",
+        details={"provider": "google_maps"},
+    )
+
+
+async def _enrich_place_payload(payload: PlaceCreateRequest) -> PlaceCreateRequest:
+    next_payload = payload.model_copy(deep=True)
+    metadata = _merge_metadata(next_payload.metadata)
+
+    try:
+        if next_payload.external_id and next_payload.source in {"google_places", "destination"}:
+            details = await lookup_google_place(next_payload.external_id)
+            if details is not None:
+                next_payload.external_id = details.place_id
+                next_payload.name = details.name or next_payload.name
+                next_payload.category = details.category or next_payload.category
+                next_payload.address_text = details.formatted_address or next_payload.address_text
+                next_payload.lat = details.lat if details.lat is not None else next_payload.lat
+                next_payload.lon = details.lng if details.lng is not None else next_payload.lon
+                metadata = _merge_metadata(
+                    metadata,
+                    details.metadata,
+                    {
+                        "country": details.country,
+                        "region": details.region,
+                        "google_place_id": details.place_id,
+                        "time_zone_id": details.timezone,
+                    },
+                )
+        else:
+            if next_payload.source == "user_custom" and next_payload.address_text:
+                validation = await validate_address(next_payload.address_text)
+                if validation is not None:
+                    next_payload.address_text = validation.formatted_address or next_payload.address_text
+                    metadata["google_address_validation"] = validation.metadata
+                    if validation.region_code:
+                        metadata["region_code"] = validation.region_code
+
+            if next_payload.address_text and (next_payload.lat is None or next_payload.lon is None):
+                geocode = await geocode_address(next_payload.address_text)
+                if geocode is not None:
+                    next_payload.address_text = geocode.formatted_address or next_payload.address_text
+                    next_payload.lat = geocode.lat if geocode.lat is not None else next_payload.lat
+                    next_payload.lon = geocode.lng if geocode.lng is not None else next_payload.lon
+                    metadata = _merge_metadata(
+                        metadata,
+                        geocode.metadata,
+                        {
+                            "google_geocode_place_id": geocode.place_id,
+                            "country": geocode.country,
+                            "region": geocode.region,
+                        },
+                    )
+
+        if next_payload.lat is not None and next_payload.lon is not None:
+            timezone = await resolve_time_zone(lat=next_payload.lat, lng=next_payload.lon)
+            if timezone:
+                metadata["time_zone_id"] = timezone
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError:
+        logger.warning("place enrichment skipped after Google Maps request failure")
+
+    next_payload.metadata = metadata
+    return next_payload
+
+
 @router.post("", response_model=PlaceResponse, status_code=201)
 async def create_place(
     payload: PlaceCreateRequest,
@@ -144,7 +235,21 @@ async def create_place(
     if replay:
         return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
 
-    place = await PlaceRepository.create_place(db, payload)
+    enriched_payload = await _enrich_place_payload(payload)
+    if enriched_payload.external_id:
+        place = await PlaceRepository.get_or_create_external_place(
+            db,
+            source=enriched_payload.source,
+            external_id=enriched_payload.external_id,
+            name=enriched_payload.name,
+            category=enriched_payload.category,
+            address_text=enriched_payload.address_text,
+            lat=enriched_payload.lat,
+            lon=enriched_payload.lon,
+            metadata=enriched_payload.metadata,
+        )
+    else:
+        place = await PlaceRepository.create_place(db, enriched_payload)
     response = _place_response_from_place(place, photo_count=0, primary_photo=None)
     await _invalidate_place_caches(redis)
 
@@ -272,13 +377,18 @@ async def autocomplete_destinations(
     )
 
     query = (q or "").strip()
-    cache_key = "place:autocomplete:v2:" + build_cache_key(query, str(limit), str(offset))
+    cache_key = "place:autocomplete:v3:" + build_cache_key(query, str(limit), str(offset))
     cached = await cache_get_json(redis, cache_key)
     if cached:
         return DestinationAutocompleteResponse.model_validate(cached)
 
     fetch_limit = min(limit + offset, 20)
-    suggestions = await search_destination_suggestions(query, fetch_limit)
+    try:
+        suggestions = await search_destination_suggestions(query, fetch_limit)
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError:
+        suggestions = []
     page_items = suggestions[offset : offset + limit]
 
     response = DestinationAutocompleteResponse(
@@ -286,6 +396,104 @@ async def autocomplete_destinations(
         limit=limit,
         offset=offset,
         items=page_items,
+    )
+    await cache_set_json(
+        redis,
+        cache_key,
+        response.model_dump(mode="json"),
+        settings.place_cache_ttl_sec,
+    )
+    return response
+
+
+@router.get("/google-search", response_model=GooglePlaceSearchResponse)
+async def google_place_search(
+    q: str | None = Query(default=None),
+    limit: int = Query(default=8, ge=1, le=20),
+    offset: int = Query(default=0, ge=0),
+    auth: AuthContext = Depends(get_auth_context),
+    redis: Redis = Depends(get_redis),
+) -> GooglePlaceSearchResponse:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "places:autocomplete",
+        settings.rate_limit_places_autocomplete_per_min,
+    )
+
+    query = (q or "").strip()
+    cache_key = "place:google-search:v1:" + build_cache_key(query, str(limit), str(offset))
+    cached = await cache_get_json(redis, cache_key)
+    if cached:
+        return GooglePlaceSearchResponse.model_validate(cached)
+
+    try:
+        fetch_limit = min(limit + offset, 20)
+        items = await search_google_places(query, fetch_limit)
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError as exc:
+        raise HTTPException(status_code=502, detail="Google Places search failed") from exc
+
+    page_items = items[offset : offset + limit]
+    response = GooglePlaceSearchResponse(
+        total=len(items),
+        limit=limit,
+        offset=offset,
+        items=page_items,
+    )
+    await cache_set_json(
+        redis,
+        cache_key,
+        response.model_dump(mode="json"),
+        settings.place_cache_ttl_sec,
+    )
+    return response
+
+
+@router.get("/google/{place_id}", response_model=GooglePlaceCandidate)
+async def get_google_place(
+    place_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+    redis: Redis = Depends(get_redis),
+) -> GooglePlaceCandidate:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "places:autocomplete",
+        settings.rate_limit_places_autocomplete_per_min,
+    )
+    cache_key = "place:google:get:" + build_cache_key(place_id)
+    cached = await cache_get_json(redis, cache_key)
+    if cached:
+        return GooglePlaceCandidate.model_validate(cached)
+
+    try:
+        details = await lookup_google_place(place_id)
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError as exc:
+        raise HTTPException(status_code=502, detail="Google Place lookup failed") from exc
+
+    if details is None:
+        raise NotFoundError("Google Place not found")
+
+    response = GooglePlaceCandidate.model_validate(
+        {
+            "place_id": details.place_id,
+            "label": details.formatted_address or details.name or details.place_id,
+            "name": details.name or details.place_id,
+            "address_text": details.formatted_address,
+            "category": details.category,
+            "country": details.country,
+            "region": details.region,
+            "lat": details.lat,
+            "lon": details.lng,
+            "timezone": details.timezone,
+            "metadata": details.metadata,
+        }
     )
     await cache_set_json(
         redis,

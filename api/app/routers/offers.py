@@ -131,7 +131,7 @@ async def submit_transport_offer_search(
         trip_day_id=payload.trip_day_id,
     )
 
-    provider_order, _ = _resolve_provider_preflight(
+    provider_order, unavailable = _resolve_provider_preflight(
         kind=OfferKind.TRANSPORT,
         requested=payload.providers,
     )
@@ -167,6 +167,7 @@ async def submit_transport_offer_search(
             "trip_id": str(trip.id),
             "user_id": str(auth.user_id),
             "providers": provider_order,
+            "preflight_unavailable": unavailable,
             "request": request_body,
             "request_fingerprint": request_fingerprint,
         },
@@ -211,7 +212,7 @@ async def submit_lodging_offer_search(
         trip_day_id=payload.trip_day_id,
     )
 
-    provider_order, _ = _resolve_provider_preflight(
+    provider_order, unavailable = _resolve_provider_preflight(
         kind=OfferKind.LODGING,
         requested=payload.providers,
     )
@@ -247,6 +248,7 @@ async def submit_lodging_offer_search(
             "trip_id": str(trip.id),
             "user_id": str(auth.user_id),
             "providers": provider_order,
+            "preflight_unavailable": unavailable,
             "request": request_body,
             "request_fingerprint": request_fingerprint,
         },

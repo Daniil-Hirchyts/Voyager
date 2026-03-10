@@ -452,4 +452,3 @@ def test_planner_endpoint_embeds_generated_places(api_client, headers_user1):
     )
     assert first_generated["place"] is not None
     assert first_generated["place"]["id"] == first_generated["place_id"]
-    assert first_generated["end_time"] is not None

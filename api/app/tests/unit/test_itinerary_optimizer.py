@@ -2,6 +2,8 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
+import pytest
+
 from app.db.models import EventSnapshot, Place, Trip
 from app.services import itinerary_optimizer
 
@@ -91,7 +93,8 @@ def test_insert_event_candidate_adds_non_conflicting_event():
     assert [item["title"] for item in proposal_items] == ["Breakfast", "Morning exhibit", "Lunch"]
 
 
-def test_score_day_balances_distance_variety_and_budget():
+@pytest.mark.asyncio
+async def test_score_day_balances_distance_variety_and_budget(monkeypatch):
     trip = _trip_fixture()
     place_a = Place(
         id=uuid4(),
@@ -125,13 +128,23 @@ def test_score_day_balances_distance_variety_and_budget():
         },
     ]
 
-    score = itinerary_optimizer._score_day(
+    async def fake_compute_route_leg(*, origin, destination, travel_mode):
+        assert origin == (place_a.lat, place_a.lon)
+        assert destination == (place_b.lat, place_b.lon)
+        assert travel_mode == itinerary_optimizer.RouteTravelMode.WALK
+        return 3.2, 41.0
+
+    monkeypatch.setattr(itinerary_optimizer, "compute_route_leg", fake_compute_route_leg)
+
+    score = await itinerary_optimizer._score_day(
         trip=trip,
         items=items,
         places_by_id={place_a.id: place_a, place_b.id: place_b},
+        route_cache={},
     )
 
     assert score["total_score"] > 0
     assert score["variety_score"] >= 20
     assert score["distance_km"] > 0
     assert items[1]["score_json"]["distance_km_from_previous"] > 0
+    assert items[1]["score_json"]["travel_minutes_estimate"] == 41.0

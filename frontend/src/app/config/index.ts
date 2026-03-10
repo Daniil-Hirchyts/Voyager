@@ -31,9 +31,8 @@ export const config = {
       mapExperimentsFlag === 'true' ||
       (mapExperimentsFlag !== 'false' && Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID)),
     map3D:
-      map3DFlag === 'true' ||
-      (map3DFlag !== 'false' &&
-        Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID) &&
-        (mapExperimentsFlag === 'true' || Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID))),
+      map3DFlag === 'false'
+        ? false
+        : map3DFlag === 'true' || Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
   },
 }

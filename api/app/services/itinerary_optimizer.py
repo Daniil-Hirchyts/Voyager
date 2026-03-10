@@ -8,9 +8,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Activity, EventSnapshot, Job, Place, Trip, TripDay
+from app.db.models import Activity, ActivityCategory, EventSnapshot, Job, Place, Trip, TripDay
 from app.db.repositories import ActivityRepository, ProposalRepository, TripRepository
 from app.errors import ConflictError, ValidationApiError
+from app.models.routing import RouteTravelMode
+from app.services.google_maps import GoogleMapsError, compute_route_leg
 from app.services.itinerary_generation import NonRetryableJobError
 
 
@@ -110,7 +112,12 @@ async def _load_places(db: AsyncSession, *, place_ids: set[uuid.UUID]) -> dict[u
 
 
 def _activity_tags(activity: Activity) -> list[str]:
-    return [str(value) for value in (activity.tags_json or []) if isinstance(value, str)]
+    values = [activity.category.value if hasattr(activity.category, "value") else str(activity.category)]
+    if activity.title:
+        values.append(activity.title)
+    if activity.description:
+        values.append(activity.description)
+    return [value for value in values if isinstance(value, str)]
 
 
 def _event_tags(event: EventSnapshot) -> list[str]:
@@ -119,6 +126,15 @@ def _event_tags(event: EventSnapshot) -> list[str]:
         for value in ([event.entity_type] + list(event.tags_json or []) + [event.segment, event.genre, "event"])
         if value
     ]
+
+
+def _proposal_activity_category(tags_json: list[str] | None) -> ActivityCategory:
+    normalized = {str(value).strip().lower() for value in (tags_json or []) if value}
+    if {"restaurant", "food", "eat", "cafe"} & normalized:
+        return ActivityCategory.EAT
+    if {"tour", "experience", "event", "activity"} & normalized:
+        return ActivityCategory.ACTIVITY
+    return ActivityCategory.VISIT
 
 
 def _candidate_day_id_for_event(
@@ -208,11 +224,47 @@ def _insert_event_candidate(
     return True
 
 
-def _score_day(
+async def _estimate_leg(
+    *,
+    previous_place: Place,
+    current_place: Place,
+    route_cache: dict[tuple[uuid.UUID, uuid.UUID], tuple[float, float]],
+) -> tuple[float, float]:
+    cache_key = (previous_place.id, current_place.id)
+    if cache_key in route_cache:
+        return route_cache[cache_key]
+
+    distance_km = _haversine_km(
+        previous_place.lat,
+        previous_place.lon,
+        current_place.lat,
+        current_place.lon,
+    )
+    duration_min = round((distance_km / 25.0) * 60.0, 1) if distance_km else 0.0
+
+    try:
+        estimated_distance_km, estimated_duration_min = await compute_route_leg(
+            origin=(previous_place.lat, previous_place.lon),
+            destination=(current_place.lat, current_place.lon),
+            travel_mode=RouteTravelMode.WALK,
+        )
+        if estimated_distance_km is not None:
+            distance_km = estimated_distance_km
+        if estimated_duration_min is not None:
+            duration_min = estimated_duration_min
+    except GoogleMapsError:
+        pass
+
+    route_cache[cache_key] = (distance_km, duration_min)
+    return route_cache[cache_key]
+
+
+async def _score_day(
     *,
     trip: Trip,
     items: list[dict[str, Any]],
     places_by_id: dict[uuid.UUID, Place],
+    route_cache: dict[tuple[uuid.UUID, uuid.UUID], tuple[float, float]],
 ) -> dict[str, Any]:
     total_distance_km = 0.0
     travel_minutes = 0.0
@@ -242,17 +294,16 @@ def _score_day(
             and current_place.lat is not None
             and current_place.lon is not None
         ):
-            distance_km = _haversine_km(
-                previous_place.lat,
-                previous_place.lon,
-                current_place.lat,
-                current_place.lon,
+            distance_km, leg_duration = await _estimate_leg(
+                previous_place=previous_place,
+                current_place=current_place,
+                route_cache=route_cache,
             )
             total_distance_km += distance_km
-            travel_minutes += (distance_km / 25.0) * 60.0
+            travel_minutes += leg_duration
         item["score_json"] = {
             "distance_km_from_previous": round(distance_km, 2),
-            "travel_minutes_estimate": round((distance_km / 25.0) * 60.0, 1) if distance_km else 0.0,
+            "travel_minutes_estimate": round(leg_duration, 1) if distance_km else 0.0,
             "tag_count": len(item.get("tags_json") or []),
         }
         previous_place = current_place or previous_place
@@ -323,6 +374,7 @@ async def execute_itinerary_optimization_job(
     scope_days_by_date = {day.date: day.id for day in days}
     day_candidate_map: dict[uuid.UUID, list[EventSnapshot]] = {day.id: [] for day in days}
     undated_candidates: list[EventSnapshot] = []
+    route_cache: dict[tuple[uuid.UUID, uuid.UUID], tuple[float, float]] = {}
 
     for event in events:
         if event.id in attached_event_ids:
@@ -400,7 +452,12 @@ async def execute_itinerary_optimization_job(
             if item.get("place_id") is not None
         }
         places_by_id = await _load_places(db, place_ids=place_ids)
-        day_score = _score_day(trip=trip, items=day_rows, places_by_id=places_by_id)
+        day_score = await _score_day(
+            trip=trip,
+            items=day_rows,
+            places_by_id=places_by_id,
+            route_cache=route_cache,
+        )
         per_day_scores[str(day.id)] = day_score
         proposal_rows.extend(day_rows)
 
@@ -505,7 +562,8 @@ async def apply_proposal(
                     existing.description = proposal_item.description
                     existing.start_time = proposal_item.start_time
                     existing.duration_min = proposal_item.duration_min
-                    existing.tags_json = proposal_item.tags_json
+                    existing.category = _proposal_activity_category(proposal_item.tags_json)
+                    existing.category_details_json = {}
                     existing.estimated_cost_amount = proposal_item.estimated_cost_amount
                     existing.estimated_cost_currency = proposal_item.estimated_cost_currency
                     existing.place_id = proposal_item.place_id
@@ -519,11 +577,12 @@ async def apply_proposal(
                 trip_id=proposal.trip_id,
                 trip_day_id=day_id,
                 order_index=10_000,
+                category=_proposal_activity_category(proposal_item.tags_json),
+                category_details_json={},
                 title=proposal_item.title,
                 description=proposal_item.description,
                 start_time=proposal_item.start_time,
                 duration_min=proposal_item.duration_min,
-                tags_json=proposal_item.tags_json,
                 estimated_cost_amount=proposal_item.estimated_cost_amount,
                 estimated_cost_currency=proposal_item.estimated_cost_currency,
                 place_id=proposal_item.place_id,

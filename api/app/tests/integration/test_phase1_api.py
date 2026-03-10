@@ -116,7 +116,7 @@ def test_reorder_and_move_activity(api_client, headers_user1):
         activity = api_client.post(
             f"/days/{day_1}/activities",
             headers=headers_user1 | {"Idempotency-Key": f"{activity_key_prefix}-{idx}"},
-            json={"title": f"Act {idx}", "source": "manual", "tags": []},
+            json={"title": f"Act {idx}", "source": "manual", "category": "visit"},
         )
         assert activity.status_code == 201
         source_ids.append(activity.json()["id"])
@@ -124,7 +124,7 @@ def test_reorder_and_move_activity(api_client, headers_user1):
     target_activity = api_client.post(
         f"/days/{day_2}/activities",
         headers=headers_user1 | {"Idempotency-Key": f"{activity_key_prefix}-target"},
-        json={"title": "Target occupant", "source": "manual", "tags": []},
+        json={"title": "Target occupant", "source": "manual", "category": "visit"},
     )
     assert target_activity.status_code == 201
     target_id = target_activity.json()["id"]
@@ -208,14 +208,15 @@ def test_trip_scoped_inbox_activity_roundtrip_and_planner_partition(api_client, 
         json={
             "title": "Choose tapas bar",
             "source": "manual",
+            "category": "eat",
             "start_time": "10:15:00",
-            "tags": ["food"],
         },
     )
     assert inbox_create.status_code == 201
     inbox_activity = inbox_create.json()
     assert inbox_activity["trip_day_id"] is None
     assert inbox_activity["start_time"] is None
+    assert inbox_activity["category"] == "eat"
 
     planner = api_client.get(f"/trips/{trip_id}/planner", headers=headers_user1)
     assert planner.status_code == 200
@@ -244,13 +245,12 @@ def test_trip_scoped_inbox_activity_roundtrip_and_planner_partition(api_client, 
     assigned_day = next(day for day in assigned_body["days"] if day["id"] == day_1)
     assert assigned_day["activities"][0]["id"] == inbox_activity["id"]
     assert assigned_day["activities"][0]["start_time"] is None
-    assert assigned_day["activities"][0]["end_time"] is None
 
     version_2 = api_client.get(f"/trips/{trip_id}", headers=headers_user1).json()["version"]
     move_back_to_inbox = api_client.post(
         f"/activities/{inbox_activity['id']}/move",
         headers=headers_user1 | {"If-Match": str(version_2)},
-        json={"target_day_id": None, "target_index": 0, "start_time": None},
+        json={"target_day_id": None, "target_index": 0},
     )
     assert move_back_to_inbox.status_code == 200
     assert move_back_to_inbox.json()["trip_day_id"] is None
@@ -293,14 +293,14 @@ def test_duplicate_trip_preserves_inbox_activities(api_client, headers_user1):
     day_activity = api_client.post(
         f"/days/{day_1}/activities",
         headers=headers_user1 | {"Idempotency-Key": f"duplicate-day-activity-{uuid.uuid4()}"},
-        json={"title": "Acropolis sunrise", "source": "manual", "tags": []},
+        json={"title": "Acropolis sunrise", "source": "manual", "category": "visit"},
     )
     assert day_activity.status_code == 201
 
     inbox_activity = api_client.post(
         f"/trips/{trip_id}/planner/activities",
         headers=headers_user1 | {"Idempotency-Key": f"duplicate-inbox-activity-{uuid.uuid4()}"},
-        json={"title": "Museum shortlist", "source": "manual", "tags": []},
+        json={"title": "Museum shortlist", "source": "manual", "category": "activity"},
     )
     assert inbox_activity.status_code == 201
     assert inbox_activity.json()["trip_day_id"] is None
@@ -319,6 +319,7 @@ def test_duplicate_trip_preserves_inbox_activities(api_client, headers_user1):
 
     assert [item["title"] for item in duplicate_body["inbox_activities"]] == ["Museum shortlist"]
     assert duplicate_body["inbox_activities"][0]["trip_day_id"] is None
+    assert duplicate_body["inbox_activities"][0]["category"] == "activity"
     assert any(
         activity["title"] == "Acropolis sunrise"
         for day in duplicate_body["days"]

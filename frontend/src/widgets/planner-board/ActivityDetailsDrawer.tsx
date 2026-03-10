@@ -1,4 +1,3 @@
-import { Clock3, MapPin, MessageSquare, Pencil, Sparkles, Tag, Trash2 } from 'lucide-react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,7 +9,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Sheet,
@@ -23,9 +21,25 @@ import {
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { formatMoney } from '@/shared/lib/format'
 import type { PlannerActivity } from '@/shared/api/types'
+import { plannerCategoryDescription, plannerCategoryLabel, plannerPrimaryPlace, plannerTravelRoute } from './categories'
+import { PlannerPreviewMap } from './PlannerPreviewMap'
+import {
+  BedDouble,
+  Clock3,
+  ExternalLink,
+  Landmark,
+  MapPin,
+  Pencil,
+  Plane,
+  Receipt,
+  Ticket,
+  Trash2,
+  Utensils,
+} from 'lucide-react'
 
 interface Props {
   open: boolean
+  tripId: string
   activity: PlannerActivity | null
   dayLabel: string | null
   onClose: () => void
@@ -33,8 +47,16 @@ interface Props {
   onDelete: (activityId: string) => void
 }
 
-function assignmentLabel(activity: PlannerActivity, dayLabel: string | null) {
-  return activity.trip_day_id == null ? 'Inbox' : dayLabel ?? 'Assigned day'
+const CATEGORY_ICON = {
+  visit: Landmark,
+  eat: Utensils,
+  activity: Ticket,
+  hotel: BedDouble,
+  travel: Plane,
+}
+
+function detailsRecord(value: unknown) {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
 function scheduleLabel(activity: PlannerActivity) {
@@ -44,11 +66,62 @@ function scheduleLabel(activity: PlannerActivity) {
   if (activity.duration_min) {
     return `${activity.duration_min} min`
   }
-  return activity.trip_day_id == null ? 'Not scheduled yet' : 'No time set'
+  return activity.trip_day_id == null ? 'Inbox' : 'Flexible'
+}
+
+function MapPreview({ activity }: { activity: PlannerActivity }) {
+  const primaryPlace = plannerPrimaryPlace(activity)
+  const travelRoute = plannerTravelRoute(activity)
+  const hasPrimaryPoint = primaryPlace?.lat != null && primaryPlace.lon != null
+
+  if (!hasPrimaryPoint && travelRoute.length === 0) {
+    return null
+  }
+
+  return (
+    <PlannerPreviewMap
+      primaryPoint={
+        hasPrimaryPoint
+          ? {
+              lat: primaryPlace.lat!,
+              lon: primaryPlace.lon!,
+              title: primaryPlace.name,
+            }
+          : null
+      }
+      routePoints={travelRoute.map((point) => ({
+        lat: point.lat,
+        lon: point.lon,
+        title: point.label,
+      }))}
+      heightPx={192}
+    />
+  )
+}
+
+function DetailBlock({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string
+  value: string
+  icon: typeof Clock3
+}) {
+  return (
+    <div className="rounded-[12px] border border-black/8 bg-white px-4 py-3">
+      <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+        <Icon className="h-3.5 w-3.5" />
+        {label}
+      </div>
+      <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">{value}</p>
+    </div>
+  )
 }
 
 export function ActivityDetailsDrawer({
   open,
+  tripId: _tripId,
   activity,
   dayLabel,
   onClose,
@@ -61,11 +134,15 @@ export function ActivityDetailsDrawer({
     return null
   }
 
-  const assignment = assignmentLabel(activity, dayLabel)
-  const schedule = scheduleLabel(activity)
-  const headerSummary = [
-    activity.place?.name ?? null,
-    activity.start_time ? schedule : null,
+  const details = detailsRecord(activity.category_details)
+  const categoryLabel = plannerCategoryLabel(activity.category)
+  const categoryDescription = plannerCategoryDescription(activity)
+  const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark
+  const travelRoute = plannerTravelRoute(activity)
+
+  const topMeta = [
+    dayLabel ?? (activity.trip_day_id == null ? 'Inbox' : 'Assigned'),
+    scheduleLabel(activity),
     activity.estimated_cost_amount != null
       ? formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency)
       : null,
@@ -79,107 +156,143 @@ export function ActivityDetailsDrawer({
         side={isMobile ? 'bottom' : 'right'}
         className={
           isMobile
-            ? 'flex h-[92dvh] flex-col overflow-hidden rounded-t-[14px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
-            : 'flex h-full w-full max-w-[31rem] flex-col overflow-hidden bg-white p-0 sm:max-w-[31rem]'
+            ? 'flex h-[94dvh] flex-col overflow-hidden rounded-t-[16px] border-x-0 border-b-0 bg-[#f6f7f8] p-0 sm:max-w-none'
+            : 'flex h-full w-full max-w-[34rem] flex-col overflow-hidden bg-[#f6f7f8] p-0 sm:max-w-[34rem]'
         }
       >
-        <SheetHeader className="gap-2 border-b border-black/8 bg-white px-5 py-4">
-          <div className="flex flex-wrap items-center gap-3 text-[0.72rem] text-[var(--color-text-muted)]">
-            <span>{assignment}</span>
+        <SheetHeader className="gap-2 border-b border-black/8 bg-white px-5 py-5">
+          <div className="flex items-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-secondary-surface)] px-2.5 py-1">
+              <CategoryIcon className="h-3.5 w-3.5" />
+              {categoryLabel}
+            </span>
             {activity.source !== 'manual' ? (
-              <span className="inline-flex items-center gap-1.5 text-[#5f6b7a]">
-                <Sparkles className="h-3.5 w-3.5" />
-                Generated
+              <span className="rounded-full border border-black/8 px-2.5 py-1">
+                {activity.source === 'offer_import' ? 'Imported' : 'Generated'}
               </span>
             ) : null}
           </div>
-          <SheetTitle className="text-[1.12rem] font-medium tracking-[-0.03em]">{activity.title}</SheetTitle>
-          <SheetDescription className="text-[0.92rem] leading-6">
-            {headerSummary || 'No place linked yet'}
+          <SheetTitle className="text-[1.22rem] font-semibold tracking-[-0.03em]">
+            {activity.title}
+          </SheetTitle>
+          <SheetDescription className="text-sm leading-6">
+            {topMeta || categoryDescription || 'Planner activity'}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-[#f6f7f8] px-4 py-4">
-          <section className="rounded-[12px] border border-black/8 bg-white px-4 py-4">
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-4 py-4">
+          <MapPreview activity={activity} />
+
+          <section className="mt-3 rounded-[14px] border border-black/8 bg-white px-4 py-4">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
               Summary
             </p>
-            <p className="mt-2.5 text-[0.92rem] leading-6 text-[var(--color-text)]">
+            <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">
               {activity.description || 'No description added yet.'}
             </p>
           </section>
 
-          <section className="mt-3 rounded-[12px] border border-black/8 bg-white px-4 py-4">
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-              Details
-            </p>
-            <div className="mt-3 overflow-hidden rounded-[10px] border border-black/6 bg-[var(--color-secondary-surface)]">
-              <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 px-3 py-2.5">
-                <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Day</p>
-                <p className="min-w-0 text-sm text-[var(--color-text)]">{assignment}</p>
-              </div>
-              <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 border-t border-black/6 px-3 py-2.5">
-                <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Time</p>
-                <div className="flex min-w-0 items-center gap-2 text-sm text-[var(--color-text)]">
-                  <Clock3 className="h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                  <p className="min-w-0">{schedule}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 border-t border-black/6 px-3 py-2.5">
-                <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Place</p>
-                <div className="flex min-w-0 items-start gap-2 text-sm text-[var(--color-text)]">
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                  <p className="min-w-0">
-                    {activity.place?.address_text ?? activity.place?.name ?? 'No place linked yet'}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-[84px_minmax(0,1fr)] gap-3 border-t border-black/6 px-3 py-2.5">
-                <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Budget</p>
-                <p className="text-sm text-[var(--color-text)]">
-                  {activity.estimated_cost_amount != null
-                    ? formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency)
-                    : 'No budget set'}
-                </p>
-              </div>
-            </div>
-          </section>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <DetailBlock
+              label="Schedule"
+              value={scheduleLabel(activity)}
+              icon={Clock3}
+            />
+            <DetailBlock
+              label="Location"
+              value={categoryDescription || 'No place linked yet'}
+              icon={MapPin}
+            />
+            <DetailBlock
+              label="Budget"
+              value={
+                activity.estimated_cost_amount != null
+                  ? (formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency) ?? 'No budget set')
+                  : 'No budget set'
+              }
+              icon={Receipt}
+            />
+            <DetailBlock
+              label="Placement"
+              value={dayLabel ?? (activity.trip_day_id == null ? 'Inbox' : 'Assigned')}
+              icon={CategoryIcon}
+            />
+          </div>
 
-          {activity.tags.length > 0 ? (
-            <section className="mt-3 rounded-[12px] border border-black/8 bg-white px-4 py-4">
-              <p className="text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-                Tags
+          {activity.category === 'travel' && travelRoute.length > 0 ? (
+            <section className="mt-3 rounded-[14px] border border-black/8 bg-white px-4 py-4">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                Route
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {activity.tags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="rounded-full border border-black/6 bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.72rem] font-normal text-[var(--color-text-muted)]"
-                  >
-                    <Tag className="mr-1.5 h-3.5 w-3.5" />
-                    {tag}
-                  </Badge>
+              <div className="mt-3 space-y-2">
+                {travelRoute.map((point, index) => (
+                  <div key={`${point.label}-${index}`} className="rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      {index === 0 ? 'Origin' : 'Destination'}
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--color-text)]">{point.label}</p>
+                  </div>
                 ))}
               </div>
             </section>
           ) : null}
 
+          {activity.category === 'hotel' ? (
+            <section className="mt-3 rounded-[14px] border border-black/8 bg-white px-4 py-4">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                Stay
+              </p>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {typeof details.checkin_date === 'string' ? (
+                  <DetailBlock label="Check-in" value={details.checkin_date} icon={BedDouble} />
+                ) : null}
+                {typeof details.checkout_date === 'string' ? (
+                  <DetailBlock label="Check-out" value={details.checkout_date} icon={BedDouble} />
+                ) : null}
+                {typeof details.room_type === 'string' ? (
+                  <DetailBlock label="Room" value={details.room_type} icon={BedDouble} />
+                ) : null}
+                {typeof details.cancellation_summary === 'string' ? (
+                  <DetailBlock
+                    label="Cancellation"
+                    value={details.cancellation_summary}
+                    icon={BedDouble}
+                  />
+                ) : null}
+              </div>
+            </section>
+          ) : null}
+
           {activity.notes ? (
-            <section className="mt-3 rounded-[12px] border border-black/8 bg-white px-4 py-4">
-              <p className="text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+            <section className="mt-3 rounded-[14px] border border-black/8 bg-white px-4 py-4">
+              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
                 Notes
               </p>
-              <div className="mt-2.5 flex items-start gap-2 text-[0.92rem] leading-6 text-[var(--color-text)]">
-                <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[var(--color-text-muted)]" />
-                <p>{activity.notes}</p>
-              </div>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">{activity.notes}</p>
             </section>
           ) : null}
         </div>
 
         <SheetFooter className="border-t border-black/8 bg-white px-4 py-4">
-          <Button type="button" variant="outline" className="h-10 flex-1 rounded-[10px] border-black/8 bg-white shadow-none" onClick={() => onEdit(activity)}>
+          {activity.linked_offer_summary?.deep_link ? (
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              className="h-10 rounded-[10px] border-black/8 bg-white shadow-none"
+            >
+              <a href={activity.linked_offer_summary.deep_link} target="_blank" rel="noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                Open source
+              </a>
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            className="h-10 flex-1 rounded-[10px] border-black/8 bg-white shadow-none"
+            onClick={() => onEdit(activity)}
+          >
             <Pencil className="h-4 w-4" />
             Edit
           </Button>
@@ -199,10 +312,7 @@ export function ActivityDetailsDrawer({
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel className="rounded-[10px]">Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="rounded-[10px]"
-                  onClick={() => onDelete(activity.id)}
-                >
+                <AlertDialogAction className="rounded-[10px]" onClick={() => onDelete(activity.id)}>
                   Delete
                 </AlertDialogAction>
               </AlertDialogFooter>

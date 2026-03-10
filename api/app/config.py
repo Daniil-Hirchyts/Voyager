@@ -161,6 +161,36 @@ class Settings(BaseSettings):
         default="en",
         alias="VOYAGER_PLACES_AUTOCOMPLETE_LANG",
     )
+    google_maps_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "VOYAGER_GOOGLE_MAPS_API_KEY",
+            "GOOGLE_MAPS_API_KEY",
+            "VITE_GOOGLE_MAPS_API_KEY",
+        ),
+    )
+    google_maps_language: str = Field(
+        default="en",
+        validation_alias=AliasChoices(
+            "VOYAGER_GOOGLE_MAPS_LANGUAGE",
+            "VITE_GOOGLE_MAPS_LANGUAGE",
+        ),
+    )
+    google_maps_region: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "VOYAGER_GOOGLE_MAPS_REGION",
+            "VITE_GOOGLE_MAPS_REGION",
+        ),
+    )
+    google_places_timeout_sec: int = Field(
+        default=10,
+        alias="VOYAGER_GOOGLE_PLACES_TIMEOUT_SEC",
+    )
+    google_routes_timeout_sec: int = Field(
+        default=12,
+        alias="VOYAGER_GOOGLE_ROUTES_TIMEOUT_SEC",
+    )
     media_cache_dir: str = Field(
         default="/var/lib/voyager/exports/media-cache",
         alias="VOYAGER_MEDIA_CACHE_DIR",

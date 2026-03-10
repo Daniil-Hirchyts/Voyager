@@ -32,6 +32,14 @@ class JobStatus(StrEnum):
     FAILED = "FAILED"
 
 
+class ActivityCategory(StrEnum):
+    VISIT = "visit"
+    EAT = "eat"
+    ACTIVITY = "activity"
+    HOTEL = "hotel"
+    TRAVEL = "travel"
+
+
 class UserProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "user_profile"
 
@@ -233,11 +241,16 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         index=True,
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[ActivityCategory] = mapped_column(
+        Enum(ActivityCategory, name="activity_category_enum", native_enum=False),
+        nullable=False,
+        default=ActivityCategory.VISIT,
+    )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_time: Mapped[time | None] = mapped_column(nullable=True)
     duration_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    tags_json: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    category_details_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     estimated_cost_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     estimated_cost_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     place_id: Mapped[uuid.UUID | None] = mapped_column(
@@ -252,6 +265,10 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
+    linked_offer_kind: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    linked_offer_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True, index=True
+    )
     generation_batch_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
     )
@@ -278,6 +295,13 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "order_index",
             unique=True,
             postgresql_where=text("trip_day_id IS NULL"),
+        ),
+        Index(
+            "ix_activity_linked_offer_unique",
+            "linked_offer_kind",
+            "linked_offer_id",
+            unique=True,
+            postgresql_where=text("linked_offer_id IS NOT NULL"),
         ),
     )
 

@@ -5,6 +5,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -41,7 +42,12 @@ async def get_auth_context(
     if not user:
         user = UserProfile(keycloak_sub=principal.sub, preferences_json={})
         db.add(user)
-        await db.flush()
+        try:
+            await db.flush()
+        except IntegrityError:
+            await db.rollback()
+            result = await db.execute(select(UserProfile).where(UserProfile.keycloak_sub == principal.sub))
+            user = result.scalar_one()
 
     await set_audit_context(
         db,

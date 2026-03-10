@@ -69,7 +69,6 @@ def _save_activity(
     address_text: str | None = None,
     rating: float = 4.7,
     review_count: int = 1200,
-    tags: list[str] | None = None,
 ) -> dict:
     response = api_client.post(
         f"/trips/{trip_id}/activities/save",
@@ -88,7 +87,6 @@ def _save_activity(
             "address_text": address_text,
             "lat": lat,
             "lon": lon,
-            "tags": tags or ["culture", "atlas-pick"],
             "status_text": "Open now",
             "currency": "EUR",
             "raw_payload": {"seeded": True, "provider_ref": provider_ref},
@@ -113,7 +111,6 @@ def test_saved_activity_attach_recommend_optimize_and_apply(api_client, headers_
         lat=48.8606,
         lon=2.3376,
         address_text="Rue de Rivoli, Paris, France",
-        tags=["restaurant", "dinner", "central"],
     )
 
     shortlist = api_client.get(f"/trips/{trip['id']}/activities", headers=headers_user1)
@@ -166,7 +163,6 @@ def test_saved_activity_attach_recommend_optimize_and_apply(api_client, headers_
         lat=48.8611,
         lon=2.3358,
         address_text="Palais Royal, Paris, France",
-        tags=["attraction", "museum", "evening"],
     )
 
     recommendations = api_client.post(
@@ -244,7 +240,6 @@ def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, 
         lat=48.8606,
         lon=2.3376,
         address_text="Rue de Rivoli, Paris, France",
-        tags=["restaurant", "lunch"],
     )
     saved_delete = _save_activity(
         api_client,
@@ -257,7 +252,6 @@ def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, 
         lat=48.8611,
         lon=2.3358,
         address_text="Palais Royal, Paris, France",
-        tags=["attraction", "gallery"],
     )
 
     version = _get_trip(api_client, headers_user1, trip["id"])["version"]
@@ -296,7 +290,7 @@ def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, 
     move_to_inbox = api_client.post(
         f"/activities/{attach_move.json()['id']}/move",
         headers=headers_user1 | {"If-Match": str(version)},
-        json={"target_day_id": None, "target_index": 0, "start_time": None},
+        json={"target_day_id": None, "target_index": 0},
     )
     assert move_to_inbox.status_code == 200
     assert move_to_inbox.json()["trip_day_id"] is None
@@ -338,7 +332,6 @@ def test_hotel_shortlist_item_cannot_attach_to_day(api_client, headers_user1):
         lat=48.8529,
         lon=2.3488,
         address_text="Saint-Germain, Paris, France",
-        tags=["hotel", "stay"],
     )
 
     current_trip = _get_trip(api_client, headers_user1, trip["id"])

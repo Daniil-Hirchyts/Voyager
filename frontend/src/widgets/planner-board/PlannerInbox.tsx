@@ -1,7 +1,6 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Clock3, Inbox, MapPin } from 'lucide-react'
+import { Inbox } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/cn'
 import type { PlannerActivity } from '@/shared/api/types'
@@ -16,61 +15,6 @@ interface PlannerInboxProps {
   emptyMessage?: string
   onSelectActivity?: (activity: PlannerActivity) => void
   onAddActivity?: () => void
-  onPointerDownActivity?: (
-    event: ReactPointerEvent<HTMLButtonElement>,
-    activity: PlannerActivity,
-  ) => void
-}
-
-function CalendarInboxCard({
-  activity,
-  isSelected,
-  onSelectActivity,
-  onPointerDownActivity,
-}: {
-  activity: PlannerActivity
-  isSelected: boolean
-  onSelectActivity?: (activity: PlannerActivity) => void
-  onPointerDownActivity?: (
-    event: ReactPointerEvent<HTMLButtonElement>,
-    activity: PlannerActivity,
-  ) => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelectActivity?.(activity)}
-      onPointerDown={(event) => onPointerDownActivity?.(event, activity)}
-      className={cn(
-        'flex w-full flex-col items-start gap-2 rounded-[12px] border border-black/8 bg-white px-3 py-3 text-left shadow-[0_6px_20px_rgba(15,23,42,0.04)] transition-colors',
-        isSelected && 'border-black/16 ring-2 ring-black/6',
-      )}
-    >
-      <div className="flex w-full items-center gap-2 text-[0.72rem] text-[var(--color-text-muted)]">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-secondary-surface)] px-2.5 py-1">
-          <Inbox className="h-3.5 w-3.5" />
-          Inbox
-        </span>
-        {activity.duration_min ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-secondary-surface)] px-2.5 py-1">
-            <Clock3 className="h-3.5 w-3.5" />
-            {activity.duration_min}m
-          </span>
-        ) : null}
-      </div>
-      <div className="min-w-0">
-        <h3 className="line-clamp-2 text-[0.88rem] font-medium leading-5 text-[var(--color-text)]">
-          {activity.title}
-        </h3>
-        {activity.place?.name ? (
-          <div className="mt-1.5 inline-flex min-w-0 items-center gap-1.5 text-[0.74rem] text-[var(--color-text-muted)]">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{activity.place.name}</span>
-          </div>
-        ) : null}
-      </div>
-    </button>
-  )
 }
 
 export function PlannerInbox({
@@ -82,7 +26,6 @@ export function PlannerInbox({
   emptyMessage = 'No activities in inbox.',
   onSelectActivity,
   onAddActivity,
-  onPointerDownActivity,
 }: PlannerInboxProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'inbox',
@@ -124,18 +67,6 @@ export function PlannerInbox({
         {activities.length === 0 ? (
           <div className="flex min-h-[160px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 text-center text-sm text-[var(--color-text-muted)]">
             {emptyMessage}
-          </div>
-        ) : onPointerDownActivity ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
-            {activities.map((activity) => (
-              <CalendarInboxCard
-                key={activity.id}
-                activity={activity}
-                isSelected={selectedActivityId === activity.id}
-                onSelectActivity={onSelectActivity}
-                onPointerDownActivity={onPointerDownActivity}
-              />
-            ))}
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
