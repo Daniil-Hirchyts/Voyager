@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import {
@@ -57,6 +57,7 @@ import {
   VoyagerMarker,
   VoyagerMarkerClusterLayer,
 } from '@/shared/layouts/google-maps'
+import { WorkspacePage } from '@/shared/layouts/workspace-shell'
 import type {
   ActivityDiscoveryDetail,
   ActivityDiscoveryItem,
@@ -66,6 +67,7 @@ import type {
   ProposalResponse,
   TripMapLayer,
 } from '@/shared/api/types'
+import { useAppShellHeaderActions, useAppShellHeaderMeta } from '@/widgets/app-shell/header-context'
 
 const ENTITY_META: Record<
   ActivityEntityType,
@@ -73,34 +75,46 @@ const ENTITY_META: Record<
     label: string
     eyebrow: string
     icon: typeof Compass
-    tint: string
   }
 > = {
   attraction: {
     label: 'Attractions',
-    eyebrow: 'Landmarks, museums, tours, hidden finds',
+    eyebrow: 'Landmarks, museums, tours, and hidden finds',
     icon: Compass,
-    tint: 'from-[rgba(114,174,230,0.18)] via-[rgba(114,174,230,0.08)] to-transparent',
   },
   restaurant: {
     label: 'Restaurants',
-    eyebrow: 'Dining rooms, cafes, bars, quick bites',
+    eyebrow: 'Dining rooms, cafes, bars, and quick bites',
     icon: UtensilsCrossed,
-    tint: 'from-[rgba(201,138,55,0.18)] via-[rgba(201,138,55,0.08)] to-transparent',
   },
   hotel: {
     label: 'Hotels',
-    eyebrow: 'Stay references and shortlist anchors',
+    eyebrow: 'Stay references for the shortlist',
     icon: Hotel,
-    tint: 'from-[rgba(45,124,99,0.18)] via-[rgba(45,124,99,0.08)] to-transparent',
   },
   cruise: {
     label: 'Cruises',
-    eyebrow: 'Sailings and itinerary inspiration',
+    eyebrow: 'Sailings and itinerary references',
     icon: ShipWheel,
-    tint: 'from-[rgba(90,102,118,0.18)] via-[rgba(90,102,118,0.08)] to-transparent',
   },
 }
+
+const panelClassName = 'rounded-[14px] border border-black/8 bg-white shadow-none'
+const panelSoftClassName = 'rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] shadow-none'
+const panelHeaderClassName = 'flex items-start justify-between gap-3 border-b border-black/8 px-4 py-3'
+const sectionTitleClassName = 'text-[0.95rem] font-medium text-[var(--color-text)]'
+const sectionNoteClassName = 'text-[0.78rem] leading-5 text-[var(--color-text-muted)]'
+const emptyStateClassName =
+  'rounded-[12px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 py-5 text-sm leading-6 text-[var(--color-text-muted)]'
+const inlinePillClassName =
+  'inline-flex items-center gap-1 rounded-full border border-black/8 bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.72rem] text-[var(--color-text-muted)]'
+const controlClassName =
+  'h-9 rounded-[10px] border-black/8 bg-white px-3.5 text-sm shadow-none placeholder:text-[var(--color-text-muted)]/75 focus:border-[rgba(0,0,0,0.12)] focus:ring-4 focus:ring-[rgba(26,22,21,0.06)]'
+const compactButtonClassName = 'h-8 rounded-[8px] px-3 text-[0.82rem] font-medium shadow-none hover:shadow-none'
+const EMPTY_DAYS: Day[] = []
+const EMPTY_DISCOVERY_ITEMS: ActivityDiscoveryItem[] = []
+const EMPTY_PROPOSALS: ProposalResponse[] = []
+const EMPTY_TRIP_LAYERS: TripMapLayer[] = []
 
 function formatDayLabel(day: Day) {
   const date = new Date(`${day.date}T00:00:00`)
@@ -125,27 +139,96 @@ function formatRating(item: { rating: number | null; review_count: number | null
   return parts.join(' · ')
 }
 
+function WorkspaceMetaRow({ items, className }: { items: string[]; className?: string }) {
+  const filtered = items.filter(Boolean)
+
+  return (
+    <div className={cn('flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[0.8rem] text-[var(--color-text-muted)]', className)}>
+      {filtered.map((item, index) => (
+        <span key={`${item}-${index}`} className="inline-flex min-w-0 items-center gap-2">
+          {index > 0 ? <span className="text-black/20">•</span> : null}
+          <span className={cn('truncate', index === 0 && 'font-medium text-[var(--color-text)]')}>{item}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function ActivityActionCluster({
+  onRefresh,
+  onQuickAdd,
+  onProposal,
+  isRefreshing,
+  isQuickAddPending,
+  isProposalPending,
+  className,
+  dataTestId,
+}: {
+  onRefresh: () => void
+  onQuickAdd: () => void
+  onProposal: () => void
+  isRefreshing: boolean
+  isQuickAddPending: boolean
+  isProposalPending: boolean
+  className?: string
+  dataTestId?: string
+}) {
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2', className)} data-testid={dataTestId}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className={compactButtonClassName}
+        onClick={onRefresh}
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? <Loader2 className="size-3.5 animate-spin" /> : null}
+        Refresh search
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className={compactButtonClassName}
+        onClick={onQuickAdd}
+        disabled={isQuickAddPending}
+      >
+        {isQuickAddPending ? <Loader2 className="size-3.5 animate-spin" /> : <Sparkles className="size-3.5" />}
+        Quick add
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        className={compactButtonClassName}
+        onClick={onProposal}
+        disabled={isProposalPending}
+      >
+        {isProposalPending ? <Loader2 className="size-3.5 animate-spin" /> : <WandSparkles className="size-3.5" />}
+        Generate proposal
+      </Button>
+    </div>
+  )
+}
+
 function ProposalActivityRow({ item }: { item: ProposalActivityResponse }) {
   return (
-    <div
-      className="rounded-[18px] border border-[var(--color-border)]/70 bg-white/70 px-4 py-3"
-      style={{ backdropFilter: 'blur(14px)' }}
-    >
+    <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-[var(--color-text)]">{item.title}</p>
-          {item.description && (
-            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{item.description}</p>
-          )}
+          <p className="text-sm font-medium text-[var(--color-text)]">{item.title}</p>
+          {item.description ? (
+            <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">{item.description}</p>
+          ) : null}
         </div>
-        <Badge variant="secondary" className="shrink-0">
+        <Badge variant="neutral" className="shrink-0 normal-case tracking-normal">
           #{item.order_index + 1}
         </Badge>
       </div>
-      <div className="mt-2 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-        {item.start_time && <span>{String(item.start_time).slice(0, 5)}</span>}
-        {item.duration_min != null && <span>{item.duration_min} min</span>}
-        {item.event_snapshot_id && <span>TripAdvisor shortlist</span>}
+      <div className="mt-2 flex flex-wrap gap-2 text-[0.72rem] text-[var(--color-text-muted)]">
+        {item.start_time ? <span>{String(item.start_time).slice(0, 5)}</span> : null}
+        {item.duration_min != null ? <span>{item.duration_min} min</span> : null}
+        {item.event_snapshot_id ? <span>Shortlist item</span> : null}
       </div>
     </div>
   )
@@ -154,10 +237,10 @@ function ProposalActivityRow({ item }: { item: ProposalActivityResponse }) {
 function ProposalStatusBadge({ status }: { status: string }) {
   const normalized = status.toUpperCase()
   if (normalized === 'APPLIED') {
-    return <Badge variant="outline">Applied</Badge>
+    return <Badge variant="success">Applied</Badge>
   }
   if (normalized === 'SUCCEEDED') {
-    return <Badge variant="default">Ready</Badge>
+    return <Badge variant="success">Ready</Badge>
   }
   if (normalized === 'FAILED') {
     return <Badge variant="destructive">Failed</Badge>
@@ -181,78 +264,72 @@ function ActivityPreviewCard({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-[26px] border p-4 text-left transition-all',
+        'rounded-[12px] border p-3 transition-colors',
         selected
-          ? 'border-[var(--color-primary)] bg-white shadow-[0_24px_60px_rgba(32,56,83,0.12)]'
-          : 'border-[var(--color-border)]/70 bg-white/78 hover:border-[rgba(114,174,230,0.34)] hover:bg-white/90',
+          ? 'border-[rgba(114,174,230,0.44)] bg-white'
+          : 'border-black/8 bg-white hover:border-black/12 hover:bg-[var(--color-secondary-surface)]',
       )}
     >
-      <div
-        className={cn(
-          'absolute inset-x-0 top-0 h-20 bg-gradient-to-r opacity-90',
-          ENTITY_META[item.entity_type].tint,
-        )}
-      />
-      <button type="button" onClick={onSelect} className="relative flex w-full items-start gap-4 text-left">
-        <div className="size-14 overflow-hidden rounded-[18px] bg-[var(--color-bg-soft)] shadow-sm">
+      <button type="button" onClick={onSelect} className="flex w-full items-start gap-3 text-left">
+        <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)]">
           {item.image_url ? (
             <img src={item.image_url} alt="" className="size-full object-cover" />
           ) : (
-            <div className="flex size-full items-center justify-center text-[var(--color-primary-foreground)]">
-              <Icon className="size-5" />
-            </div>
+            <Icon className="size-4 text-[var(--color-text-muted)]" />
           )}
         </div>
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
+            <div className="min-w-0">
+              <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
                 {ENTITY_META[item.entity_type].label}
               </p>
-              <h3 className="mt-1 font-display text-[1.65rem] leading-none text-[var(--color-text)]">
-                {item.title}
-              </h3>
+              <h3 className="truncate text-[0.98rem] font-medium text-[var(--color-text)]">{item.title}</h3>
             </div>
-            <Badge variant={item.snapshot_id ? 'default' : 'secondary'}>
+            <Badge variant={item.snapshot_id ? 'success' : 'neutral'}>
               {item.snapshot_id ? 'Saved' : 'Live'}
             </Badge>
           </div>
 
-          {item.summary && (
-            <p className="mt-3 line-clamp-3 text-sm leading-6 text-[var(--color-text-muted)]">{item.summary}</p>
-          )}
+          {item.summary ? (
+            <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-[var(--color-text-muted)]">{item.summary}</p>
+          ) : null}
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1">
-              <Star className="size-3.5 text-[var(--color-warning)]" />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <span className={inlinePillClassName}>
+              <Star className="size-3 text-[var(--color-warning)]" />
               {formatRating(item)}
             </span>
-            {item.price_label && (
-              <span className="rounded-full bg-white/80 px-2.5 py-1">{item.price_label}</span>
-            )}
-            {item.address_text && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/80 px-2.5 py-1">
-                <MapPin className="size-3.5 text-[var(--color-primary-foreground)]" />
-                {item.address_text}
+            {item.price_label ? <span className={inlinePillClassName}>{item.price_label}</span> : null}
+            {item.address_text ? (
+              <span className={cn(inlinePillClassName, 'max-w-full')}>
+                <MapPin className="size-3 shrink-0" />
+                <span className="truncate">{item.address_text}</span>
               </span>
-            )}
+            ) : null}
           </div>
         </div>
       </button>
 
-      <div className="relative mt-4 flex items-center gap-2">
-        <Button type="button" size="sm" onClick={onSave}>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant={item.snapshot_id ? 'outline' : 'default'}
+          className={compactButtonClassName}
+          onClick={onSave}
+        >
           {item.snapshot_id ? 'Saved to shortlist' : 'Save to shortlist'}
         </Button>
-        {item.detail_url && (
-          <Button type="button" variant="outline" size="sm" asChild>
+        {item.detail_url ? (
+          <Button type="button" variant="outline" size="sm" className={compactButtonClassName} asChild>
             <a href={item.detail_url} target="_blank" rel="noreferrer">
               Source
               <ExternalLink className="size-3.5" />
             </a>
           </Button>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -286,7 +363,7 @@ function DiscoveryMap({
 
   if (!config.map.apiKey) {
     return (
-      <div className="flex h-[260px] items-center justify-center rounded-[26px] border border-dashed border-[var(--color-border)]/70 bg-white/50 p-6 text-center text-sm text-[var(--color-text-muted)]">
+      <div className={cn(panelClassName, 'flex h-[220px] items-center justify-center p-6 text-center text-sm text-[var(--color-text-muted)]')}>
         Add `VITE_GOOGLE_MAPS_API_KEY` to enable the map view.
       </div>
     )
@@ -294,19 +371,19 @@ function DiscoveryMap({
 
   if (!selectedItem || selectedItem.lat == null || selectedItem.lon == null) {
     return (
-      <div className="flex h-[260px] items-center justify-center rounded-[26px] border border-dashed border-[var(--color-border)]/70 bg-white/50 p-6 text-center text-sm text-[var(--color-text-muted)]">
-        This tab has no mappable results yet. Cruises stay list-first by design.
+      <div className={cn(panelClassName, 'flex h-[220px] items-center justify-center p-6 text-center text-sm text-[var(--color-text-muted)]')}>
+        No mappable results yet for this view.
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-[26px] border border-[var(--color-border)]/70 bg-white shadow-[0_18px_48px_rgba(24,33,43,0.08)]">
+    <div className={cn(panelClassName, 'overflow-hidden')}>
       <GoogleMapCanvas
         key={`${selectedItem.id}-${selectedItem.lat}-${selectedItem.lon}`}
         defaultCenter={{ lng: selectedItem.lon, lat: selectedItem.lat }}
         defaultZoom={12.5}
-        style={{ width: '100%', height: 260 }}
+        style={{ width: '100%', height: 220 }}
         disableDefaultUI={false}
         streetViewControl={false}
         mapTypeControl={false}
@@ -314,10 +391,7 @@ function DiscoveryMap({
       >
         <TripMapLayerRenderer layers={layers} />
         <MapPanTo point={{ lat: selectedItem.lat!, lng: selectedItem.lon! }} zoom={12.5} />
-        <VoyagerMarkerClusterLayer
-          items={clusteredMarkers}
-          onMarkerClick={(item) => onSelect(item.id)}
-        />
+        <VoyagerMarkerClusterLayer items={clusteredMarkers} onMarkerClick={(item) => onSelect(item.id)} />
         <VoyagerMarker
           position={{ lng: selectedItem.lon!, lat: selectedItem.lat! }}
           title={selectedItem.title}
@@ -331,7 +405,7 @@ function DiscoveryMap({
           onCloseClick={() => onSelect(selectedItem.id)}
         >
           <div className="max-w-[220px]">
-            <p className="text-sm font-semibold text-[var(--color-text)]">{selectedItem.title}</p>
+            <p className="text-sm font-medium text-[var(--color-text)]">{selectedItem.title}</p>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
               {selectedItem.address_text || ENTITY_META[selectedItem.entity_type].label}
             </p>
@@ -352,7 +426,7 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
   const { data: trip } = useTrip(tripId)
   const { data: daysData } = useDays(tripId)
   const { data: tripLayersData } = useTripMapLayers(tripId)
-  const days = daysData?.items ?? []
+  const days = daysData?.items ?? EMPTY_DAYS
 
   const [entityType, setEntityType] = useState<ActivityEntityType>(
     (searchParams.get('type') as ActivityEntityType) || 'attraction',
@@ -391,9 +465,9 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
   const discoverQuery = useDiscoverActivities(tripId, discoverParams, !!trip)
   const shortlistQuery = useSavedActivities(tripId)
 
-  const results = discoverQuery.data?.items ?? []
-  const shortlist = shortlistQuery.data?.items ?? []
-  const tripLayers = tripLayersData?.items ?? []
+  const results = discoverQuery.data?.items ?? EMPTY_DISCOVERY_ITEMS
+  const shortlist = shortlistQuery.data?.items ?? EMPTY_DISCOVERY_ITEMS
+  const tripLayers = tripLayersData?.items ?? EMPTY_TRIP_LAYERS
   const selectedResult = results.find((item) => item.id === selectedResultId) ?? null
   const selectedShortlistItem =
     shortlist.find((item) => (item.snapshot_id ?? item.id) === selectedShortlistId) ?? null
@@ -420,7 +494,7 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
   const attachMutation = useAttachSavedActivityToDay(tripId)
   const applyProposalMutation = useApplyProposal(tripId)
   const proposalsQuery = useProposals(tripId)
-  const proposals = proposalsQuery.data?.items ?? []
+  const proposals = proposalsQuery.data?.items ?? EMPTY_PROPOSALS
   const selectedProposal =
     proposals.find((proposal) => proposal.id === selectedProposalId) ?? proposals[0] ?? null
   const optimizeJobQuery = useJob(optimizeJobId)
@@ -444,7 +518,10 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
   }, [selectedShortlistId, shortlist])
 
   useEffect(() => {
-    if (selectedShortlistId && !shortlist.some((item) => (item.snapshot_id ?? item.id) === selectedShortlistId)) {
+    if (
+      selectedShortlistId &&
+      !shortlist.some((item) => (item.snapshot_id ?? item.id) === selectedShortlistId)
+    ) {
       setSelectedShortlistId(shortlist[0]?.snapshot_id ?? shortlist[0]?.id ?? null)
     }
   }, [selectedShortlistId, shortlist])
@@ -469,16 +546,14 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
     setOptimizeJobId(null)
   }, [optimizeJobId, optimizeJobQuery.data?.status, queryClient, tripId])
 
-  const activeDayIds = selectedDayId ? [selectedDayId] : days.map((day) => day.id)
-  const attachableShortlistIds = shortlist
-    .filter((item) => item.snapshot_id && item.is_attachable)
-    .map((item) => item.snapshot_id!) as string[]
   const selectedDay = days.find((day) => day.id === selectedDayId) ?? null
   const quickAddItems = recommendationsMutation.data?.items ?? []
   const selectedProposalSummary = selectedProposal?.summary as
     | { activities_changed?: number }
     | null
     | undefined
+  const activeDayLabel = selectedDay ? formatDayLabel(selectedDay) : 'Entire trip'
+  const resultsSummary = discoverQuery.isLoading ? 'Searching' : `${discoverQuery.data?.total ?? 0} results`
 
   const handleSave = async (item: ActivityDiscoveryItem) => {
     if (item.snapshot_id) {
@@ -551,7 +626,12 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
     }
   }
 
-  const handleGenerateRecommendations = async () => {
+  const handleGenerateRecommendations = useCallback(async () => {
+    const activeDayIds = selectedDayId ? [selectedDayId] : days.map((day) => day.id)
+    const attachableShortlistIds = shortlist
+      .filter((item) => item.snapshot_id && item.is_attachable)
+      .map((item) => item.snapshot_id!) as string[]
+
     if (!attachableShortlistIds.length) {
       toast.error('Save at least one attraction or restaurant first')
       return
@@ -571,9 +651,21 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }
+  }, [
+    days,
+    recommendationsMutation.mutateAsync,
+    selectedDayId,
+    selectedShortlistItem?.is_attachable,
+    selectedShortlistItem?.snapshot_id,
+    shortlist,
+  ])
 
-  const handleGenerateProposal = async () => {
+  const handleGenerateProposal = useCallback(async () => {
+    const activeDayIds = selectedDayId ? [selectedDayId] : days.map((day) => day.id)
+    const attachableShortlistIds = shortlist
+      .filter((item) => item.snapshot_id && item.is_attachable)
+      .map((item) => item.snapshot_id!) as string[]
+
     if (!attachableShortlistIds.length || !trip) {
       toast.error('Save shortlist items before generating a proposal')
       return
@@ -604,7 +696,7 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
         description: error instanceof Error ? error.message : 'Unknown error',
       })
     }
-  }
+  }, [days, optimizeTripMutation.mutateAsync, selectedDayId, setSearchParams, shortlist, trip])
 
   const handleApplyProposal = async (proposal: ProposalResponse) => {
     if (!trip) return
@@ -628,72 +720,104 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
     }
   }
 
+  const handleRefreshSearch = useCallback(() => {
+    void discoverQuery.refetch()
+  }, [discoverQuery.refetch])
+
+  const headerMeta = useMemo(
+    () =>
+      trip ? (
+        <WorkspaceMetaRow
+          items={[
+            trip.destination_text,
+            activeDayLabel,
+            `${shortlist.length} saved`,
+            resultsSummary,
+          ]}
+        />
+      ) : null,
+    [activeDayLabel, resultsSummary, shortlist.length, trip],
+  )
+
+  const headerActions = useMemo(
+    () => (
+      <ActivityActionCluster
+        onRefresh={handleRefreshSearch}
+        onQuickAdd={() => void handleGenerateRecommendations()}
+        onProposal={() => void handleGenerateProposal()}
+        isRefreshing={discoverQuery.isFetching}
+        isQuickAddPending={recommendationsMutation.isPending}
+        isProposalPending={optimizeTripMutation.isPending || isJobRunning(optimizeJobQuery.data?.status)}
+      />
+    ),
+    [
+      discoverQuery.isFetching,
+      handleGenerateProposal,
+      handleGenerateRecommendations,
+      handleRefreshSearch,
+      optimizeJobQuery.data?.status,
+      optimizeTripMutation.isPending,
+      recommendationsMutation.isPending,
+    ],
+  )
+
+  const hasShellHeaderActions = useAppShellHeaderActions(headerActions)
+  const hasShellHeaderMeta = useAppShellHeaderMeta(headerMeta)
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 p-4 lg:p-6">
-      <section className="relative overflow-hidden rounded-[32px] border border-[var(--color-border)]/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.9),rgba(255,250,242,0.82))] p-6 shadow-[0_28px_80px_rgba(24,33,43,0.08)] lg:p-8">
-        <div className="absolute inset-y-0 right-0 hidden w-[38%] bg-[radial-gradient(circle_at_top_right,rgba(33,79,82,0.16),transparent_62%),radial-gradient(circle_at_35%_65%,rgba(195,107,45,0.16),transparent_42%)] lg:block" />
+    <WorkspacePage className="min-h-0 gap-4">
+      <Tabs
+        value={entityType}
+        onValueChange={(value) => setEntityType(value as ActivityEntityType)}
+        className="flex min-h-0 flex-1 flex-col gap-4"
+      >
+        <section className={cn(panelSoftClassName, 'p-4')}>
+          {!hasShellHeaderMeta ? (
+            <WorkspaceMetaRow
+              items={[
+                trip?.destination_text ?? 'Trip destination',
+                activeDayLabel,
+                `${shortlist.length} saved`,
+                resultsSummary,
+              ]}
+              className="mb-3"
+            />
+          ) : null}
 
-        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-          <div>
-            <p className="text-[0.72rem] uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
-              Activities Workspace
-            </p>
-            <div className="mt-3 flex flex-wrap items-end justify-between gap-6">
-              <div className="max-w-3xl">
-                <h1 className="font-display text-[2.9rem] leading-[0.92] text-[var(--color-text)] md:text-[3.7rem]">
-                  Search, pin, shortlist, and stage your trip in one atlas.
-                </h1>
-                <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--color-text-muted)] md:text-base">
-                  Replace live event hunting with a destination-native activity board. Search
-                  TripAdvisor data, keep a saved shortlist, inspect everything on the map, and
-                  turn that shortlist into quick adds or reviewable AI proposals.
-                </p>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <TabsList className="rounded-[10px] border-black/8 bg-white p-1 shadow-none">
+                  {Object.entries(ENTITY_META).map(([value, meta]) => {
+                    const Icon = meta.icon
+                    return (
+                      <TabsTrigger
+                        key={value}
+                        value={value}
+                        className="h-8 rounded-[8px] px-3 text-[0.82rem] font-medium shadow-none data-[state=active]:shadow-none"
+                      >
+                        <Icon className="size-3.5" />
+                        {meta.label}
+                      </TabsTrigger>
+                    )
+                  })}
+                </TabsList>
+                <p className="text-[0.78rem] text-[var(--color-text-muted)]">{resultsSummary}</p>
               </div>
 
-              <div className="grid min-w-[240px] gap-3 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="rounded-[22px] border border-white/70 bg-white/70 px-4 py-3 shadow-sm">
-                  <p className="text-[0.64rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
-                    Destination
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-[var(--color-text)]">
-                    {trip?.destination_text ?? 'Trip destination'}
-                  </p>
-                </div>
-                <div className="rounded-[22px] border border-white/70 bg-white/70 px-4 py-3 shadow-sm">
-                  <p className="text-[0.64rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
-                    Saved shortlist
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-[var(--color-text)]">{shortlist.length}</p>
-                </div>
-                <div className="rounded-[22px] border border-white/70 bg-white/70 px-4 py-3 shadow-sm">
-                  <p className="text-[0.64rem] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
-                    AI scope
-                  </p>
-                  <p className="mt-1 text-lg font-semibold text-[var(--color-text)]">
-                    {selectedDay ? formatDayLabel(selectedDay) : 'Entire trip'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+              <div className="grid gap-2 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,0.85fr)_minmax(0,0.85fr)]">
+                <Input
+                  value={searchText}
+                  onChange={(event) => setSearchText(event.target.value)}
+                  placeholder={trip?.destination_text || 'Search activities, cuisine, neighborhoods'}
+                  className={controlClassName}
+                />
 
-          <div className="relative rounded-[28px] border border-[var(--color-border)]/70 bg-[var(--color-cta)] px-5 py-5 text-white shadow-[0_24px_68px_rgba(26,22,21,0.18)]">
-            <p className="text-[0.68rem] uppercase tracking-[0.24em] text-white/65">
-              Search Composer
-            </p>
-            <div className="mt-4 space-y-4">
-              <Input
-                value={searchText}
-                onChange={(event) => setSearchText(event.target.value)}
-                placeholder={trip?.destination_text || 'Search activities, cuisine, neighborhoods'}
-                className="h-12 rounded-[16px] border-white/15 bg-white/10 text-white placeholder:text-white/55"
-              />
-              <div className="grid gap-3 sm:grid-cols-2">
                 <Select
                   value={selectedDayId || 'all'}
                   onValueChange={(value) => setSelectedDayId(value === 'all' ? '' : value)}
                 >
-                  <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                  <SelectTrigger className={controlClassName}>
                     <SelectValue placeholder="Scope days" />
                   </SelectTrigger>
                   <SelectContent>
@@ -707,7 +831,7 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                 </Select>
 
                 <Select value={minRating} onValueChange={setMinRating}>
-                  <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                  <SelectTrigger className={controlClassName}>
                     <SelectValue placeholder="Minimum rating" />
                   </SelectTrigger>
                   <SelectContent>
@@ -719,9 +843,9 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                 </Select>
               </div>
 
-              {entityType === 'attraction' && (
+              {entityType === 'attraction' ? (
                 <Select value={goodFor || 'all'} onValueChange={(value) => setGoodFor(value === 'all' ? '' : value)}>
-                  <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                  <SelectTrigger className={controlClassName}>
                     <SelectValue placeholder="Good for" />
                   </SelectTrigger>
                   <SelectContent>
@@ -732,12 +856,12 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                     <SelectItem value="hidden_gems">Hidden gems</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
+              ) : null}
 
-              {entityType === 'restaurant' && (
-                <div className="grid gap-3 sm:grid-cols-2">
+              {entityType === 'restaurant' ? (
+                <div className="grid gap-2 md:grid-cols-2">
                   <Select value={establishmentType} onValueChange={setEstablishmentType}>
-                    <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                    <SelectTrigger className={controlClassName}>
                       <SelectValue placeholder="Establishment" />
                     </SelectTrigger>
                     <SelectContent>
@@ -747,8 +871,9 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                       <SelectItem value="dessert">Dessert</SelectItem>
                     </SelectContent>
                   </Select>
+
                   <Select value={mealType || 'all'} onValueChange={(value) => setMealType(value === 'all' ? '' : value)}>
-                    <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                    <SelectTrigger className={controlClassName}>
                       <SelectValue placeholder="Meal type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -760,11 +885,11 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                     </SelectContent>
                   </Select>
                 </div>
-              )}
+              ) : null}
 
-              {entityType === 'cruise' && (
+              {entityType === 'cruise' ? (
                 <Select value={cruiseLength || 'all'} onValueChange={(value) => setCruiseLength(value === 'all' ? '' : value)}>
-                  <SelectTrigger className="h-11 rounded-[14px] border-white/15 bg-white/10 text-white">
+                  <SelectTrigger className={controlClassName}>
                     <SelectValue placeholder="Cruise length" />
                   </SelectTrigger>
                   <SelectContent>
@@ -775,66 +900,37 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                     <SelectItem value="15">15+ nights</SelectItem>
                   </SelectContent>
                 </Select>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" size="sm" onClick={() => discoverQuery.refetch()}>
-                  Refresh search
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={handleGenerateRecommendations}>
-                  <Sparkles className="size-4" />
-                  Quick add
-                </Button>
-                <Button type="button" size="sm" variant="outline" onClick={handleGenerateProposal}>
-                  <WandSparkles className="size-4" />
-                  Proposal
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Tabs
-        value={entityType}
-        onValueChange={(value) => setEntityType(value as ActivityEntityType)}
-        className="flex min-h-0 flex-1 flex-col"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <TabsList className="rounded-[18px] bg-white/60 p-1.5 shadow-sm">
-            {Object.entries(ENTITY_META).map(([value, meta]) => (
-              <TabsTrigger
-                key={value}
-                value={value}
-                className="rounded-[14px] px-4 py-2.5 data-[state=active]:bg-[var(--color-cta)] data-[state=active]:text-white"
-              >
-                {meta.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          <div className="text-sm text-[var(--color-text-muted)]">
-            {discoverQuery.isLoading ? 'Searching…' : `${discoverQuery.data?.total ?? 0} results in view`}
-          </div>
-        </div>
-
-        <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.95fr)_minmax(320px,0.9fr)]">
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[28px] border border-[var(--color-border)]/70 bg-white/75 shadow-[0_20px_60px_rgba(24,33,43,0.06)]">
-            <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)]/60 px-5 py-4">
-              <div>
-                <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                  Discovery Stream
-                </p>
-                <h2 className="mt-1 font-display text-[2rem] leading-none text-[var(--color-text)]">
-                  {ENTITY_META[entityType].label}
-                </h2>
-                <p className="mt-1 text-sm text-[var(--color-text-muted)]">{ENTITY_META[entityType].eyebrow}</p>
-              </div>
-              {discoverQuery.isFetching && <Loader2 className="size-5 animate-spin text-[var(--color-primary-foreground)]" />}
+              ) : null}
             </div>
 
-            <ScrollArea className="min-h-0 flex-1 px-4 py-4">
+            {!hasShellHeaderActions ? (
+              <ActivityActionCluster
+                onRefresh={() => void discoverQuery.refetch()}
+                onQuickAdd={() => void handleGenerateRecommendations()}
+                onProposal={() => void handleGenerateProposal()}
+                isRefreshing={discoverQuery.isFetching}
+                isQuickAddPending={recommendationsMutation.isPending}
+                isProposalPending={optimizeTripMutation.isPending || isJobRunning(optimizeJobQuery.data?.status)}
+                className="lg:max-w-[18rem] lg:justify-end"
+                dataTestId="activities-fallback-actions"
+              />
+            ) : null}
+          </div>
+        </section>
+
+        <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.95fr)_minmax(320px,0.85fr)]">
+          <section className={cn(panelClassName, 'flex min-h-0 flex-col overflow-hidden')}>
+            <div className={panelHeaderClassName}>
+              <div className="min-w-0">
+                <h2 className={sectionTitleClassName}>{ENTITY_META[entityType].label}</h2>
+                <p className={sectionNoteClassName}>{ENTITY_META[entityType].eyebrow}</p>
+              </div>
+              {discoverQuery.isFetching ? <Loader2 className="size-4 animate-spin text-[var(--color-text-muted)]" /> : null}
+            </div>
+
+            <ScrollArea className="min-h-0 flex-1 px-3 py-3">
               <div className="space-y-3">
-                {discoverQuery.error && (
+                {discoverQuery.error ? (
                   <Alert variant="warning">
                     <AlertDescription>
                       {discoverQuery.error instanceof Error
@@ -842,17 +938,13 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                         : 'Could not load TripAdvisor activity search.'}
                     </AlertDescription>
                   </Alert>
-                )}
+                ) : null}
 
-                {!discoverQuery.isLoading && results.length === 0 && (
-                  <div className="rounded-[24px] border border-dashed border-[var(--color-border)]/80 bg-white/64 p-6 text-center">
-                    <p className="font-display text-[2rem] text-[var(--color-text)]">No activities surfaced yet.</p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                      Adjust the search text or filters. The discovery request falls back to your trip
-                      destination when the query is empty.
-                    </p>
+                {!discoverQuery.isLoading && results.length === 0 ? (
+                  <div className={emptyStateClassName}>
+                    Adjust the search or filters. Empty searches fall back to the trip destination.
                   </div>
-                )}
+                ) : null}
 
                 {results.map((item) => (
                   <ActivityPreviewCard
@@ -876,184 +968,182 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
           </section>
 
           <section className="flex min-h-0 flex-col gap-4">
-            <div className="rounded-[28px] border border-[var(--color-border)]/70 bg-white/78 p-5 shadow-[0_20px_60px_rgba(24,33,43,0.06)]">
-              {activeItem ? (
-                <>
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                        Detail Panel
-                      </p>
-                      <h2 className="mt-2 font-display text-[2.4rem] leading-[0.94] text-[var(--color-text)]">
-                        {detail?.title ?? activeItem.title}
-                      </h2>
-                    </div>
-                    <Badge variant={activeItem.is_attachable ? 'default' : 'secondary'}>
-                      {activeItem.is_attachable ? 'Planner attachable' : 'Reference only'}
-                    </Badge>
-                  </div>
-
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge variant="secondary">{ENTITY_META[activeItem.entity_type].label}</Badge>
-                    {detail?.status_text && <Badge variant="outline">{detail.status_text}</Badge>}
-                    <Badge variant="outline">{formatRating(detail ?? activeItem)}</Badge>
-                  </div>
-
-                  {(detail?.summary ?? activeItem.summary) && (
-                    <p className="mt-4 text-sm leading-7 text-[var(--color-text-muted)]">
-                      {detail?.summary ?? activeItem.summary}
-                    </p>
-                  )}
-
-                  <div className="mt-4 space-y-3 text-sm text-[var(--color-text-muted)]">
-                    {(detail?.address_text ?? activeItem.address_text) && (
-                      <div className="flex items-start gap-2">
-                        <MapPin className="mt-0.5 size-4 shrink-0 text-[var(--color-primary-foreground)]" />
-                        <span>{detail?.address_text ?? activeItem.address_text}</span>
-                      </div>
-                    )}
-                    {detail?.price_label && (
-                      <div className="flex items-start gap-2">
-                        <Star className="mt-0.5 size-4 shrink-0 text-[var(--color-warning)]" />
-                        <span>{detail.price_label}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-2">
-                    {detail?.booking_links.slice(0, 2).map((link) => (
-                      <Button key={link.url} variant="outline" size="sm" asChild>
-                        <a href={link.url} target="_blank" rel="noreferrer">
-                          {link.label}
-                          <ExternalLink className="size-3.5" />
-                        </a>
-                      </Button>
-                    ))}
-                    {activeItem.detail_url && (
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={activeItem.detail_url} target="_blank" rel="noreferrer">
-                          TripAdvisor
-                          <ArrowRight className="size-3.5" />
-                        </a>
-                      </Button>
-                    )}
-                  </div>
-
-                  <Separator className="my-5" />
-
-                  {detailQuery.isLoading && activeSnapshotId ? (
-                    <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                      <Loader2 className="size-4 animate-spin" />
-                      Loading saved detail…
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                          Hours & context
-                        </p>
-                        {detail?.hours.length ? (
-                          <div className="mt-2 space-y-1.5 text-sm text-[var(--color-text-muted)]">
-                            {detail.hours.slice(0, 3).map((hours) => (
-                              <div key={hours.day} className="flex justify-between gap-3">
-                                <span>{hours.day}</span>
-                                <span>
-                                  {hours.times.map((entry) => [entry.open, entry.close].filter(Boolean).join('-')).join(', ') || 'Closed'}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                            Save this shortlist item to unlock richer detail, reviews, and hours.
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                          Reviews
-                        </p>
-                        {detail?.reviews.length ? (
-                          <div className="mt-2 space-y-3">
-                            {detail.reviews.slice(0, 2).map((review) => (
-                              <div
-                                key={review.review_id}
-                                className="rounded-[20px] border border-[var(--color-border)]/70 bg-[rgba(255,250,242,0.75)] p-4"
-                              >
-                                <div className="flex items-center justify-between gap-3">
-                                  <p className="font-medium text-[var(--color-text)]">
-                                    {review.title || review.reviewer_name || 'TripAdvisor review'}
-                                  </p>
-                                  {review.rating != null && (
-                                    <Badge variant="secondary">{review.rating.toFixed(1)}</Badge>
-                                  )}
-                                </div>
-                                {review.text && (
-                                  <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">{review.text}</p>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                            No cached reviews yet. Save the place and Voyager will refresh detail when
-                            provider access is available.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex min-h-[280px] items-center justify-center text-center">
-                  <div>
-                    <p className="font-display text-[2rem] text-[var(--color-text)]">Select an activity</p>
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                      Pick a live result or shortlist item to inspect it here.
-                    </p>
-                  </div>
+            <div className={cn(panelClassName, 'flex min-h-0 flex-col overflow-hidden')}>
+              <div className={panelHeaderClassName}>
+                <div className="min-w-0">
+                  <h2 className={sectionTitleClassName}>{activeItem ? detail?.title ?? activeItem.title : 'Selected item'}</h2>
+                  <p className={sectionNoteClassName}>
+                    {activeItem ? 'Saved detail and live context' : 'Choose a result or shortlist item'}
+                  </p>
                 </div>
-              )}
+                {activeItem ? (
+                  <Badge variant={activeItem.is_attachable ? 'success' : 'neutral'}>
+                    {activeItem.is_attachable ? 'Planner ready' : 'Reference only'}
+                  </Badge>
+                ) : null}
+              </div>
+
+              <ScrollArea className="min-h-0 flex-1 px-4 py-4">
+                {activeItem ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="neutral">{ENTITY_META[activeItem.entity_type].label}</Badge>
+                      {detail?.status_text ? <Badge variant="outline">{detail.status_text}</Badge> : null}
+                      <Badge variant="outline">{formatRating(detail ?? activeItem)}</Badge>
+                    </div>
+
+                    {(detail?.summary ?? activeItem.summary) ? (
+                      <p className="text-sm leading-7 text-[var(--color-text-muted)]">
+                        {detail?.summary ?? activeItem.summary}
+                      </p>
+                    ) : null}
+
+                    <div className="flex flex-wrap gap-2">
+                      {(detail?.address_text ?? activeItem.address_text) ? (
+                        <span className={cn(inlinePillClassName, 'max-w-full')}>
+                          <MapPin className="size-3 shrink-0" />
+                          <span className="truncate">{detail?.address_text ?? activeItem.address_text}</span>
+                        </span>
+                      ) : null}
+                      {detail?.price_label ? <span className={inlinePillClassName}>{detail.price_label}</span> : null}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {detail?.booking_links.slice(0, 2).map((link) => (
+                        <Button key={link.url} variant="outline" size="sm" className={compactButtonClassName} asChild>
+                          <a href={link.url} target="_blank" rel="noreferrer">
+                            {link.label}
+                            <ExternalLink className="size-3.5" />
+                          </a>
+                        </Button>
+                      ))}
+                      {activeItem.detail_url ? (
+                        <Button variant="outline" size="sm" className={compactButtonClassName} asChild>
+                          <a href={activeItem.detail_url} target="_blank" rel="noreferrer">
+                            TripAdvisor
+                            <ArrowRight className="size-3.5" />
+                          </a>
+                        </Button>
+                      ) : null}
+                    </div>
+
+                    <Separator />
+
+                    {detailQuery.isLoading && activeSnapshotId ? (
+                      <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                        <Loader2 className="size-4 animate-spin" />
+                        Loading saved detail…
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[0.78rem] font-medium text-[var(--color-text)]">Hours</p>
+                          {detail?.hours.length ? (
+                            <div className="mt-2 space-y-2 text-sm text-[var(--color-text-muted)]">
+                              {detail.hours.slice(0, 3).map((hours) => (
+                                <div key={hours.day} className="flex justify-between gap-3 rounded-[10px] bg-[var(--color-secondary-surface)] px-3 py-2">
+                                  <span>{hours.day}</span>
+                                  <span className="text-right">
+                                    {hours.times
+                                      .map((entry) => [entry.open, entry.close].filter(Boolean).join('-'))
+                                      .join(', ') || 'Closed'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+                              Save this shortlist item to load cached hours and provider detail.
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="text-[0.78rem] font-medium text-[var(--color-text)]">Reviews</p>
+                          {detail?.reviews.length ? (
+                            <div className="mt-2 space-y-3">
+                              {detail.reviews.slice(0, 2).map((review) => (
+                                <div
+                                  key={review.review_id}
+                                  className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-3"
+                                >
+                                  <div className="flex items-center justify-between gap-3">
+                                    <p className="text-sm font-medium text-[var(--color-text)]">
+                                      {review.title || review.reviewer_name || 'TripAdvisor review'}
+                                    </p>
+                                    {review.rating != null ? (
+                                      <Badge variant="neutral" className="normal-case tracking-normal">
+                                        {review.rating.toFixed(1)}
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  {review.text ? (
+                                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">{review.text}</p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+                              No cached reviews yet.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex min-h-[240px] items-center justify-center">
+                    <p className="max-w-xs text-center text-sm leading-6 text-[var(--color-text-muted)]">
+                      Pick a discovery result or a shortlist item to inspect it here.
+                    </p>
+                  </div>
+                )}
+              </ScrollArea>
             </div>
 
-            <DiscoveryMap
-              items={results}
-              selectedId={selectedResultId ?? selectedShortlistId}
-              onSelect={(id) => setSelectedResultId(id)}
-              layers={tripLayers}
-            />
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-3 px-1">
+                <h3 className="text-[0.95rem] font-medium text-[var(--color-text)]">Map</h3>
+                <span className="text-[0.78rem] text-[var(--color-text-muted)]">Supporting view</span>
+              </div>
+              <DiscoveryMap
+                items={results}
+                selectedId={selectedResultId ?? selectedShortlistId}
+                onSelect={(id) => setSelectedResultId(id)}
+                layers={tripLayers}
+              />
+            </div>
           </section>
 
           <aside className="flex min-h-0 flex-col gap-4">
-            <section className="flex min-h-[260px] flex-col overflow-hidden rounded-[28px] border border-[var(--color-border)]/70 bg-white/78 shadow-[0_20px_60px_rgba(24,33,43,0.06)]">
-              <div className="flex items-center justify-between gap-3 border-b border-[var(--color-border)]/60 px-5 py-4">
+            <section className={cn(panelClassName, 'flex min-h-[250px] flex-col overflow-hidden')}>
+              <div className={panelHeaderClassName}>
                 <div>
-                  <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                    Saved Rail
-                  </p>
-                  <h2 className="mt-1 font-display text-[2rem] leading-none text-[var(--color-text)]">
-                    Shortlist
-                  </h2>
+                  <h2 className={sectionTitleClassName}>Shortlist</h2>
+                  <p className={sectionNoteClassName}>Saved items ready for review or planner attach.</p>
                 </div>
-                <Badge variant="secondary">{shortlist.length}</Badge>
+                <Badge variant="neutral" className="normal-case tracking-normal">
+                  {shortlist.length}
+                </Badge>
               </div>
-              <ScrollArea className="min-h-0 flex-1 px-4 py-4">
+
+              <ScrollArea className="min-h-0 flex-1 px-3 py-3">
                 <div className="space-y-3">
-                  {shortlist.length === 0 && (
-                    <p className="rounded-[20px] border border-dashed border-[var(--color-border)]/70 bg-white/64 p-4 text-sm leading-6 text-[var(--color-text-muted)]">
-                      Save discovery results here. Attractions and restaurants can be sent to the
-                      planner or to AI proposal generation. Hotels and cruises stay reference-only.
-                    </p>
-                  )}
+                  {shortlist.length === 0 ? (
+                    <div className={emptyStateClassName}>
+                      Save results here. Attractions and restaurants can be attached to a day or sent to AI.
+                    </div>
+                  ) : null}
+
                   {shortlist.map((item) => (
                     <div
                       key={item.snapshot_id ?? item.id}
                       className={cn(
-                        'rounded-[20px] border p-4 transition-colors',
+                        'rounded-[12px] border p-3 transition-colors',
                         selectedShortlistId === (item.snapshot_id ?? item.id)
-                          ? 'border-[rgba(114,174,230,0.5)] bg-[rgba(114,174,230,0.1)]'
-                          : 'border-[var(--color-border)]/70 bg-[rgba(255,250,242,0.72)]',
+                          ? 'border-[rgba(114,174,230,0.44)] bg-white'
+                          : 'border-black/8 bg-[var(--color-secondary-surface)]',
                       )}
                     >
                       <button
@@ -1062,34 +1152,34 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                         className="w-full text-left"
                       >
                         <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
+                          <div className="min-w-0">
+                            <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
                               {ENTITY_META[item.entity_type].label}
                             </p>
-                            <p className="mt-1 font-medium text-[var(--color-text)]">{item.title}</p>
+                            <p className="truncate text-sm font-medium text-[var(--color-text)]">{item.title}</p>
                           </div>
-                          {item.trip_day_id && <Badge variant="default">Attached</Badge>}
+                          {item.trip_day_id ? (
+                            <Badge variant="success" className="shrink-0">
+                              Attached
+                            </Badge>
+                          ) : null}
                         </div>
-                        {item.address_text && (
-                          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">{item.address_text}</p>
-                        )}
+                        {item.address_text ? (
+                          <p className="mt-1.5 text-sm leading-6 text-[var(--color-text-muted)]">{item.address_text}</p>
+                        ) : null}
                       </button>
 
-                      {item.is_attachable && item.snapshot_id && (
-                        <div className="mt-3 flex gap-2">
+                      {item.is_attachable && item.snapshot_id ? (
+                        <div className="mt-3">
                           <Select
-                            value={
-                              selectedDayId ||
-                              item.trip_day_id ||
-                              'all'
-                            }
+                            value={selectedDayId || item.trip_day_id || 'all'}
                             onValueChange={(value) => {
                               if (value !== 'all') {
                                 void handleAttach(item.snapshot_id!, value)
                               }
                             }}
                           >
-                            <SelectTrigger className="h-9 rounded-[12px]">
+                            <SelectTrigger className={cn(controlClassName, 'h-8 rounded-[8px] px-3 text-[0.82rem]')}>
                               <SelectValue placeholder="Attach to day" />
                             </SelectTrigger>
                             <SelectContent>
@@ -1102,71 +1192,71 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                             </SelectContent>
                           </Select>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </ScrollArea>
             </section>
 
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-[var(--color-border)]/70 bg-[var(--color-cta)] text-white shadow-[0_24px_68px_rgba(26,22,21,0.18)]">
-              <div className="border-b border-white/10 px-5 py-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[0.68rem] uppercase tracking-[0.24em] text-white/60">
-                      AI Panel
-                    </p>
-                    <h2 className="mt-1 font-display text-[2rem] leading-none">Guide the shortlist</h2>
-                  </div>
-                  <div className="inline-flex rounded-full border border-white/10 bg-white/10 p-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSearchParams((current) => {
-                          const next = new URLSearchParams(current)
-                          next.set('ai', 'quick-add')
-                          return next
-                        })
-                      }
-                      className={cn(
-                        'rounded-full px-3 py-1.5 text-sm transition-colors',
-                        aiMode === 'quick-add' ? 'bg-white text-[var(--color-text)]' : 'text-white/75',
-                      )}
-                    >
-                      Quick add
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSearchParams((current) => {
-                          const next = new URLSearchParams(current)
-                          next.set('ai', 'proposal')
-                          return next
-                        })
-                      }
-                      className={cn(
-                        'rounded-full px-3 py-1.5 text-sm transition-colors',
-                        aiMode === 'proposal' ? 'bg-white text-[var(--color-text)]' : 'text-white/75',
-                      )}
-                    >
-                      Proposal
-                    </button>
-                  </div>
+            <section className={cn(panelClassName, 'flex min-h-0 flex-1 flex-col overflow-hidden')}>
+              <div className={panelHeaderClassName}>
+                <div>
+                  <h2 className={sectionTitleClassName}>AI assistance</h2>
+                  <p className={sectionNoteClassName}>Use the current shortlist and day scope.</p>
+                </div>
+                <div className="inline-flex rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] p-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current)
+                        next.set('ai', 'quick-add')
+                        return next
+                      })
+                    }
+                    className={cn(
+                      'rounded-[8px] px-3 py-1.5 text-[0.82rem] font-medium transition-colors',
+                      aiMode === 'quick-add'
+                        ? 'bg-[var(--color-cta)] text-white'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+                    )}
+                  >
+                    Quick add
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSearchParams((current) => {
+                        const next = new URLSearchParams(current)
+                        next.set('ai', 'proposal')
+                        return next
+                      })
+                    }
+                    className={cn(
+                      'rounded-[8px] px-3 py-1.5 text-[0.82rem] font-medium transition-colors',
+                      aiMode === 'proposal'
+                        ? 'bg-[var(--color-cta)] text-white'
+                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+                    )}
+                  >
+                    Proposal
+                  </button>
                 </div>
               </div>
 
-              <ScrollArea className="min-h-0 flex-1 px-5 py-5">
+              <ScrollArea className="min-h-0 flex-1 px-4 py-4">
                 {aiMode === 'quick-add' ? (
                   <div className="space-y-4">
-                    <p className="text-sm leading-7 text-white/74">
-                      Rank the saved shortlist against the current trip days and get target-day suggestions
-                      with rationale. Attractions and restaurants only.
+                    <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+                      Rank the shortlist against the current day scope and attach the best fit.
                     </p>
+
                     <Button
                       type="button"
                       onClick={handleGenerateRecommendations}
                       disabled={recommendationsMutation.isPending}
-                      className="w-full bg-white text-[var(--color-text)] hover:bg-[var(--color-bg-soft)]"
+                      className={cn(compactButtonClassName, 'w-full')}
                     >
                       {recommendationsMutation.isPending ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -1176,60 +1266,55 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                       Generate quick-add suggestions
                     </Button>
 
-                    {quickAddItems.length === 0 && (
-                      <div className="rounded-[22px] border border-white/10 bg-white/8 p-4">
-                        <p className="text-sm leading-6 text-white/70">
-                          No quick-add suggestions yet. Save some shortlist items and run the AI panel.
-                        </p>
+                    {quickAddItems.length === 0 ? (
+                      <div className={emptyStateClassName}>
+                        No quick-add suggestions yet. Save shortlist items and run the action.
                       </div>
-                    )}
+                    ) : null}
 
                     {quickAddItems.map((entry) => {
                       const suggestedDay = days.find((day) => day.id === entry.trip_day_id)
                       return (
                         <div
                           key={`${entry.snapshot_id}-${entry.trip_day_id}`}
-                          className="rounded-[24px] border border-white/10 bg-white/8 p-4"
+                          className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-3"
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">
-                                Suggested match
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[var(--color-text)]">{entry.item.title}</p>
+                              <p className="mt-1 text-[0.78rem] text-[var(--color-text-muted)]">
+                                {suggestedDay ? formatDayLabel(suggestedDay) : 'Suggested day'}
                               </p>
-                              <h3 className="mt-1 text-lg font-semibold">{entry.item.title}</h3>
                             </div>
-                            <Badge className="bg-white/15 text-white">{entry.score.toFixed(2)}</Badge>
+                            <Badge variant="neutral" className="normal-case tracking-normal">
+                              {entry.score.toFixed(2)}
+                            </Badge>
                           </div>
-                          <p className="mt-3 text-sm leading-6 text-white/74">{entry.rationale}</p>
-                          <div className="mt-3 flex items-center justify-between gap-3">
-                            <div className="text-xs uppercase tracking-[0.2em] text-white/55">
-                              {suggestedDay ? formatDayLabel(suggestedDay) : 'Suggested day'}
-                            </div>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="border-white/18 bg-white/5 text-white hover:bg-white/12"
-                              onClick={() => void handleAttach(entry.snapshot_id, entry.trip_day_id)}
-                            >
-                              Add to planner
-                            </Button>
-                          </div>
+                          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">{entry.rationale}</p>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className={cn(compactButtonClassName, 'mt-3')}
+                            onClick={() => void handleAttach(entry.snapshot_id, entry.trip_day_id)}
+                          >
+                            Add to planner
+                          </Button>
                         </div>
                       )
                     })}
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-sm leading-7 text-white/74">
-                      Build a reviewable proposal from the saved shortlist, then inspect the generated
-                      day-level changes before applying them to the planner.
+                    <p className="text-sm leading-6 text-[var(--color-text-muted)]">
+                      Build a reviewable proposal from the saved shortlist before applying it.
                     </p>
+
                     <Button
                       type="button"
                       onClick={handleGenerateProposal}
                       disabled={optimizeTripMutation.isPending || isJobRunning(optimizeJobQuery.data?.status)}
-                      className="w-full bg-white text-[var(--color-text)] hover:bg-[var(--color-bg-soft)]"
+                      className={cn(compactButtonClassName, 'w-full')}
                     >
                       {optimizeTripMutation.isPending || isJobRunning(optimizeJobQuery.data?.status) ? (
                         <Loader2 className="size-4 animate-spin" />
@@ -1239,13 +1324,11 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                       Generate reviewable proposal
                     </Button>
 
-                    {optimizeJobQuery.data && (
-                      <Alert className="border-white/10 bg-white/8 text-white">
-                        <AlertDescription>
-                          Proposal job status: {optimizeJobQuery.data.status}
-                        </AlertDescription>
+                    {optimizeJobQuery.data ? (
+                      <Alert>
+                        <AlertDescription>Proposal job status: {optimizeJobQuery.data.status}</AlertDescription>
                       </Alert>
-                    )}
+                    ) : null}
 
                     <div className="space-y-3">
                       {proposals.map((proposal) => (
@@ -1254,48 +1337,47 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                           type="button"
                           onClick={() => setSelectedProposalId(proposal.id)}
                           className={cn(
-                            'w-full rounded-[22px] border p-4 text-left transition-colors',
+                            'w-full rounded-[12px] border p-3 text-left transition-colors',
                             selectedProposal?.id === proposal.id
-                              ? 'border-white/30 bg-white/12'
-                              : 'border-white/10 bg-white/6',
+                              ? 'border-[rgba(114,174,230,0.44)] bg-white'
+                              : 'border-black/8 bg-[var(--color-secondary-surface)]',
                           )}
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <div>
-                              <p className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">
-                                Proposal
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-[var(--color-text)]">{proposal.objective}</p>
+                              <p className="mt-1 text-[0.78rem] text-[var(--color-text-muted)]">
+                                Based on v{proposal.based_on_trip_version}
                               </p>
-                              <p className="mt-1 text-sm font-semibold">{proposal.objective}</p>
                             </div>
                             <ProposalStatusBadge status={proposal.status} />
                           </div>
-                          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-white/50">
-                            Based on v{proposal.based_on_trip_version}
-                          </p>
                         </button>
                       ))}
                     </div>
 
                     {selectedProposal ? (
-                      <div className="rounded-[24px] border border-white/10 bg-white/8 p-4">
+                      <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-3">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-[0.68rem] uppercase tracking-[0.24em] text-white/55">
-                              Reviewable proposal
-                            </p>
-                            <h3 className="mt-1 text-lg font-semibold">
+                            <p className="text-sm font-medium text-[var(--color-text)]">
                               {(selectedProposalSummary?.activities_changed ?? selectedProposal.items.length)} activity moves
-                            </h3>
+                            </p>
+                            <p className="mt-1 text-[0.78rem] text-[var(--color-text-muted)]">
+                              Review before apply
+                            </p>
                           </div>
                           <ProposalStatusBadge status={selectedProposal.status} />
                         </div>
-                        <div className="mt-4 space-y-3">
+
+                        <div className="mt-3 space-y-3">
                           {selectedProposal.items.slice(0, 4).map((item) => (
                             <ProposalActivityRow key={item.id} item={item} />
                           ))}
                         </div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                          <div className="inline-flex items-center gap-2 text-sm text-white/70">
+
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="inline-flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                             <MessageSquareQuote className="size-4" />
                             Review before apply
                           </div>
@@ -1303,7 +1385,7 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="border-white/18 bg-white/5 text-white hover:bg-white/12"
+                            className={compactButtonClassName}
                             onClick={() => void handleApplyProposal(selectedProposal)}
                             disabled={
                               applyProposalMutation.isPending ||
@@ -1315,8 +1397,8 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
                         </div>
                       </div>
                     ) : (
-                      <div className="rounded-[22px] border border-white/10 bg-white/8 p-4 text-sm leading-6 text-white/70">
-                        Generate a proposal to inspect AI-assisted day reshaping here.
+                      <div className={emptyStateClassName}>
+                        Generate a proposal to inspect AI-assisted reshaping here.
                       </div>
                     )}
                   </div>
@@ -1326,6 +1408,6 @@ export default function ActivitiesWorkspace({ tripId }: Props) {
           </aside>
         </div>
       </Tabs>
-    </div>
+    </WorkspacePage>
   )
 }

@@ -24,7 +24,6 @@ const MapPage = lazy(() => import('@/pages/app/map'))
 const OffersPage = lazy(() => import('@/pages/app/offers'))
 const ActivitiesPage = lazy(() => import('@/pages/app/activities'))
 const ExportsPage = lazy(() => import('@/pages/app/exports'))
-const AuditPage = lazy(() => import('@/pages/app/audit'))
 const EventsPage = lazy(() => import('@/pages/app/events'))
 const ProposalsPage = lazy(() => import('@/pages/app/proposals'))
 
@@ -207,18 +206,7 @@ const router = createBrowserRouter([
           </FeatureRouteGate>
         ),
       },
-      {
-        path: 'trips/:tripId/audit',
-        element: (
-          <FeatureRouteGate enabled={config.features.auditUI}>
-            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
-              <Suspense fallback={<PageLoader />}>
-                <AuditPage />
-              </Suspense>
-            </ErrorBoundary>
-          </FeatureRouteGate>
-        ),
-      },
+
       {
         path: 'trips/:tripId/activities',
         element: (

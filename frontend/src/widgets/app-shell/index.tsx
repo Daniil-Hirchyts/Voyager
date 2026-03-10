@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation, useMatch, useOutletContext, useParams, useResolvedPath, useSearchParams } from 'react-router-dom'
+import { Link, Outlet, useLocation, useMatch, useParams, useResolvedPath, useSearchParams } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
 import Cookies from 'js-cookie'
 import { type CSSProperties, type ReactNode, useEffect, useState } from 'react'
@@ -11,11 +11,9 @@ import {
   Download,
   LayoutGrid,
   LogOut,
-  Map,
   MapPin,
   MoreVertical,
   PlusCircle,
-  ScrollText,
   Ticket,
 } from 'lucide-react'
 import { useTrips } from '@/entities/trip/queries'
@@ -53,6 +51,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 import type { Trip } from '@/shared/api/types'
+export {
+  useAppShellHeaderActions,
+  useAppShellHeaderMeta,
+  type AppShellOutletContext,
+} from './header-context'
 
 type NavItem = {
   to: string
@@ -79,30 +82,8 @@ type AppShellLayoutProps = {
   }
 }
 
-export type AppShellOutletContext = {
-  setHeaderActions?: (actions: ReactNode | null) => void
-}
-
 const APP_SCROLL_LOCK_CLASS = 'voyager-app-scroll-lock'
 const APP_SHELL_CLASS = 'voyager-app-shell'
-
-export function useAppShellHeaderActions(actions: ReactNode | null) {
-  const setHeaderActions = useOutletContext<AppShellOutletContext | null>()?.setHeaderActions
-
-  useEffect(() => {
-    if (!setHeaderActions) {
-      return
-    }
-
-    setHeaderActions(actions)
-
-    return () => {
-      setHeaderActions(null)
-    }
-  }, [actions, setHeaderActions])
-
-  return Boolean(setHeaderActions)
-}
 
 function getSectionLabel(pathname: string, tripId?: string) {
   if (pathname === '/app/trips') {
@@ -120,7 +101,6 @@ function getSectionLabel(pathname: string, tripId?: string) {
   const sections: Array<{ path: string; label: string }> = [
     { path: `/app/trips/${tripId}`, label: 'Overview' },
     { path: `/app/trips/${tripId}/plan`, label: 'Planner' },
-    { path: `/app/trips/${tripId}/map`, label: 'Map' },
     { path: `/app/trips/${tripId}/offers`, label: 'Offers' },
     { path: `/app/trips/${tripId}/activities`, label: 'Activities' },
     { path: `/app/trips/${tripId}/events`, label: 'Events' },
@@ -325,6 +305,7 @@ export function AppShellLayout({
   const location = useLocation()
   const currentSection = getSectionLabel(location.pathname, tripId)
   const [headerActions, setHeaderActions] = useState<ReactNode | null>(null)
+  const [headerMeta, setHeaderMeta] = useState<ReactNode | null>(null)
   const shouldShowRecentTrips = location.pathname === '/app/trips' && recentTrips.length > 0
 
   useEffect(() => {
@@ -343,6 +324,7 @@ export function AppShellLayout({
 
   useEffect(() => {
     setHeaderActions(null)
+    setHeaderMeta(null)
   }, [location.pathname])
 
   const primaryNavItems: NavItem[] = [
@@ -353,17 +335,13 @@ export function AppShellLayout({
     ? [
         { to: `/app/trips/${tripId}`, icon: Compass, label: 'Overview', end: true },
         { to: `/app/trips/${tripId}/plan`, icon: Calendar, label: 'Planner', end: true },
-        { to: `/app/trips/${tripId}/map`, icon: Map, label: 'Map', end: true },
         { to: `/app/trips/${tripId}/offers`, icon: Ticket, label: 'Offers', end: true },
         { to: `/app/trips/${tripId}/activities`, icon: MapPin, label: 'Activities', end: true },
         { to: `/app/trips/${tripId}/exports`, icon: Download, label: 'Exports', end: true },
-        { to: `/app/trips/${tripId}/audit`, icon: ScrollText, label: 'Audit', end: true },
       ].filter((item) => {
-        if (item.label === 'Map') return config.features.mapUI
         if (item.label === 'Offers') return config.features.offersUI
         if (item.label === 'Activities') return config.features.activitiesUI
         if (item.label === 'Exports') return config.features.exportsUI
-        if (item.label === 'Audit') return config.features.auditUI
         return true
       })
     : []
@@ -470,18 +448,28 @@ export function AppShellLayout({
       </Sidebar>
 
       <SidebarInset className="min-h-0 flex-1 overflow-hidden bg-white shadow-none md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:rounded-[12px] md:border md:border-black/8">
-        <header className="relative z-20 flex h-11 shrink-0 items-center gap-2 border-b border-black/8 bg-transparent px-3.5 md:h-12 md:px-4">
-          <div className="flex min-w-0 items-center gap-2">
+        <header
+          className={cn(
+            'relative z-20 flex shrink-0 items-center gap-3 border-b border-black/8 bg-transparent px-3.5 md:px-4',
+            headerMeta ? 'min-h-[4.25rem] py-2' : 'h-11 md:h-12',
+          )}
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <SidebarTrigger className="-ml-1 size-7 rounded-[8px] border-none bg-transparent text-[#5f6b7a] shadow-none hover:bg-black/4 hover:text-[var(--color-text)]" />
             <Separator orientation="vertical" className="mx-1.5 hidden h-4 bg-black/8 md:block" />
             <div className="min-w-0">
               <p className="truncate text-[1rem] font-medium tracking-[-0.01em] text-[var(--color-text)]">
                 {currentSection}
               </p>
+              {headerMeta ? (
+                <div className="mt-0.5 min-w-0 max-w-full overflow-hidden text-[0.8rem] text-[#5f6b7a]">
+                  {headerMeta}
+                </div>
+              ) : null}
             </div>
           </div>
           {headerActions || tripsPagination ? (
-            <div className="ml-auto flex items-center gap-2">
+            <div className={cn('ml-auto flex shrink-0 items-center gap-2', headerMeta && 'self-start')}>
               {headerActions}
               {tripsPagination ? <AppShellPagination pagination={tripsPagination} /> : null}
             </div>
@@ -489,8 +477,8 @@ export function AppShellLayout({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain" data-testid="app-shell-content">
-          <div className="@container/main flex min-h-full flex-col">
-            <Outlet context={{ setHeaderActions }} />
+          <div className="@container/main flex h-full min-h-0 flex-col">
+            <Outlet context={{ setHeaderActions, setHeaderMeta }} />
           </div>
         </div>
       </SidebarInset>

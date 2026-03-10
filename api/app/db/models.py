@@ -17,6 +17,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -66,6 +67,9 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     user: Mapped[UserProfile] = relationship("UserProfile", back_populates="trips")
     days: Mapped[list["TripDay"]] = relationship(
         "TripDay", back_populates="trip", cascade="all,delete", order_by="TripDay.day_index"
+    )
+    activities: Mapped[list["Activity"]] = relationship(
+        "Activity", back_populates="trip", cascade="all,delete", order_by="Activity.order_index"
     )
     transport_offers: Mapped[list["TransportOffer"]] = relationship(
         "TransportOffer",
@@ -216,10 +220,16 @@ Index(
 class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "activity"
 
-    trip_day_id: Mapped[uuid.UUID] = mapped_column(
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trip.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    trip_day_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("trip_day.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -246,7 +256,8 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         UUID(as_uuid=True), nullable=True, index=True
     )
 
-    trip_day: Mapped[TripDay] = relationship("TripDay", back_populates="activities")
+    trip: Mapped[Trip] = relationship("Trip", back_populates="activities")
+    trip_day: Mapped[TripDay | None] = relationship("TripDay", back_populates="activities")
     place: Mapped[Place | None] = relationship("Place", back_populates="activities")
     event_snapshot: Mapped["EventSnapshot | None"] = relationship(
         "EventSnapshot",
@@ -254,7 +265,20 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("trip_day_id", "order_index", name="uq_activity_trip_day_order"),
+        Index(
+            "ix_activity_trip_day_order_assigned",
+            "trip_day_id",
+            "order_index",
+            unique=True,
+            postgresql_where=text("trip_day_id IS NOT NULL"),
+        ),
+        Index(
+            "ix_activity_trip_order_inbox",
+            "trip_id",
+            "order_index",
+            unique=True,
+            postgresql_where=text("trip_day_id IS NULL"),
+        ),
     )
 
 

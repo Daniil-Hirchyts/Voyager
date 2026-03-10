@@ -37,7 +37,7 @@ export type PlannerPlaceSummary = {
 
 export type PlannerActivity = {
   id: string
-  trip_day_id: string
+  trip_day_id: string | null
   order_index: number
   title: string
   description: string | null
@@ -55,6 +55,8 @@ export type PlannerActivity = {
   source: string
   created_at: string
   updated_at: string
+  legacy_source_day_id?: string | null
+  legacy_inbox_item?: boolean
 }
 
 export type PlannerDay = Day & {
@@ -63,7 +65,9 @@ export type PlannerDay = Day & {
 
 export type PlannerResponse = {
   trip: Trip
+  inbox_activities: PlannerActivity[]
   days: PlannerDay[]
+  legacy_inbox_mode?: boolean
 }
 
 export type PlannerGenerationReport = {
@@ -243,9 +247,6 @@ export interface OfferListResponse {
 export type ExportFormat = components['schemas']['ExportFormat']
 export type ExportResponse = components['schemas']['ExportResponse']
 export type TripExportCreateInput = components['schemas']['TripExportCreateRequest']
-
-export type AuditLogEntry = components['schemas']['AuditLogEntry']
-export type AuditLogListResponse = components['schemas']['AuditLogListResponse']
 
 export type ActivityEntityType = 'attraction' | 'restaurant' | 'hotel' | 'cruise'
 

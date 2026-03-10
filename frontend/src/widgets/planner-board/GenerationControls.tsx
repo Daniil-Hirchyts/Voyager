@@ -25,6 +25,7 @@ interface Props {
   onReset: (dayIds: string[] | undefined, idempotencyKey: string) => Promise<void>
   isGenerating?: boolean
   jobStatus?: string | null
+  compact?: boolean
 }
 
 const MODE_LABELS: Record<string, { label: string; desc: string }> = {
@@ -41,6 +42,7 @@ export function GenerationControls({
   onReset,
   isGenerating,
   jobStatus,
+  compact = false,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState<'generate' | 'regenerate' | 'reset'>('generate')
@@ -74,38 +76,50 @@ export function GenerationControls({
   }
 
   const isRunning = isGenerating || jobStatus === 'PENDING' || jobStatus === 'RUNNING'
+  const buttonClassName = compact ? 'h-8 rounded-[8px] px-3 shadow-none hover:shadow-none' : undefined
+  const statusClassName = compact
+    ? 'inline-flex h-8 items-center gap-2 rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 text-[0.84rem] text-[var(--color-text-muted)]'
+    : 'flex items-center gap-2 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2 text-sm text-[var(--color-text-muted)]'
 
   return (
     <>
-      {/* Action bar */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {isRunning ? (
           <div
-            className="flex items-center gap-2 rounded-[16px] border border-[rgba(114,174,230,0.32)] bg-[rgba(114,174,230,0.12)] px-4 py-2 text-sm text-[var(--color-primary-foreground)]"
+            className={statusClassName}
             aria-live="polite"
             aria-label={`Generation in progress: ${jobStatus}`}
           >
-            <Loader2 className="w-4 h-4 animate-spin" />
-            {jobStatus === 'RUNNING' ? 'Generating...' : 'Queued...'}
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {jobStatus === 'RUNNING' ? 'Generating' : 'Queued'}
           </div>
         ) : (
           <>
-            <Button onClick={() => openDialog('generate')}>
-              <Sparkles className="w-4 h-4" />
+            <Button onClick={() => openDialog('generate')} size={compact ? 'sm' : 'default'} className={buttonClassName}>
+              <Sparkles className="h-4 w-4" />
               Generate
             </Button>
             {hasActivities && (
               <>
-                <Button variant="outline" onClick={() => openDialog('regenerate')}>
-                  <RefreshCw className="w-3.5 h-3.5" />
+                <Button
+                  variant="outline"
+                  onClick={() => openDialog('regenerate')}
+                  size={compact ? 'sm' : 'default'}
+                  className={buttonClassName}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
                   Regenerate
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => openDialog('reset')}
-                  className="hover:border-[rgba(196,95,79,0.28)] hover:bg-[rgba(196,95,79,0.08)]"
+                  size={compact ? 'sm' : 'default'}
+                  className={cn(
+                    buttonClassName,
+                    'hover:border-[rgba(196,95,79,0.28)] hover:bg-[rgba(196,95,79,0.06)]',
+                  )}
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" />
                   Reset
                 </Button>
               </>
@@ -113,33 +127,32 @@ export function GenerationControls({
           </>
         )}
 
-        {/* Job terminal states */}
         {jobStatus === 'SUCCEEDED' && (
-          <span className="text-xs font-medium text-[var(--color-success)]" aria-live="polite">
-            Generation complete
+          <span className="text-[0.78rem] font-medium text-[var(--color-text-muted)]" aria-live="polite">
+            Updated
           </span>
         )}
         {jobStatus === 'FAILED' && (
-          <span className="text-xs font-medium text-[var(--color-danger)]" aria-live="polite">
-            Generation failed
+          <span className="text-[0.78rem] font-medium text-[var(--color-text-muted)]" aria-live="polite">
+            Failed
           </span>
         )}
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-[34rem] rounded-[12px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-none">
           <DialogHeader>
-            <DialogTitle>
+            <DialogTitle className="font-medium tracking-normal">
               {action === 'generate' && 'Generate Itinerary'}
               {action === 'regenerate' && 'Regenerate Itinerary'}
               {action === 'reset' && 'Reset Itinerary'}
             </DialogTitle>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="px-5 py-4 space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-6 py-5">
             {action !== 'reset' && (
               <div>
-                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
                   Mode
                 </label>
                 <div className="space-y-2">
@@ -147,10 +160,10 @@ export function GenerationControls({
                     <label
                       key={m}
                       className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-[16px] border p-3 transition-colors',
+                        'flex cursor-pointer items-start gap-3 rounded-[10px] border border-black/8 p-3 transition-colors',
                         mode === m
-                          ? 'border-[var(--color-primary)] bg-[rgba(114,174,230,0.12)]'
-                          : 'border-[var(--color-border-strong)] bg-white/70 hover:bg-white/88',
+                          ? 'border-[rgba(0,0,0,0.14)] bg-[var(--color-secondary-surface)]'
+                          : 'bg-white hover:bg-[var(--color-secondary-surface)]',
                       )}
                     >
                       <input
@@ -174,15 +187,15 @@ export function GenerationControls({
             {/* Day selection */}
             {days.length > 0 && (
               <div>
-                <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
                   Scope to specific days (optional)
                 </label>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
                   {days.map((day, i) => (
                     <label
                       key={day.id}
                       htmlFor={`day-${day.id}`}
-                      className="flex cursor-pointer items-center gap-2 text-sm text-[var(--color-text)]"
+                      className="flex cursor-pointer items-center gap-2 rounded-[8px] px-1 py-1 text-sm text-[var(--color-text)]"
                     >
                       <Checkbox
                         id={`day-${day.id}`}
@@ -211,13 +224,13 @@ export function GenerationControls({
           </form>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+            <Button variant="outline" onClick={() => setOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
               Cancel
             </Button>
             <Button
               onClick={handleSubmit(onSubmit)}
               variant={action === 'reset' ? 'destructive' : 'default'}
-              className="flex-1"
+              className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
             >
               {action === 'generate' && <><Sparkles className="w-4 h-4" /> Generate</>}
               {action === 'regenerate' && <><RefreshCw className="w-4 h-4" /> Regenerate</>}

@@ -24,6 +24,18 @@ export async function createActivity(
   })
 }
 
+export async function createPlannerActivity(
+  tripId: string,
+  data: ActivityCreateInput,
+  idempotencyKey: string,
+): Promise<Activity> {
+  return requestJson<Activity>(`/trips/${tripId}/planner/activities`, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': idempotencyKey },
+    body: JSON.stringify(data),
+  })
+}
+
 export async function patchActivity(
   activityId: string,
   data: Partial<ActivityUpdateInput>,

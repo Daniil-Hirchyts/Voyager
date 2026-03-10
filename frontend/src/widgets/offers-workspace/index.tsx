@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Search,
   ShieldCheck,
-  SlidersHorizontal,
   Sparkles,
   Star,
   Ticket,
@@ -96,7 +95,8 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WorkspacePage } from '@/shared/layouts/workspace-shell'
+import { useAppShellHeaderActions, useAppShellHeaderMeta } from '@/widgets/app-shell'
 import PlacePhotos from '@/widgets/place-photos'
 
 const DEFAULT_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY']
@@ -569,7 +569,7 @@ function InlineModeIssue({ issue }: { issue: ModeIssue | null }) {
   return (
     <Alert
       variant={issue.variant === 'warning' ? 'warning' : issue.variant === 'destructive' ? 'destructive' : 'default'}
-      className="rounded-[18px] border-white/60 bg-white/75"
+      className="rounded-[10px] border-black/8 bg-white p-3.5 shadow-none"
     >
       <CircleAlert className="h-4 w-4" />
       <div>
@@ -590,59 +590,22 @@ function ValuePill({
   value: string
 }) {
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white/85 px-4 py-3">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+    <div className="rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
         <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
-      <p className="mt-2 text-base font-semibold text-[var(--color-text)]">{value}</p>
+      <p className="mt-1.5 text-sm font-medium text-[var(--color-text)]">{value}</p>
     </div>
-  )
-}
-
-function SummarySurface({
-  active,
-  label,
-  value,
-  detail,
-  onClick,
-}: {
-  active?: boolean
-  label: string
-  value: string
-  detail: string
-  onClick?: () => void
-}) {
-  const content = (
-    <div
-      className={cn(
-        'rounded-[22px] border px-4 py-4 text-left transition-all',
-        active
-          ? 'border-[var(--color-primary)] bg-[rgba(114,174,230,0.12)] shadow-[0_18px_40px_rgba(32,56,83,0.12)]'
-          : 'border-[var(--color-border)] bg-white/85 hover:border-[var(--color-primary)]/35',
-      )}
-    >
-      <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-[var(--color-text)]">{value}</p>
-      <p className="mt-1 text-sm text-[var(--color-text-muted)]">{detail}</p>
-    </div>
-  )
-
-  if (!onClick) return content
-
-  return (
-    <button type="button" onClick={onClick} className="w-full">
-      {content}
-    </button>
   )
 }
 
 function MapUnavailable({ message }: { message: string }) {
   return (
-    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-[26px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(228,240,251,0.72))] px-6 text-center">
-      <MapPin className="h-8 w-8 text-[var(--color-primary-foreground)]" />
+    <div className="flex min-h-[220px] flex-col items-center justify-center gap-3 rounded-[12px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-6 text-center">
+      <MapPin className="h-7 w-7 text-[var(--color-primary-foreground)]" />
       <div>
-        <p className="text-base font-semibold text-[var(--color-text)]">Map unavailable</p>
+        <p className="text-sm font-medium text-[var(--color-text)]">Map unavailable</p>
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">{message}</p>
       </div>
     </div>
@@ -710,11 +673,11 @@ function OfferMapCanvas({
   }))
 
   return (
-    <div className="overflow-hidden rounded-[26px] border border-[var(--color-border)]">
+    <div className="overflow-hidden rounded-[12px] border border-black/8">
       <GoogleMapCanvas
         defaultCenter={{ lat: 48.8566, lng: 2.3522 }}
         defaultZoom={4.1}
-        style={{ minHeight: 280 }}
+        style={{ minHeight: 240 }}
         disableDefaultUI={false}
         streetViewControl={false}
         mapTypeControl={false}
@@ -807,7 +770,7 @@ function FlightTimeline({
 
         return (
           <div key={`${segment.itinerary_index}-${segment.sequence}`} className="flex flex-col gap-3">
-            <div className="grid gap-3 rounded-[18px] border border-[var(--color-border)] bg-white/85 px-4 py-3 md:grid-cols-[1fr_auto]">
+            <div className="grid gap-3 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3.5 py-3 md:grid-cols-[1fr_auto]">
               <div>
                 <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
                   <Plane className="h-4 w-4 text-[var(--color-primary-foreground)]" />
@@ -853,18 +816,18 @@ function HotelHero({ offer }: { offer: Offer }) {
 
   if (resolvePhotoUrl(photo, 'full')) {
     return (
-      <div className="overflow-hidden rounded-[22px] border border-[var(--color-border)]">
+      <div className="overflow-hidden rounded-[12px] border border-black/8">
         <img
           src={resolvePhotoUrl(photo, 'full') || ''}
           alt={offer.title}
-          className="h-48 w-full object-cover"
+          className="h-44 w-full object-cover"
         />
       </div>
     )
   }
 
   return (
-    <div className="flex h-48 items-center justify-center rounded-[22px] border border-dashed border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(228,240,251,0.78))]">
+    <div className="flex h-44 items-center justify-center rounded-[12px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)]">
       <div className="text-center">
         <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
         <p className="mt-3 text-sm font-medium text-[var(--color-text)]">{offer.title}</p>
@@ -878,14 +841,14 @@ function OffersLoadingState({ mode }: { mode: OfferMode }) {
   return (
     <div className="flex flex-col gap-4">
       {Array.from({ length: mode === 'transport' ? 3 : 2 }).map((_, index) => (
-        <Card key={index} className="rounded-[28px] border-white/60 bg-white/80">
+        <Card key={index} className="rounded-[12px] border-black/8 bg-white shadow-none">
           <CardContent className="flex flex-col gap-4 p-5">
-            <Skeleton className="h-6 w-40 rounded-full" />
-            <Skeleton className="h-16 w-full rounded-[20px]" />
+            <Skeleton className="h-5 w-32 rounded-[8px]" />
+            <Skeleton className="h-16 w-full rounded-[10px]" />
             <div className="grid gap-3 md:grid-cols-3">
-              <Skeleton className="h-10 rounded-[16px]" />
-              <Skeleton className="h-10 rounded-[16px]" />
-              <Skeleton className="h-10 rounded-[16px]" />
+              <Skeleton className="h-10 rounded-[8px]" />
+              <Skeleton className="h-10 rounded-[8px]" />
+              <Skeleton className="h-10 rounded-[8px]" />
             </div>
           </CardContent>
         </Card>
@@ -1150,22 +1113,6 @@ export default function OffersWorkspace({ tripId }: Props) {
     visibleLodgingOffers.find((offer) => offer.id === selectedLodgingId) ?? null
   const tripLayers = tripLayersData?.items ?? []
 
-  const bestTransportOffer = visibleTransportOffers[0] ?? null
-  const cheapestTransportOffer = [...visibleTransportOffers].sort(
-    (left, right) => numericPrice(left.price_amount) - numericPrice(right.price_amount),
-  )[0] ?? null
-  const fastestTransportOffer = [...visibleTransportOffers].sort(
-    (left, right) => (getFlightDuration(left) ?? Number.MAX_SAFE_INTEGER) - (getFlightDuration(right) ?? Number.MAX_SAFE_INTEGER),
-  )[0] ?? null
-
-  const recommendedHotelOffer = visibleLodgingOffers[0] ?? null
-  const cheapestHotelOffer = [...visibleLodgingOffers].sort(
-    (left, right) => numericPrice(left.price_amount) - numericPrice(right.price_amount),
-  )[0] ?? null
-  const topRatedHotelOffer = [...visibleLodgingOffers].sort(
-    (left, right) => (getHotelStarRating(right) ?? -1) - (getHotelStarRating(left) ?? -1),
-  )[0] ?? null
-
   const queueAcceptedJob = (jobId: string, nextMode: OfferMode) => {
     setActiveJobId(jobId)
     setQueuedMode(nextMode)
@@ -1349,412 +1296,443 @@ export default function OffersWorkspace({ tripId }: Props) {
   const activeJobRunning = isJobRunning(activeJob?.status)
   const transportSearchPending = transportSearchMutation.isPending || (queuedMode === 'transport' && activeJobRunning)
   const lodgingSearchPending = lodgingSearchMutation.isPending || (queuedMode === 'lodging' && activeJobRunning)
+  const headerMeta = useMemo(() => {
+    if (!trip) return null
+
+    return (
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="truncate font-medium text-[var(--color-text)]">{trip.title}</span>
+        <span className="hidden text-black/20 lg:inline">•</span>
+        <span className="truncate">{trip.destination_text}</span>
+        <span className="hidden text-black/20 lg:inline">•</span>
+        <span className="truncate">{`${format(new Date(trip.start_date), 'MMM d')} - ${format(
+          new Date(trip.end_date),
+          'MMM d, yyyy',
+        )}`}</span>
+        {trip.budget_amount && trip.budget_currency ? (
+          <>
+            <span className="hidden text-black/20 xl:inline">•</span>
+            <span className="truncate">{`Budget ${formatMoney(trip.budget_amount, trip.budget_currency)}`}</span>
+          </>
+        ) : null}
+        {focusedDay ? (
+          <>
+            <span className="hidden text-black/20 xl:inline">•</span>
+            <span className="truncate">{`Scoped to ${dayBadgeLabel(focusedDay)}`}</span>
+          </>
+        ) : null}
+      </div>
+    )
+  }, [focusedDay, trip])
+  const headerActions = useMemo(
+    () => (
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="inline-flex items-center rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode('transport')}
+            className={cn(
+              'inline-flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-[0.78rem] font-medium transition-colors',
+              mode === 'transport'
+                ? 'bg-[var(--color-text)] text-white'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+            )}
+          >
+            <Plane className="h-3.5 w-3.5" />
+            Flights
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('lodging')}
+            className={cn(
+              'inline-flex h-7 items-center gap-1.5 rounded-[6px] px-2.5 text-[0.78rem] font-medium transition-colors',
+              mode === 'lodging'
+                ? 'bg-[var(--color-text)] text-white'
+                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+            )}
+          >
+            <Hotel className="h-3.5 w-3.5" />
+            Hotels
+          </button>
+        </div>
+        <Button
+          variant="outline"
+          onClick={refreshVisibleOffers}
+          disabled={refreshVisibleMutation.isPending || activeJobRunning}
+          className="h-8 rounded-[8px] px-3.5 text-[0.84rem] font-medium shadow-none hover:shadow-none"
+        >
+          {refreshVisibleMutation.isPending || (activeJobRunning && !refreshingOfferId) ? (
+            <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw data-icon="inline-start" className="h-4 w-4" />
+          )}
+          Refresh
+        </Button>
+      </div>
+    ),
+    [activeJobRunning, mode, refreshVisibleMutation.isPending, refreshingOfferId],
+  )
+  const hasShellHeaderActions = useAppShellHeaderActions(headerActions)
+  const hasShellHeaderMeta = useAppShellHeaderMeta(headerMeta)
+  const showInlineMeta = !hasShellHeaderMeta && headerMeta != null
+  const showInlineActions = !hasShellHeaderActions
 
   return (
-    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.82),transparent_38%),linear-gradient(180deg,#dbeaf8_0%,#eef5fc_100%)]">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-6 px-4 py-5 md:px-6 md:py-6">
-        <section className="relative overflow-hidden rounded-[34px] border border-white/60 bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(244,235,221,0.82))] shadow-[0_24px_80px_rgba(26,38,48,0.08)]">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(47,111,115,0.12),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(197,106,61,0.1),transparent_30%)]" />
-          <div className="relative flex flex-col gap-6 p-5 md:p-7">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex max-w-3xl flex-col gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="secondary">Offers Workspace</Badge>
-                  <Badge variant="outline">{dayBadgeLabel(focusedDay)}</Badge>
-                  {focusedDay ? <Badge variant="outline">New searches attach to this day automatically</Badge> : null}
-                </div>
-                <div className="space-y-2">
-                  <h1 className="max-w-3xl text-[clamp(2rem,3vw,3.3rem)] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
-                    Compare live flight and hotel snapshots without leaving Voyager.
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-6 text-[var(--color-text-muted)] md:text-base">
-                    This workspace borrows the clarity of Google Flights while staying grounded in your trip context:
-                    prefilled dates, ranked results, richer Amadeus detail, and direct day attachment.
-                  </p>
-                </div>
+    <>
+      <WorkspacePage className="gap-4">
+        {showInlineMeta || showInlineActions ? (
+          <section className="rounded-[12px] border border-black/8 bg-white px-4 py-3">
+            {showInlineMeta ? (
+              <div className="text-sm text-[var(--color-text-muted)]">{headerMeta}</div>
+            ) : null}
+            {showInlineActions ? (
+              <div className={cn('flex flex-wrap gap-2', showInlineMeta && 'mt-3 border-t border-black/8 pt-3')}>
+                {headerActions}
               </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <ValuePill
-                  icon={Sparkles}
-                  label="Active"
-                  value={`${offers.filter((offer) => offer.is_current).length} current snapshots`}
-                />
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={refreshVisibleOffers}
-                  disabled={refreshVisibleMutation.isPending || activeJobRunning}
-                  className="h-12 rounded-full bg-white/80 px-5"
-                >
-                  {refreshVisibleMutation.isPending || (activeJobRunning && !refreshingOfferId) ? (
-                    <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <RefreshCw data-icon="inline-start" className="h-4 w-4" />
-                  )}
-                  Refresh visible offers
-                </Button>
-              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        <section className="rounded-[12px] border border-black/8 bg-white p-4">
+          <div className="flex flex-col gap-4">
+            <div>
+              <h2 className="text-base font-medium text-[var(--color-text)]">
+                {mode === 'transport' ? 'Flight search' : 'Hotel search'}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                {focusedDay
+                  ? `New results attach to ${dayBadgeLabel(focusedDay)} by default.`
+                  : 'Search live offer snapshots for this trip.'}
+              </p>
             </div>
 
-            <Tabs
-              value={mode}
-              onValueChange={(value) => setMode(value as OfferMode)}
-              className="flex flex-col gap-5"
-            >
-              <TabsList className="w-fit rounded-full bg-white/70 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]">
-                <TabsTrigger value="transport" className="rounded-full px-5 py-2">
-                  <Plane data-icon="inline-start" className="h-4 w-4" />
-                  Flights
-                </TabsTrigger>
-                <TabsTrigger value="lodging" className="rounded-full px-5 py-2">
-                  <Hotel data-icon="inline-start" className="h-4 w-4" />
-                  Hotels
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="transport" className="mt-0">
-                <form onSubmit={submitTransportSearch} className="flex flex-col gap-4">
-                  <FieldGroup className="gap-5 xl:grid xl:grid-cols-[0.75fr_1fr_1fr_0.9fr_0.9fr_0.7fr_0.7fr]">
-                    <Field data-invalid={Boolean(transportForm.formState.errors.trip_type)}>
-                      <FieldLabel htmlFor="transport-trip-type">Trip type</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={transportForm.control}
-                          name="trip_type"
-                          render={({ field }) => (
-                            <Select
-                              value={field.value}
-                              onValueChange={(nextValue) => {
-                                field.onChange(nextValue)
-                                if (nextValue === 'one_way') {
-                                  transportForm.setValue('return_date', null, { shouldDirty: true })
-                                } else if (!transportForm.getValues('return_date')) {
-                                  transportForm.setValue('return_date', plusOneDay(transportForm.getValues('depart_date')), {
-                                    shouldDirty: true,
-                                  })
-                                }
-                              }}
-                            >
-                              <SelectTrigger id="transport-trip-type" className="h-11 rounded-[18px] bg-white/85">
-                                <ArrowRightLeft className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  <SelectItem value="round_trip">Round trip</SelectItem>
-                                  <SelectItem value="one_way">One way</SelectItem>
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <FieldDescription>Round trip defaults when your trip has a later day.</FieldDescription>
-                        <FieldError errors={[transportForm.formState.errors.trip_type]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.origin_text)}>
-                      <FieldLabel htmlFor="transport-origin">Origin</FieldLabel>
-                      <FieldContent>
-                        <Input
-                          id="transport-origin"
-                          placeholder="Origin airport or city"
-                          className="h-11 rounded-[18px] bg-white/85"
-                          {...transportForm.register('origin_text')}
-                        />
-                        <FieldDescription>Prefilled from your latest transport snapshot when available.</FieldDescription>
-                        <FieldError errors={[transportForm.formState.errors.origin_text]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.destination_text)}>
-                      <FieldLabel htmlFor="transport-destination">Destination</FieldLabel>
-                      <FieldContent>
-                        <Input
-                          id="transport-destination"
-                          placeholder="Destination airport or city"
-                          className="h-11 rounded-[18px] bg-white/85"
-                          {...transportForm.register('destination_text')}
-                        />
-                        <FieldDescription>Voyager anchors this to your trip destination by default.</FieldDescription>
-                        <FieldError errors={[transportForm.formState.errors.destination_text]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.depart_date)}>
-                      <FieldLabel htmlFor="transport-depart">Depart</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={transportForm.control}
-                          name="depart_date"
-                          render={({ field }) => (
-                            <DatePicker
-                              id="transport-depart"
-                              value={field.value}
-                              onChange={field.onChange}
-                              invalid={Boolean(transportForm.formState.errors.depart_date)}
-                              className="h-11 rounded-[18px] bg-white/85"
-                            />
-                          )}
-                        />
-                        <FieldError errors={[transportForm.formState.errors.depart_date]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.return_date)}>
-                      <FieldLabel htmlFor="transport-return">Return</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={transportForm.control}
-                          name="return_date"
-                          render={({ field }) => (
-                            <DatePicker
-                              id="transport-return"
-                              value={field.value ?? ''}
-                              onChange={field.onChange}
-                              disabled={transportForm.watch('trip_type') === 'one_way'}
-                              invalid={Boolean(transportForm.formState.errors.return_date)}
-                              placeholder="Optional"
-                              className="h-11 rounded-[18px] bg-white/85"
-                            />
-                          )}
-                        />
-                        <FieldDescription>
-                          {transportForm.watch('trip_type') === 'one_way'
-                            ? 'Disabled for one-way searches.'
-                            : 'Used for return ranking and detail comparison.'}
-                        </FieldDescription>
-                        <FieldError errors={[transportForm.formState.errors.return_date]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.adults)}>
-                      <FieldLabel htmlFor="transport-adults">Adults</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={transportForm.control}
-                          name="adults"
-                          render={({ field }) => (
-                            <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
-                              <SelectTrigger id="transport-adults" className="h-11 rounded-[18px] bg-white/85">
-                                <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  {ADULT_OPTIONS.map((value) => (
-                                    <SelectItem key={value} value={value}>
-                                      {value} adult{value === '1' ? '' : 's'}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <FieldError errors={[transportForm.formState.errors.adults]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(transportForm.formState.errors.currency)}>
-                      <FieldLabel htmlFor="transport-currency">Currency</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={transportForm.control}
-                          name="currency"
-                          render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger id="transport-currency" className="h-11 rounded-[18px] bg-white/85">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  {DEFAULT_CURRENCIES.map((currency) => (
-                                    <SelectItem key={currency} value={currency}>
-                                      {currency}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <FieldError errors={[transportForm.formState.errors.currency]} />
-                      </FieldContent>
-                    </Field>
-                  </FieldGroup>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <InlineModeIssue issue={transportIssue} />
-                    <div className="ml-auto flex items-center gap-3">
-                      <p className="text-sm text-[var(--color-text-muted)]">
-                        Searches from this page create immutable snapshots you can attach to the planner.
-                      </p>
-                      <Button
-                        type="submit"
-                        size="lg"
-                        disabled={transportSearchPending}
-                        className="h-12 rounded-full px-6"
-                      >
-                        {transportSearchPending ? (
-                          <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Search data-icon="inline-start" className="h-4 w-4" />
+            {mode === 'transport' ? (
+              <form onSubmit={submitTransportSearch} className="flex flex-col gap-4">
+                <FieldGroup className="gap-4 xl:grid xl:grid-cols-[0.8fr_1fr_1fr_0.9fr_0.9fr_0.7fr_0.7fr]">
+                  <Field data-invalid={Boolean(transportForm.formState.errors.trip_type)}>
+                    <FieldLabel htmlFor="transport-trip-type">Trip type</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={transportForm.control}
+                        name="trip_type"
+                        render={({ field }) => (
+                          <Select
+                            value={field.value}
+                            onValueChange={(nextValue) => {
+                              field.onChange(nextValue)
+                              if (nextValue === 'one_way') {
+                                transportForm.setValue('return_date', null, { shouldDirty: true })
+                              } else if (!transportForm.getValues('return_date')) {
+                                transportForm.setValue('return_date', plusOneDay(transportForm.getValues('depart_date')), {
+                                  shouldDirty: true,
+                                })
+                              }
+                            }}
+                          >
+                            <SelectTrigger id="transport-trip-type" className="h-10 rounded-[8px] bg-white">
+                              <ArrowRightLeft className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectItem value="round_trip">Round trip</SelectItem>
+                                <SelectItem value="one_way">One way</SelectItem>
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
                         )}
-                        Search flights
-                      </Button>
-                    </div>
-                  </div>
-                </form>
-              </TabsContent>
+                      />
+                      <FieldError errors={[transportForm.formState.errors.trip_type]} />
+                    </FieldContent>
+                  </Field>
 
-              <TabsContent value="lodging" className="mt-0">
-                <form onSubmit={submitLodgingSearch} className="flex flex-col gap-4">
-                  <FieldGroup className="gap-5 xl:grid xl:grid-cols-[1.2fr_0.95fr_0.95fr_0.7fr_0.7fr]">
-                    <Field data-invalid={Boolean(lodgingForm.formState.errors.location_text)}>
-                      <FieldLabel htmlFor="hotel-location">Location</FieldLabel>
-                      <FieldContent>
-                        <Input
-                          id="hotel-location"
-                          placeholder="City or destination"
-                          className="h-11 rounded-[18px] bg-white/85"
-                          {...lodgingForm.register('location_text')}
-                        />
-                        <FieldDescription>Prefilled from your trip destination and latest hotel search.</FieldDescription>
-                        <FieldError errors={[lodgingForm.formState.errors.location_text]} />
-                      </FieldContent>
-                    </Field>
+                  <Field data-invalid={Boolean(transportForm.formState.errors.origin_text)}>
+                    <FieldLabel htmlFor="transport-origin">Origin</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="transport-origin"
+                        placeholder="Origin airport or city"
+                        className="h-10 rounded-[8px] bg-white"
+                        {...transportForm.register('origin_text')}
+                      />
+                      <FieldError errors={[transportForm.formState.errors.origin_text]} />
+                    </FieldContent>
+                  </Field>
 
-                    <Field data-invalid={Boolean(lodgingForm.formState.errors.checkin_date)}>
-                      <FieldLabel htmlFor="hotel-checkin">Check-in</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={lodgingForm.control}
-                          name="checkin_date"
-                          render={({ field }) => (
-                            <DatePicker
-                              id="hotel-checkin"
-                              value={field.value}
-                              onChange={field.onChange}
-                              invalid={Boolean(lodgingForm.formState.errors.checkin_date)}
-                              className="h-11 rounded-[18px] bg-white/85"
-                            />
-                          )}
-                        />
-                        <FieldError errors={[lodgingForm.formState.errors.checkin_date]} />
-                      </FieldContent>
-                    </Field>
+                  <Field data-invalid={Boolean(transportForm.formState.errors.destination_text)}>
+                    <FieldLabel htmlFor="transport-destination">Destination</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="transport-destination"
+                        placeholder="Destination airport or city"
+                        className="h-10 rounded-[8px] bg-white"
+                        {...transportForm.register('destination_text')}
+                      />
+                      <FieldError errors={[transportForm.formState.errors.destination_text]} />
+                    </FieldContent>
+                  </Field>
 
-                    <Field data-invalid={Boolean(lodgingForm.formState.errors.checkout_date)}>
-                      <FieldLabel htmlFor="hotel-checkout">Check-out</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={lodgingForm.control}
-                          name="checkout_date"
-                          render={({ field }) => (
-                            <DatePicker
-                              id="hotel-checkout"
-                              value={field.value}
-                              onChange={field.onChange}
-                              invalid={Boolean(lodgingForm.formState.errors.checkout_date)}
-                              className="h-11 rounded-[18px] bg-white/85"
-                            />
-                          )}
-                        />
-                        <FieldError errors={[lodgingForm.formState.errors.checkout_date]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(lodgingForm.formState.errors.guests)}>
-                      <FieldLabel htmlFor="hotel-guests">Guests</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={lodgingForm.control}
-                          name="guests"
-                          render={({ field }) => (
-                            <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
-                              <SelectTrigger id="hotel-guests" className="h-11 rounded-[18px] bg-white/85">
-                                <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  {GUEST_OPTIONS.map((value) => (
-                                    <SelectItem key={value} value={value}>
-                                      {value} guest{value === '1' ? '' : 's'}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <FieldError errors={[lodgingForm.formState.errors.guests]} />
-                      </FieldContent>
-                    </Field>
-
-                    <Field data-invalid={Boolean(lodgingForm.formState.errors.currency)}>
-                      <FieldLabel htmlFor="hotel-currency">Currency</FieldLabel>
-                      <FieldContent>
-                        <Controller
-                          control={lodgingForm.control}
-                          name="currency"
-                          render={({ field }) => (
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger id="hotel-currency" className="h-11 rounded-[18px] bg-white/85">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectGroup>
-                                  {DEFAULT_CURRENCIES.map((currency) => (
-                                    <SelectItem key={currency} value={currency}>
-                                      {currency}
-                                    </SelectItem>
-                                  ))}
-                                </SelectGroup>
-                              </SelectContent>
-                            </Select>
-                          )}
-                        />
-                        <FieldError errors={[lodgingForm.formState.errors.currency]} />
-                      </FieldContent>
-                    </Field>
-                  </FieldGroup>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <InlineModeIssue issue={lodgingIssue} />
-                    <div className="ml-auto flex items-center gap-3">
-                      <p className="text-sm text-[var(--color-text-muted)]">
-                        Hotel searches enrich Amadeus snapshots with address, ratings, map points, and place-photo links.
-                      </p>
-                      <Button
-                        type="submit"
-                        size="lg"
-                        disabled={lodgingSearchPending}
-                        className="h-12 rounded-full px-6"
-                      >
-                        {lodgingSearchPending ? (
-                          <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Search data-icon="inline-start" className="h-4 w-4" />
+                  <Field data-invalid={Boolean(transportForm.formState.errors.depart_date)}>
+                    <FieldLabel htmlFor="transport-depart">Depart</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={transportForm.control}
+                        name="depart_date"
+                        render={({ field }) => (
+                          <DatePicker
+                            id="transport-depart"
+                            value={field.value}
+                            onChange={field.onChange}
+                            invalid={Boolean(transportForm.formState.errors.depart_date)}
+                            className="h-10 rounded-[8px] bg-white"
+                          />
                         )}
-                        Search hotels
-                      </Button>
-                    </div>
+                      />
+                      <FieldError errors={[transportForm.formState.errors.depart_date]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(transportForm.formState.errors.return_date)}>
+                    <FieldLabel htmlFor="transport-return">Return</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={transportForm.control}
+                        name="return_date"
+                        render={({ field }) => (
+                          <DatePicker
+                            id="transport-return"
+                            value={field.value ?? ''}
+                            onChange={field.onChange}
+                            disabled={transportForm.watch('trip_type') === 'one_way'}
+                            invalid={Boolean(transportForm.formState.errors.return_date)}
+                            placeholder="Optional"
+                            className="h-10 rounded-[8px] bg-white"
+                          />
+                        )}
+                      />
+                      <FieldError errors={[transportForm.formState.errors.return_date]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(transportForm.formState.errors.adults)}>
+                    <FieldLabel htmlFor="transport-adults">Adults</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={transportForm.control}
+                        name="adults"
+                        render={({ field }) => (
+                          <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                            <SelectTrigger id="transport-adults" className="h-10 rounded-[8px] bg-white">
+                              <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {ADULT_OPTIONS.map((value) => (
+                                  <SelectItem key={value} value={value}>
+                                    {value} adult{value === '1' ? '' : 's'}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <FieldError errors={[transportForm.formState.errors.adults]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(transportForm.formState.errors.currency)}>
+                    <FieldLabel htmlFor="transport-currency">Currency</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={transportForm.control}
+                        name="currency"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger id="transport-currency" className="h-10 rounded-[8px] bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {DEFAULT_CURRENCIES.map((currency) => (
+                                  <SelectItem key={currency} value={currency}>
+                                    {currency}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <FieldError errors={[transportForm.formState.errors.currency]} />
+                    </FieldContent>
+                  </Field>
+                </FieldGroup>
+
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    {transportIssue ? (
+                      <InlineModeIssue issue={transportIssue} />
+                    ) : (
+                      <p className="text-sm text-[var(--color-text-muted)]">
+                        Search snapshots stay trip-wide until you attach them to a specific day.
+                      </p>
+                    )}
                   </div>
-                </form>
-              </TabsContent>
-            </Tabs>
+                  <Button type="submit" disabled={transportSearchPending} className="h-10 rounded-[8px] px-4">
+                    {transportSearchPending ? (
+                      <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search data-icon="inline-start" className="h-4 w-4" />
+                    )}
+                    Search flights
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={submitLodgingSearch} className="flex flex-col gap-4">
+                <FieldGroup className="gap-4 xl:grid xl:grid-cols-[1.25fr_0.95fr_0.95fr_0.72fr_0.72fr]">
+                  <Field data-invalid={Boolean(lodgingForm.formState.errors.location_text)}>
+                    <FieldLabel htmlFor="hotel-location">Location</FieldLabel>
+                    <FieldContent>
+                      <Input
+                        id="hotel-location"
+                        placeholder="City or destination"
+                        className="h-10 rounded-[8px] bg-white"
+                        {...lodgingForm.register('location_text')}
+                      />
+                      <FieldError errors={[lodgingForm.formState.errors.location_text]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(lodgingForm.formState.errors.checkin_date)}>
+                    <FieldLabel htmlFor="hotel-checkin">Check-in</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={lodgingForm.control}
+                        name="checkin_date"
+                        render={({ field }) => (
+                          <DatePicker
+                            id="hotel-checkin"
+                            value={field.value}
+                            onChange={field.onChange}
+                            invalid={Boolean(lodgingForm.formState.errors.checkin_date)}
+                            className="h-10 rounded-[8px] bg-white"
+                          />
+                        )}
+                      />
+                      <FieldError errors={[lodgingForm.formState.errors.checkin_date]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(lodgingForm.formState.errors.checkout_date)}>
+                    <FieldLabel htmlFor="hotel-checkout">Check-out</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={lodgingForm.control}
+                        name="checkout_date"
+                        render={({ field }) => (
+                          <DatePicker
+                            id="hotel-checkout"
+                            value={field.value}
+                            onChange={field.onChange}
+                            invalid={Boolean(lodgingForm.formState.errors.checkout_date)}
+                            className="h-10 rounded-[8px] bg-white"
+                          />
+                        )}
+                      />
+                      <FieldError errors={[lodgingForm.formState.errors.checkout_date]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(lodgingForm.formState.errors.guests)}>
+                    <FieldLabel htmlFor="hotel-guests">Guests</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={lodgingForm.control}
+                        name="guests"
+                        render={({ field }) => (
+                          <Select value={String(field.value)} onValueChange={(value) => field.onChange(Number(value))}>
+                            <SelectTrigger id="hotel-guests" className="h-10 rounded-[8px] bg-white">
+                              <Users className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {GUEST_OPTIONS.map((value) => (
+                                  <SelectItem key={value} value={value}>
+                                    {value} guest{value === '1' ? '' : 's'}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <FieldError errors={[lodgingForm.formState.errors.guests]} />
+                    </FieldContent>
+                  </Field>
+
+                  <Field data-invalid={Boolean(lodgingForm.formState.errors.currency)}>
+                    <FieldLabel htmlFor="hotel-currency">Currency</FieldLabel>
+                    <FieldContent>
+                      <Controller
+                        control={lodgingForm.control}
+                        name="currency"
+                        render={({ field }) => (
+                          <Select value={field.value} onValueChange={field.onChange}>
+                            <SelectTrigger id="hotel-currency" className="h-10 rounded-[8px] bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {DEFAULT_CURRENCIES.map((currency) => (
+                                  <SelectItem key={currency} value={currency}>
+                                    {currency}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                      <FieldError errors={[lodgingForm.formState.errors.currency]} />
+                    </FieldContent>
+                  </Field>
+                </FieldGroup>
+
+                <div className="flex flex-wrap items-start gap-3">
+                  <div className="min-w-0 flex-1">
+                    {lodgingIssue ? (
+                      <InlineModeIssue issue={lodgingIssue} />
+                    ) : (
+                      <p className="text-sm text-[var(--color-text-muted)]">
+                        Hotel snapshots keep address, pricing, and place-photo links when provider data is available.
+                      </p>
+                    )}
+                  </div>
+                  <Button type="submit" disabled={lodgingSearchPending} className="h-10 rounded-[8px] px-4">
+                    {lodgingSearchPending ? (
+                      <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search data-icon="inline-start" className="h-4 w-4" />
+                    )}
+                    Search hotels
+                  </Button>
+                </div>
+              </form>
+            )}
 
             {activeJobRunning ? (
-              <Alert className="rounded-[20px] border-white/60 bg-white/75">
+              <Alert className="rounded-[10px] border-black/8 bg-[var(--color-secondary-surface)] p-3.5 shadow-none">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <div>
                   <AlertTitle>
                     {queuedMode === 'lodging' ? 'Refreshing hotel results' : 'Refreshing flight results'}
                   </AlertTitle>
                   <AlertDescription>
-                    Voyager is polling the background job and will refetch the offer list automatically when the snapshot refresh completes.
+                    Voyager will refetch this list when the provider refresh finishes.
                   </AlertDescription>
                 </div>
               </Alert>
@@ -1763,135 +1741,112 @@ export default function OffersWorkspace({ tripId }: Props) {
         </section>
 
         {mode === 'transport' ? (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_400px]">
-            <section className="flex flex-col gap-5">
-              <Card className="rounded-[30px] border-white/60 bg-white/88 shadow-[0_24px_80px_rgba(26,38,48,0.06)]">
-                <CardHeader className="flex flex-col gap-4 pb-0">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <CardTitle className="text-2xl tracking-[-0.03em]">Flight results</CardTitle>
-                      <CardDescription>
-                        {visibleTransportOffers.length} ranked snapshot{visibleTransportOffers.length === 1 ? '' : 's'}
-                        {offersFetching ? ' · refreshing' : ''}
-                      </CardDescription>
-                    </div>
-                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
-                      <Checkbox
-                        checked={transportCurrentOnly}
-                        onCheckedChange={(checked) => setTransportCurrentOnly(checked === true)}
-                        aria-label="Current only"
-                      />
-                      Current only
-                    </label>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <section className="min-w-0 flex flex-col gap-4">
+              <section className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-base font-medium text-[var(--color-text)]">Flights</h2>
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                      {offersFetching ? 'Refreshing results' : `${visibleTransportOffers.length} result${visibleTransportOffers.length === 1 ? '' : 's'}`}
+                    </p>
                   </div>
+                  <label className="inline-flex items-center gap-2 rounded-[8px] border border-black/8 bg-white px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                    <Checkbox
+                      checked={transportCurrentOnly}
+                      onCheckedChange={(checked) => setTransportCurrentOnly(checked === true)}
+                      aria-label="Current only"
+                    />
+                    Current only
+                  </label>
+                </div>
 
-                  <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr]">
-                    <SummarySurface
-                      active={transportSort === 'best'}
-                      label="Best"
-                      value={bestTransportOffer ? (formatMoney(bestTransportOffer.price_amount, bestTransportOffer.currency) || '') : 'No offers'}
-                      detail={bestTransportOffer ? `${getFlightPrimaryAirline(bestTransportOffer)} · ${formatDurationMinutes(getFlightDuration(bestTransportOffer))}` : 'Run a flight search'}
-                      onClick={() => setTransportSort('best')}
-                    />
-                    <SummarySurface
-                      active={transportSort === 'cheapest'}
-                      label="Cheapest"
-                      value={cheapestTransportOffer ? (formatMoney(cheapestTransportOffer.price_amount, cheapestTransportOffer.currency) || '') : 'No offers'}
-                      detail={cheapestTransportOffer ? `${getFlightStopsCount(cheapestTransportOffer) === 0 ? 'Nonstop' : `${getFlightStopsCount(cheapestTransportOffer)} stop`}${getFlightStopsCount(cheapestTransportOffer) === 1 ? '' : getFlightStopsCount(cheapestTransportOffer) > 1 ? 's' : ''}` : 'Waiting for search'}
-                      onClick={() => setTransportSort('cheapest')}
-                    />
-                    <SummarySurface
-                      active={transportSort === 'fastest'}
-                      label="Fastest"
-                      value={fastestTransportOffer ? formatDurationMinutes(getFlightDuration(fastestTransportOffer)) : 'No offers'}
-                      detail={fastestTransportOffer ? `${formatMoney(fastestTransportOffer.price_amount, fastestTransportOffer.currency)} · ${getFlightPrimaryAirline(fastestTransportOffer)}` : 'Waiting for search'}
-                      onClick={() => setTransportSort('fastest')}
-                    />
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex flex-col gap-4 pt-5">
-                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr_1fr]">
-                    <FilterSelect
-                      label="Stops"
-                      value={stopsFilter}
-                      onValueChange={(value) => setStopsFilter(value as StopsFilter)}
-                      options={[
-                        { value: 'all', label: 'All stops' },
-                        { value: 'nonstop', label: 'Nonstop' },
-                        { value: '1', label: '1 stop' },
-                        { value: '2+', label: '2+ stops' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Airline"
-                      value={airlineFilter}
-                      onValueChange={setAirlineFilter}
-                      options={[
-                        { value: 'all', label: 'All airlines' },
-                        ...airlineOptions.map((item) => ({ value: item, label: item })),
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Price"
-                      value={flightPriceBucket}
-                      onValueChange={(value) => setFlightPriceBucket(value as PriceBucket)}
-                      options={[
-                        { value: 'all', label: 'Any price' },
-                        { value: 'under-150', label: 'Under 150' },
-                        { value: '150-300', label: '150-300' },
-                        { value: '300-500', label: '300-500' },
-                        { value: '500+', label: '500+' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Departure"
-                      value={departureBucket}
-                      onValueChange={(value) => setDepartureBucket(value as FlightDepartureBucket)}
-                      options={[
-                        { value: 'all', label: 'Any time' },
-                        { value: 'morning', label: 'Morning' },
-                        { value: 'afternoon', label: 'Afternoon' },
-                        { value: 'evening', label: 'Evening' },
-                        { value: 'overnight', label: 'Overnight' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Duration"
-                      value={durationBucket}
-                      onValueChange={(value) => setDurationBucket(value as FlightDurationBucket)}
-                      options={[
-                        { value: 'all', label: 'Any duration' },
-                        { value: 'under-180', label: 'Under 3 hr' },
-                        { value: '180-360', label: '3-6 hr' },
-                        { value: '360+', label: '6+ hr' },
-                      ]}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Sorted by {titleizeToken(transportSort)}
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                  <FilterSelect
+                    label="Sort"
+                    value={transportSort}
+                    onValueChange={(value) => setTransportSort(value as FlightSort)}
+                    options={[
+                      { value: 'best', label: 'Best' },
+                      { value: 'cheapest', label: 'Cheapest' },
+                      { value: 'fastest', label: 'Fastest' },
+                      { value: 'earliest', label: 'Earliest' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Stops"
+                    value={stopsFilter}
+                    onValueChange={(value) => setStopsFilter(value as StopsFilter)}
+                    options={[
+                      { value: 'all', label: 'All stops' },
+                      { value: 'nonstop', label: 'Nonstop' },
+                      { value: '1', label: '1 stop' },
+                      { value: '2+', label: '2+ stops' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Airline"
+                    value={airlineFilter}
+                    onValueChange={setAirlineFilter}
+                    options={[
+                      { value: 'all', label: 'All airlines' },
+                      ...airlineOptions.map((item) => ({ value: item, label: item })),
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Price"
+                    value={flightPriceBucket}
+                    onValueChange={(value) => setFlightPriceBucket(value as PriceBucket)}
+                    options={[
+                      { value: 'all', label: 'Any price' },
+                      { value: 'under-150', label: 'Under 150' },
+                      { value: '150-300', label: '150-300' },
+                      { value: '300-500', label: '300-500' },
+                      { value: '500+', label: '500+' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Departure"
+                    value={departureBucket}
+                    onValueChange={(value) => setDepartureBucket(value as FlightDepartureBucket)}
+                    options={[
+                      { value: 'all', label: 'Any time' },
+                      { value: 'morning', label: 'Morning' },
+                      { value: 'afternoon', label: 'Afternoon' },
+                      { value: 'evening', label: 'Evening' },
+                      { value: 'overnight', label: 'Overnight' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Duration"
+                    value={durationBucket}
+                    onValueChange={(value) => setDurationBucket(value as FlightDurationBucket)}
+                    options={[
+                      { value: 'all', label: 'Any duration' },
+                      { value: 'under-180', label: 'Under 3 hr' },
+                      { value: '180-360', label: '3-6 hr' },
+                      { value: '360+', label: '6+ hr' },
+                    ]}
+                  />
+                </div>
+              </section>
 
               {offersLoading || activeLoading ? (
                 <OffersLoadingState mode="transport" />
               ) : visibleTransportOffers.length === 0 ? (
-                <Card className="rounded-[30px] border-dashed border-[var(--color-border)] bg-white/88">
+                <Card className="rounded-[12px] border-dashed border-black/8 bg-white shadow-none">
                   <CardContent className="flex flex-col gap-3 p-8 text-center">
                     <Plane className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                     <div>
                       <p className="text-lg font-semibold text-[var(--color-text)]">No flights match the current filters</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                        Broaden the filter set or run a new search with different dates or airports.
+                        Broaden the filters or run a new search with different dates or airports.
                       </p>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   {visibleTransportOffers.map((offer, index) => {
                     const selected = offer.id === selectedTransportId
                     const expanded = offer.id === expandedTransportId
@@ -1906,8 +1861,8 @@ export default function OffersWorkspace({ tripId }: Props) {
                       <Card
                         key={offer.id}
                         className={cn(
-                          'overflow-hidden rounded-[30px] border-white/60 bg-white/92 shadow-[0_22px_70px_rgba(26,38,48,0.05)]',
-                          selected && 'border-[var(--color-primary)] shadow-[0_24px_80px_rgba(32,56,83,0.14)]',
+                          'overflow-hidden rounded-[12px] border border-black/8 bg-white shadow-none',
+                          selected && 'border-[var(--color-primary)]',
                         )}
                       >
                         <button
@@ -1918,11 +1873,11 @@ export default function OffersWorkspace({ tripId }: Props) {
                           }}
                           className="w-full text-left"
                         >
-                          <CardContent className="flex flex-col gap-5 p-5">
-                            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                          <CardContent className="flex flex-col gap-4 p-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-lg font-semibold text-[var(--color-text)]">
+                                  <p className="text-base font-medium text-[var(--color-text)]">
                                     {getFlightPrimaryAirline(offer)}
                                   </p>
                                   {index === 0 && transportSort === 'best' ? <Badge>Best</Badge> : null}
@@ -1944,16 +1899,16 @@ export default function OffersWorkspace({ tripId }: Props) {
                                 </p>
                               </div>
                               <div className="text-left md:text-right">
-                                <p className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+                                <p className="text-xl font-semibold text-[var(--color-text)]">
                                   {formatMoney(offer.price_amount, offer.currency)}
                                 </p>
-                                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                                   Expires {formatDateTimeLabel(offer.expires_at)}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="grid gap-3 rounded-[24px] border border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(244,235,221,0.55))] p-4 md:grid-cols-[1.1fr_0.9fr_0.8fr_0.8fr]">
+                            <div className="grid gap-2 sm:grid-cols-4">
                               <ValuePill
                                 icon={Plane}
                                 label="Route"
@@ -1979,24 +1934,14 @@ export default function OffersWorkspace({ tripId }: Props) {
                             <div className="flex flex-wrap gap-2">
                               {details?.cabin ? <Badge variant="outline">{titleizeToken(details.cabin)}</Badge> : null}
                               {details?.baggage_summary ? <Badge variant="outline">{details.baggage_summary}</Badge> : null}
-                              {details?.bookable_seats != null ? (
-                                <Badge variant="outline">{details.bookable_seats} seats left</Badge>
-                              ) : null}
-                              {details?.emissions_kg ? (
-                                <Badge variant="outline">{details.emissions_kg} kg CO2e</Badge>
-                              ) : null}
-                              {details?.additional_baggage_price ? (
-                                <Badge variant="outline">
-                                  Bags from {formatMoney(details.additional_baggage_price, details.additional_baggage_currency ?? offer.currency)}
-                                </Badge>
-                              ) : null}
+                              {details?.bookable_seats != null ? <Badge variant="outline">{details.bookable_seats} seats left</Badge> : null}
                             </div>
                           </CardContent>
                         </button>
 
-                        <div className="border-t border-[var(--color-border)] bg-white/75 px-5 py-4">
+                        <div className="border-t border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => openAttachDialog(offer)}>
+                            <Button variant="outline" onClick={() => openAttachDialog(offer)} className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none">
                               <Ticket data-icon="inline-start" className="h-4 w-4" />
                               Attach to day
                             </Button>
@@ -2004,6 +1949,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                               variant="outline"
                               onClick={() => refreshSingleOffer(offer)}
                               disabled={refreshingOfferId === offer.id}
+                              className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none"
                             >
                               {refreshingOfferId === offer.id ? (
                                 <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
@@ -2013,7 +1959,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                               Refresh
                             </Button>
                             {offer.deep_link ? (
-                              <Button variant="outline" asChild>
+                              <Button variant="outline" asChild className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none">
                                 <a href={offer.deep_link} target="_blank" rel="noreferrer">
                                   <ExternalLink data-icon="inline-start" className="h-4 w-4" />
                                   Open provider
@@ -2035,14 +1981,14 @@ export default function OffersWorkspace({ tripId }: Props) {
               )}
             </section>
 
-            <aside className="xl:sticky xl:top-6 xl:self-start">
-              <Card className="overflow-hidden rounded-[32px] border-white/60 bg-white/92 shadow-[0_26px_90px_rgba(26,38,48,0.08)]">
-                <CardHeader className="gap-4">
+            <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+              <Card className="overflow-hidden rounded-[12px] border-black/8 bg-white shadow-none">
+                <CardHeader className="gap-3 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="text-2xl tracking-[-0.03em]">Flight detail</CardTitle>
+                      <CardTitle className="text-base font-medium">Flight detail</CardTitle>
                       <CardDescription>
-                        {selectedTransportOffer ? 'Expanded Amadeus itinerary detail and map route.' : 'Select a flight to inspect the snapshot.'}
+                        {selectedTransportOffer ? 'Selected route and provider detail.' : 'Select a flight result to inspect it.'}
                       </CardDescription>
                     </div>
                     {selectedTransportOffer?.trip_day_id ? (
@@ -2051,6 +1997,9 @@ export default function OffersWorkspace({ tripId }: Props) {
                       </Badge>
                     ) : null}
                   </div>
+                </CardHeader>
+
+                <div className="px-4 pb-4">
                   <OfferMapCanvas
                     mode="transport"
                     selectedFlight={selectedTransportOffer}
@@ -2059,13 +2008,13 @@ export default function OffersWorkspace({ tripId }: Props) {
                     onSelectHotel={() => undefined}
                     tripLayers={tripLayers}
                   />
-                </CardHeader>
+                </div>
 
-                <CardContent className="flex flex-col gap-5">
+                <CardContent className="flex flex-col gap-4 border-t border-black/8 p-4">
                   {selectedTransportOffer ? (
                     <>
                       <div>
-                        <p className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+                        <p className="text-lg font-semibold text-[var(--color-text)]">
                           {selectedTransportOffer.title}
                         </p>
                         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -2073,7 +2022,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         </p>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         <ValuePill
                           icon={Sparkles}
                           label="Price"
@@ -2101,16 +2050,11 @@ export default function OffersWorkspace({ tripId }: Props) {
                       </div>
 
                       <div className="flex flex-col gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--color-text)]">Segment timeline</p>
-                          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                            Terminals, cabin, baggage, and layover detail come from the normalized Amadeus payload.
-                          </p>
-                        </div>
+                        <p className="text-sm font-medium text-[var(--color-text)]">Segment timeline</p>
                         <FlightTimeline details={selectedTransportOffer.transport_details} compact />
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         <ValuePill
                           icon={Calendar}
                           label="Depart"
@@ -2118,7 +2062,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         />
                         <ValuePill
                           icon={Calendar}
-                          label="Return / arrival"
+                          label="Arrival"
                           value={formatDateLabel(getFlightArrivalTime(selectedTransportOffer), 'EEE, MMM d')}
                         />
                       </div>
@@ -2126,9 +2070,9 @@ export default function OffersWorkspace({ tripId }: Props) {
                   ) : (
                     <div className="py-8 text-center">
                       <Plane className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
-                      <p className="mt-3 text-lg font-semibold text-[var(--color-text)]">No flight selected</p>
+                      <p className="mt-3 text-sm font-medium text-[var(--color-text)]">No flight selected</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                        Choose a flight result to inspect the detailed timeline and route rendering.
+                        Choose a result to inspect the route and provider details.
                       </p>
                     </div>
                   )}
@@ -2137,110 +2081,76 @@ export default function OffersWorkspace({ tripId }: Props) {
             </aside>
           </div>
         ) : (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-            <section className="flex flex-col gap-5">
-              <Card className="rounded-[30px] border-white/60 bg-white/88 shadow-[0_24px_80px_rgba(26,38,48,0.06)]">
-                <CardHeader className="flex flex-col gap-4 pb-0">
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <CardTitle className="text-2xl tracking-[-0.03em]">Hotel results</CardTitle>
-                      <CardDescription>
-                        {visibleLodgingOffers.length} map-ready snapshot{visibleLodgingOffers.length === 1 ? '' : 's'}
-                        {offersFetching ? ' · refreshing' : ''}
-                      </CardDescription>
-                    </div>
-                    <label className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-bg-soft)] px-3 py-2 text-sm text-[var(--color-text-muted)]">
-                      <Checkbox
-                        checked={hotelCurrentOnly}
-                        onCheckedChange={(checked) => setHotelCurrentOnly(checked === true)}
-                        aria-label="Current only"
-                      />
-                      Current only
-                    </label>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+            <section className="min-w-0 flex flex-col gap-4">
+              <section className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <h2 className="text-base font-medium text-[var(--color-text)]">Hotels</h2>
+                    <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                      {offersFetching ? 'Refreshing results' : `${visibleLodgingOffers.length} result${visibleLodgingOffers.length === 1 ? '' : 's'}`}
+                    </p>
                   </div>
+                  <label className="inline-flex items-center gap-2 rounded-[8px] border border-black/8 bg-white px-3 py-2 text-sm text-[var(--color-text-muted)]">
+                    <Checkbox
+                      checked={hotelCurrentOnly}
+                      onCheckedChange={(checked) => setHotelCurrentOnly(checked === true)}
+                      aria-label="Current only"
+                    />
+                    Current only
+                  </label>
+                </div>
 
-                  <div className="grid gap-3 md:grid-cols-[1.25fr_1fr_1fr]">
-                    <SummarySurface
-                      active={hotelSort === 'recommended'}
-                      label="Recommended"
-                      value={recommendedHotelOffer ? recommendedHotelOffer.title : 'No offers'}
-                      detail={recommendedHotelOffer ? `${formatMoney(recommendedHotelOffer.price_amount, recommendedHotelOffer.currency)} · ${getHotelSentiment(recommendedHotelOffer)?.toFixed(1) ?? 'No'} sentiment` : 'Run a hotel search'}
-                      onClick={() => setHotelSort('recommended')}
-                    />
-                    <SummarySurface
-                      active={hotelSort === 'price'}
-                      label="Cheapest"
-                      value={cheapestHotelOffer ? (formatMoney(cheapestHotelOffer.price_amount, cheapestHotelOffer.currency) || '') : 'No offers'}
-                      detail={cheapestHotelOffer ? cheapestHotelOffer.title : 'Waiting for search'}
-                      onClick={() => setHotelSort('price')}
-                    />
-                    <SummarySurface
-                      active={hotelSort === 'rating'}
-                      label="Top rated"
-                      value={topRatedHotelOffer ? `${(getHotelStarRating(topRatedHotelOffer) ?? 0).toFixed(1)} stars` : 'No rating'}
-                      detail={topRatedHotelOffer ? topRatedHotelOffer.title : 'Waiting for search'}
-                      onClick={() => setHotelSort('rating')}
-                    />
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex flex-col gap-4 pt-5">
-                  <div className="grid gap-3 md:grid-cols-[1fr_1fr_1fr_1fr]">
-                    <FilterSelect
-                      label="Sort"
-                      value={hotelSort}
-                      onValueChange={(value) => setHotelSort(value as HotelSort)}
-                      options={[
-                        { value: 'recommended', label: 'Recommended' },
-                        { value: 'price', label: 'Price' },
-                        { value: 'rating', label: 'Rating' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Price"
-                      value={hotelPriceBucket}
-                      onValueChange={(value) => setHotelPriceBucket(value as PriceBucket)}
-                      options={[
-                        { value: 'all', label: 'Any price' },
-                        { value: 'under-150', label: 'Under 150' },
-                        { value: '150-300', label: '150-300' },
-                        { value: '300-500', label: '300-500' },
-                        { value: '500+', label: '500+' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Stars"
-                      value={hotelStarBucket}
-                      onValueChange={(value) => setHotelStarBucket(value as HotelStarBucket)}
-                      options={[
-                        { value: 'all', label: 'Any rating' },
-                        { value: '3+', label: '3+' },
-                        { value: '4+', label: '4+' },
-                        { value: '5', label: '5 only' },
-                      ]}
-                    />
-                    <FilterSelect
-                      label="Amenity"
-                      value={hotelAmenityFilter}
-                      onValueChange={setHotelAmenityFilter}
-                      options={[
-                        { value: 'all', label: 'All amenities' },
-                        ...hotelAmenities.map((amenity) => ({ value: amenity, label: titleizeToken(amenity) })),
-                      ]}
-                    />
-                  </div>
-
-                  <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Hotels are ranked with sentiment, price, and distance when the data is available.
-                  </div>
-                </CardContent>
-              </Card>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <FilterSelect
+                    label="Sort"
+                    value={hotelSort}
+                    onValueChange={(value) => setHotelSort(value as HotelSort)}
+                    options={[
+                      { value: 'recommended', label: 'Recommended' },
+                      { value: 'price', label: 'Price' },
+                      { value: 'rating', label: 'Rating' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Price"
+                    value={hotelPriceBucket}
+                    onValueChange={(value) => setHotelPriceBucket(value as PriceBucket)}
+                    options={[
+                      { value: 'all', label: 'Any price' },
+                      { value: 'under-150', label: 'Under 150' },
+                      { value: '150-300', label: '150-300' },
+                      { value: '300-500', label: '300-500' },
+                      { value: '500+', label: '500+' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Stars"
+                    value={hotelStarBucket}
+                    onValueChange={(value) => setHotelStarBucket(value as HotelStarBucket)}
+                    options={[
+                      { value: 'all', label: 'Any rating' },
+                      { value: '3+', label: '3+' },
+                      { value: '4+', label: '4+' },
+                      { value: '5', label: '5 only' },
+                    ]}
+                  />
+                  <FilterSelect
+                    label="Amenity"
+                    value={hotelAmenityFilter}
+                    onValueChange={setHotelAmenityFilter}
+                    options={[
+                      { value: 'all', label: 'All amenities' },
+                      ...hotelAmenities.map((amenity) => ({ value: amenity, label: titleizeToken(amenity) })),
+                    ]}
+                  />
+                </div>
+              </section>
 
               {offersLoading || activeLoading ? (
                 <OffersLoadingState mode="lodging" />
               ) : visibleLodgingOffers.length === 0 ? (
-                <Card className="rounded-[30px] border-dashed border-[var(--color-border)] bg-white/88">
+                <Card className="rounded-[12px] border-dashed border-black/8 bg-white shadow-none">
                   <CardContent className="flex flex-col gap-3 p-8 text-center">
                     <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
                     <div>
@@ -2252,7 +2162,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                   </CardContent>
                 </Card>
               ) : (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-3">
                   {visibleLodgingOffers.map((offer) => {
                     const selected = offer.id === selectedLodgingId
                     const details = getHotelDetails(offer)
@@ -2262,8 +2172,8 @@ export default function OffersWorkspace({ tripId }: Props) {
                       <Card
                         key={offer.id}
                         className={cn(
-                          'overflow-hidden rounded-[30px] border-white/60 bg-white/92 shadow-[0_22px_70px_rgba(26,38,48,0.05)]',
-                          selected && 'border-[var(--color-primary)] shadow-[0_24px_80px_rgba(32,56,83,0.14)]',
+                          'overflow-hidden rounded-[12px] border border-black/8 bg-white shadow-none',
+                          selected && 'border-[var(--color-primary)]',
                         )}
                       >
                         <button
@@ -2271,24 +2181,24 @@ export default function OffersWorkspace({ tripId }: Props) {
                           onClick={() => setSelectedLodgingId(offer.id)}
                           className="w-full text-left"
                         >
-                          <CardContent className="grid gap-4 p-5 md:grid-cols-[168px_1fr_auto]">
-                            <div className="overflow-hidden rounded-[22px] border border-[var(--color-border)] bg-[var(--color-bg-soft)]">
+                          <CardContent className="grid gap-3 p-4 md:grid-cols-[132px_1fr_auto]">
+                            <div className="overflow-hidden rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)]">
                               {resolvePhotoUrl(photo, 'thumb') ? (
                                 <img
                                   src={resolvePhotoUrl(photo, 'thumb') || ''}
                                   alt={offer.title}
-                                  className="h-full min-h-[136px] w-full object-cover"
+                                  className="h-full min-h-[112px] w-full object-cover"
                                 />
                               ) : (
-                                <div className="flex min-h-[136px] items-center justify-center bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(228,240,251,0.78))]">
-                                  <Hotel className="h-8 w-8 text-[var(--color-primary-foreground)]" />
+                                <div className="flex min-h-[112px] items-center justify-center bg-[var(--color-secondary-surface)]">
+                                  <Hotel className="h-7 w-7 text-[var(--color-primary-foreground)]" />
                                 </div>
                               )}
                             </div>
 
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-lg font-semibold text-[var(--color-text)]">{offer.title}</p>
+                                <p className="text-base font-medium text-[var(--color-text)]">{offer.title}</p>
                                 {offer.is_current ? (
                                   <Badge variant="secondary">
                                     <ShieldCheck className="mr-1 h-3 w-3" />
@@ -2310,11 +2220,11 @@ export default function OffersWorkspace({ tripId }: Props) {
                               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                                 {details?.address_text ?? offer.location_text ?? 'Address unavailable'}
                               </p>
-                              <p className="mt-3 text-sm text-[var(--color-text)]">
-                                {details?.room_description ?? offer.room_type ?? 'Room details coming from provider snapshot'}
+                              <p className="mt-2 line-clamp-2 text-sm text-[var(--color-text)]">
+                                {details?.room_description ?? offer.room_type ?? 'Room details unavailable'}
                               </p>
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {(details?.amenities ?? []).slice(0, 4).map((amenity) => (
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {(details?.amenities ?? []).slice(0, 3).map((amenity) => (
                                   <Badge key={amenity} variant="outline">
                                     {titleizeToken(amenity)}
                                   </Badge>
@@ -2323,7 +2233,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                             </div>
 
                             <div className="text-left md:text-right">
-                              <p className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+                              <p className="text-xl font-semibold text-[var(--color-text)]">
                                 {formatMoney(offer.price_amount, offer.currency)}
                               </p>
                               {details?.nightly_rate_amount ? (
@@ -2331,16 +2241,16 @@ export default function OffersWorkspace({ tripId }: Props) {
                                   {formatMoney(details.nightly_rate_amount, offer.currency)} / night
                                 </p>
                               ) : null}
-                              <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                              <p className="mt-2 text-xs text-[var(--color-text-muted)]">
                                 {formatDateLabel(offer.checkin_date, 'MMM d')} - {formatDateLabel(offer.checkout_date, 'MMM d')}
                               </p>
                             </div>
                           </CardContent>
                         </button>
 
-                        <div className="border-t border-[var(--color-border)] bg-white/75 px-5 py-4">
+                        <div className="border-t border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
                           <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => openAttachDialog(offer)}>
+                            <Button variant="outline" onClick={() => openAttachDialog(offer)} className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none">
                               <Ticket data-icon="inline-start" className="h-4 w-4" />
                               Attach to day
                             </Button>
@@ -2348,6 +2258,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                               variant="outline"
                               onClick={() => refreshSingleOffer(offer)}
                               disabled={refreshingOfferId === offer.id}
+                              className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none"
                             >
                               {refreshingOfferId === offer.id ? (
                                 <Loader2 data-icon="inline-start" className="h-4 w-4 animate-spin" />
@@ -2357,7 +2268,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                               Refresh
                             </Button>
                             {offer.deep_link ? (
-                              <Button variant="outline" asChild>
+                              <Button variant="outline" asChild className="h-8 rounded-[8px] px-3.5 shadow-none hover:shadow-none">
                                 <a href={offer.deep_link} target="_blank" rel="noreferrer">
                                   <ExternalLink data-icon="inline-start" className="h-4 w-4" />
                                   Open provider
@@ -2373,15 +2284,18 @@ export default function OffersWorkspace({ tripId }: Props) {
               )}
             </section>
 
-            <aside className="xl:sticky xl:top-6 xl:self-start">
-              <Card className="overflow-hidden rounded-[32px] border-white/60 bg-white/92 shadow-[0_26px_90px_rgba(26,38,48,0.08)]">
-                <CardHeader className="gap-4">
+            <aside className="min-w-0 xl:sticky xl:top-4 xl:self-start">
+              <Card className="overflow-hidden rounded-[12px] border-black/8 bg-white shadow-none">
+                <CardHeader className="gap-3 p-4">
                   <div>
-                    <CardTitle className="text-2xl tracking-[-0.03em]">Stay detail</CardTitle>
+                    <CardTitle className="text-base font-medium">Stay detail</CardTitle>
                     <CardDescription>
-                      Map-led detail with linked hotel imagery and policy data.
+                      {selectedLodgingOffer ? 'Selected stay, map marker, and policy detail.' : 'Select a hotel result to inspect it.'}
                     </CardDescription>
                   </div>
+                </CardHeader>
+
+                <div className="px-4 pb-4">
                   <OfferMapCanvas
                     mode="lodging"
                     selectedFlight={null}
@@ -2390,15 +2304,15 @@ export default function OffersWorkspace({ tripId }: Props) {
                     onSelectHotel={setSelectedLodgingId}
                     tripLayers={tripLayers}
                   />
-                </CardHeader>
+                </div>
 
-                <CardContent className="flex flex-col gap-5">
+                <CardContent className="flex flex-col gap-4 border-t border-black/8 p-4">
                   {selectedLodgingOffer ? (
                     <>
                       <HotelHero offer={selectedLodgingOffer} />
 
                       <div>
-                        <p className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+                        <p className="text-lg font-semibold text-[var(--color-text)]">
                           {selectedLodgingOffer.title}
                         </p>
                         <p className="mt-1 text-sm text-[var(--color-text-muted)]">
@@ -2406,7 +2320,7 @@ export default function OffersWorkspace({ tripId }: Props) {
                         </p>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-2 sm:grid-cols-2">
                         <ValuePill
                           icon={Sparkles}
                           label="Total"
@@ -2426,11 +2340,6 @@ export default function OffersWorkspace({ tripId }: Props) {
                             {getHotelDetails(selectedLodgingOffer)?.star_rating?.toFixed(1)} stars
                           </Badge>
                         ) : null}
-                        {getHotelDetails(selectedLodgingOffer)?.sentiment_rating != null ? (
-                          <Badge variant="outline">
-                            {getHotelDetails(selectedLodgingOffer)?.sentiment_rating?.toFixed(1)} sentiment
-                          </Badge>
-                        ) : null}
                         {getHotelDetails(selectedLodgingOffer)?.distance_km != null ? (
                           <Badge variant="outline">
                             {getHotelDetails(selectedLodgingOffer)?.distance_km?.toFixed(1)} km from center
@@ -2444,13 +2353,11 @@ export default function OffersWorkspace({ tripId }: Props) {
                       </div>
 
                       <div className="flex flex-col gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-[var(--color-text)]">Room and stay policy</p>
-                          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                            {getHotelDetails(selectedLodgingOffer)?.room_description ?? selectedLodgingOffer.room_type ?? 'Room detail not provided by provider.'}
-                          </p>
-                        </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
+                        <p className="text-sm font-medium text-[var(--color-text)]">Room and stay policy</p>
+                        <p className="text-sm text-[var(--color-text-muted)]">
+                          {getHotelDetails(selectedLodgingOffer)?.room_description ?? selectedLodgingOffer.room_type ?? 'Room detail not provided by provider.'}
+                        </p>
+                        <div className="grid gap-2 sm:grid-cols-2">
                           <ValuePill
                             icon={Users}
                             label="Payment"
@@ -2479,12 +2386,12 @@ export default function OffersWorkspace({ tripId }: Props) {
                           autoFetchWhenEmpty
                         />
                       ) : (
-                        <Alert variant="warning" className="rounded-[18px]">
+                        <Alert variant="warning" className="rounded-[10px] border-black/8 p-3.5 shadow-none">
                           <CircleAlert className="h-4 w-4" />
                           <div>
                             <AlertTitle>Photos are not linked yet</AlertTitle>
                             <AlertDescription>
-                              This hotel snapshot does not have a linked place record yet, so the shared photo pipeline cannot fetch imagery.
+                              This hotel snapshot does not have a linked place record yet.
                             </AlertDescription>
                           </div>
                         </Alert>
@@ -2493,9 +2400,9 @@ export default function OffersWorkspace({ tripId }: Props) {
                   ) : (
                     <div className="py-8 text-center">
                       <Hotel className="mx-auto h-8 w-8 text-[var(--color-primary-foreground)]" />
-                      <p className="mt-3 text-lg font-semibold text-[var(--color-text)]">No stay selected</p>
+                      <p className="mt-3 text-sm font-medium text-[var(--color-text)]">No stay selected</p>
                       <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-                        Select a hotel result to inspect the map marker, room policy, and linked imagery.
+                        Choose a result to inspect the map marker and stay details.
                       </p>
                     </div>
                   )}
@@ -2504,10 +2411,10 @@ export default function OffersWorkspace({ tripId }: Props) {
             </aside>
           </div>
         )}
-      </div>
+      </WorkspacePage>
 
       <Dialog open={Boolean(attachingOffer)} onOpenChange={(open) => !open && setAttachingOffer(null)}>
-        <DialogContent className="rounded-[28px]">
+        <DialogContent className="rounded-[12px]">
           <DialogHeader>
             <DialogTitle>Attach offer to day</DialogTitle>
             <DialogDescription>
@@ -2553,7 +2460,7 @@ export default function OffersWorkspace({ tripId }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 
@@ -2573,7 +2480,7 @@ function FilterSelect({
       <FieldLabel>{label}</FieldLabel>
       <FieldContent>
         <Select value={value} onValueChange={onValueChange}>
-          <SelectTrigger className="h-11 rounded-[18px] bg-white/85">
+          <SelectTrigger className="h-10 rounded-[8px] bg-white shadow-none">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

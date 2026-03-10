@@ -842,6 +842,11 @@ export interface components {
         };
         /** ActivityCreateRequest */
         ActivityCreateRequest: {
+            /**
+             * Trip Day Id
+             * Format: uuid
+             */
+            trip_day_id?: string | null;
             /** Title */
             title: string;
             /** Description */
@@ -1068,9 +1073,14 @@ export interface components {
              * Target Day Id
              * Format: uuid
              */
-            target_day_id: string;
+            target_day_id: string | null;
             /** Target Index */
             target_index: number;
+            /**
+             * Start Time
+             * Format: time
+             */
+            start_time?: string | null;
         };
         /** ActivityPatchRequest */
         ActivityPatchRequest: {
@@ -1165,7 +1175,7 @@ export interface components {
              * Trip Day Id
              * Format: uuid
              */
-            trip_day_id: string;
+            trip_day_id: string | null;
             /** Order Index */
             order_index: number;
             /** Title */
@@ -1918,7 +1928,7 @@ export interface components {
              * Trip Day Id
              * Format: uuid
              */
-            trip_day_id: string;
+            trip_day_id: string | null;
             /** Order Index */
             order_index: number;
             /** Title */
@@ -2396,6 +2406,8 @@ export interface components {
         /** TripPlannerResponse */
         TripPlannerResponse: {
             trip: components["schemas"]["TripResponse"];
+            /** Inbox Activities */
+            inbox_activities?: components["schemas"]["PlannerActivityResponse"][];
             /** Days */
             days: components["schemas"]["PlannerDayResponse"][];
         };

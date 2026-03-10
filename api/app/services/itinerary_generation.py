@@ -334,6 +334,7 @@ async def _apply_replace(
         for candidate in candidates:
             db.add(
                 Activity(
+                    trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
                     title=candidate["title"],
@@ -415,6 +416,7 @@ async def _apply_merge(
 
             db.add(
                 Activity(
+                    trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
                     title=candidate["title"],
@@ -476,6 +478,7 @@ async def _apply_append(
 
             db.add(
                 Activity(
+                    trip_id=day.trip_id,
                     trip_day_id=day.id,
                     order_index=next_index,
                     title=candidate["title"],

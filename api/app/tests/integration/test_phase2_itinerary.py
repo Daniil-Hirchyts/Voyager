@@ -441,6 +441,7 @@ def test_planner_endpoint_embeds_generated_places(api_client, headers_user1):
     assert planner.status_code == 200
     payload = planner.json()
     assert payload["trip"]["id"] == trip["id"]
+    assert payload["inbox_activities"] == []
     assert len(payload["days"]) == len(days)
 
     first_generated = next(

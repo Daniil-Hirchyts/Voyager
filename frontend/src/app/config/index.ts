@@ -27,7 +27,6 @@ export const config = {
     activitiesUI: import.meta.env.VITE_ENABLE_ACTIVITIES_UI !== 'false',
     offersUI: import.meta.env.VITE_ENABLE_OFFERS_UI === 'true',
     exportsUI: import.meta.env.VITE_ENABLE_EXPORTS_UI === 'true',
-    auditUI: import.meta.env.VITE_ENABLE_AUDIT_UI === 'true',
     mapExperiments:
       mapExperimentsFlag === 'true' ||
       (mapExperimentsFlag !== 'false' && Boolean(import.meta.env.VITE_GOOGLE_MAPS_MAP_ID)),

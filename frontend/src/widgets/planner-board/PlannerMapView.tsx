@@ -15,12 +15,14 @@ import {
 import type { Place, PlannerActivity, PlannerPlaceSummary } from '@/shared/api/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PlannerInbox } from './PlannerInbox'
 
 type MarkerPlace = PlannerPlaceSummary | Place
 
 interface Props {
   tripId: string
   activities: PlannerActivity[]
+  inboxActivities: PlannerActivity[]
   selectedActivityId: string | null
   selectedPlaceId: string | null
   onSelectActivityId: (activityId: string | null) => void
@@ -44,6 +46,7 @@ function markerAddress(place: MarkerPlace) {
 export function PlannerMapView({
   tripId,
   activities,
+  inboxActivities,
   selectedActivityId,
   selectedPlaceId,
   onSelectActivityId,
@@ -96,17 +99,29 @@ export function PlannerMapView({
   const hasMap = Boolean(config.map.apiKey)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <div className="space-y-4">
-        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-            Planner Map
+    <div className="grid h-full min-h-0 gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <div className="flex min-h-0 flex-col gap-4">
+        <PlannerInbox
+          activities={inboxActivities}
+          selectedActivityId={selectedActivityId}
+          className="min-h-[220px]"
+          onSelectActivity={(activity) => {
+            onSelectActivityId(activity.id)
+            if (activity.place_id) {
+              onSelectPlaceId(activity.place_id)
+            }
+          }}
+        />
+
+        <div className="rounded-[12px] border border-black/8 bg-white p-4">
+          <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
+            Place matching
           </p>
-          <p className="mt-2 text-lg font-semibold text-[var(--color-text)]">
+          <p className="mt-2 text-[1.05rem] font-medium text-[var(--color-text)]">
             Match each activity to a real place
           </p>
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Search across saved places, preview their media, and pin the selected place to a planner activity.
+            Search saved places and attach the selected result to the current activity.
           </p>
 
           <div className="relative mt-4">
@@ -115,18 +130,18 @@ export function PlannerMapView({
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               placeholder={`Search ${tripId ? 'places for this trip' : 'places'}`}
-              className="h-11 rounded-full border-[var(--color-border)] bg-white pl-10"
+              className="h-10 rounded-[8px] border-black/8 bg-white pl-10"
             />
           </div>
 
           {selectedActivity ? (
-            <div className="mt-4 rounded-[22px] border border-[var(--color-primary)]/25 bg-[var(--color-primary)]/8 p-4">
+            <div className="mt-4 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
                     Selected activity
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-[var(--color-text)]">
+                  <p className="mt-1 text-sm font-medium text-[var(--color-text)]">
                     {selectedActivity.title}
                   </p>
                 </div>
@@ -135,6 +150,7 @@ export function PlannerMapView({
                   variant="ghost"
                   size="sm"
                   onClick={() => onSelectActivityId(null)}
+                  className="h-8 rounded-[8px] px-2.5 text-[0.84rem] text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
                 >
                   Clear
                 </Button>
@@ -143,7 +159,7 @@ export function PlannerMapView({
               {selectedPlaceId ? (
                 <Button
                   type="button"
-                  className="mt-3 w-full"
+                  className="mt-3 h-9 w-full rounded-[8px] shadow-none hover:shadow-none"
                   onClick={() => onAssignPlace(selectedActivity.id, selectedPlaceId)}
                   disabled={isAssigning}
                 >
@@ -157,29 +173,29 @@ export function PlannerMapView({
               )}
             </div>
           ) : (
-            <div className="mt-4 rounded-[22px] border border-dashed border-[var(--color-border)] p-4 text-sm text-[var(--color-text-muted)]">
+            <div className="mt-4 rounded-[10px] border border-dashed border-black/8 p-4 text-sm text-[var(--color-text-muted)]">
               Select an activity from the itinerary list below to reassign its place.
             </div>
           )}
         </div>
 
         {selectedPlace ? (
-          <div className="overflow-hidden rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
+          <div className="overflow-hidden rounded-[12px] border border-black/8 bg-white">
             {markerPhoto(selectedPlace) ? (
               <div
                 className="h-44 bg-cover bg-center"
                 style={{ backgroundImage: `url(${resolvePhotoUrl(selectedPlace.primary_photo, 'full')})` }}
               />
             ) : (
-              <div className="flex h-44 items-center justify-center bg-[linear-gradient(135deg,rgba(114,174,230,0.12),rgba(182,214,242,0.14))]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">P</div>
+              <div className="flex h-44 items-center justify-center bg-[var(--color-secondary-surface)]">
+                <div className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-white text-[var(--color-text-muted)]">P</div>
               </div>
             )}
-            <div className="p-5">
-              <p className="text-lg font-semibold text-[var(--color-text)]">{selectedPlace.name}</p>
+            <div className="p-4">
+              <p className="text-[1.05rem] font-medium text-[var(--color-text)]">{selectedPlace.name}</p>
               <p className="mt-2 text-sm text-[var(--color-text-muted)]">{markerAddress(selectedPlace)}</p>
               {'source' in selectedPlace && selectedPlace.source ? (
-                <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                <p className="mt-2 text-[0.72rem] text-[var(--color-text-muted)]">
                   Source · {selectedPlace.source}
                 </p>
               ) : null}
@@ -192,12 +208,12 @@ export function PlannerMapView({
           </div>
         ) : null}
 
-        <div className="rounded-[28px] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-[0_20px_60px_rgba(32,56,83,0.08)]">
-          <div className="max-h-[420px] space-y-2 overflow-y-auto p-2">
+        <div className="flex min-h-0 flex-1 flex-col rounded-[12px] border border-black/8 bg-white p-3">
+          <div className="min-h-0 space-y-2 overflow-y-auto p-2">
             {searchText.trim().length >= 2 ? (
               <>
                 {isSearching ? (
-                  <div className="flex items-center gap-2 rounded-[18px] border border-[var(--color-border)] px-3 py-4 text-sm text-[var(--color-text-muted)]">
+                  <div className="flex items-center gap-2 rounded-[8px] border border-black/8 px-3 py-3 text-sm text-[var(--color-text-muted)]">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Searching places...
                   </div>
@@ -208,10 +224,10 @@ export function PlannerMapView({
                     type="button"
                     onClick={() => onSelectPlaceId(place.id)}
                     className={cn(
-                      'w-full rounded-[20px] border px-4 py-3 text-left transition-all',
+                      'w-full rounded-[10px] border border-black/8 px-4 py-3 text-left transition-colors',
                       selectedPlaceId === place.id
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/8'
-                        : 'border-[var(--color-border)] hover:border-[var(--color-primary)]/35 hover:bg-white',
+                        ? 'bg-[var(--color-secondary-surface)]'
+                        : 'hover:bg-[var(--color-secondary-surface)]',
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -238,10 +254,10 @@ export function PlannerMapView({
                     }
                   }}
                   className={cn(
-                    'w-full rounded-[20px] border px-4 py-3 text-left transition-all',
+                    'w-full rounded-[10px] border border-black/8 px-4 py-3 text-left transition-colors',
                     selectedActivityId === activity.id
-                      ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/8'
-                      : 'border-[var(--color-border)] hover:border-[var(--color-primary)]/35 hover:bg-white',
+                      ? 'bg-[var(--color-secondary-surface)]'
+                      : 'hover:bg-[var(--color-secondary-surface)]',
                   )}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -260,7 +276,7 @@ export function PlannerMapView({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[32px] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(14,25,35,0.1)]">
+      <div className="h-full min-h-[20rem] overflow-hidden rounded-[12px] border border-black/8 bg-white xl:min-h-0">
         {hasMap ? (
           <GoogleMapCanvas
             defaultCenter={{
@@ -268,7 +284,7 @@ export function PlannerMapView({
               lng: mapCenter?.lon ?? 12.4964,
             }}
             defaultZoom={mapCenter?.lat != null && mapCenter?.lon != null ? 11.5 : 2.5}
-            style={{ width: '100%', height: '760px' }}
+            style={{ width: '100%', height: '100%' }}
             disableDefaultUI={false}
             streetViewControl={false}
             mapTypeControl={false}
@@ -318,7 +334,7 @@ export function PlannerMapView({
             ) : null}
           </GoogleMapCanvas>
         ) : (
-          <div className="flex h-[760px] flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,rgba(114,174,230,0.1),rgba(182,214,242,0.08))] px-8 text-center">
+          <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-3 bg-[linear-gradient(135deg,rgba(114,174,230,0.1),rgba(182,214,242,0.08))] px-8 text-center">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">M</div>
             <p className="text-lg font-semibold text-[var(--color-text)]">Map style is not configured</p>
             <p className="max-w-md text-sm text-[var(--color-text-muted)]">

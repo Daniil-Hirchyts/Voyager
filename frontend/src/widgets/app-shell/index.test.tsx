@@ -2,7 +2,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
 import { AppShellLayout } from './index'
+import ExportsWorkspace from '@/widgets/exports-workspace'
+import { renderWithQueryClient } from '@/test/utils'
+import { server } from '@/test/msw/server'
+import { buildTrip } from '@/test/fixtures/api'
 
 describe('AppShellLayout', () => {
   it('renders primary and trip navigation and collapses the sidebar through the shadcn provider', async () => {
@@ -171,5 +176,38 @@ describe('AppShellLayout', () => {
       configurable: true,
       value: originalMatchMedia,
     })
+  })
+
+  it('mounts exports header actions in the shell without duplicating the fallback block', async () => {
+    server.use(
+      http.get('http://localhost:8000/trips/trip-123', () =>
+        HttpResponse.json(buildTrip({ id: 'trip-123', version: 3 })),
+      ),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/app/trips/trip-123/exports']}>
+        <Routes>
+          <Route
+            path="/app"
+            element={(
+              <AppShellLayout
+                tripId="trip-123"
+                userName="Voyager User"
+                userEmail="voyager_user@example.com"
+                onSignOut={vi.fn()}
+              />
+            )}
+          >
+            <Route path="trips/trip-123/exports" element={<ExportsWorkspace tripId="trip-123" />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('button', { name: /export json/i })).toBeInTheDocument()
+    expect(screen.getByText('Trip version 3')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /export json/i })).toHaveLength(1)
+    expect(screen.queryByText(/create deterministic trip snapshots/i)).not.toBeInTheDocument()
   })
 })

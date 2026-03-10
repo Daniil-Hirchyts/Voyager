@@ -7,7 +7,8 @@
     "config": "",
     "css": "src/app/styles/globals.css",
     "baseColor": "stone",
-    "cssVariables": true
+    "cssVariables": true,
+    "prefix": ""
   },
   "aliases": {
     "components": "@/components",

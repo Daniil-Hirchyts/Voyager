@@ -271,23 +271,27 @@ async def get_trip_planner(
         places_by_id = {place.id: place for place in rows.scalars().all()}
 
     activities_by_day: dict[uuid.UUID, list[PlannerActivityResponse]] = {day.id: [] for day in days}
+    inbox_activities: list[PlannerActivityResponse] = []
     for activity in activities:
         photo_count = 0
         primary_photo = None
         place = places_by_id.get(activity.place_id) if activity.place_id else None
         if activity.place_id:
             photo_count, primary_photo = photo_summaries.get(activity.place_id, (0, None))
-        activities_by_day.setdefault(activity.trip_day_id, []).append(
-            _planner_activity_response(
-                activity,
-                place=place,
-                photo_count=photo_count,
-                primary_photo=primary_photo,
-            )
+        response_activity = _planner_activity_response(
+            activity,
+            place=place,
+            photo_count=photo_count,
+            primary_photo=primary_photo,
         )
+        if activity.trip_day_id is None:
+            inbox_activities.append(response_activity)
+            continue
+        activities_by_day.setdefault(activity.trip_day_id, []).append(response_activity)
 
     return TripPlannerResponse(
         trip=_trip_response(trip),
+        inbox_activities=inbox_activities,
         days=[
             PlannerDayResponse(
                 id=day.id,

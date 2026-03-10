@@ -40,7 +40,6 @@ from app.models.offers import (
     TransportSegmentDetail,
 )
 from app.models.places import PlaceCreateRequest, PlacePhotoResponse, PlacePhotoSummary
-from app.services.place_photo_assets import build_place_photo_asset_url
 from app.models.proposals import ProposalActivityResponse, ProposalResponse
 from app.models.trips import (
     ActivityCreateRequest,
@@ -51,6 +50,7 @@ from app.models.trips import (
     TripCreateRequest,
     TripPatchRequest,
 )
+from app.services.place_photo_assets import build_place_photo_asset_url
 
 _ISO_DURATION_RE = re.compile(
     r"^P(?:(?P<days>\d+)D)?(?:T(?:(?P<hours>\d+)H)?(?:(?P<minutes>\d+)M)?)?$"
@@ -328,14 +328,18 @@ class TripRepository:
 
         source_activities_result = await db.execute(
             select(Activity)
-            .join(TripDay, Activity.trip_day_id == TripDay.id)
-            .where(TripDay.trip_id == source.id)
-            .order_by(TripDay.day_index, Activity.order_index)
+            .where(Activity.trip_id == source.id)
+            .order_by(Activity.trip_day_id.asc().nulls_last(), Activity.order_index)
         )
         for activity in source_activities_result.scalars().all():
             db.add(
                 Activity(
-                    trip_day_id=old_to_new_day_id[activity.trip_day_id],
+                    trip_id=duplicate.id,
+                    trip_day_id=(
+                        old_to_new_day_id[activity.trip_day_id]
+                        if activity.trip_day_id is not None
+                        else None
+                    ),
                     order_index=activity.order_index,
                     title=activity.title,
                     description=activity.description,
@@ -564,6 +568,85 @@ class TripMapLayerRepository:
 
 class ActivityRepository:
     @staticmethod
+    def _bucket_select(
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+        columns: tuple = (Activity,),
+    ):
+        stmt = select(*columns).where(Activity.trip_id == trip_id)
+        if trip_day_id is None:
+            stmt = stmt.where(Activity.trip_day_id.is_(None))
+        else:
+            stmt = stmt.where(Activity.trip_day_id == trip_day_id)
+        return stmt
+
+    @staticmethod
+    async def _bucket_ids(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+    ) -> list[uuid.UUID]:
+        result = await db.execute(
+            ActivityRepository._bucket_select(
+                trip_id=trip_id,
+                trip_day_id=trip_day_id,
+                columns=(Activity.id,),
+            ).order_by(Activity.order_index)
+        )
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def _next_order_index(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+    ) -> int:
+        result = await db.execute(
+            ActivityRepository._bucket_select(
+                trip_id=trip_id,
+                trip_day_id=trip_day_id,
+                columns=(func.max(Activity.order_index),),
+            )
+        )
+        max_order = result.scalar_one()
+        return int(max_order) + 1 if max_order is not None else 0
+
+    @staticmethod
+    async def _temporary_order_sentinel(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+    ) -> int:
+        result = await db.execute(
+            ActivityRepository._bucket_select(
+                trip_id=trip_id,
+                trip_day_id=trip_day_id,
+                columns=(func.min(Activity.order_index),),
+            )
+        )
+        min_order = result.scalar_one()
+        return int(min_order) - 1 if min_order is not None else -1
+
+    @staticmethod
+    async def _set_snapshot_day(
+        db: AsyncSession,
+        *,
+        snapshot_id: uuid.UUID | None,
+        trip_day_id: uuid.UUID | None,
+    ) -> None:
+        if snapshot_id is None:
+            return
+        await db.execute(
+            update(EventSnapshot)
+            .where(EventSnapshot.id == snapshot_id)
+            .values(trip_day_id=trip_day_id)
+        )
+
+    @staticmethod
     async def list_day_activities(
         db: AsyncSession,
         user_id: uuid.UUID,
@@ -597,32 +680,43 @@ class ActivityRepository:
         await TripRepository.get_trip(db, user_id, trip_id)
         result = await db.execute(
             select(Activity)
-            .join(TripDay, Activity.trip_day_id == TripDay.id)
-            .where(TripDay.trip_id == trip_id)
-            .order_by(TripDay.day_index, Activity.order_index)
+            .outerjoin(TripDay, Activity.trip_day_id == TripDay.id)
+            .where(Activity.trip_id == trip_id)
+            .order_by(
+                case((Activity.trip_day_id.is_(None), 1), else_=0),
+                TripDay.day_index.asc().nulls_last(),
+                Activity.order_index,
+            )
         )
         return list(result.scalars().all())
 
     @staticmethod
-    async def create_activity(
+    async def create_trip_activity(
         db: AsyncSession,
         user_id: uuid.UUID,
-        day_id: uuid.UUID,
+        trip_id: uuid.UUID,
         payload: ActivityCreateRequest,
     ) -> Activity:
-        day = await DayRepository.get_day_for_user(db, user_id, day_id)
+        trip = await TripRepository.get_trip(db, user_id, trip_id)
+        target_day: TripDay | None = None
+        if payload.trip_day_id is not None:
+            target_day = await DayRepository.get_day_for_user(db, user_id, payload.trip_day_id)
+            if target_day.trip_id != trip.id:
+                raise ValidationApiError("trip_day_id must belong to the trip")
 
-        count_result = await db.execute(
-            select(func.count(Activity.id)).where(Activity.trip_day_id == day.id)
+        order_index = await ActivityRepository._next_order_index(
+            db,
+            trip_id=trip.id,
+            trip_day_id=target_day.id if target_day else None,
         )
-        order_index = int(count_result.scalar_one())
 
         activity = Activity(
-            trip_day_id=day.id,
+            trip_id=trip.id,
+            trip_day_id=target_day.id if target_day else None,
             order_index=order_index,
             title=payload.title,
             description=payload.description,
-            start_time=payload.start_time,
+            start_time=payload.start_time if target_day else None,
             duration_min=payload.duration_min,
             tags_json=payload.tags,
             estimated_cost_amount=payload.estimated_cost_amount,
@@ -634,19 +728,36 @@ class ActivityRepository:
         )
         db.add(activity)
 
-        await TripRepository.bump_version(db, day.trip_id)
+        await TripRepository.bump_version(db, trip.id)
         await db.flush()
         await db.refresh(activity)
         return activity
 
     @staticmethod
+    async def create_activity(
+        db: AsyncSession,
+        user_id: uuid.UUID,
+        day_id: uuid.UUID,
+        payload: ActivityCreateRequest,
+    ) -> Activity:
+        day = await DayRepository.get_day_for_user(db, user_id, day_id)
+        if payload.trip_day_id not in (None, day.id):
+            raise ValidationApiError("trip_day_id must match the day in the request path")
+        return await ActivityRepository.create_trip_activity(
+            db,
+            user_id,
+            day.trip_id,
+            payload.model_copy(update={"trip_day_id": day.id}),
+        )
+
+    @staticmethod
     async def _get_activity_for_user(
         db: AsyncSession, user_id: uuid.UUID, activity_id: uuid.UUID
-    ) -> tuple[Activity, TripDay, Trip]:
+    ) -> tuple[Activity, Trip, TripDay | None]:
         result = await db.execute(
-            select(Activity, TripDay, Trip)
-            .join(TripDay, Activity.trip_day_id == TripDay.id)
-            .join(Trip, TripDay.trip_id == Trip.id)
+            select(Activity, Trip, TripDay)
+            .join(Trip, Activity.trip_id == Trip.id)
+            .outerjoin(TripDay, Activity.trip_day_id == TripDay.id)
             .where(Activity.id == activity_id)
             .where(Trip.user_id == user_id)
         )
@@ -662,7 +773,7 @@ class ActivityRepository:
         activity_id: uuid.UUID,
         payload: ActivityPatchRequest,
     ) -> Activity:
-        activity, day, _trip = await ActivityRepository._get_activity_for_user(
+        activity, trip, _day = await ActivityRepository._get_activity_for_user(
             db, user_id, activity_id
         )
         update_data = payload.model_dump(exclude_unset=True)
@@ -671,22 +782,28 @@ class ActivityRepository:
         for key, value in update_data.items():
             setattr(activity, key, value)
 
-        await TripRepository.bump_version(db, day.trip_id)
+        await TripRepository.bump_version(db, trip.id)
         await db.flush()
         await db.refresh(activity)
         return activity
 
     @staticmethod
     async def delete_activity(db: AsyncSession, user_id: uuid.UUID, activity_id: uuid.UUID) -> None:
-        activity, day, _trip = await ActivityRepository._get_activity_for_user(
+        activity, trip, _day = await ActivityRepository._get_activity_for_user(
             db, user_id, activity_id
         )
-        source_day_id = day.id
+        source_day_id = activity.trip_day_id
+        snapshot_id = activity.event_snapshot_id
         await db.delete(activity)
         await db.flush()
 
-        await ActivityRepository._normalize_day_order(db, source_day_id)
-        await TripRepository.bump_version(db, day.trip_id)
+        await ActivityRepository._set_snapshot_day(db, snapshot_id=snapshot_id, trip_day_id=None)
+        await ActivityRepository._normalize_bucket_order(
+            db,
+            trip_id=trip.id,
+            trip_day_id=source_day_id,
+        )
+        await TripRepository.bump_version(db, trip.id)
 
     @staticmethod
     async def reorder_day(
@@ -716,7 +833,12 @@ class ActivityRepository:
 
         target_order = sorted(payload.items, key=lambda item: item.order_index)
         ordered_ids = [item.activity_id for item in target_order]
-        await ActivityRepository._apply_order_for_day(db, day.id, ordered_ids)
+        await ActivityRepository._apply_order_for_bucket(
+            db,
+            trip_id=trip.id,
+            trip_day_id=day.id,
+            ordered_ids=ordered_ids,
+        )
 
         await TripRepository.bump_version(db, day.trip_id)
 
@@ -733,7 +855,7 @@ class ActivityRepository:
         expected_version: int,
         payload: ActivityMoveRequest,
     ) -> Activity:
-        activity, source_day, trip = await ActivityRepository._get_activity_for_user(
+        activity, trip, _source_day = await ActivityRepository._get_activity_for_user(
             db, user_id, activity_id
         )
         if trip.version != expected_version:
@@ -743,47 +865,79 @@ class ActivityRepository:
                 details={"latest_version": trip.version},
             )
 
-        target_day = await DayRepository.get_day_for_user(db, user_id, payload.target_day_id)
-        if target_day.trip_id != source_day.trip_id:
-            raise ValidationApiError("Activity move target day must belong to same trip")
+        target_day: TripDay | None = None
+        if payload.target_day_id is not None:
+            target_day = await DayRepository.get_day_for_user(db, user_id, payload.target_day_id)
+            if target_day.trip_id != trip.id:
+                raise ValidationApiError("Activity move target day must belong to same trip")
 
-        if source_day.id == target_day.id:
-            existing_result = await db.execute(
-                select(Activity)
-                .where(Activity.trip_day_id == source_day.id)
-                .order_by(Activity.order_index)
+        source_bucket_day_id = activity.trip_day_id
+        target_bucket_day_id = target_day.id if target_day else None
+
+        if source_bucket_day_id == target_bucket_day_id:
+            ids = await ActivityRepository._bucket_ids(
+                db,
+                trip_id=trip.id,
+                trip_day_id=source_bucket_day_id,
             )
-            ids = [item.id for item in existing_result.scalars().all()]
             ids.remove(activity.id)
             insertion_index = max(0, min(payload.target_index, len(ids)))
             ids.insert(insertion_index, activity.id)
-            await ActivityRepository._apply_order_for_day(db, source_day.id, ids)
+            await ActivityRepository._apply_order_for_bucket(
+                db,
+                trip_id=trip.id,
+                trip_day_id=source_bucket_day_id,
+                ordered_ids=ids,
+            )
         else:
-            source_result = await db.execute(
-                select(Activity)
-                .where(Activity.trip_day_id == source_day.id)
-                .order_by(Activity.order_index)
-            )
             source_ids = [
-                item.id for item in source_result.scalars().all() if item.id != activity.id
+                item_id
+                for item_id in await ActivityRepository._bucket_ids(
+                    db,
+                    trip_id=trip.id,
+                    trip_day_id=source_bucket_day_id,
+                )
+                if item_id != activity.id
             ]
-
-            target_result = await db.execute(
-                select(Activity)
-                .where(Activity.trip_day_id == target_day.id)
-                .order_by(Activity.order_index)
+            target_ids = await ActivityRepository._bucket_ids(
+                db,
+                trip_id=trip.id,
+                trip_day_id=target_bucket_day_id,
             )
-            target_ids = [item.id for item in target_result.scalars().all()]
             insertion_index = max(0, min(payload.target_index, len(target_ids)))
             target_ids.insert(insertion_index, activity.id)
 
-            # Move activity first with a temporary high order to avoid unique conflicts.
-            activity.trip_day_id = target_day.id
-            activity.order_index = 100_000
+            temp_order = await ActivityRepository._temporary_order_sentinel(
+                db,
+                trip_id=trip.id,
+                trip_day_id=target_bucket_day_id,
+            )
+            activity.trip_day_id = target_bucket_day_id
+            activity.order_index = temp_order
             await db.flush()
 
-            await ActivityRepository._apply_order_for_day(db, source_day.id, source_ids)
-            await ActivityRepository._apply_order_for_day(db, target_day.id, target_ids)
+            await ActivityRepository._apply_order_for_bucket(
+                db,
+                trip_id=trip.id,
+                trip_day_id=source_bucket_day_id,
+                ordered_ids=source_ids,
+            )
+            await ActivityRepository._apply_order_for_bucket(
+                db,
+                trip_id=trip.id,
+                trip_day_id=target_bucket_day_id,
+                ordered_ids=target_ids,
+            )
+
+        if target_bucket_day_id is None:
+            activity.start_time = None
+        elif "start_time" in payload.model_fields_set:
+            activity.start_time = payload.start_time
+        await ActivityRepository._set_snapshot_day(
+            db,
+            snapshot_id=activity.event_snapshot_id,
+            trip_day_id=target_bucket_day_id,
+        )
 
         await TripRepository.bump_version(db, trip.id)
         await db.flush()
@@ -791,13 +945,23 @@ class ActivityRepository:
         return activity
 
     @staticmethod
-    async def _normalize_day_order(db: AsyncSession, day_id: uuid.UUID) -> None:
-        result = await db.execute(
-            select(Activity).where(Activity.trip_day_id == day_id).order_by(Activity.order_index)
+    async def _normalize_bucket_order(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+    ) -> None:
+        ids = await ActivityRepository._bucket_ids(
+            db,
+            trip_id=trip_id,
+            trip_day_id=trip_day_id,
         )
-        items = list(result.scalars().all())
-        ids = [item.id for item in items]
-        await ActivityRepository._apply_order_for_day(db, day_id, ids)
+        await ActivityRepository._apply_order_for_bucket(
+            db,
+            trip_id=trip_id,
+            trip_day_id=trip_day_id,
+            ordered_ids=ids,
+        )
 
     @staticmethod
     async def _apply_order_for_day(
@@ -805,15 +969,46 @@ class ActivityRepository:
         day_id: uuid.UUID,
         ordered_ids: list[uuid.UUID],
     ) -> None:
+        day_result = await db.execute(select(TripDay.trip_id).where(TripDay.id == day_id))
+        trip_id = day_result.scalar_one_or_none()
+        if trip_id is None:
+            raise NotFoundError("Day not found")
+        await ActivityRepository._apply_order_for_bucket(
+            db,
+            trip_id=trip_id,
+            trip_day_id=day_id,
+            ordered_ids=ordered_ids,
+        )
+
+    @staticmethod
+    async def _apply_order_for_bucket(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        trip_day_id: uuid.UUID | None,
+        ordered_ids: list[uuid.UUID],
+    ) -> None:
         if not ordered_ids:
             return
 
+        bucket_filter = (
+            Activity.trip_day_id.is_(None)
+            if trip_day_id is None
+            else Activity.trip_day_id == trip_day_id
+        )
+        temp_sentinel = await ActivityRepository._temporary_order_sentinel(
+            db,
+            trip_id=trip_id,
+            trip_day_id=trip_day_id,
+        )
         temp_case = case(
-            {aid: idx + 100_000 for idx, aid in enumerate(ordered_ids)}, value=Activity.id
+            {aid: temp_sentinel - idx - 1 for idx, aid in enumerate(ordered_ids)},
+            value=Activity.id,
         )
         await db.execute(
             update(Activity)
-            .where(Activity.trip_day_id == day_id)
+            .where(Activity.trip_id == trip_id)
+            .where(bucket_filter)
             .where(Activity.id.in_(ordered_ids))
             .values(order_index=temp_case)
         )
@@ -821,7 +1016,8 @@ class ActivityRepository:
         final_case = case({aid: idx for idx, aid in enumerate(ordered_ids)}, value=Activity.id)
         await db.execute(
             update(Activity)
-            .where(Activity.trip_day_id == day_id)
+            .where(Activity.trip_id == trip_id)
+            .where(bucket_filter)
             .where(Activity.id.in_(ordered_ids))
             .values(order_index=final_case)
         )
@@ -1599,6 +1795,7 @@ class EventRepository:
             duration_min = max(delta, 30)
 
         activity = Activity(
+            trip_id=day.trip_id,
             trip_day_id=day.id,
             order_index=order_index,
             title=snapshot.title,

@@ -130,6 +130,54 @@ def _provider_errors_to_api(exc: Exception) -> None:
     raise exc
 
 
+@router.post("/trips/{trip_id}/planner/activities", response_model=ActivityResponse, status_code=201)
+async def create_trip_activity(
+    trip_id: uuid.UUID,
+    payload: ActivityCreateRequest,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> ActivityResponse | JSONResponse:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "activities:create",
+        settings.rate_limit_activity_create_per_min,
+    )
+
+    idem = IdempotencyService(redis)
+    fingerprint = payload_fingerprint(payload.model_dump(mode="json") | {"trip_id": str(trip_id)})
+    replay = await idem.check_or_replay(
+        user_id=str(auth.user_id),
+        method="POST",
+        path=f"/trips/{trip_id}/planner/activities",
+        idempotency_key=idempotency_key,
+        fingerprint=fingerprint,
+    )
+    if replay:
+        return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
+
+    activity = await ActivityRepository.create_trip_activity(db, auth.user_id, trip_id, payload)
+    response = _activity_response(activity)
+    await cache_delete_prefix(redis, "trip:get:")
+    await cache_delete_prefix(redis, "trip:list:")
+
+    if idempotency_key:
+        await idem.store_response(
+            user_id=str(auth.user_id),
+            method="POST",
+            path=f"/trips/{trip_id}/planner/activities",
+            idempotency_key=idempotency_key,
+            fingerprint=fingerprint,
+            status_code=201,
+            response_body=response.model_dump(mode="json"),
+        )
+
+    return response
+
+
 @router.post("/days/{day_id}/activities", response_model=ActivityResponse, status_code=201)
 async def create_activity(
     day_id: uuid.UUID,
@@ -225,6 +273,7 @@ async def delete_activity(
     await ActivityRepository.delete_activity(db, auth.user_id, activity_id)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "activity:shortlist:")
 
 
 @router.post("/days/{day_id}/activities/reorder", response_model=ActivityListResponse)
@@ -269,6 +318,7 @@ async def move_activity(
     )
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "activity:shortlist:")
     return _activity_response(activity)
 
 

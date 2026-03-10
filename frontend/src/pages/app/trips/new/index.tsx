@@ -27,8 +27,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { createPlace, type DestinationAutocompleteItem } from '@/entities/place/api'
+import {
+  buildPlaceCreateInputFromDestinationSuggestion,
+} from '@/entities/place/destination'
 import { useDestinationAutocomplete } from '@/entities/place/queries'
 import { createTrip } from '@/entities/trip/api'
+import { mergeTripCoverPhotoPreference } from '@/entities/trip/cover-photo'
 import { tripKeys } from '@/entities/trip/queries'
 import { isApiError } from '@/shared/api/client'
 import { cn } from '@/shared/lib/cn'
@@ -99,11 +104,6 @@ const schema = z
   )
 
 type FormValues = z.infer<typeof schema>
-
-type DestinationSuggestion = {
-  id: string
-  value: string
-}
 
 const controlClassName =
   'h-10 rounded-[10px] border-[rgba(0,0,0,0.08)] bg-white px-3.5 text-sm shadow-none placeholder:text-[var(--color-text-muted)]/80 focus:border-[rgba(0,0,0,0.12)] focus:ring-4 focus:ring-[rgba(26,22,21,0.06)]'
@@ -184,6 +184,8 @@ export default function TripCreatePage() {
   const queryClient = useQueryClient()
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const [destinationOpen, setDestinationOpen] = useState(false)
+  const [selectedDestinationSuggestion, setSelectedDestinationSuggestion] =
+    useState<DestinationAutocompleteItem | null>(null)
   const destinationBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const form = useForm<FormValues>({
@@ -208,14 +210,10 @@ export default function TripCreatePage() {
     deferredDestinationQuery.length >= 2,
   )
 
-  const destinationSuggestions = useMemo<DestinationSuggestion[]>(() => {
-    return (destinationSearch.data?.items ?? [])
-      .map((item) => ({
-        id: item.id,
-        value: item.label,
-      }))
-      .slice(0, 6)
-  }, [destinationSearch.data?.items])
+  const destinationSuggestions = useMemo(
+    () => (destinationSearch.data?.items ?? []).slice(0, 6),
+    [destinationSearch.data?.items],
+  )
 
   const parsedPreferences = useMemo(() => parsePreferences(preferencesText), [preferencesText])
   const hasPreferenceInput = preferencesText.trim().length > 0
@@ -245,7 +243,26 @@ export default function TripCreatePage() {
 
       return createTrip(payload, idempotencyKey)
     },
-    onSuccess: (trip) => {
+    onSuccess: async (trip) => {
+      let destinationPlaceId: string | null = null
+
+      if (selectedDestinationSuggestion) {
+        try {
+          const place = await createPlace(
+            buildPlaceCreateInputFromDestinationSuggestion(selectedDestinationSuggestion),
+            crypto.randomUUID(),
+          )
+          destinationPlaceId = place.id
+        } catch {
+          destinationPlaceId = null
+        }
+      }
+
+      mergeTripCoverPhotoPreference(trip.id, {
+        placeId: destinationPlaceId,
+        placeLabel: selectedDestinationSuggestion?.label ?? form.getValues('destination_text') ?? null,
+        photoId: null,
+      })
       queryClient.invalidateQueries({ queryKey: tripKeys.all })
       navigate(`/app/trips/${trip.id}`)
       toast.success('Trip created successfully')
@@ -365,6 +382,9 @@ export default function TripCreatePage() {
                               onFocus={openDestinationSuggestions}
                               onBlur={scheduleDestinationSuggestionsClose}
                               onChange={(event) => {
+                                if (selectedDestinationSuggestion?.label !== event.target.value) {
+                                  setSelectedDestinationSuggestion(null)
+                                }
                                 field.onChange(event.target.value)
                                 openDestinationSuggestions()
                               }}
@@ -396,14 +416,15 @@ export default function TripCreatePage() {
                                     className="h-10 w-full justify-start rounded-[8px] px-3 text-left text-sm font-medium text-[var(--color-text)] hover:bg-[var(--color-secondary-surface)]"
                                     onMouseDown={(event) => event.preventDefault()}
                                     onClick={() => {
-                                      setValue('destination_text', suggestion.value, {
+                                      setValue('destination_text', suggestion.label, {
                                         shouldDirty: true,
                                         shouldValidate: true,
                                       })
+                                      setSelectedDestinationSuggestion(suggestion)
                                       setDestinationOpen(false)
                                     }}
                                   >
-                                    {suggestion.value}
+                                    {suggestion.label}
                                   </Button>
                                 ))
                               ) : (

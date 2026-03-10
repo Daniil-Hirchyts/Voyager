@@ -87,7 +87,7 @@ class PlannerPlaceSummary(BaseModel):
 
 class ActivityResponse(BaseModel):
     id: UUID
-    trip_day_id: UUID
+    trip_day_id: UUID | None
     order_index: int
     title: str
     description: str | None
@@ -107,7 +107,7 @@ class ActivityResponse(BaseModel):
 
 class PlannerActivityResponse(BaseModel):
     id: UUID
-    trip_day_id: UUID
+    trip_day_id: UUID | None
     order_index: int
     title: str
     description: str | None
@@ -128,6 +128,7 @@ class PlannerActivityResponse(BaseModel):
 
 
 class ActivityCreateRequest(BaseModel):
+    trip_day_id: UUID | None = None
     title: str
     description: str | None = None
     start_time: time | None = None
@@ -172,8 +173,9 @@ class ActivityReorderRequest(BaseModel):
 
 
 class ActivityMoveRequest(BaseModel):
-    target_day_id: UUID
+    target_day_id: UUID | None
     target_index: int
+    start_time: time | None = None
 
 
 class PlannerDayResponse(DayResponse):
@@ -182,6 +184,7 @@ class PlannerDayResponse(DayResponse):
 
 class TripPlannerResponse(BaseModel):
     trip: TripResponse
+    inbox_activities: list[PlannerActivityResponse] = Field(default_factory=list)
     days: list[PlannerDayResponse]
 
 

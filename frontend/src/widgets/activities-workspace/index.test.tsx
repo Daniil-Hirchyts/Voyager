@@ -1,8 +1,9 @@
+import { useState, type ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import ActivitiesWorkspace from './index'
 import { renderWithQueryClient } from '@/test/utils'
 import { server } from '@/test/msw/server'
@@ -26,6 +27,63 @@ function renderWorkspace(route = '/app/trips/trip-1/activities') {
         <Route path="/app/trips/:tripId/activities" element={<ActivitiesWorkspace tripId="trip-1" />} />
       </Routes>
     </MemoryRouter>,
+  )
+}
+
+function ShellHarness() {
+  const [actions, setActions] = useState<ReactNode | null>(null)
+  const [meta, setMeta] = useState<ReactNode | null>(null)
+
+  return (
+    <div>
+      <div data-testid="shell-meta">{meta}</div>
+      <div data-testid="shell-actions">{actions}</div>
+      <Outlet context={{ setHeaderActions: setActions, setHeaderMeta: setMeta }} />
+    </div>
+  )
+}
+
+function renderWorkspaceInShell(route = '/app/trips/trip-1/activities') {
+  return renderWithQueryClient(
+    <MemoryRouter initialEntries={[route]}>
+      <Routes>
+        <Route element={<ShellHarness />}>
+          <Route path="/app/trips/:tripId/activities" element={<ActivitiesWorkspace tripId="trip-1" />} />
+        </Route>
+      </Routes>
+    </MemoryRouter>,
+  )
+}
+
+function mockWorkspaceRequests({
+  trip = buildTrip(),
+  days = [buildDay()],
+  discoveryItems = [buildActivityDiscoveryItem()],
+  shortlistItems = [] as ReturnType<typeof buildActivityDiscoveryItem>[],
+  proposals = [] as ReturnType<typeof buildProposal>[],
+} = {}) {
+  server.use(
+    http.get('http://localhost:8000/trips/trip-1', () => HttpResponse.json(trip)),
+    http.get('http://localhost:8000/trips/trip-1/days', () => HttpResponse.json(listResponse(days))),
+    http.get('http://localhost:8000/trips/trip-1/activities/discover', () =>
+      HttpResponse.json({
+        total: discoveryItems.length,
+        limit: 12,
+        offset: 0,
+        page: 1,
+        entity_type: 'attraction',
+        items: discoveryItems,
+      }),
+    ),
+    http.get('http://localhost:8000/trips/trip-1/activities', () =>
+      HttpResponse.json(listResponse(shortlistItems)),
+    ),
+    http.get('http://localhost:8000/trips/trip-1/proposals', () =>
+      HttpResponse.json(listResponse(proposals)),
+    ),
+    http.get('http://localhost:8000/trips/trip-1/map-layers', () =>
+      HttpResponse.json(listResponse([])),
+    ),
   )
 }
 
@@ -54,6 +112,9 @@ describe('ActivitiesWorkspace', () => {
         }),
       ),
       http.get('http://localhost:8000/trips/trip-1/activities', () => HttpResponse.json(shortlist)),
+      http.get('http://localhost:8000/trips/trip-1/map-layers', () =>
+        HttpResponse.json(listResponse([])),
+      ),
       http.post('http://localhost:8000/trips/trip-1/activities/save', async () => {
         shortlist = listResponse([savedItem])
         return HttpResponse.json(savedItem, { status: 201 })
@@ -108,6 +169,9 @@ describe('ActivitiesWorkspace', () => {
       ),
       http.get('http://localhost:8000/trips/trip-1/activities', () =>
         HttpResponse.json(listResponse([savedItem])),
+      ),
+      http.get('http://localhost:8000/trips/trip-1/map-layers', () =>
+        HttpResponse.json(listResponse([])),
       ),
       http.get('http://localhost:8000/activities/snapshot-1', () =>
         HttpResponse.json(buildActivityDiscoveryDetail({ id: 'snapshot-1', snapshot_id: 'snapshot-1' })),
@@ -174,6 +238,9 @@ describe('ActivitiesWorkspace', () => {
       http.get('http://localhost:8000/trips/trip-1/activities', () =>
         HttpResponse.json(listResponse([savedItem])),
       ),
+      http.get('http://localhost:8000/trips/trip-1/map-layers', () =>
+        HttpResponse.json(listResponse([])),
+      ),
       http.get('http://localhost:8000/activities/snapshot-1', () =>
         HttpResponse.json(buildActivityDiscoveryDetail({ id: 'snapshot-1', snapshot_id: 'snapshot-1' })),
       ),
@@ -217,5 +284,42 @@ describe('ActivitiesWorkspace', () => {
     await waitFor(() => {
       expect(applyCalled).toBe(true)
     })
+  })
+
+  it('registers shell header meta and actions when app-shell context is available', async () => {
+    const trip = buildTrip({ destination_text: 'Lisbon, Portugal' })
+    const day = buildDay()
+
+    mockWorkspaceRequests({
+      trip,
+      days: [day],
+      discoveryItems: [buildActivityDiscoveryItem()],
+    })
+
+    renderWorkspaceInShell()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('shell-meta')).toHaveTextContent('Lisbon, Portugal')
+      expect(screen.getByTestId('shell-meta')).toHaveTextContent('Entire trip')
+      expect(screen.getByTestId('shell-meta')).toHaveTextContent('0 saved')
+      expect(screen.getByTestId('shell-meta')).toHaveTextContent('1 results')
+    })
+
+    const shellActions = screen.getByTestId('shell-actions')
+    expect(within(shellActions).getByRole('button', { name: /refresh search/i })).toBeInTheDocument()
+    expect(within(shellActions).getByRole('button', { name: /^quick add$/i })).toBeInTheDocument()
+    expect(within(shellActions).getByRole('button', { name: /generate proposal/i })).toBeInTheDocument()
+    expect(screen.queryByTestId('activities-fallback-actions')).not.toBeInTheDocument()
+  })
+
+  it('renders fallback page actions when shell header context is unavailable', async () => {
+    mockWorkspaceRequests()
+
+    renderWorkspace()
+
+    const fallbackActions = await screen.findByTestId('activities-fallback-actions')
+    expect(within(fallbackActions).getByRole('button', { name: /refresh search/i })).toBeInTheDocument()
+    expect(within(fallbackActions).getByRole('button', { name: /^quick add$/i })).toBeInTheDocument()
+    expect(within(fallbackActions).getByRole('button', { name: /generate proposal/i })).toBeInTheDocument()
   })
 })

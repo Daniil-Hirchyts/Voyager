@@ -1,138 +1,200 @@
+import { Fragment } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { format } from 'date-fns'
-import { Hotel, Plus, Ticket } from 'lucide-react'
+import { Hotel, Plus, Route, Ticket } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { cn } from '@/shared/lib/cn'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/shared/lib/cn'
 import type { Offer, PlannerActivity, PlannerDay } from '@/shared/api/types'
 import { ActivityCard } from './ActivityCard'
+import {
+  buildPlannerTravelLegs,
+  formatTravelDistance,
+  formatTravelDuration,
+  summarizePlannerTravelLegs,
+  type PlannerTravelLeg,
+} from './travel-estimates'
 
 interface Props {
   tripId: string
   day: PlannerDay
   offers?: Offer[]
+  selectedActivityId?: string | null
   onAddActivity: (dayId: string) => void
-  onEditActivity: (activity: PlannerActivity) => void
-  onDeleteActivity: (activityId: string, dayId: string) => void
-  onToggleFavorite: (activity: PlannerActivity) => void
+  onOpenActivity: (activity: PlannerActivity) => void
+  className?: string
+}
+
+function TravelConnector({ leg }: { leg: PlannerTravelLeg }) {
+  const hasEstimate = leg.distanceKm != null && leg.durationMin != null
+
+  return (
+    <div
+      data-testid={`planner-travel-leg-${leg.toActivityId}`}
+      className="relative px-1 py-0.5"
+    >
+      <div className="pointer-events-none absolute bottom-0 left-[1.05rem] top-0 border-l border-dashed border-black/10" />
+      <div
+        className={cn(
+          'ml-6 flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]',
+          hasEstimate ? 'bg-[var(--color-secondary-surface)]' : 'bg-[var(--color-secondary-surface)]/70',
+        )}
+      >
+        <Route className="h-3.5 w-3.5 shrink-0" />
+        {hasEstimate ? (
+          <>
+            <span className="font-medium text-[var(--color-text)]">
+              {formatTravelDuration(leg.durationMin)}
+            </span>
+            <span>&middot;</span>
+            <span>{formatTravelDistance(leg.distanceKm)}</span>
+          </>
+        ) : (
+          <span>Add places to estimate travel</span>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function DayColumn({
   tripId,
   day,
   offers = [],
+  selectedActivityId = null,
   onAddActivity,
-  onEditActivity,
-  onDeleteActivity,
-  onToggleFavorite,
+  onOpenActivity,
+  className,
 }: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: day.id, data: { type: 'container', dayId: day.id } })
+  const { setNodeRef, isOver } = useDroppable({
+    id: day.id,
+    data: { type: 'container', containerId: day.id, dayId: day.id },
+  })
   const { setNodeRef: setEndZoneRef, isOver: isOverEnd } = useDroppable({
     id: `${day.id}::end`,
-    data: { type: 'end-zone', dayId: day.id },
+    data: { type: 'container-end', containerId: day.id, dayId: day.id },
   })
-  const sortedActivities = [...day.activities].sort((a, b) => a.order_index - b.order_index)
+
+  const activities = [...day.activities].sort((left, right) => left.order_index - right.order_index)
+  const travelLegs = buildPlannerTravelLegs(activities)
+  const travelLegsByToActivityId = new Map(travelLegs.map((leg) => [leg.toActivityId, leg]))
+  const travelSummary = summarizePlannerTravelLegs(travelLegs)
 
   return (
     <section
       className={cn(
-        'flex min-w-[340px] max-w-[380px] shrink-0 flex-col overflow-hidden rounded-[28px] border bg-[var(--color-surface)] shadow-[0_24px_70px_rgba(14,25,35,0.08)] transition-all',
-        isOver && 'translate-y-[-2px] border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/18',
+        'flex h-full min-h-0 min-w-[280px] flex-col overflow-hidden rounded-[14px] border border-black/8 bg-white',
+        isOver && 'border-black/16 ring-2 ring-black/6',
+        className,
       )}
       aria-label={`Day ${day.day_index + 1}`}
     >
-      <div className="border-b border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(240,232,220,0.9))] px-5 py-5">
+      <header className="border-b border-black/8 bg-[var(--color-secondary-surface)] px-3.5 py-3">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-              Day {day.day_index + 1}
-            </p>
-            <h3 className="mt-1 text-xl font-semibold text-[var(--color-text)]">
-              {format(new Date(day.date), 'EEEE')}
-            </h3>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+            <div className="flex items-baseline gap-2">
+              <h3 className="text-[0.92rem] font-medium text-[var(--color-text)]">
+                Day {day.day_index + 1}
+              </h3>
+              <span className="text-[0.76rem] text-[var(--color-text-muted)]">
+                {format(new Date(day.date), 'EEEE')}
+              </span>
+            </div>
+            <p className="mt-1 text-[0.72rem] text-[var(--color-text-muted)]">
               {format(new Date(day.date), 'MMM d, yyyy')}
             </p>
+            {travelSummary.estimatedLegCount > 0 ? (
+              <p
+                data-testid={`planner-day-travel-summary-${day.id}`}
+                className="mt-2 inline-flex items-center gap-1.5 text-[0.72rem] text-[var(--color-text-muted)]"
+              >
+                <Route className="h-3.5 w-3.5" />
+                <span>
+                  {formatTravelDuration(travelSummary.durationMin)} &middot;{' '}
+                  {formatTravelDistance(travelSummary.distanceKm)}
+                </span>
+              </p>
+            ) : null}
           </div>
-          <div className="rounded-full border border-[var(--color-border)] bg-white/85 px-3 py-1 text-xs text-[var(--color-text-muted)]">
-            {day.activities.length} activities
-          </div>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
+            {activities.length}
+          </span>
         </div>
 
         {offers.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2">
             {offers.map((offer) => (
               <Link
                 key={offer.id}
                 to={`/app/trips/${tripId}/offers?dayId=${day.id}`}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white/85 px-3 py-1.5 text-[11px] text-[var(--color-text-muted)] transition-colors hover:border-[var(--color-primary)]/35 hover:text-[var(--color-primary)]"
+                className="inline-flex items-center gap-1.5 rounded-[10px] border border-black/8 bg-white px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)] transition-colors hover:border-black/12 hover:text-[var(--color-text)]"
               >
                 {offer.kind === 'lodging' ? (
-                  <Hotel className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                  <Hotel className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                 ) : (
-                  <Ticket className="h-3.5 w-3.5 text-[var(--color-primary)]" />
+                  <Ticket className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
                 )}
-                {offer.title}
+                <span className="truncate">{offer.title}</span>
               </Link>
             ))}
           </div>
         ) : null}
-      </div>
+      </header>
 
-      <div ref={setNodeRef} className="flex-1 space-y-4 bg-[rgba(249,246,240,0.92)] p-4">
-        <SortableContext
-          items={sortedActivities.map((activity) => activity.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {sortedActivities.map((activity) => (
-            <ActivityCard
-              key={activity.id}
-              activity={activity}
-              onEdit={onEditActivity}
-              onDelete={(activityId) => onDeleteActivity(activityId, day.id)}
-              onToggleFavorite={onToggleFavorite}
-            />
-          ))}
+      <div
+        ref={setNodeRef}
+        data-planner-scrollable="vertical"
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto px-2.5 py-2.5"
+      >
+        <SortableContext items={activities.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
+          {activities.map((activity) => {
+            const travelLeg = travelLegsByToActivityId.get(activity.id)
+
+            return (
+              <Fragment key={activity.id}>
+                {travelLeg ? <TravelConnector leg={travelLeg} /> : null}
+                <ActivityCard
+                  activity={activity}
+                  onOpen={onOpenActivity}
+                  isSelected={selectedActivityId === activity.id}
+                />
+              </Fragment>
+            )
+          })}
         </SortableContext>
 
-        {sortedActivities.length === 0 ? (
+        {activities.length === 0 ? (
           <div
             className={cn(
-              'flex min-h-[180px] flex-col items-center justify-center rounded-[24px] border border-dashed px-6 text-center transition-all',
-              isOver
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/6'
-                : 'border-[var(--color-border)] bg-white/55',
+              'flex min-h-[160px] flex-1 flex-col items-center justify-center rounded-[12px] border border-dashed px-5 text-center',
+              isOver ? 'border-black/16 bg-[var(--color-secondary-surface)]' : 'border-black/8 bg-[var(--color-secondary-surface)]',
             )}
           >
-            <p className="text-sm font-medium text-[var(--color-text)]">Drop activities here</p>
-            <p className="mt-2 max-w-[220px] text-xs leading-6 text-[var(--color-text-muted)]">
-              Use generated ideas as a base or start with a manual activity for this day.
+            <Plus className="h-5 w-5 text-[var(--color-text-muted)]" />
+            <p className="mt-2 text-[0.82rem] text-[var(--color-text-muted)]">
+              Drop activities here or add one manually.
             </p>
           </div>
         ) : (
           <div
             ref={setEndZoneRef}
             className={cn(
-              'rounded-[20px] border border-dashed px-3 py-3 text-center text-xs transition-all',
-              isOverEnd
-                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/8 text-[var(--color-primary)]'
-                : 'border-[var(--color-border)] text-[var(--color-text-muted)]',
+              'min-h-10 rounded-[12px] border border-dashed border-transparent transition-colors',
+              isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
             )}
-          >
-            Drop here to place at the end of the day
-          </div>
+          />
         )}
       </div>
 
-      <div className="border-t border-[var(--color-border)] bg-white/72 p-4">
+      <div className="border-t border-black/8 p-2.5">
         <Button
+          type="button"
           variant="outline"
-          className="h-12 w-full rounded-full border-dashed text-[var(--color-text-muted)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/6 hover:text-[var(--color-primary)]"
+          className="h-9 w-full rounded-[10px] border-dashed border-black/8 bg-white text-[var(--color-text-muted)] shadow-none hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
           onClick={() => onAddActivity(day.id)}
         >
-          <Plus className="h-4 w-4" />
-          Add Activity
+          Add activity
         </Button>
       </div>
     </section>

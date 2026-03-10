@@ -516,6 +516,7 @@ async def apply_proposal(
                 continue
 
             created = Activity(
+                trip_id=proposal.trip_id,
                 trip_day_id=day_id,
                 order_index=10_000,
                 title=proposal_item.title,

@@ -5,7 +5,6 @@ import {
   eachDayOfInterval,
   endOfWeek,
   format,
-  getWeek,
   isToday,
   isWithinInterval,
   parseISO,
@@ -16,27 +15,23 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
-  CalendarDays,
   Clock3,
-  GripVertical,
   MapPin,
-  PanelTop,
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
 import { resolvePhotoUrl } from '@/shared/lib/media'
 import type { PlannerActivity, PlannerDay, Trip } from '@/shared/api/types'
 import { Button } from '@/components/ui/button'
-import { DatePicker } from '@/components/ui/date-picker'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { calculatePositionedActivities, toCalendarActivityEvent } from './calendar-utils'
+import { PlannerInbox } from './PlannerInbox'
 
 const WEEK_STARTS_ON = 1
-const HOUR_HEIGHT = 72
-const HEADER_HEIGHT = 92
-const UNSCHEDULED_HEIGHT = 118
-const TIME_AXIS_WIDTH = 92
+const HOUR_HEIGHT = 56
+const HEADER_HEIGHT = 36
+const TIME_AXIS_WIDTH = 48
 const SNAP_MINUTES = 15
 const DEFAULT_DURATION = 90
 const MIN_DURATION = 15
@@ -80,6 +75,7 @@ type VisibleCalendarDay = {
 interface PlannerCalendarViewProps {
   trip: Trip
   days: PlannerDay[]
+  inboxActivities: PlannerActivity[]
   anchorDate: string
   calendarView: CalendarMode
   selectedActivityId: string | null
@@ -159,14 +155,20 @@ function buildVisibleDays(trip: Trip, days: PlannerDay[], anchorDate: string, ca
     end: parseDay(trip.end_date),
   }
   const fallbackDate = days[0]?.date ?? trip.start_date
-  const anchor = parseDay(anchorDate || fallbackDate)
+  const anchorCandidate = parseDay(anchorDate || fallbackDate)
+  const anchor =
+    anchorCandidate < tripRange.start
+      ? tripRange.start
+      : anchorCandidate > tripRange.end
+        ? tripRange.end
+        : anchorCandidate
   const periodDays =
     calendarView === 'day'
       ? [anchor]
       : eachDayOfInterval({
           start: startOfWeek(anchor, { weekStartsOn: WEEK_STARTS_ON }),
           end: endOfWeek(anchor, { weekStartsOn: WEEK_STARTS_ON }),
-        })
+        }).filter((date) => isWithinInterval(date, tripRange))
 
   return periodDays.map((date) => {
     const isoDate = toIsoDate(date)
@@ -195,10 +197,6 @@ function dayRangeLabel(visibleDays: VisibleCalendarDay[], calendarView: Calendar
   return `${format(first, 'MMM d')} - ${format(last, 'MMM d, yyyy')}`
 }
 
-function activityKey(activity: PlannerActivity) {
-  return `${activity.id}:${activity.trip_day_id}`
-}
-
 function schedulesMatch(session: InteractionSession, draft: ScheduleDraft) {
   return (
     session.originDayId === draft.targetDayId &&
@@ -212,7 +210,7 @@ function activitySummaryLabel(activity: PlannerActivity) {
     return 'Unscheduled'
   }
   const duration = resolveDuration(activity)
-  return `${activity.start_time} · ${duration}m`
+  return `${activity.start_time} · ${duration}M`
 }
 
 function useCurrentTime() {
@@ -229,6 +227,7 @@ function useCurrentTime() {
 export function PlannerCalendarView({
   trip,
   days,
+  inboxActivities,
   anchorDate,
   calendarView,
   selectedActivityId,
@@ -239,7 +238,7 @@ export function PlannerCalendarView({
 }: PlannerCalendarViewProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const timedGridRef = useRef<HTMLDivElement | null>(null)
-  const unscheduledRowRef = useRef<HTMLDivElement | null>(null)
+  const inboxRef = useRef<HTMLDivElement | null>(null)
   const interactionRef = useRef<InteractionSession | null>(null)
   const suppressClickRef = useRef<string | null>(null)
   const clearSuppressRef = useRef<number | null>(null)
@@ -250,6 +249,12 @@ export function PlannerCalendarView({
   useEffect(() => {
     setPopoverActivityId(selectedActivityId)
   }, [selectedActivityId])
+
+  useEffect(() => {
+    if (viewportRef.current) {
+      viewportRef.current.scrollTop = 6.5 * HOUR_HEIGHT
+    }
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -264,9 +269,18 @@ export function PlannerCalendarView({
     [anchorDate, calendarView, days, trip],
   )
 
-  const dayColumnWidth = calendarView === 'day' ? 720 : 280
-  const contentWidth = Math.max(dayColumnWidth * visibleDays.length, 900)
+  const dayColumnWidth = calendarView === 'day' ? 520 : 128
+  const contentWidth = dayColumnWidth * visibleDays.length
   const totalHeight = HOUR_HEIGHT * 24
+  const rangeLabel = dayRangeLabel(visibleDays, calendarView)
+  const dayGridTemplateColumns =
+    calendarView === 'day'
+      ? `repeat(${visibleDays.length}, minmax(${dayColumnWidth}px, 1fr))`
+      : `repeat(${visibleDays.length}, minmax(${dayColumnWidth}px, 1fr))`
+  const layoutGridTemplateColumns =
+    calendarView === 'day'
+      ? `${TIME_AXIS_WIDTH}px minmax(${contentWidth}px, 1fr)`
+      : `${TIME_AXIS_WIDTH}px minmax(0, 1fr)`
 
   const activityDateMap = useMemo(() => {
     const map = new Map<string, string>()
@@ -354,7 +368,6 @@ export function PlannerCalendarView({
 
     return result
   }, [interaction, interactiveActivityId, visibleDays])
-
   const currentMinutes = now.getHours() * 60 + now.getMinutes()
 
   const moveToPrevious = () => {
@@ -423,14 +436,14 @@ export function PlannerCalendarView({
 
   const projectDraft = (session: InteractionSession, clientX: number, clientY: number) => {
     const timedGrid = timedGridRef.current
-    const unscheduledRow = unscheduledRowRef.current
+    const inbox = inboxRef.current
     const viewport = viewportRef.current
-    if (!timedGrid || !unscheduledRow || !viewport || visibleDays.length === 0) {
+    if (!timedGrid || !viewport || visibleDays.length === 0) {
       return session.draft
     }
 
     const timedRect = timedGrid.getBoundingClientRect()
-    const unscheduledRect = unscheduledRow.getBoundingClientRect()
+    const inboxRect = inbox?.getBoundingClientRect() ?? null
     const relativeX = clientX - timedRect.left
     const columnWidth = timedRect.width / visibleDays.length
     const columnIndex = clamp(Math.floor(relativeX / columnWidth), 0, visibleDays.length - 1)
@@ -441,7 +454,7 @@ export function PlannerCalendarView({
     }
 
     if (session.mode === 'drag') {
-      if (clientY <= unscheduledRect.bottom) {
+      if (inboxRect && clientY >= inboxRect.top && clientY <= inboxRect.bottom) {
         return {
           targetDayId: targetPlannerDay.id,
           targetDate: targetPlannerDay.date,
@@ -506,7 +519,7 @@ export function PlannerCalendarView({
     setPopoverActivityId(null)
 
     const originDate = activityDateMap.get(activity.id)
-    if (!originDate) return
+    if (!originDate || !activity.trip_day_id) return
 
     const originStartMinutes = timeToMinutes(activity.start_time)
     const originDurationMin = resolveDuration(activity)
@@ -614,96 +627,91 @@ export function PlannerCalendarView({
   }
 
   return (
-    <section className="overflow-hidden rounded-[32px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.82)] shadow-[0_26px_80px_rgba(32,56,83,0.08)]">
-      <div className="border-b border-[var(--color-border)] bg-[linear-gradient(135deg,rgba(114,174,230,0.08),rgba(182,214,242,0.08),rgba(255,255,255,0.86))] px-6 py-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div className="space-y-2">
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-              CalendarCN-inspired schedule
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <h2 className="text-3xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
-                {format(visibleDays[0]?.date ?? parseDay(anchorDate), 'MMMM yyyy')}
-              </h2>
-              {calendarView === 'week' && visibleDays[0] ? (
-                <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                  Week {getWeek(visibleDays[0].date, { weekStartsOn: WEEK_STARTS_ON })}
-                </span>
-              ) : null}
-            </div>
-            <p className="text-sm text-[var(--color-text-muted)]">
-              {dayRangeLabel(visibleDays, calendarView)}
-            </p>
-          </div>
+    <div className="grid h-full min-h-0 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div ref={inboxRef} className="min-h-0">
+        <PlannerInbox
+          activities={inboxActivities}
+          selectedActivityId={selectedActivityId}
+          title="Inbox"
+          className="h-full"
+          onSelectActivity={(activity) => handleOpenPopover(activity)}
+          onPointerDownActivity={(event, activity) => {
+            if (!activity.trip_day_id) {
+              return
+            }
+            beginInteraction(event, activity, 'unscheduled', 'drag')
+          }}
+        />
+      </div>
 
-          <div className="flex flex-col gap-3 xl:items-end">
-            <Tabs
-              value={calendarView}
-              onValueChange={(value) => {
-                if (value === 'day' || value === 'week') {
-                  onCalendarViewChange(value)
-                }
-              }}
-            >
-              <TabsList className="h-11 rounded-full border border-[var(--color-border)] bg-white/85 p-1">
-                <TabsTrigger value="day" className="rounded-full px-4">
-                  Day
-                </TabsTrigger>
-                <TabsTrigger value="week" className="rounded-full px-4">
-                  Week
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={moveToPrevious}>
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <Button type="button" variant="outline" className="rounded-full px-4" onClick={moveToToday}>
-                Today
-              </Button>
-              <Button type="button" variant="outline" size="icon" className="rounded-full" onClick={moveToNext}>
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-              <DatePicker value={anchorDate} onChange={onDateChange} className="w-[180px] rounded-full bg-white/85" />
+      <section className="flex min-h-0 flex-col overflow-hidden rounded-[12px] border border-black/8 bg-white">
+        <div className="border-b border-black/8 bg-white px-3 py-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <h2 className="text-[1.15rem] font-medium tracking-[-0.02em] text-[var(--color-text)]">
+                  {rangeLabel}
+                </h2>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-              <span className="rounded-full bg-white/80 px-3 py-1">T today</span>
-              <span className="rounded-full bg-white/80 px-3 py-1">D / W switch view</span>
-              <span className="rounded-full bg-white/80 px-3 py-1">J / K navigate</span>
+            <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+              <Tabs
+                value={calendarView}
+                onValueChange={(value) => {
+                  if (value === 'day' || value === 'week') {
+                    onCalendarViewChange(value)
+                  }
+                }}
+              >
+                <TabsList className="h-8 rounded-[8px] border border-black/8 bg-[#f7f8fa] p-0.5">
+                  <TabsTrigger value="day" className="h-7 rounded-[6px] px-2.5 text-[0.76rem]">
+                    Day
+                  </TabsTrigger>
+                  <TabsTrigger value="week" className="h-7 rounded-[6px] px-2.5 text-[0.76rem]">
+                    Week
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+
+              <div className="flex items-center gap-1 rounded-[8px] border border-black/8 bg-[#f7f8fa] p-0.5">
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-[6px] border-none bg-transparent shadow-none hover:bg-white" onClick={moveToPrevious}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Button type="button" variant="ghost" className="h-7 rounded-[6px] border-none bg-transparent px-2.5 text-[0.84rem] shadow-none hover:bg-white" onClick={moveToToday}>
+                  Today
+                </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-[6px] border-none bg-transparent shadow-none hover:bg-white" onClick={moveToNext}>
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div
-        ref={viewportRef}
-        className="max-h-[76vh] overflow-auto bg-[linear-gradient(180deg,rgba(255,255,255,0.9),rgba(240,246,252,0.92))]"
-      >
+        <div ref={viewportRef} className="min-h-0 flex-1 overflow-auto bg-white">
         <div
-          className="grid min-w-max"
+          className={cn('grid', calendarView === 'day' ? 'min-w-max' : 'min-w-full')}
           style={{
-            gridTemplateColumns: `${TIME_AXIS_WIDTH}px minmax(${contentWidth}px, 1fr)`,
+            gridTemplateColumns: layoutGridTemplateColumns,
           }}
         >
           <div
-            className="sticky left-0 top-0 z-40 border-r border-b border-[var(--color-border)] bg-[rgba(248,244,236,0.96)] px-4 py-4"
+            className="sticky left-0 top-0 z-40 flex items-center justify-center border-r border-b border-black/8 bg-[#f7f8fa]"
             style={{ height: HEADER_HEIGHT }}
           >
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-              Track
+            <p className="text-[10px] font-bold tracking-[0.05em] text-[#9ca3af] uppercase">
+              Time
             </p>
-            <p className="mt-2 text-sm font-semibold text-[var(--color-text)]">Planner</p>
           </div>
 
           <div
-            className="sticky top-0 z-30 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.92)] backdrop-blur"
+            className="sticky top-0 z-30 border-b border-black/8 bg-white"
             style={{ height: HEADER_HEIGHT }}
           >
             <div
               className="grid h-full"
-              style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(${dayColumnWidth}px, 1fr))` }}
+              style={{ gridTemplateColumns: dayGridTemplateColumns }}
             >
               {visibleDays.map((day) => (
                 <button
@@ -716,148 +724,38 @@ export function PlannerCalendarView({
                     }
                   }}
                   className={cn(
-                    'group border-l border-[var(--color-border)] px-4 py-3 text-left first:border-l-0',
-                    day.isToday && 'bg-[rgba(114,174,230,0.08)]',
-                    !day.plannerDay && day.isTripWindow && 'bg-[rgba(182,214,242,0.06)]',
+                    'group flex items-center gap-2 border-l border-black/6 px-4 py-0 text-left first:border-l-0 transition-colors hover:bg-black/2',
+                    day.isToday && 'bg-[#f7f8fa]',
                   )}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-[0.68rem] uppercase tracking-[0.24em] text-[var(--color-text-muted)]">
-                        {format(day.date, 'EEE')}
-                      </p>
-                      <div className="mt-2 flex items-end gap-2">
-                        <span className="text-2xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
-                          {format(day.date, 'd')}
-                        </span>
-                        {day.isToday ? (
-                          <span className="rounded-full bg-[var(--color-primary)] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-white">
-                            Today
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <span className="rounded-full border border-[var(--color-border)] bg-white/80 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                      {day.plannerDay ? `${day.plannerDay.activities.length} items` : day.isTripWindow ? 'Window' : 'Outside'}
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[12px] font-semibold uppercase tracking-wider text-[#6b7280]">
+                      {format(day.date, 'EEE')}
+                    </span>
+                    <span className="text-[16px] font-bold text-[#111827]">
+                      {format(day.date, 'd')}
                     </span>
                   </div>
+                  {day.isToday && (
+                    <span className="rounded-full bg-[var(--color-text)] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white">
+                      Today
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
           </div>
 
-          <div
-            className="sticky left-0 z-30 border-r border-b border-[var(--color-border)] bg-[rgba(248,244,236,0.96)] px-4 py-4"
-            style={{ top: HEADER_HEIGHT, height: UNSCHEDULED_HEIGHT }}
-          >
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text)]">
-              <PanelTop className="h-4 w-4 text-[var(--color-primary)]" />
-              Unscheduled
-            </div>
-            <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">
-              Drag cards here to clear the start time.
-            </p>
-          </div>
-
-          <div
-            ref={unscheduledRowRef}
-            className="sticky z-20 border-b border-[var(--color-border)] bg-[rgba(255,255,255,0.92)] backdrop-blur"
-            style={{ top: HEADER_HEIGHT, height: UNSCHEDULED_HEIGHT }}
-          >
-            <div
-              className="grid h-full"
-              style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(${dayColumnWidth}px, 1fr))` }}
-            >
-              {visibleDays.map((day) => {
-                const items = unscheduledActivitiesByDate.get(day.isoDate) ?? []
-                return (
-                  <div
-                    key={day.isoDate}
-                    className={cn(
-                      'border-l border-[var(--color-border)] p-3 first:border-l-0',
-                      !day.plannerDay && 'bg-[rgba(17,24,32,0.03)]',
-                    )}
-                  >
-                    {!day.plannerDay ? (
-                      <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-[var(--color-border)] bg-white/70 px-4 text-center text-sm text-[var(--color-text-muted)]">
-                        {day.isTripWindow ? 'Create a trip day to schedule here.' : 'Outside the active trip window.'}
-                      </div>
-                    ) : items.length === 0 ? (
-                      <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-[var(--color-border)] bg-white/70 px-4 text-center text-sm text-[var(--color-text-muted)]">
-                        Drop here to keep this day flexible.
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        {items.map((activity) => {
-                          const photo = resolvePhotoUrl(activity.place?.primary_photo, 'thumb')
-                          const isOpen = popoverActivityId === activity.id
-                          const isSelected = selectedActivityId === activity.id
-                          const isPreview = interaction?.activity.id === activity.id
-
-                          return (
-                            <Popover
-                              key={activityKey(activity)}
-                              open={isOpen}
-                              onOpenChange={(open) => setPopoverActivityId(open ? activity.id : null)}
-                            >
-                              <PopoverAnchor asChild>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenPopover(activity)}
-                                  onPointerDown={(event) => beginInteraction(event, activity, 'unscheduled', 'drag')}
-                                  className={cn(
-                                    'group flex items-center gap-3 rounded-[20px] border bg-white/92 px-3 py-3 text-left shadow-sm transition-all',
-                                    isSelected && 'border-[var(--color-primary)]/60 shadow-[0_18px_45px_rgba(32,56,83,0.14)]',
-                                    isPreview && 'ring-2 ring-[var(--color-primary)]/25',
-                                  )}
-                                >
-                                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[linear-gradient(135deg,rgba(114,174,230,0.18),rgba(182,214,242,0.18))]">
-                                    {photo ? (
-                                      <img src={photo} alt="" className="h-full w-full object-cover" />
-                                    ) : (
-                                      <CalendarDays className="h-4 w-4 text-[var(--color-primary)]" />
-                                    )}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-[var(--color-text)]">{activity.title}</p>
-                                    <div className="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                                      <GripVertical className="h-3.5 w-3.5 text-[var(--color-primary)]" />
-                                      {activity.place?.name ? (
-                                        <span className="truncate">{activity.place.name}</span>
-                                      ) : (
-                                        <span>Flexible slot</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-                              </PopoverAnchor>
-
-                              <ActivityPopover
-                                activity={activity}
-                                onOpenDetails={() => onSelectActivity(activity)}
-                              />
-                            </Popover>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="sticky left-0 z-10 border-r border-[var(--color-border)] bg-[rgba(248,244,236,0.94)]">
-            <div className="relative" style={{ height: totalHeight }}>
+          <div className="sticky left-0 z-10 border-r border-black/6 bg-[#f7f8fa]">
+            <div className="relative mt-4 mb-4" style={{ height: totalHeight }}>
               {Array.from({ length: 24 }).map((_, index) => (
                 <div
                   key={index}
-                  className="absolute inset-x-0 border-b border-[rgba(96,108,120,0.14)] pr-3"
-                  style={{ top: index * HOUR_HEIGHT, height: HOUR_HEIGHT }}
+                  className="absolute w-full pr-3 flex justify-end"
+                  style={{ top: index * HOUR_HEIGHT }}
                 >
-                  <div className="-translate-y-3 text-right text-[11px] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                    {format(new Date(2026, 0, 1, index), 'ha')}
+                  <div className="-translate-y-2.5 text-[11px] font-medium text-[#6b7280]">
+                    {format(new Date(2026, 0, 1, index), 'h a')}
                   </div>
                 </div>
               ))}
@@ -866,12 +764,12 @@ export function PlannerCalendarView({
 
           <div
             ref={timedGridRef}
-            className="relative"
+            className="relative mt-4 mb-4"
             style={{ height: totalHeight }}
           >
             <div
               className="grid h-full"
-              style={{ gridTemplateColumns: `repeat(${visibleDays.length}, minmax(${dayColumnWidth}px, 1fr))` }}
+              style={{ gridTemplateColumns: dayGridTemplateColumns }}
             >
               {visibleDays.map((day) => {
                 const positioned = timedLayoutsByDate.get(day.isoDate) ?? []
@@ -879,18 +777,17 @@ export function PlannerCalendarView({
                   <div
                     key={day.isoDate}
                     className={cn(
-                      'relative border-l border-[var(--color-border)] first:border-l-0',
-                      !day.plannerDay && 'bg-[rgba(17,24,32,0.03)]',
+                      'relative border-l border-black/6 first:border-l-0',
                     )}
                   >
                     <div
-                      className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.3),transparent_20%),repeating-linear-gradient(180deg,rgba(96,108,120,0.14),rgba(96,108,120,0.14)_1px,transparent_1px,transparent_36px),repeating-linear-gradient(180deg,rgba(96,108,120,0.22),rgba(96,108,120,0.22)_1px,transparent_1px,transparent_72px)]"
+                      className="absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(17,24,39,0.05),rgba(17,24,39,0.05)_1px,transparent_1px,transparent_28px),repeating-linear-gradient(180deg,rgba(17,24,39,0.08),rgba(17,24,39,0.08)_1px,transparent_1px,transparent_56px)]"
                       aria-hidden
                     />
 
                     {!day.plannerDay ? (
-                      <div className="absolute inset-6 flex items-center justify-center rounded-[28px] border border-dashed border-[var(--color-border)] bg-white/75 px-5 text-center text-sm text-[var(--color-text-muted)]">
-                        {day.isTripWindow ? 'No trip day exists for this date yet.' : 'This date sits outside the current trip window.'}
+                      <div className="absolute inset-4 flex items-center justify-center rounded-[14px] border border-dashed border-black/8 bg-white px-5 text-center text-sm text-[var(--color-text-muted)]">
+                        No trip day exists for this date yet.
                       </div>
                     ) : null}
 
@@ -926,77 +823,78 @@ export function PlannerCalendarView({
                               onClick={() => handleOpenPopover(activity)}
                               onPointerDown={(event) => beginInteraction(event, activity, 'timed', 'drag')}
                               className={cn(
-                                'absolute overflow-hidden rounded-[18px] border text-left transition-all',
+                                'absolute overflow-hidden rounded-[16px] border text-left transition-all',
                                 isSelected
-                                  ? 'border-[var(--color-primary)]/65 shadow-[0_22px_50px_rgba(114,174,230,0.18)]'
-                                  : 'border-white/70 shadow-[0_12px_30px_rgba(12,20,27,0.12)]',
-                                isPreview && 'ring-2 ring-[var(--color-primary)]/25',
+                                  ? 'border-black/20 shadow-[0_12px_32px_rgba(12,20,27,0.12)] ring-2 ring-[var(--color-primary)] ring-offset-1'
+                                  : 'border-black/8 shadow-[0_4px_12px_rgba(12,20,27,0.06)] hover:border-black/16 hover:shadow-[0_8px_24px_rgba(12,20,27,0.08)]',
+                                isPreview && 'opacity-60 ring-2 ring-black/8 ring-offset-1',
+                                'bg-white',
                               )}
                               style={{
                                 top: `${item.top}%`,
                                 left: `${item.left}%`,
                                 width: `${item.width}%`,
                                 height: `${item.height}%`,
-                                minHeight: 44,
+                                minHeight: 48,
                               }}
                             >
-                              <div
-                                className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,18,24,0.08),rgba(11,18,24,0.76)),linear-gradient(135deg,rgba(114,174,230,0.24),rgba(182,214,242,0.24))]"
-                                style={
-                                  photo
-                                    ? {
-                                        backgroundImage: `linear-gradient(180deg, rgba(11, 18, 24, 0.08), rgba(11, 18, 24, 0.8)), url(${photo})`,
-                                        backgroundSize: 'cover',
-                                        backgroundPosition: 'center',
-                                      }
-                                    : undefined
-                                }
-                              />
-                              <div className="absolute inset-y-0 left-0 w-1.5 bg-[rgba(255,255,255,0.84)]" />
-                              <div className="relative flex h-full flex-col justify-between p-3 text-white">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0">
-                                    <p className="line-clamp-2 text-sm font-semibold leading-tight">
-                                      {activity.title}
-                                    </p>
-                                    <p className="mt-1 text-[11px] uppercase tracking-[0.18em] text-white/82">
-                                      {summaryText}
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col gap-1">
-                                    <div
-                                      aria-label="Resize start"
-                                      onPointerDown={(event) => beginInteraction(event, activity, 'timed', 'resize-top')}
-                                      className="h-2.5 w-7 self-end rounded-full bg-white/70"
-                                      role="presentation"
-                                    />
-                                    <div
-                                      aria-label="Resize end"
-                                      onPointerDown={(event) => beginInteraction(event, activity, 'timed', 'resize-bottom')}
-                                      className="mt-auto h-2.5 w-7 self-end rounded-full bg-white/70"
-                                      role="presentation"
-                                    />
+                              <div className="relative flex h-full items-start gap-3 px-3 py-2.5 text-[var(--color-text)]">
+                                {photo && (
+                                  <div 
+                                    className="absolute inset-y-0 right-0 w-1/2 opacity-20 pointer-events-none"
+                                    style={{
+                                      backgroundImage: `url(${photo})`,
+                                      backgroundSize: 'cover',
+                                      backgroundPosition: 'center',
+                                      maskImage: 'linear-gradient(to left, black, transparent)',
+                                      WebkitMaskImage: 'linear-gradient(to left, black, transparent)',
+                                    }}
+                                  />
+                                )}
+                                <div
+                                  aria-label="Resize start"
+                                  onPointerDown={(event) => beginInteraction(event, activity, 'timed', 'resize-top')}
+                                  className="absolute top-0 left-0 right-0 h-3 cursor-ns-resize z-10"
+                                  role="presentation"
+                                />
+                                
+                                <div className="z-10 flex-1 min-w-0 pointer-events-none">
+                                  <div className="flex flex-col h-full justify-between">
+                                    <div className="min-w-0">
+                                      <p className="line-clamp-2 text-[13px] font-bold leading-tight text-[var(--color-text)]">
+                                        {activity.title}
+                                      </p>
+                                      <div className="mt-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-wide text-[var(--color-text-muted)]">
+                                        <Clock3 className="h-3 w-3" />
+                                        <span>{summaryText}</span>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                      {activity.place?.name ? (
+                                        <div className="flex max-w-full items-center gap-1.5 pointer-events-auto">
+                                          <MapPin className="h-2.5 w-2.5 shrink-0 text-[var(--color-text-muted)]" />
+                                          <span className="truncate text-[10px] font-medium leading-none text-[var(--color-text-muted)]">
+                                            {activity.place.name}
+                                          </span>
+                                        </div>
+                                      ) : null}
+                                      {activity.source !== 'manual' && (
+                                        <div className="flex items-center gap-1 pointer-events-auto">
+                                          <Sparkles className="h-2.5 w-2.5 text-[var(--color-text-muted)]" />
+                                          <span className="text-[10px] font-medium leading-none text-[var(--color-text-muted)] uppercase tracking-wider">AI</span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-white/90">
-                                  {activity.place?.name ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2 py-1 backdrop-blur-sm">
-                                      <MapPin className="h-3 w-3" />
-                                      {activity.place.name}
-                                    </span>
-                                  ) : null}
-                                  {activity.source !== 'manual' ? (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2 py-1 backdrop-blur-sm">
-                                      <Sparkles className="h-3 w-3" />
-                                      Generated
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-white/18 px-2 py-1 backdrop-blur-sm">
-                                      Manual
-                                    </span>
-                                  )}
-                                </div>
+                                <div
+                                  aria-label="Resize end"
+                                  onPointerDown={(event) => beginInteraction(event, activity, 'timed', 'resize-bottom')}
+                                  className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize z-10"
+                                  role="presentation"
+                                />
                               </div>
                             </button>
                           </PopoverAnchor>
@@ -1013,9 +911,95 @@ export function PlannerCalendarView({
               })}
             </div>
           </div>
+
+          <div className="sticky left-0 border-r border-t border-black/6 bg-[#f7f8fa] px-3 py-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.05em] text-[#9ca3af]">
+              Untimed
+            </p>
+            <p className="mt-1 text-[11px] text-[var(--color-text-muted)]">
+              Flexible day activities
+            </p>
+          </div>
+
+          <div className="border-t border-black/8">
+            <div className="grid" style={{ gridTemplateColumns: dayGridTemplateColumns }}>
+              {visibleDays.map((day) => {
+                const untimedActivities = unscheduledActivitiesByDate.get(day.isoDate) ?? []
+                return (
+                  <div
+                    key={`${day.isoDate}-untimed`}
+                    className="min-h-[148px] border-l border-black/6 px-3 py-3 first:border-l-0"
+                  >
+                    {untimedActivities.length === 0 ? (
+                      <div className="flex min-h-[116px] items-center justify-center rounded-[14px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 text-center text-xs text-[var(--color-text-muted)]">
+                        No untimed activities for this day.
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {untimedActivities.map((activity) => {
+                          const isOpen = popoverActivityId === activity.id
+                          const isSelected = selectedActivityId === activity.id
+                          const isPreview = interaction?.activity.id === activity.id
+                          return (
+                            <Popover
+                              key={activity.id}
+                              open={isOpen}
+                              onOpenChange={(open) => setPopoverActivityId(open ? activity.id : null)}
+                            >
+                              <PopoverAnchor asChild>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenPopover(activity)}
+                                  onPointerDown={(event) => beginInteraction(event, activity, 'unscheduled', 'drag')}
+                                  className={cn(
+                                    'flex w-full flex-col items-start gap-2 rounded-[14px] border bg-white px-3 py-3 text-left shadow-[0_6px_18px_rgba(15,23,42,0.05)] transition-colors',
+                                    isSelected
+                                      ? 'border-black/20 ring-2 ring-[var(--color-primary)] ring-offset-1'
+                                      : 'border-black/8 hover:border-black/16 hover:bg-[#fcfcfd]',
+                                    isPreview && 'opacity-60',
+                                  )}
+                                >
+                                  <div className="flex w-full items-center justify-between gap-2">
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
+                                      <Clock3 className="h-3.5 w-3.5" />
+                                      Untimed
+                                    </span>
+                                    {activity.source !== 'manual' ? (
+                                      <Sparkles className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                                    ) : null}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="line-clamp-2 text-[0.82rem] font-medium leading-5 text-[var(--color-text)]">
+                                      {activity.title}
+                                    </p>
+                                    {activity.place?.name ? (
+                                      <div className="mt-1.5 inline-flex min-w-0 items-center gap-1.5 text-[0.72rem] text-[var(--color-text-muted)]">
+                                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                        <span className="truncate">{activity.place.name}</span>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </button>
+                              </PopoverAnchor>
+
+                              <ActivityPopover
+                                activity={activity}
+                                onOpenDetails={() => onSelectActivity(activity)}
+                              />
+                            </Popover>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
+        </div>
+      </section>
+    </div>
   )
 }
 

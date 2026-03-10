@@ -38,10 +38,16 @@ describe('ExportsWorkspace', () => {
   it('renders format chooser with all three formats', async () => {
     setup()
     expect(await screen.findByRole('button', { name: /export json/i })).toBeInTheDocument()
-    // Format card buttons contain their label text
-    expect(screen.getAllByText('JSON').length).toBeGreaterThan(0)
-    expect(screen.getByText('Calendar (ICS)')).toBeInTheDocument()
-    expect(screen.getByText('PDF')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /json format/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /calendar \(ics\) format/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /pdf format/i })).toBeInTheDocument()
+  })
+
+  it('renders inline fallback action and meta without app shell slots', async () => {
+    setup()
+
+    expect(await screen.findByText('Trip version 3')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export json/i })).toBeInTheDocument()
   })
 
   it('sends If-Match and Idempotency-Key on export submit', async () => {

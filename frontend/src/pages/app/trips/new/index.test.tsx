@@ -4,10 +4,21 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it, beforeEach, vi } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
-const { mockNavigate, mockCreateTrip, mockUseDestinationAutocomplete, toastSuccess, toastError, toastInfo } = vi.hoisted(() => ({
+const {
+  mockNavigate,
+  mockCreateTrip,
+  mockCreatePlace,
+  mockUseDestinationAutocomplete,
+  mockMergeTripCoverPhotoPreference,
+  toastSuccess,
+  toastError,
+  toastInfo,
+} = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
   mockCreateTrip: vi.fn(),
+  mockCreatePlace: vi.fn(),
   mockUseDestinationAutocomplete: vi.fn(),
+  mockMergeTripCoverPhotoPreference: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -24,6 +35,14 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/entities/trip/api', () => ({
   createTrip: (...args: unknown[]) => mockCreateTrip(...args),
+}))
+
+vi.mock('@/entities/place/api', () => ({
+  createPlace: (...args: unknown[]) => mockCreatePlace(...args),
+}))
+
+vi.mock('@/entities/trip/cover-photo', () => ({
+  mergeTripCoverPhotoPreference: (...args: unknown[]) => mockMergeTripCoverPhotoPreference(...args),
 }))
 
 vi.mock('@/entities/place/queries', () => ({
@@ -85,7 +104,9 @@ describe('TripCreatePage', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
     mockCreateTrip.mockReset()
+    mockCreatePlace.mockReset()
     mockUseDestinationAutocomplete.mockReset()
+    mockMergeTripCoverPhotoPreference.mockReset()
     toastSuccess.mockReset()
     toastError.mockReset()
     toastInfo.mockReset()
@@ -133,8 +154,13 @@ describe('TripCreatePage', () => {
       data: {
         items: [
           {
-            id: 'place-1',
+            id: 'photon:city:123',
             label: 'Paris, France',
+            name: 'Paris',
+            country: 'France',
+            region: 'Ile-de-France',
+            lat: 48.8566,
+            lon: 2.3522,
           },
         ],
       },
@@ -148,6 +174,64 @@ describe('TripCreatePage', () => {
     await user.click(await screen.findByRole('button', { name: /^paris, france$/i }))
 
     expect(screen.getByLabelText(/destination/i)).toHaveValue('Paris, France')
+  })
+
+  it('creates a backend place record for a selected destination before storing the cover photo preference', async () => {
+    const user = userEvent.setup()
+    mockCreateTrip.mockResolvedValue({ id: 'trip-created' })
+    mockCreatePlace.mockResolvedValue({ id: 'place-created' })
+
+    mockUseDestinationAutocomplete.mockReturnValue({
+      data: {
+        items: [
+          {
+            id: 'photon:city:123',
+            label: 'Paris, France',
+            name: 'Paris',
+            country: 'France',
+            region: 'Ile-de-France',
+            lat: 48.8566,
+            lon: 2.3522,
+          },
+        ],
+      },
+      isFetching: false,
+    })
+
+    renderPage()
+
+    await user.type(screen.getByLabelText(/trip title/i), 'Weekend in Paris')
+    await user.type(screen.getByLabelText(/destination/i), 'Par')
+    await user.click(await screen.findByRole('button', { name: /^paris, france$/i }))
+    await user.type(screen.getByLabelText(/select start date/i), '2026-04-12')
+    await user.type(screen.getByLabelText(/select end date/i), '2026-04-14')
+    await user.click(screen.getByRole('button', { name: /^create trip$/i }))
+
+    await waitFor(() => expect(mockCreatePlace).toHaveBeenCalledTimes(1))
+
+    expect(mockCreatePlace).toHaveBeenCalledWith(
+      {
+        source: 'photon',
+        external_id: 'photon:city:123',
+        name: 'Paris',
+        category: 'city',
+        address_text: 'Paris, France',
+        lat: 48.8566,
+        lon: 2.3522,
+        metadata: {
+          country: 'France',
+          region: 'Ile-de-France',
+          autocomplete_id: 'photon:city:123',
+        },
+      },
+      expect.any(String),
+    )
+
+    expect(mockMergeTripCoverPhotoPreference).toHaveBeenCalledWith('trip-created', {
+      placeId: 'place-created',
+      placeLabel: 'Paris, France',
+      photoId: null,
+    })
   })
 
   it('submits the shaped payload for trip creation', async () => {
@@ -189,6 +273,12 @@ describe('TripCreatePage', () => {
       },
       expect.any(String),
     )
+
+    expect(mockMergeTripCoverPhotoPreference).toHaveBeenCalledWith('trip-created', {
+      placeId: null,
+      placeLabel: 'Tokyo, Japan',
+      photoId: null,
+    })
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/app/trips/trip-created'))
     expect(toastSuccess).toHaveBeenCalledWith('Trip created successfully')

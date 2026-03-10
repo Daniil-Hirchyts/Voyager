@@ -3,7 +3,6 @@ import type {
   ActivityDiscoveryDetail,
   ActivityDiscoveryItem,
   ActivityRecommendationItem,
-  AuditLogEntry,
   Day,
   ExportResponse,
   Job,
@@ -122,6 +121,7 @@ export function buildPlannerDay(overrides: Partial<PlannerDay> = {}): PlannerDay
 export function buildPlannerResponse(overrides: Partial<PlannerResponse> = {}): PlannerResponse {
   return {
     trip: buildTrip(),
+    inbox_activities: [],
     days: [buildPlannerDay()],
     ...overrides,
   }
@@ -527,23 +527,6 @@ export function buildExport(overrides: Partial<ExportResponse> = {}): ExportResp
     expires_at: null,
     deleted_at: null,
     download_url: null,
-    ...overrides,
-  }
-}
-
-export function buildAuditEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
-  return {
-    id: 'audit-1',
-    user_id: 'user-1',
-    trip_id: 'trip-1',
-    entity_type: 'activity',
-    entity_id: 'activity-1',
-    action: 'create',
-    before: null,
-    after: { title: 'Morning walk' },
-    correlation_id: 'corr-1',
-    request_path: '/trips/trip-1/days/day-1/activities',
-    created_at: NOW,
     ...overrides,
   }
 }

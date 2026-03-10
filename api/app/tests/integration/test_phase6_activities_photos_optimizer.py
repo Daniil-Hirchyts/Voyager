@@ -229,6 +229,101 @@ def test_saved_activity_attach_recommend_optimize_and_apply(api_client, headers_
     assert any(item["event_snapshot_id"] == saved_attraction["snapshot_id"] for item in activities)
 
 
+def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase6 shortlist sync trip")
+    first_day = _list_days(api_client, headers_user1, trip["id"])[0]
+
+    saved_move = _save_activity(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        entity_type="restaurant",
+        provider_ref=f"tripadvisor-sync-move-{uuid.uuid4()}",
+        title="Bistro shortlist move",
+        summary="Move this attached shortlist item back to inbox.",
+        lat=48.8606,
+        lon=2.3376,
+        address_text="Rue de Rivoli, Paris, France",
+        tags=["restaurant", "lunch"],
+    )
+    saved_delete = _save_activity(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        entity_type="attraction",
+        provider_ref=f"tripadvisor-sync-delete-{uuid.uuid4()}",
+        title="Gallery shortlist delete",
+        summary="Delete this attached shortlist item.",
+        lat=48.8611,
+        lon=2.3358,
+        address_text="Palais Royal, Paris, France",
+        tags=["attraction", "gallery"],
+    )
+
+    version = _get_trip(api_client, headers_user1, trip["id"])["version"]
+    attach_move = api_client.post(
+        f"/trips/{trip['id']}/activities/{saved_move['snapshot_id']}/attach-day",
+        headers=headers_user1
+        | {
+            "If-Match": str(version),
+            "Idempotency-Key": f"p6-sync-attach-move-{uuid.uuid4()}",
+        },
+        json={"trip_day_id": first_day["id"]},
+    )
+    assert attach_move.status_code == 200
+
+    version = _get_trip(api_client, headers_user1, trip["id"])["version"]
+    attach_delete = api_client.post(
+        f"/trips/{trip['id']}/activities/{saved_delete['snapshot_id']}/attach-day",
+        headers=headers_user1
+        | {
+            "If-Match": str(version),
+            "Idempotency-Key": f"p6-sync-attach-delete-{uuid.uuid4()}",
+        },
+        json={"trip_day_id": first_day["id"]},
+    )
+    assert attach_delete.status_code == 200
+
+    shortlist_before = api_client.get(f"/trips/{trip['id']}/activities", headers=headers_user1)
+    assert shortlist_before.status_code == 200
+    before_by_snapshot = {
+        item["snapshot_id"]: item for item in shortlist_before.json()["items"]
+    }
+    assert before_by_snapshot[saved_move["snapshot_id"]]["trip_day_id"] == first_day["id"]
+    assert before_by_snapshot[saved_delete["snapshot_id"]]["trip_day_id"] == first_day["id"]
+
+    version = _get_trip(api_client, headers_user1, trip["id"])["version"]
+    move_to_inbox = api_client.post(
+        f"/activities/{attach_move.json()['id']}/move",
+        headers=headers_user1 | {"If-Match": str(version)},
+        json={"target_day_id": None, "target_index": 0, "start_time": None},
+    )
+    assert move_to_inbox.status_code == 200
+    assert move_to_inbox.json()["trip_day_id"] is None
+
+    shortlist_after_move = api_client.get(f"/trips/{trip['id']}/activities", headers=headers_user1)
+    assert shortlist_after_move.status_code == 200
+    after_move_by_snapshot = {
+        item["snapshot_id"]: item for item in shortlist_after_move.json()["items"]
+    }
+    assert after_move_by_snapshot[saved_move["snapshot_id"]]["trip_day_id"] is None
+    assert after_move_by_snapshot[saved_delete["snapshot_id"]]["trip_day_id"] == first_day["id"]
+
+    delete_activity = api_client.delete(
+        f"/activities/{attach_delete.json()['id']}",
+        headers=headers_user1,
+    )
+    assert delete_activity.status_code == 204
+
+    shortlist_after_delete = api_client.get(f"/trips/{trip['id']}/activities", headers=headers_user1)
+    assert shortlist_after_delete.status_code == 200
+    after_delete_by_snapshot = {
+        item["snapshot_id"]: item for item in shortlist_after_delete.json()["items"]
+    }
+    assert after_delete_by_snapshot[saved_move["snapshot_id"]]["trip_day_id"] is None
+    assert after_delete_by_snapshot[saved_delete["snapshot_id"]]["trip_day_id"] is None
+
+
 def test_hotel_shortlist_item_cannot_attach_to_day(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, title="Phase6 hotel attach guard")
     first_day = _list_days(api_client, headers_user1, trip["id"])[0]

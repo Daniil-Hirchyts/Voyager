@@ -35,6 +35,14 @@ def _place_fixture() -> Place:
     )
 
 
+def test_normalize_license_code_accepts_provider_variants():
+    assert place_photos._normalize_license_code("by") == "cc-by"
+    assert place_photos._normalize_license_code("by-sa") == "cc-by-sa"
+    assert place_photos._normalize_license_code("CC BY-SA 3.0") == "cc-by-sa"
+    assert place_photos._normalize_license_code("CC0 1.0") == "cc0"
+    assert place_photos._normalize_license_code("CC BY-NC 4.0") is None
+
+
 @pytest.mark.anyio
 async def test_fetch_wikimedia_filters_to_open_license(monkeypatch):
     place = _place_fixture()
@@ -195,8 +203,90 @@ async def test_fetch_wikidata_candidates_resolves_entity_images(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_fetch_wikipedia_candidates_uses_page_lead_image(monkeypatch):
+    place = _place_fixture()
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            self.base_url = str(kwargs.get("base_url", ""))
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, path, params=None):
+            request = httpx.Request("GET", f"{self.base_url}{path}")
+            action = params.get("action") if params else None
+
+            if "en.wikipedia.org" in self.base_url and action == "query" and params.get("prop") == "pageimages":
+                return httpx.Response(
+                    200,
+                    json={
+                        "query": {
+                            "pages": {
+                                "1": {
+                                    "pageid": 1,
+                                    "title": "Eiffel Tower",
+                                    "pageimage": "Tour_Eiffel_Wikimedia_Commons.jpg",
+                                }
+                            }
+                        }
+                    },
+                    request=request,
+                )
+
+            if "commons.wikimedia.org" in self.base_url and action == "query":
+                return httpx.Response(
+                    200,
+                    json={
+                        "query": {
+                            "pages": {
+                                "1": {
+                                    "pageid": 1,
+                                    "title": "File:Tour Eiffel Wikimedia Commons.jpg",
+                                    "imageinfo": [
+                                        {
+                                            "url": "https://img.open/eiffel-lead.jpg",
+                                            "thumburl": "https://img.open/eiffel-lead-thumb.jpg",
+                                            "width": 1600,
+                                            "height": 1000,
+                                            "extmetadata": {
+                                                "LicenseShortName": {"value": "CC BY-SA 4.0"},
+                                                "LicenseUrl": {"value": "https://license.example/by-sa"},
+                                                "Artist": {"value": "Commons Photographer"},
+                                            },
+                                        }
+                                    ],
+                                }
+                            }
+                        }
+                    },
+                    request=request,
+                )
+
+            raise AssertionError(f"Unexpected request: base={self.base_url} action={action} params={params}")
+
+    monkeypatch.setattr(place_photos.httpx, "AsyncClient", _FakeClient)
+
+    photos = await place_photos._fetch_wikipedia_candidates(place)
+
+    assert len(photos) == 1
+    assert photos[0]["source"] == "wikipedia_commons"
+    assert photos[0]["image_url"] == "https://img.open/eiffel-lead.jpg"
+    assert photos[0]["license_code"] == "cc-by-sa"
+
+
+@pytest.mark.anyio
 async def test_place_photo_fetch_falls_back_to_openverse(monkeypatch):
     place = _place_fixture()
+
+    async def _no_wikipedia(_place):
+        return []
+
+    async def _no_wikidata(_place):
+        return []
 
     async def _no_wikimedia(_place):
         return []
@@ -219,6 +309,8 @@ async def test_place_photo_fetch_falls_back_to_openverse(monkeypatch):
             }
         ]
 
+    monkeypatch.setattr(place_photos, "_fetch_wikipedia_candidates", _no_wikipedia)
+    monkeypatch.setattr(place_photos, "_fetch_wikidata_candidates", _no_wikidata)
     monkeypatch.setattr(place_photos, "_fetch_wikimedia_candidates", _no_wikimedia)
     monkeypatch.setattr(place_photos, "_fetch_openverse_candidates", _openverse)
 

@@ -341,11 +341,6 @@
     color: var(--color-text-muted);
   }
 
-  .voyager-focus {
-    outline: none;
-    box-shadow: 0 0 0 4px rgba(114, 174, 230, 0.22);
-  }
-
   .voyager-status-grid {
     display: grid;
     gap: 0.75rem;
@@ -357,6 +352,11 @@
     border: 1px solid var(--color-border-strong);
     box-shadow: 0 26px 70px -34px var(--color-shadow-strong);
     padding: 1rem;
+  }
+
+  .voyager-focus {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(114, 174, 230, 0.22);
   }
 
   .voyager-section-stack {
@@ -415,6 +415,7 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
+
 }
 
 @theme inline {

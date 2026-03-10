@@ -156,7 +156,7 @@ export function calculatePositionedActivities(
     const top = (minutesFromWindowStart / totalMinutes) * 100
     const height = (durationMinutes / totalMinutes) * 100
 
-    const overlapAmount = 8
+    const overlapAmount = 0
     let left = 0
     let width = 100 - rightGapPercent
     if (assignment.totalColumns > 1) {
