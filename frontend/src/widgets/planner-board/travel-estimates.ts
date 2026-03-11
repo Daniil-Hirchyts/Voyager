@@ -1,4 +1,5 @@
 import type { PlannerActivity } from '@/shared/api/types'
+import { plannerPrimaryPlace } from './categories'
 
 const EARTH_RADIUS_KM = 6371
 const ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR = 4.8
@@ -41,8 +42,9 @@ function haversineKm(
 }
 
 function getActivityCoordinates(activity: PlannerActivity) {
-  const lat = activity.place?.lat
-  const lon = activity.place?.lon
+  const place = plannerPrimaryPlace(activity)
+  const lat = place?.lat
+  const lon = place?.lon
 
   if (typeof lat !== 'number' || typeof lon !== 'number') {
     return null

@@ -2,69 +2,26 @@ import { Fragment } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { format } from 'date-fns'
-import { Hotel, Plus, Route, Ticket } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouteLegEstimates } from '@/entities/routes/queries'
 import { cn } from '@/shared/lib/cn'
-import type { Offer, PlannerActivity, PlannerDay } from '@/shared/api/types'
+import type { PlannerActivity, PlannerDay } from '@/shared/api/types'
 import { ActivityCard } from './ActivityCard'
-import {
-  buildPlannerTravelLegs,
-  formatTravelDistance,
-  formatTravelDuration,
-  summarizePlannerTravelLegs,
-  type PlannerTravelLeg,
-} from './travel-estimates'
+import { TravelConnector } from './TravelConnector'
+import { buildPlannerTravelLegs } from './travel-estimates'
 
 interface Props {
-  tripId: string
   day: PlannerDay
-  offers?: Offer[]
   selectedActivityId?: string | null
   onAddActivity: (dayId: string) => void
   onOpenActivity: (activity: PlannerActivity) => void
   className?: string
 }
 
-function TravelConnector({ leg }: { leg: PlannerTravelLeg }) {
-  const durationMin = leg.durationMin
-  const distanceKm = leg.distanceKm
-  const hasEstimate = durationMin != null && distanceKm != null
-
-  return (
-    <div
-      data-testid={`planner-travel-leg-${leg.toActivityId}`}
-      className="relative px-1 py-0.5"
-    >
-      <div className="pointer-events-none absolute bottom-0 left-[1.05rem] top-0 border-l border-dashed border-black/10" />
-      <div
-        className={cn(
-          'ml-6 flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]',
-          hasEstimate ? 'bg-[var(--color-secondary-surface)]' : 'bg-[var(--color-secondary-surface)]/70',
-        )}
-      >
-        <Route className="h-3.5 w-3.5 shrink-0" />
-        {hasEstimate ? (
-          <>
-            <span className="font-medium text-[var(--color-text)]">
-              {formatTravelDuration(durationMin)}
-            </span>
-            <span>&middot;</span>
-            <span>{formatTravelDistance(distanceKm)}</span>
-          </>
-        ) : (
-          <span>Add places to estimate travel</span>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export function DayColumn({
-  tripId,
   day,
-  offers = [],
   selectedActivityId = null,
   onAddActivity,
   onOpenActivity,
@@ -131,20 +88,20 @@ export function DayColumn({
       })
     : fallbackTravelLegs
   const travelLegsByToActivityId = new Map(travelLegs.map((leg) => [leg.toActivityId, leg]))
-  const travelSummary = summarizePlannerTravelLegs(travelLegs)
+
 
   return (
     <section
       className={cn(
-        'flex h-full min-h-0 min-w-[280px] flex-col overflow-hidden rounded-[14px] border border-black/8 bg-white',
+        'flex h-full min-h-0 w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] flex-col overflow-hidden rounded-[14px] border border-black/8 bg-white',
         isOver && 'border-black/16 ring-2 ring-black/6',
         className,
       )}
       aria-label={`Day ${day.day_index + 1}`}
     >
-      <header className="border-b border-black/8 bg-[var(--color-secondary-surface)] px-3.5 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
+      <header className="hidden lg:flex flex-col justify-center h-[4.5rem] border-b border-black/8 bg-[var(--color-secondary-surface)] px-4">
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex flex-col items-start gap-0.5">
             <div className="flex items-baseline gap-2">
               <h3 className="text-[0.92rem] font-medium text-[var(--color-text)]">
                 Day {day.day_index + 1}
@@ -153,45 +110,11 @@ export function DayColumn({
                 {format(new Date(day.date), 'EEEE')}
               </span>
             </div>
-            <p className="mt-1 text-[0.72rem] text-[var(--color-text-muted)]">
+            <p className="text-[0.72rem] text-[var(--color-text-muted)]">
               {format(new Date(day.date), 'MMM d, yyyy')}
             </p>
-            {travelSummary.estimatedLegCount > 0 ? (
-              <p
-                data-testid={`planner-day-travel-summary-${day.id}`}
-                className="mt-2 inline-flex items-center gap-1.5 text-[0.72rem] text-[var(--color-text-muted)]"
-              >
-                <Route className="h-3.5 w-3.5" />
-                <span>
-                  {formatTravelDuration(travelSummary.durationMin)} &middot;{' '}
-                  {formatTravelDistance(travelSummary.distanceKm)}
-                </span>
-              </p>
-            ) : null}
           </div>
-          <span className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
-            {activities.length}
-          </span>
         </div>
-
-        {offers.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {offers.map((offer) => (
-              <Link
-                key={offer.id}
-                to={`/app/trips/${tripId}/offers?dayId=${day.id}`}
-                className="inline-flex items-center gap-1.5 rounded-[10px] border border-black/8 bg-white px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)] transition-colors hover:border-black/12 hover:text-[var(--color-text)]"
-              >
-                {offer.kind === 'lodging' ? (
-                  <Hotel className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                ) : (
-                  <Ticket className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
-                )}
-                <span className="truncate">{offer.title}</span>
-              </Link>
-            ))}
-          </div>
-        ) : null}
       </header>
 
       <div
@@ -205,7 +128,13 @@ export function DayColumn({
 
             return (
               <Fragment key={activity.id}>
-                {travelLeg ? <TravelConnector leg={travelLeg} /> : null}
+                {travelLeg ? (
+                  <TravelConnector
+                    durationMin={travelLeg.durationMin}
+                    distanceKm={travelLeg.distanceKm}
+                    testId={`planner-travel-leg-${travelLeg.toActivityId}`}
+                  />
+                ) : null}
                 <ActivityCard
                   activity={activity}
                   onOpen={onOpenActivity}

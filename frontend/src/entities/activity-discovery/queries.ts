@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   attachSavedActivityToDay,
   discoverActivities,
+  getDiscoveredActivityDetail,
   getActivityRecommendations,
   getSavedActivityDetail,
   listSavedActivities,
@@ -10,6 +11,7 @@ import {
 import type {
   ActivityAttachDayInput,
   ActivityDiscoverInput,
+  ActivityEntityType,
   ActivityRecommendationInput,
   ActivityShortlistSaveInput,
 } from '@/shared/api/types'
@@ -25,6 +27,15 @@ export const activityDiscoveryKeys = {
   shortlist: (tripId: string) => ['activities-shortlist', tripId] as const,
   shortlistDetail: (snapshotId: string | null) =>
     ['activities-shortlist-detail', snapshotId ?? '__none__'] as const,
+  discoverDetail: (
+    tripId: string,
+    params: {
+      entity_type: ActivityEntityType
+      provider: string
+      provider_ref: string
+      locale?: string
+    } | null,
+  ) => ['activities-discover-detail', tripId, params ?? '__none__'] as const,
   recommendations: (tripId: string, params: ActivityRecommendationInput) =>
     ['activities-recommendations', tripId, params] as const,
 }
@@ -60,6 +71,30 @@ export function useSavedActivityDetail(snapshotId: string | null, locale = 'en-U
     queryFn: () => getSavedActivityDetail(snapshotId!, { locale }),
     enabled: !!snapshotId,
     staleTime: 30_000,
+  })
+}
+
+export function useDiscoveredActivityDetail(
+  tripId: string,
+  params: {
+    entity_type: ActivityEntityType
+    provider: string
+    provider_ref: string
+    locale?: string
+  } | null,
+) {
+  return useQuery({
+    queryKey: activityDiscoveryKeys.discoverDetail(tripId, params),
+    queryFn: () => getDiscoveredActivityDetail(tripId, params!),
+    enabled: Boolean(tripId && params?.provider && params?.provider_ref),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimit(error)) {
+        return false
+      }
+      return failureCount < 1
+    },
   })
 }
 
@@ -107,5 +142,25 @@ export function useAttachSavedActivityToDay(tripId: string) {
 export function useActivityRecommendations(tripId: string) {
   return useMutation({
     mutationFn: (data: ActivityRecommendationInput) => getActivityRecommendations(tripId, data),
+  })
+}
+
+export function useActivityRecommendationsQuery(
+  tripId: string,
+  params: ActivityRecommendationInput,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: activityDiscoveryKeys.recommendations(tripId, params),
+    queryFn: () => getActivityRecommendations(tripId, params),
+    enabled: enabled && !!tripId,
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    retry: (failureCount, error) => {
+      if (isRateLimit(error)) {
+        return false
+      }
+      return failureCount < 1
+    },
   })
 }

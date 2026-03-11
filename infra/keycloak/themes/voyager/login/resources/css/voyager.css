@@ -1,16 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600&family=Manrope:wght@400;500;600&display=swap');
 
 :root {
-  --color-bg: #F4EBDD;
-  --color-bg-deep: #E7D8C3;
-  --color-surface: #FDFAF5;
-  --color-border: #CDBEA8;
-  --color-text: #1D2430;
-  --color-text-muted: #526072;
-  --color-primary: #2F6F73;
-  --color-primary-hover: #266063;
-  --radius-md: 18px;
+  --color-bg: #f9f9f9;
+  --color-bg-deep: #f1f1f1;
+  --color-surface: #ffffff;
+  --color-border: #e2e2e2;
+  --color-border-strong: #d1d1d1;
+  --color-text: #1a1615;
+  --color-text-muted: #737373;
+  --color-primary: #1a1615;
+  --color-primary-hover: #333333;
+  --color-cta: #1a1615;
+  --radius-lg: 20px;
+  --radius-md: 16px;
   --radius-sm: 10px;
+  --shadow-card: 0 24px 52px -28px rgba(26,22,21,0.75);
 }
 
 body {
@@ -21,12 +25,13 @@ body {
   background-color: var(--color-bg) !important;
 }
 
-/* Background gradient and flex centering */
+@keyframes slideUpFade {
+  0% { opacity: 0; transform: translateY(30px); filter: blur(5px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
 .login-pf-page {
-  background: 
-    radial-gradient(ellipse at 30% 20%, rgba(47, 111, 115, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 70%, rgba(197, 106, 61, 0.08) 0%, transparent 50%),
-    linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%) !important;
+  background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-deep) 100%) !important;
   min-height: 100vh !important;
   display: flex !important;
   flex-direction: column !important;
@@ -36,22 +41,22 @@ body {
   position: relative !important;
 }
 
-/* Back to Website Link */
 .voyager-back-link {
   position: absolute !important;
   top: 2.5rem !important;
   left: 3rem !important;
-  color: var(--color-primary) !important;
+  color: var(--color-text-muted) !important;
   font-family: 'Manrope', system-ui, sans-serif !important;
   font-weight: 500 !important;
   font-size: 0.875rem !important;
   text-decoration: none !important;
-  transition: opacity 0.2s ease !important;
+  transition: all 0.2s ease !important;
   z-index: 10 !important;
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out 0.2s forwards !important;
 }
 .voyager-back-link:hover {
-  text-decoration: underline !important;
-  opacity: 0.8 !important;
+  color: var(--color-text) !important;
 }
 @media (max-width: 768px) {
   .voyager-back-link {
@@ -60,49 +65,56 @@ body {
   }
 }
 
-/* Hide the ugly beige header stripe that PatternFly adds */
 #kc-header {
   display: none !important;
 }
 
-/* Main Auth Card */
 .card-pf {
   background-color: var(--color-surface) !important;
-  border-radius: var(--radius-md) !important;
+  border-radius: var(--radius-lg) !important;
   border: 1px solid var(--color-border) !important;
-  box-shadow: 0 10px 40px -10px rgba(29, 36, 48, 0.1) !important;
+  box-shadow: var(--shadow-card) !important;
   padding: 3rem 2.5rem !important;
   width: 100% !important;
   max-width: 440px !important;
   margin: 0 !important;
   position: relative !important;
   z-index: 5 !important;
+  overflow: hidden !important;
+  opacity: 0;
+  animation: slideUpFade 0.7s ease-out 0.1s forwards !important;
 }
 
-/* Header typography */
 .login-pf-header {
   margin-bottom: 2rem !important;
   text-align: center !important;
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out 0.3s forwards !important;
 }
 
 #kc-page-title {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
-  font-size: 2.25rem !important;
+  font-family: 'Manrope', system-ui, sans-serif !important;
+  font-size: 1.75rem !important;
   color: var(--color-text) !important;
   font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
   margin-top: 0 !important;
   margin-bottom: 0.5rem !important;
   line-height: 1.2 !important;
 }
 
-/* Form Styles */
+#kc-content-wrapper {
+  opacity: 0;
+  animation: slideUpFade 0.6s ease-out 0.4s forwards !important;
+}
+
 .form-group {
   margin-bottom: 1.5rem !important;
 }
 
 .pf-c-form__label {
   color: var(--color-text) !important;
-  font-weight: 500 !important;
+  font-weight: 600 !important;
   display: block !important;
   margin-bottom: 0.5rem !important;
   font-size: 0.875rem !important;
@@ -110,13 +122,13 @@ body {
 
 .pf-c-form-control {
   border-radius: var(--radius-sm) !important;
-  border: 1px solid var(--color-border) !important;
-  background-color: transparent !important;
+  border: 1px solid var(--color-border-strong) !important;
+  background-color: #fafafa !important;
   font-family: 'Manrope', system-ui, sans-serif !important;
-  padding: 0.75rem 1rem !important;
+  padding: 0.875rem 1rem !important;
   width: 100% !important;
   color: var(--color-text) !important;
-  font-size: 1rem !important;
+  font-size: 0.95rem !important;
   box-sizing: border-box !important;
   transition: all 0.2s ease !important;
   height: auto !important;
@@ -124,16 +136,16 @@ body {
 
 .pf-c-form-control:focus, .pf-c-form-control:focus-within {
   border-color: var(--color-primary) !important;
+  background-color: var(--color-surface) !important;
   outline: none !important;
   box-shadow: 0 0 0 1px var(--color-primary) !important;
 }
 
-/* Password Input Group */
 .pf-c-input-group {
   display: flex !important;
-  border: 1px solid var(--color-border) !important;
+  border: 1px solid var(--color-border-strong) !important;
   border-radius: var(--radius-sm) !important;
-  background-color: transparent !important;
+  background-color: #fafafa !important;
   overflow: hidden !important;
   transition: all 0.2s ease !important;
   align-items: stretch !important;
@@ -141,19 +153,20 @@ body {
 
 .pf-c-input-group:focus-within {
   border-color: var(--color-primary) !important;
+  background-color: var(--color-surface) !important;
   box-shadow: 0 0 0 1px var(--color-primary) !important;
 }
 
 .pf-c-input-group .pf-c-form-control {
   border: none !important;
   box-shadow: none !important;
+  background: transparent !important;
   flex: 1 !important;
 }
 
 .pf-c-input-group .pf-c-button {
   background: transparent !important;
   border: none !important;
-  border-left: none !important;
   color: var(--color-text-muted) !important;
   padding: 0 1rem !important;
   cursor: pointer !important;
@@ -163,15 +176,11 @@ body {
   justify-content: center !important;
   box-shadow: none !important;
 }
+
 .pf-c-input-group .pf-c-button:hover {
-  color: var(--color-primary) !important;
-}
-.pf-c-input-group .pf-c-button::before,
-.pf-c-input-group .pf-c-button::after {
-  display: none !important;
+  color: var(--color-text) !important;
 }
 
-/* Form Settings (Remember me, Forgot password) */
 .login-pf-settings {
   display: flex !important;
   justify-content: space-between !important;
@@ -193,7 +202,6 @@ body {
   gap: 0.5rem !important;
 }
 
-/* Checkboxes */
 input[type="checkbox"] {
   accent-color: var(--color-primary) !important;
   width: 1rem !important;
@@ -202,82 +210,71 @@ input[type="checkbox"] {
   margin-top: 2px !important;
 }
 
-/* Primary Button */
 .pf-c-button.pf-m-primary,
 input[type="submit"],
 button[type="submit"] {
-  background-color: var(--color-primary) !important;
+  background-color: var(--color-text) !important;
   color: white !important;
-  border-radius: var(--radius-sm) !important;
+  border-radius: var(--radius-md) !important;
   font-size: 1rem !important;
   font-weight: 500 !important;
   padding: 0.875rem 1.5rem !important;
   width: 100% !important;
   border: none !important;
   cursor: pointer !important;
-  transition: all 0.2s ease !important;
+  transition: all 0.3s ease !important;
   font-family: 'Manrope', system-ui, sans-serif !important;
 }
 
 .pf-c-button.pf-m-primary:hover,
 input[type="submit"]:hover,
 button[type="submit"]:hover {
-  background-color: var(--color-primary-hover) !important;
-  box-shadow: 0 4px 12px rgba(47, 111, 115, 0.2) !important;
+  transform: scale(1.02) !important;
+  box-shadow: 0 10px 20px -10px var(--color-text) !important;
 }
 
-/* Links */
 a {
-  color: var(--color-primary) !important;
+  color: var(--color-text-muted) !important;
   font-size: 0.875rem !important;
-  text-decoration: none !important;
+  text-decoration: underline !important;
+  text-decoration-color: transparent !important;
   font-weight: 500 !important;
+  transition: all 0.2s ease !important;
 }
 a:hover {
-  color: var(--color-primary-hover) !important;
-  text-decoration: underline !important;
+  color: var(--color-text) !important;
+  text-decoration-color: var(--color-text) !important;
 }
 
-/* Alerts & Messages */
 .alert, .pf-c-alert {
-  background-color: rgba(47, 111, 115, 0.05) !important;
-  border: 1px solid rgba(47, 111, 115, 0.2) !important;
+  background-color: #fafafa !important;
+  border: 1px solid var(--color-border-strong) !important;
   border-radius: var(--radius-sm) !important;
   padding: 1rem 1.25rem !important;
   margin-bottom: 2rem !important;
   display: flex !important;
   align-items: flex-start !important;
   gap: 0.75rem !important;
-  color: var(--color-primary) !important;
+  color: var(--color-text) !important;
+  font-size: 0.875rem !important;
 }
 
 .alert-error, .pf-m-danger {
-  background-color: rgba(197, 106, 61, 0.05) !important;
-  border-color: rgba(197, 106, 61, 0.2) !important;
-  color: #C56A3D !important;
-  fill: #C56A3D !important;
-}
-.alert-error .pf-c-alert__icon {
-  color: #C56A3D !important;
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #b91c1c !important;
 }
 
 .alert-warning, .pf-m-warning {
-  background-color: rgba(245, 158, 11, 0.05) !important;
-  border-color: rgba(245, 158, 11, 0.2) !important;
-  color: #D97706 !important;
-  fill: #D97706 !important;
-}
-.alert-warning .pf-c-alert__icon {
-  color: #D97706 !important;
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
 }
 
 .alert-success, .pf-m-success {
-  background-color: rgba(47, 111, 115, 0.05) !important;
-  border-color: rgba(47, 111, 115, 0.2) !important;
-  color: var(--color-primary) !important;
-}
-.alert-success .pf-c-alert__icon {
-  color: var(--color-primary) !important;
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;
+  color: #15803d !important;
 }
 
 .pf-c-alert__icon {
@@ -285,7 +282,6 @@ a:hover {
 }
 
 .kc-feedback-text, .pf-c-alert__title {
-  font-size: 0.875rem !important;
   font-weight: 500 !important;
   line-height: 1.4 !important;
   margin: 0 !important;

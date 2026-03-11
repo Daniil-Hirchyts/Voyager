@@ -57,27 +57,43 @@ vi.mock('sonner', () => ({
   },
 }))
 
-vi.mock('@/components/ui/date-picker', () => ({
-  DatePicker: ({
+vi.mock('@/components/ui/date-range-picker', () => ({
+  DateRangePicker: ({
     id,
-    value,
+    startDate,
+    endDate,
     onChange,
-    placeholder,
     invalid,
   }: {
     id?: string
-    value?: string
-    onChange?: (value: string) => void
-    placeholder?: string
+    startDate?: string
+    endDate?: string
+    onChange?: (value: { startDate: string; endDate: string }) => void
     invalid?: boolean
   }) => (
-    <input
-      id={id}
-      aria-label={placeholder}
-      data-invalid={invalid ? 'true' : undefined}
-      value={value ?? ''}
-      onChange={(event) => onChange?.(event.target.value)}
-    />
+    <div>
+      <input
+        id={id ? `${id}-start` : undefined}
+        aria-label="Select start date"
+        data-invalid={invalid ? 'true' : undefined}
+        value={startDate ?? ''}
+        onChange={(event) =>
+          onChange?.({
+            startDate: event.target.value,
+            endDate: endDate ?? '',
+          })}
+      />
+      <input
+        aria-label="Select end date"
+        data-invalid={invalid ? 'true' : undefined}
+        value={endDate ?? ''}
+        onChange={(event) =>
+          onChange?.({
+            startDate: startDate ?? '',
+            endDate: event.target.value,
+          })}
+      />
+    </div>
   ),
 }))
 
@@ -124,7 +140,7 @@ describe('TripCreatePage', () => {
 
     await user.click(screen.getByRole('button', { name: /^create trip$/i }))
 
-    expect(await screen.findByText('Trip title is required')).toBeInTheDocument()
+    expect(screen.queryByLabelText(/trip title/i)).not.toBeInTheDocument()
     expect(screen.getByText('Destination is required')).toBeInTheDocument()
     expect(screen.getByText('Start date is required')).toBeInTheDocument()
     expect(screen.getByText('End date is required')).toBeInTheDocument()
@@ -137,7 +153,6 @@ describe('TripCreatePage', () => {
 
     renderPage()
 
-    await user.type(screen.getByLabelText(/trip title/i), 'Weekend in Paris')
     await user.type(screen.getByLabelText(/destination/i), 'Paris, France')
     await user.type(screen.getByLabelText(/select start date/i), '2026-04-12')
     await user.type(screen.getByLabelText(/select end date/i), '2026-04-10')
@@ -200,7 +215,6 @@ describe('TripCreatePage', () => {
 
     renderPage()
 
-    await user.type(screen.getByLabelText(/trip title/i), 'Weekend in Paris')
     await user.type(screen.getByLabelText(/destination/i), 'Par')
     await user.click(await screen.findByRole('button', { name: /^paris, france$/i }))
     await user.type(screen.getByLabelText(/select start date/i), '2026-04-12')
@@ -211,7 +225,7 @@ describe('TripCreatePage', () => {
 
     expect(mockCreatePlace).toHaveBeenCalledWith(
       {
-        source: 'photon',
+        source: 'google_places',
         external_id: 'photon:city:123',
         name: 'Paris',
         category: 'city',
@@ -222,6 +236,8 @@ describe('TripCreatePage', () => {
           country: 'France',
           region: 'Ile-de-France',
           autocomplete_id: 'photon:city:123',
+          google_place_id: 'photon:city:123',
+          time_zone_id: null,
         },
       },
       expect.any(String),
@@ -240,36 +256,30 @@ describe('TripCreatePage', () => {
 
     renderPage()
 
-    await user.type(screen.getByLabelText(/trip title/i), 'Tokyo Adventure 2026')
+    expect(screen.queryByLabelText(/trip title/i)).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/preferences/i)).not.toBeInTheDocument()
     await user.type(screen.getByLabelText(/destination/i), 'Tokyo, Japan')
     await user.type(screen.getByLabelText(/select start date/i), '2026-04-10')
     await user.type(screen.getByLabelText(/select end date/i), '2026-04-16')
     await user.type(screen.getByLabelText(/budget/i), '3200')
 
     await user.click(screen.getByLabelText(/currency/i))
-    await user.click(screen.getByRole('option', { name: 'EUR' }))
+    await user.click(screen.getByRole('option', { name: /EUR Euro/i }))
 
     await user.click(screen.getByLabelText(/trip type/i))
     await user.click(screen.getByRole('option', { name: 'Adventure' }))
-
-    await user.type(
-      screen.getByLabelText(/preferences/i),
-      'Good food near museums and walkable neighborhoods',
-    )
     await user.click(screen.getByRole('button', { name: /^create trip$/i }))
 
     await waitFor(() => expect(mockCreateTrip).toHaveBeenCalledTimes(1))
 
     expect(mockCreateTrip).toHaveBeenCalledWith(
       {
-        title: 'Tokyo Adventure 2026',
         destination_text: 'Tokyo, Japan',
         start_date: '2026-04-10',
         end_date: '2026-04-16',
         budget_amount: 3200,
         budget_currency: 'EUR',
         trip_type: 'adventure',
-        preferences: ['food', 'museums', 'walkable neighborhoods'],
       },
       expect.any(String),
     )

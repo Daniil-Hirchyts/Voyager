@@ -3,6 +3,7 @@ import {
   autocompleteDestinations,
   createPlace,
   getGooglePlace,
+  getGooglePlaceDetail,
   getNearbyPlaces,
   getPlace,
   getViewportPlaces,
@@ -28,6 +29,7 @@ export const placeKeys = {
   viewport: (params: ViewportPlaceParams | null) => ['places', 'viewport', params] as const,
   detail: (placeId: string) => ['place', placeId] as const,
   googleDetail: (placeId: string) => ['places', 'google', placeId] as const,
+  googleRichDetail: (placeId: string) => ['places', 'google', placeId, 'detail'] as const,
 }
 
 export function usePlaceList(params: PlaceListParams = {}) {
@@ -93,6 +95,15 @@ export function useGooglePlace(placeId: string | null | undefined) {
   return useQuery({
     queryKey: placeKeys.googleDetail(placeId ?? '__none__'),
     queryFn: () => getGooglePlace(placeId!),
+    enabled: !!placeId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useGooglePlaceDetail(placeId: string | null | undefined) {
+  return useQuery({
+    queryKey: placeKeys.googleRichDetail(placeId ?? '__none__'),
+    queryFn: () => getGooglePlaceDetail(placeId!),
     enabled: !!placeId,
     staleTime: 5 * 60 * 1000,
   })

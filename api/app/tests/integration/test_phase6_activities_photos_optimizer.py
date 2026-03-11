@@ -18,7 +18,6 @@ def _create_trip(api_client, headers, *, title: str) -> dict:
             "budget_amount": 1200,
             "budget_currency": "EUR",
             "trip_type": "cultural",
-            "preferences": ["museums", "food"],
         },
     )
     assert response.status_code == 201
@@ -126,6 +125,20 @@ def test_saved_activity_attach_recommend_optimize_and_apply(api_client, headers_
     detail_body = detail.json()
     assert detail_body["title"] == saved_restaurant["title"]
     assert isinstance(detail_body["provider_payload"], dict)
+
+    discover_detail = api_client.get(
+        f"/trips/{trip['id']}/activities/discover/detail",
+        headers=headers_user1,
+        params={
+            "entity_type": saved_restaurant["entity_type"],
+            "provider": saved_restaurant["provider"],
+            "provider_ref": saved_restaurant["provider_ref"],
+        },
+    )
+    assert discover_detail.status_code == 200
+    discover_detail_body = discover_detail.json()
+    assert discover_detail_body["provider_ref"] == saved_restaurant["provider_ref"]
+    assert isinstance(discover_detail_body["provider_payload"], dict)
 
     current_trip = _get_trip(api_client, headers_user1, trip["id"])
     attach = api_client.post(
@@ -316,6 +329,46 @@ def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, 
     }
     assert after_delete_by_snapshot[saved_move["snapshot_id"]]["trip_day_id"] is None
     assert after_delete_by_snapshot[saved_delete["snapshot_id"]]["trip_day_id"] is None
+
+
+def test_saved_activity_can_be_added_to_planner_inbox(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase6 recommendation inbox trip")
+    saved_item = _save_activity(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        entity_type="attraction",
+        provider_ref=f"tripadvisor-inbox-{uuid.uuid4()}",
+        title="Canal-side gallery",
+        summary="Keep this in the inbox for later scheduling.",
+        lat=48.8661,
+        lon=2.3337,
+        address_text="Palais Royal, Paris, France",
+    )
+
+    create_inbox_activity = api_client.post(
+        f"/trips/{trip['id']}/planner/activities",
+        headers=headers_user1 | {"Idempotency-Key": f"p6-inbox-create-{uuid.uuid4()}"},
+        json={
+            "trip_day_id": None,
+            "category": "visit",
+            "title": saved_item["title"],
+            "description": saved_item["summary"],
+            "place_id": saved_item["place_id"],
+            "event_snapshot_id": saved_item["snapshot_id"],
+            "source": "manual",
+        },
+    )
+    assert create_inbox_activity.status_code == 201
+    created_activity = create_inbox_activity.json()
+    assert created_activity["trip_day_id"] is None
+    assert created_activity["event_snapshot_id"] == saved_item["snapshot_id"]
+
+    shortlist = api_client.get(f"/trips/{trip['id']}/activities", headers=headers_user1)
+    assert shortlist.status_code == 200
+    shortlist_item = shortlist.json()["items"][0]
+    assert shortlist_item["snapshot_id"] == saved_item["snapshot_id"]
+    assert shortlist_item["trip_day_id"] is None
 
 
 def test_hotel_shortlist_item_cannot_attach_to_day(api_client, headers_user1):

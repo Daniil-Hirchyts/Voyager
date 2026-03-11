@@ -5,19 +5,16 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.offers import OfferKind
 from app.models.places import PlacePhotoSummary
 
 
 class TripCreateRequest(BaseModel):
-    title: str
     destination_text: str
     start_date: date
     end_date: date
     budget_amount: Decimal | None = None
     budget_currency: str | None = None
     trip_type: str | None = None
-    preferences: list[str] = Field(default_factory=list)
 
 
 class TripPatchRequest(BaseModel):
@@ -28,7 +25,6 @@ class TripPatchRequest(BaseModel):
     budget_amount: Decimal | None = None
     budget_currency: str | None = None
     trip_type: str | None = None
-    preferences: list[str] | None = None
 
 
 class TripResponse(BaseModel):
@@ -41,7 +37,6 @@ class TripResponse(BaseModel):
     budget_amount: Decimal | None
     budget_currency: str | None
     trip_type: str | None
-    preferences: list[str]
     version: int
     created_at: datetime
     updated_at: datetime
@@ -94,15 +89,6 @@ class ActivityCategory(StrEnum):
     TRAVEL = "travel"
 
 
-class PlannerLinkedOfferSummary(BaseModel):
-    kind: OfferKind
-    offer_id: UUID
-    title: str
-    deep_link: str | None
-    price_amount: Decimal | None = None
-    currency: str | None = None
-
-
 class ActivityResponse(BaseModel):
     id: UUID
     trip_day_id: UUID | None
@@ -119,9 +105,8 @@ class ActivityResponse(BaseModel):
     event_snapshot_id: UUID | None
     notes: str | None
     is_favorite: bool
+    visited_at: datetime | None
     source: str
-    linked_offer_kind: OfferKind | None = None
-    linked_offer_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -143,10 +128,8 @@ class PlannerActivityResponse(BaseModel):
     event_snapshot_id: UUID | None
     notes: str | None
     is_favorite: bool
+    visited_at: datetime | None
     source: str
-    linked_offer_kind: OfferKind | None = None
-    linked_offer_id: UUID | None = None
-    linked_offer_summary: PlannerLinkedOfferSummary | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -162,6 +145,7 @@ class ActivityCreateRequest(BaseModel):
     estimated_cost_amount: Decimal | None = None
     estimated_cost_currency: str | None = None
     place_id: UUID | None = None
+    event_snapshot_id: UUID | None = None
     notes: str | None = None
     is_favorite: bool = False
     source: str = "manual"
@@ -179,6 +163,7 @@ class ActivityPatchRequest(BaseModel):
     place_id: UUID | None = None
     notes: str | None = None
     is_favorite: bool | None = None
+    visited_at: datetime | None = None
     source: str | None = None
 
 
@@ -201,12 +186,6 @@ class ActivityReorderRequest(BaseModel):
 class ActivityMoveRequest(BaseModel):
     target_day_id: UUID | None
     target_index: int
-
-
-class PlannerActivityFromOfferRequest(BaseModel):
-    offer_kind: OfferKind
-    offer_id: UUID
-    trip_day_id: UUID | None = None
 
 
 class PlannerDayResponse(DayResponse):

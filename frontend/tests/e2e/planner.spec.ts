@@ -20,8 +20,6 @@ type PlannerActivity = {
   notes: string | null
   is_favorite: boolean
   source: string
-  linked_offer_kind: null | 'transport' | 'lodging'
-  linked_offer_id: string | null
   created_at: string
   updated_at: string
 }
@@ -48,7 +46,6 @@ type PlannerState = {
     budget_amount: string
     budget_currency: string
     trip_type: string
-    preferences: string[]
     version: number
     created_at: string
     updated_at: string
@@ -81,8 +78,6 @@ function buildActivity(
     notes: null,
     is_favorite: false,
     source: 'manual',
-    linked_offer_kind: null,
-    linked_offer_id: null,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
@@ -101,7 +96,6 @@ function createPlannerState(): PlannerState {
       budget_amount: '1200.00',
       budget_currency: 'EUR',
       trip_type: 'city_break',
-      preferences: ['museums', 'cafes'],
       version: 3,
       created_at: NOW,
       updated_at: NOW,
@@ -214,14 +208,6 @@ async function fulfillJson(route: Route, payload: unknown) {
 
 async function installPlannerRoutes(page: Page, state: PlannerState) {
   await page.route('**/api/trips/trip-e2e/planner', (route) => fulfillJson(route, state))
-  await page.route('**/api/trips/trip-e2e/offers**', (route) =>
-    fulfillJson(route, {
-      total: 0,
-      limit: 200,
-      offset: 0,
-      items: [],
-    }),
-  )
   await page.route('**/api/activities/*/move', async (route) => {
     const payload = route.request().postDataJSON() as {
       target_day_id: string | null

@@ -42,7 +42,6 @@ from app.models.trips import (
     ActivityPatchRequest,
     ActivityReorderRequest,
     ActivityResponse,
-    PlannerActivityFromOfferRequest,
 )
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import parse_if_match, payload_fingerprint
@@ -52,6 +51,7 @@ from app.services.activity_discovery_provider import (
     ActivityProviderNonRetryableError,
     ActivityProviderRetryableError,
     TripAdvisorActivityProvider,
+    normalize_provider_item,
     resolve_activity_provider_availability,
 )
 from app.services.activity_recommendations import recommend_shortlist_items
@@ -77,9 +77,8 @@ def _activity_response(activity) -> ActivityResponse:
         event_snapshot_id=activity.event_snapshot_id,
         notes=activity.notes,
         is_favorite=activity.is_favorite,
+        visited_at=activity.visited_at,
         source=activity.source,
-        linked_offer_kind=activity.linked_offer_kind,
-        linked_offer_id=activity.linked_offer_id,
         created_at=activity.created_at,
         updated_at=activity.updated_at,
     )
@@ -210,65 +209,12 @@ async def create_trip_activity(
     response = _activity_response(activity)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
-    await cache_delete_prefix(redis, "offer:list:")
 
     if idempotency_key:
         await idem.store_response(
             user_id=str(auth.user_id),
             method="POST",
             path=f"/trips/{trip_id}/planner/activities",
-            idempotency_key=idempotency_key,
-            fingerprint=fingerprint,
-            status_code=201,
-            response_body=response.model_dump(mode="json"),
-        )
-
-    return response
-
-
-@router.post(
-    "/trips/{trip_id}/planner/activities/from-offer",
-    response_model=ActivityResponse,
-    status_code=201,
-)
-async def import_offer_activity(
-    trip_id: uuid.UUID,
-    payload: PlannerActivityFromOfferRequest,
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-    auth: AuthContext = Depends(get_auth_context),
-    db: AsyncSession = Depends(get_db_session),
-    redis: Redis = Depends(get_redis),
-) -> ActivityResponse | JSONResponse:
-    settings = get_settings()
-    await limit_user_request(
-        redis,
-        str(auth.user_id),
-        "activities:create",
-        settings.rate_limit_activity_create_per_min,
-    )
-
-    idem = IdempotencyService(redis)
-    fingerprint = payload_fingerprint(payload.model_dump(mode="json") | {"trip_id": str(trip_id)})
-    replay = await idem.check_or_replay(
-        user_id=str(auth.user_id),
-        method="POST",
-        path=f"/trips/{trip_id}/planner/activities/from-offer",
-        idempotency_key=idempotency_key,
-        fingerprint=fingerprint,
-    )
-    if replay:
-        return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
-
-    activity = await ActivityRepository.import_offer_activity(db, auth.user_id, trip_id, payload)
-    response = _activity_response(activity)
-    await cache_delete_prefix(redis, "trip:get:")
-    await cache_delete_prefix(redis, "trip:list:")
-
-    if idempotency_key:
-        await idem.store_response(
-            user_id=str(auth.user_id),
-            method="POST",
-            path=f"/trips/{trip_id}/planner/activities/from-offer",
             idempotency_key=idempotency_key,
             fingerprint=fingerprint,
             status_code=201,
@@ -360,7 +306,6 @@ async def patch_activity(
     activity = await ActivityRepository.patch_activity(db, auth.user_id, activity_id, payload)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
-    await cache_delete_prefix(redis, "offer:list:")
     return _activity_response(activity)
 
 
@@ -374,7 +319,6 @@ async def delete_activity(
     await ActivityRepository.delete_activity(db, auth.user_id, activity_id)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
-    await cache_delete_prefix(redis, "offer:list:")
     await cache_delete_prefix(redis, "activity:shortlist:")
 
 
@@ -420,7 +364,6 @@ async def move_activity(
     )
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
-    await cache_delete_prefix(redis, "offer:list:")
     await cache_delete_prefix(redis, "activity:shortlist:")
     return _activity_response(activity)
 
@@ -546,6 +489,125 @@ async def discover_activities(
         entity_type=entity_type,
         items=normalized_items,
     )
+
+
+@router.get(
+    "/trips/{trip_id}/activities/discover/detail",
+    response_model=ActivityDiscoveryDetail,
+)
+async def get_discovered_activity_detail(
+    trip_id: uuid.UUID,
+    entity_type: ActivityEntityType = Query(default=ActivityEntityType.ATTRACTION),
+    provider: str = Query(default="tripadvisor"),
+    provider_ref: str = Query(..., min_length=1),
+    locale: str = Query(default="en-US"),
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> ActivityDiscoveryDetail:
+    settings = get_settings()
+    await TripRepository.get_trip(db, auth.user_id, trip_id)
+
+    if provider != "tripadvisor":
+        raise ValidationApiError(
+            "Only TripAdvisor discovery detail is supported",
+            {"provider": provider},
+        )
+
+    _raise_if_provider_unavailable()
+
+    cache_key = "activity:discover:detail:v1:" + build_cache_key(
+        str(auth.user_id),
+        str(trip_id),
+        str(entity_type),
+        provider,
+        provider_ref,
+        locale,
+    )
+    cached = await cache_get_json(redis, cache_key)
+    if cached is not None:
+        return ActivityDiscoveryDetail.model_validate(cached)
+
+    detail_limit = settings.rate_limit_activities_discover_per_hour
+    if settings.env == "dev":
+        detail_limit = max(detail_limit, 240)
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "activities:discover",
+        detail_limit,
+        window_seconds=3600,
+    )
+
+    existing_result = await db.execute(
+        select(EventSnapshot)
+        .where(EventSnapshot.trip_id == trip_id)
+        .where(EventSnapshot.provider == provider)
+        .where(EventSnapshot.provider_event_ref == provider_ref)
+        .limit(1)
+    )
+    existing = existing_result.scalar_one_or_none()
+
+    activity_provider = TripAdvisorActivityProvider()
+    try:
+        detail_bundle = await activity_provider.detail_bundle(
+            entity_type=entity_type,
+            query=provider_ref,
+            locale=locale,
+        )
+    except ActivityProviderNonRetryableError as exc:
+        status_code = int(exc.details.get("status_code") or 0)
+        if existing is not None and status_code in {400, 404, 410, 422}:
+            response = EventRepository.to_discovery_detail(existing)
+            await cache_set_json(
+                redis,
+                cache_key,
+                response.model_dump(mode="json"),
+                settings.activity_cache_ttl_sec,
+            )
+            return response
+        _provider_errors_to_api(exc)
+    except Exception as exc:  # pragma: no cover - routed through deterministic helper
+        _provider_errors_to_api(exc)
+
+    detail_payload = (
+        detail_bundle.get("detail_payload")
+        if isinstance(detail_bundle.get("detail_payload"), dict)
+        else {}
+    )
+    normalized_item = normalize_provider_item(
+        entity_type=entity_type,
+        payload=detail_payload,
+        item_id=f"{entity_type.value}:{provider_ref}",
+    )
+    normalized_item["provider_ref"] = provider_ref
+
+    if existing is not None:
+        normalized_item["snapshot_id"] = existing.id
+        normalized_item["id"] = str(existing.id)
+        normalized_item["trip_id"] = existing.trip_id
+        normalized_item["trip_day_id"] = existing.trip_day_id
+        normalized_item["place_id"] = existing.place_id
+        normalized_item["created_at"] = existing.created_at
+        normalized_item["updated_at"] = existing.updated_at
+
+    response = ActivityDiscoveryDetail.model_validate(
+        {
+            **normalized_item,
+            "photos": detail_bundle.get("photos") or [],
+            "reviews": detail_bundle.get("reviews") or [],
+            "hours": detail_bundle.get("hours") or [],
+            "booking_links": detail_bundle.get("booking_links") or [],
+            "provider_payload": detail_payload,
+        }
+    )
+    await cache_set_json(
+        redis,
+        cache_key,
+        response.model_dump(mode="json"),
+        settings.activity_cache_ttl_sec,
+    )
+    return response
 
 
 @router.post("/trips/{trip_id}/activities/save", response_model=ActivityDiscoveryItem, status_code=201)

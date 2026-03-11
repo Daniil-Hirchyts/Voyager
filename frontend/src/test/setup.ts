@@ -5,9 +5,22 @@ import { cleanup } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { server } from './msw/server'
 import { useMapStore } from '@/shared/stores/map.store'
-import { useOffersStore } from '@/shared/stores/offers.store'
 import { usePlannerStore } from '@/shared/stores/planner.store'
-import { useExportsStore } from '@/shared/stores/exports.store'
+
+vi.mock('react-oidc-context', () => ({
+  useAuth: () => ({
+    isAuthenticated: true,
+    isLoading: false,
+    user: {
+      profile: {
+        name: 'Voyager User',
+        email: 'voyager_user@example.com',
+      },
+    },
+    signinRedirect: vi.fn(),
+    signoutRedirect: vi.fn(),
+  }),
+}))
 
 const googleMapStub = {
   panTo: vi.fn(),
@@ -54,10 +67,46 @@ vi.mock('@vis.gl/react-google-maps', () => ({
   ) {
     return createElement('div', { ref, 'data-testid': 'google-map-stub' }, children)
   }),
-  Marker: ({ children }: { children?: ReactNode }) =>
-    createElement('div', { 'data-testid': 'google-marker-stub' }, children),
-  AdvancedMarker: ({ children }: { children?: ReactNode }) =>
-    createElement('div', { 'data-testid': 'google-advanced-marker-stub' }, children),
+  Marker: ({
+    children,
+    onClick,
+    title,
+    label,
+  }: {
+    children?: ReactNode
+    onClick?: () => void
+    title?: string
+    label?: { text?: string }
+  }) =>
+    createElement(
+      'button',
+      {
+        type: 'button',
+        'data-testid': 'google-marker-stub',
+        'aria-label': title ?? label?.text ?? 'Map marker',
+        onClick,
+      },
+      children ?? title ?? label?.text ?? null,
+    ),
+  AdvancedMarker: ({
+    children,
+    onClick,
+    title,
+  }: {
+    children?: ReactNode
+    onClick?: () => void
+    title?: string
+  }) =>
+    createElement(
+      'button',
+      {
+        type: 'button',
+        'data-testid': 'google-advanced-marker-stub',
+        'aria-label': title ?? 'Map marker',
+        onClick,
+      },
+      children ?? title ?? null,
+    ),
   InfoWindow: ({ children }: { children?: ReactNode }) =>
     createElement('div', { 'data-testid': 'google-info-window-stub' }, children),
   MapControl: ({ children }: { children?: ReactNode }) =>
@@ -79,6 +128,16 @@ vi.mock('@vis.gl/react-google-maps', () => ({
         PinElement: class {
           element = document.createElement('div')
         },
+      }
+    }
+
+    if (name === 'geocoding') {
+      return {
+        Geocoder: class {
+          geocode() {
+            return Promise.resolve({ results: [] })
+          }
+        }
       }
     }
 
@@ -154,16 +213,55 @@ vi.mock('terra-draw-google-maps-adapter', () => ({
 }))
 
 const initialMapState = useMapStore.getState()
-const initialOffersState = useOffersStore.getState()
 const initialPlannerState = usePlannerStore.getState()
-const initialExportsState = useExportsStore.getState()
+
 const defaultServerHandlers = [
+  http.get('http://localhost:8000/users/profile', () =>
+    HttpResponse.json({
+      id: 'user-profile-1',
+      keycloak_sub: 'voyager-user',
+      preferences: {},
+      created_at: '2026-03-06T09:00:00.000Z',
+    }),
+  ),
   http.get('http://localhost:8000/trips/:tripId/map-layers', () =>
     HttpResponse.json({
       items: [],
       total: 0,
       limit: 200,
       offset: 0,
+    }),
+  ),
+  http.get('http://localhost:8000/trips/:tripId/activities/discover', ({ params }) =>
+    HttpResponse.json({
+      total: 0,
+      limit: 6,
+      offset: 0,
+      page: 1,
+      entity_type: 'attraction',
+      items: [],
+      tripId: params.tripId,
+    }),
+  ),
+  http.get('http://localhost:8000/trips/:tripId/activities', () =>
+    HttpResponse.json({
+      total: 0,
+      limit: 100,
+      offset: 0,
+      items: [],
+    }),
+  ),
+  http.post('http://localhost:8000/trips/:tripId/activities/recommendations', () =>
+    HttpResponse.json({
+      total: 0,
+      items: [],
+    }),
+  ),
+  http.post('http://localhost:8000/routes/legs', () =>
+    HttpResponse.json({
+      items: [],
+      total_distance_km: 0,
+      total_duration_min: 0,
     }),
   ),
 ]
@@ -256,12 +354,11 @@ beforeAll(() => {
 
 afterEach(() => {
   cleanup()
+  globalThis.localStorage?.clear?.()
   server.resetHandlers()
   server.use(...defaultServerHandlers)
   useMapStore.setState(initialMapState, true)
-  useOffersStore.setState(initialOffersState, true)
   usePlannerStore.setState(initialPlannerState, true)
-  useExportsStore.setState(initialExportsState, true)
 })
 
 afterAll(() => {

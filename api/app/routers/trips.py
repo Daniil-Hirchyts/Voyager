@@ -4,7 +4,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_helpers import (
@@ -15,24 +15,31 @@ from app.cache.redis_helpers import (
     cache_set_json,
 )
 from app.config import get_settings
-from app.db.models import LodgingOffer, Place, TransportOffer
+from app.db.models import Activity, Place, TripDay
 from app.db.repositories import (
     ActivityRepository,
     AuditRepository,
+    EventRepository,
     JobRepository,
     PlacePhotoRepository,
     TripRepository,
 )
 from app.db.session import get_db_session, get_redis
-from app.errors import ConflictError, ValidationApiError
+from app.errors import ConflictError, NotFoundError, ValidationApiError
+from app.models.activity_discovery import ActivityDiscoveryPhoto
 from app.models.audit import AuditLogEntry, AuditLogListResponse
 from app.models.jobs import JobAcceptedResponse
+from app.models.places import PlaceResponse
+from app.models.planner_map import (
+    PlannerMapMentionLink,
+    PlannerMapPlaceDetailResponse,
+    PlannerMapRelatedActivitySummary,
+)
 from app.models.trips import (
     DayListResponse,
     DayResponse,
     PlannerActivityResponse,
     PlannerDayResponse,
-    PlannerLinkedOfferSummary,
     PlannerPlaceSummary,
     TripCreateRequest,
     TripGenerateRequest,
@@ -61,7 +68,6 @@ def _trip_response(trip) -> TripResponse:
         budget_amount=trip.budget_amount,
         budget_currency=trip.budget_currency,
         trip_type=trip.trip_type,
-        preferences=trip.preferences_json,
         version=trip.version,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
@@ -87,7 +93,6 @@ def _planner_activity_response(
     place=None,
     photo_count: int = 0,
     primary_photo=None,
-    linked_offer_summary: PlannerLinkedOfferSummary | None = None,
 ) -> PlannerActivityResponse:
     return PlannerActivityResponse(
         id=activity.id,
@@ -110,10 +115,8 @@ def _planner_activity_response(
         event_snapshot_id=activity.event_snapshot_id,
         notes=activity.notes,
         is_favorite=activity.is_favorite,
+        visited_at=activity.visited_at,
         source=activity.source,
-        linked_offer_kind=activity.linked_offer_kind,
-        linked_offer_id=activity.linked_offer_id,
-        linked_offer_summary=linked_offer_summary,
         created_at=activity.created_at,
         updated_at=activity.updated_at,
     )
@@ -158,6 +161,116 @@ def _audit_entry_response(entry) -> AuditLogEntry:
         request_path=entry.request_path,
         created_at=entry.created_at,
     )
+
+
+def _coerce_float(value) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _string_list(*values) -> list[str]:
+    items: list[str] = []
+    for value in values:
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized:
+                items.append(normalized)
+        elif isinstance(value, list):
+            for item in value:
+                items.extend(_string_list(item))
+        elif isinstance(value, dict):
+            items.extend(
+                _string_list(
+                    value.get("name"),
+                    value.get("label"),
+                    value.get("text"),
+                    value.get("title"),
+                )
+            )
+
+    seen: set[str] = set()
+    deduped: list[str] = []
+    for item in items:
+        lowered = item.lower()
+        if lowered in seen:
+            continue
+        seen.add(lowered)
+        deduped.append(item)
+    return deduped
+
+
+def _place_response(place, *, photo_count: int = 0, primary_photo=None) -> PlaceResponse:
+    return PlaceResponse(
+        id=place.id,
+        source=place.source,
+        external_id=place.external_id,
+        name=place.name,
+        category=place.category,
+        address_text=place.address_text,
+        lat=place.lat,
+        lon=place.lon,
+        metadata=place.metadata_json,
+        canonical_place_id=place.canonical_place_id,
+        is_canonical=place.canonical_place_id is None,
+        dedup_confidence=place.dedup_confidence,
+        merged_at=place.merged_at,
+        photo_count=photo_count,
+        primary_photo=primary_photo,
+        distance_m=None,
+        created_at=place.created_at,
+        updated_at=place.updated_at,
+    )
+
+
+def _place_photo_to_discovery_photo(photo) -> ActivityDiscoveryPhoto:
+    return ActivityDiscoveryPhoto(
+        image_url=photo.image_url,
+        thumbnail_url=photo.thumbnail_url,
+        width=photo.width,
+        height=photo.height,
+        caption=photo.attribution_text,
+    )
+
+
+def _place_mentions(place, snapshot) -> list[PlannerMapMentionLink]:
+    metadata = place.metadata_json or {}
+    snapshot_detail = snapshot.provider_detail_json if snapshot is not None else {}
+    links: list[PlannerMapMentionLink] = []
+
+    google_maps_uri = metadata.get("google_maps_uri")
+    if isinstance(google_maps_uri, str) and google_maps_uri.strip():
+        links.append(PlannerMapMentionLink(label="Google Maps", url=google_maps_uri))
+
+    website = metadata.get("website") or metadata.get("website_uri")
+    if isinstance(website, str) and website.strip():
+        links.append(PlannerMapMentionLink(label="Website", url=website))
+
+    if snapshot is not None and isinstance(snapshot.deep_link, str) and snapshot.deep_link.strip():
+        provider_name = snapshot.provider.title() if snapshot.provider else "Provider"
+        links.append(PlannerMapMentionLink(label=provider_name, url=snapshot.deep_link))
+
+    for booking_link in (snapshot_detail or {}).get("booking_links") or []:
+        if not isinstance(booking_link, dict):
+            continue
+        label = str(booking_link.get("label") or "Booking").strip()
+        url = booking_link.get("url")
+        links.append(
+            PlannerMapMentionLink(label=label, url=str(url) if isinstance(url, str) else None)
+        )
+
+    deduped: list[PlannerMapMentionLink] = []
+    seen: set[tuple[str, str | None]] = set()
+    for item in links:
+        key = (item.label.lower(), item.url)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
 
 
 @router.post("", response_model=TripResponse, status_code=201)
@@ -262,46 +375,12 @@ async def get_trip_planner(
     activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
 
     place_ids = list(dict.fromkeys(activity.place_id for activity in activities if activity.place_id))
-    transport_offer_ids = [
-        activity.linked_offer_id
-        for activity in activities
-        if activity.linked_offer_kind == "transport" and activity.linked_offer_id
-    ]
-    lodging_offer_ids = [
-        activity.linked_offer_id
-        for activity in activities
-        if activity.linked_offer_kind == "lodging" and activity.linked_offer_id
-    ]
     photo_summaries = await PlacePhotoRepository.photo_summaries_for_place_ids(db, place_ids)
 
     places_by_id: dict[uuid.UUID, Place] = {}
     if place_ids:
         rows = await db.execute(select(Place).where(Place.id.in_(place_ids)))
         places_by_id = {place.id: place for place in rows.scalars().all()}
-
-    linked_offer_summaries: dict[uuid.UUID, PlannerLinkedOfferSummary] = {}
-    if transport_offer_ids:
-        rows = await db.execute(select(TransportOffer).where(TransportOffer.id.in_(transport_offer_ids)))
-        for offer in rows.scalars().all():
-            linked_offer_summaries[offer.id] = PlannerLinkedOfferSummary(
-                kind="transport",
-                offer_id=offer.id,
-                title=offer.title,
-                deep_link=offer.deep_link,
-                price_amount=offer.price_amount,
-                currency=offer.currency,
-            )
-    if lodging_offer_ids:
-        rows = await db.execute(select(LodgingOffer).where(LodgingOffer.id.in_(lodging_offer_ids)))
-        for offer in rows.scalars().all():
-            linked_offer_summaries[offer.id] = PlannerLinkedOfferSummary(
-                kind="lodging",
-                offer_id=offer.id,
-                title=offer.title,
-                deep_link=offer.deep_link,
-                price_amount=offer.price_amount,
-                currency=offer.currency,
-            )
 
     activities_by_day: dict[uuid.UUID, list[PlannerActivityResponse]] = {day.id: [] for day in days}
     inbox_activities: list[PlannerActivityResponse] = []
@@ -316,11 +395,6 @@ async def get_trip_planner(
             place=place,
             photo_count=photo_count,
             primary_photo=primary_photo,
-            linked_offer_summary=(
-                linked_offer_summaries.get(activity.linked_offer_id)
-                if activity.linked_offer_id is not None
-                else None
-            ),
         )
         if activity.trip_day_id is None:
             inbox_activities.append(response_activity)
@@ -342,6 +416,120 @@ async def get_trip_planner(
                 activities=activities_by_day.get(day.id, []),
             )
             for day in days
+        ],
+    )
+
+
+@router.get(
+    "/{trip_id}/planner-map/places/{place_id}/detail",
+    response_model=PlannerMapPlaceDetailResponse,
+)
+async def get_planner_map_place_detail(
+    trip_id: uuid.UUID,
+    place_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+) -> PlannerMapPlaceDetailResponse:
+    await TripRepository.get_trip(db, auth.user_id, trip_id)
+    place_record = await db.get(Place, place_id)
+    if place_record is None:
+        raise NotFoundError("Place not found")
+
+    place_photos = await PlacePhotoRepository.list_photos(db, place_id=place_id)
+    photo_count = len(place_photos)
+    primary_photo = next(
+        (item for item in place_photos if item.is_primary),
+        place_photos[0] if place_photos else None,
+    )
+
+    activities_result = await db.execute(
+        select(Activity, TripDay)
+        .outerjoin(TripDay, Activity.trip_day_id == TripDay.id)
+        .where(Activity.trip_id == trip_id)
+        .where(Activity.place_id == place_id)
+        .order_by(
+            case((Activity.trip_day_id.is_(None), 1), else_=0),
+            TripDay.day_index.asc().nulls_last(),
+            Activity.order_index.asc(),
+        )
+    )
+    related_rows = activities_result.all()
+    related_activities = [row[0] for row in related_rows]
+
+    snapshot = None
+    snapshot_id = next(
+        (
+            activity.event_snapshot_id
+            for activity in related_activities
+            if activity.event_snapshot_id is not None
+        ),
+        None,
+    )
+    if snapshot_id is not None:
+        snapshot = await EventRepository.get_snapshot_for_user(
+            db,
+            user_id=auth.user_id,
+            snapshot_id=snapshot_id,
+        )
+
+    snapshot_detail = EventRepository.to_discovery_detail(snapshot) if snapshot is not None else None
+    metadata = place_record.metadata_json or {}
+    metadata_hours = metadata.get("hours") if isinstance(metadata.get("hours"), list) else []
+
+    return PlannerMapPlaceDetailResponse(
+        place=_place_response(
+            place_record,
+            photo_count=photo_count,
+            primary_photo=PlacePhotoRepository._summary(primary_photo) if primary_photo else None,
+        ),
+        summary=(
+            snapshot_detail.summary
+            if snapshot_detail and snapshot_detail.summary
+            else (
+                str(metadata.get("description")).strip()
+                if isinstance(metadata.get("description"), str) and metadata.get("description").strip()
+                else None
+            )
+        ),
+        rating=(
+            snapshot_detail.rating
+            if snapshot_detail and snapshot_detail.rating is not None
+            else _coerce_float(metadata.get("rating"))
+        ),
+        review_count=snapshot_detail.review_count if snapshot_detail else None,
+        status_text=snapshot_detail.status_text if snapshot_detail else None,
+        price_label=snapshot_detail.price_label if snapshot_detail else None,
+        photos=(
+            snapshot_detail.photos
+            if snapshot_detail and snapshot_detail.photos
+            else [_place_photo_to_discovery_photo(photo) for photo in place_photos]
+        ),
+        reviews=snapshot_detail.reviews if snapshot_detail else [],
+        hours=snapshot_detail.hours if snapshot_detail and snapshot_detail.hours else metadata_hours,
+        booking_links=snapshot_detail.booking_links if snapshot_detail else [],
+        tags=_string_list(
+            metadata.get("tags"),
+            metadata.get("cuisine"),
+            metadata.get("opening_hours"),
+            place_record.category,
+            snapshot.raw_payload_json.get("categories")
+            if snapshot is not None and isinstance(snapshot.raw_payload_json, dict)
+            else [],
+            snapshot.raw_payload_json.get("labels")
+            if snapshot is not None and isinstance(snapshot.raw_payload_json, dict)
+            else [],
+        ),
+        mentions=_place_mentions(place_record, snapshot),
+        related_activities=[
+            PlannerMapRelatedActivitySummary(
+                activity_id=activity.id,
+                trip_day_id=activity.trip_day_id,
+                order_index=activity.order_index,
+                title=activity.title,
+                category=activity.category,
+                visited_at=activity.visited_at,
+            )
+            for activity in related_activities
         ],
     )
 

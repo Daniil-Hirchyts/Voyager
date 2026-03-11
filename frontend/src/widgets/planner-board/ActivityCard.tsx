@@ -3,11 +3,11 @@ import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
   BedDouble,
+  Check,
   Clock3,
   GripVertical,
   Landmark,
   Plane,
-  Sparkles,
   Ticket,
   Utensils,
 } from 'lucide-react'
@@ -34,10 +34,21 @@ const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
 }
 
 function scheduleLabel(activity: PlannerActivity) {
-  if (!activity.start_time) {
-    return activity.duration_min ? `${activity.duration_min}m` : null
+  const formatTime = (t: string) => (t.length > 5 ? t.substring(0, 5) : t)
+  const formatDur = (m: number) => {
+    if (m >= 60) {
+      const h = m / 60
+      return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`
+    }
+    return `${m}m`
   }
-  return `${activity.start_time}${activity.duration_min ? ` · ${activity.duration_min}m` : ''}`
+
+  if (!activity.start_time) {
+    return activity.duration_min ? formatDur(activity.duration_min) : null
+  }
+  return `${formatTime(activity.start_time)}${
+    activity.duration_min ? ` · ${formatDur(activity.duration_min)}` : ''
+  }`
 }
 
 export function ActivityCardView({
@@ -47,10 +58,17 @@ export function ActivityCardView({
   isSelected = false,
   dragHandleProps,
 }: BaseProps) {
-  const isGenerated = activity.source !== 'manual' && activity.source !== 'offer_import'
   const schedule = scheduleLabel(activity)
   const categoryLabel = plannerCategoryLabel(activity.category)
   const categoryDescription = plannerCategoryDescription(activity)
+  const normalizedTitle = activity.title.trim().toLowerCase()
+  const normalizedDescription = categoryDescription?.trim().toLowerCase() ?? null
+  const secondaryLabel =
+    normalizedDescription && normalizedDescription !== normalizedTitle
+      ? categoryDescription
+      : activity.place?.address_text && activity.place.address_text.trim().toLowerCase() !== normalizedTitle
+        ? activity.place.address_text
+        : null
   const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark
 
   return (
@@ -60,6 +78,7 @@ export function ActivityCardView({
         'hover:border-black/12',
         isSelected && 'border-black/16 ring-2 ring-black/6',
         isDragging && 'border-black/16 shadow-[0_14px_30px_rgba(15,23,42,0.08)]',
+        activity.visited_at && 'border-emerald-100 bg-emerald-50/30',
       )}
       aria-label={`Activity: ${activity.title}`}
     >
@@ -75,14 +94,15 @@ export function ActivityCardView({
               <span className="truncate">{schedule}</span>
             </span>
           ) : null}
+          {activity.visited_at ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-emerald-700">
+              <Check className="h-3 w-3" />
+              Visited
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center gap-1">
-          {isGenerated ? (
-            <span className="inline-flex size-6 items-center justify-center rounded-[8px] bg-[var(--color-secondary-surface)] text-[var(--color-text-muted)]">
-              <Sparkles className="h-3.5 w-3.5" />
-            </span>
-          ) : null}
           {dragHandleProps ? (
             <Button
               type="button"
@@ -101,21 +121,17 @@ export function ActivityCardView({
       <button
         type="button"
         onClick={() => onOpen?.(activity)}
+        aria-label={activity.title}
         className="flex flex-1 flex-col items-start gap-1.5 px-3 pb-3 text-left"
       >
         <div className="w-full min-w-0">
           <h3 className="line-clamp-2 text-[0.95rem] font-medium leading-5 text-[var(--color-text)]">
             {activity.title}
           </h3>
-          {activity.description ? (
-            <p className="mt-1 line-clamp-2 text-[0.77rem] leading-5 text-[var(--color-text-muted)]">
-              {activity.description}
-            </p>
-          ) : null}
         </div>
 
         <div className="mt-auto flex w-full items-center justify-between gap-3 text-[0.74rem] text-[var(--color-text-muted)]">
-          <span className="truncate">{categoryDescription ?? 'No location linked yet'}</span>
+          <span className="truncate">{secondaryLabel ?? 'No location linked yet'}</span>
           {activity.estimated_cost_amount != null ? (
             <span className="shrink-0 font-medium">
               {formatMoney(activity.estimated_cost_amount, activity.estimated_cost_currency)}

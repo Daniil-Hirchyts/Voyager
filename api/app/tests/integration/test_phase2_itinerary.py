@@ -18,7 +18,6 @@ def _create_trip(api_client, headers, *, idem_key: str) -> dict:
             "budget_amount": 1100,
             "budget_currency": "EUR",
             "trip_type": "cultural",
-            "preferences": ["museums", "food"],
         },
     )
     assert response.status_code == 201
@@ -64,13 +63,16 @@ def _submit_generate(
     req_headers = headers | {"If-Match": str(version)}
     if idem_key is not None:
         req_headers["Idempotency-Key"] = idem_key
+    request_constraints = {"llm_mock_mode": "success"}
+    if constraints:
+        request_constraints.update(constraints)
     return api_client.post(
         f"/trips/{trip_id}/generate",
         headers=req_headers,
         json={
             "mode": mode,
             "day_ids": day_ids,
-            "constraints": constraints or {},
+            "constraints": request_constraints,
             "seed": seed,
         },
     )
@@ -401,7 +403,7 @@ def test_generation_and_job_polling_enforce_ownership(api_client, headers_user1,
     assert foreign_submit.status_code in (403, 404)
 
 
-def test_generate_reports_deterministic_place_backed_metadata(api_client, headers_user1):
+def test_generate_reports_grounded_generation_metadata(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, idem_key=f"p2-trip-{uuid.uuid4()}")
     response = _submit_generate(
         api_client,
@@ -414,8 +416,8 @@ def test_generate_reports_deterministic_place_backed_metadata(api_client, header
     assert response.status_code == 202
     job = _wait_for_job(api_client, headers_user1, response.json()["job_id"])
     assert job["status"] == "SUCCEEDED"
-    assert job["result"]["generator_engine"] == "deterministic_place_backed"
-    assert job["result"]["llm_model"] is None
+    assert job["result"]["generator_engine"] == "llm_google_grounded"
+    assert job["result"]["llm_model"]
     assert job["result"]["fallback_used"] is False
     assert job["result"]["resolved_place_count"] >= 1
     assert job["result"]["photo_enriched_place_count"] >= 0

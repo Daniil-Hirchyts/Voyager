@@ -1,21 +1,21 @@
-import { useMemo } from 'react'
-import { config } from '@/app/config'
+import { useMemo } from "react";
+import { config } from "@/app/config";
 import {
   GoogleMapCanvas,
   GooglePolyline,
   MapFitBounds,
   MapPanTo,
   VoyagerMarker,
-} from '@/shared/layouts/google-maps'
+} from "@/shared/layouts/google-maps";
 
 type PreviewPoint = {
-  lat: number
-  lon: number
-  title: string
-}
+  lat: number;
+  lon: number;
+  title: string;
+};
 
 function toLatLng(point: PreviewPoint) {
-  return { lat: point.lat, lng: point.lon }
+  return { lat: point.lat, lng: point.lon };
 }
 
 function PlannerMapMarker({ title }: { title: string }) {
@@ -28,7 +28,7 @@ function PlannerMapMarker({ title }: { title: string }) {
       <div className="-mt-1 h-3 w-3 rotate-45 rounded-[3px] border-r border-b border-black/8 bg-white shadow-[0_10px_18px_-14px_rgba(26,22,21,0.32)]" />
       <span className="sr-only">{title}</span>
     </div>
-  )
+  );
 }
 
 export function PlannerPreviewMap({
@@ -36,30 +36,38 @@ export function PlannerPreviewMap({
   routePoints = [],
   heightPx = 208,
 }: {
-  primaryPoint?: PreviewPoint | null
-  routePoints?: PreviewPoint[]
-  heightPx?: number
+  primaryPoint?: PreviewPoint | null;
+  routePoints?: PreviewPoint[];
+  heightPx?: number;
 }) {
   const normalizedRoute = useMemo(
     () =>
       routePoints.filter(
-        (point): point is PreviewPoint => Number.isFinite(point.lat) && Number.isFinite(point.lon),
+        (point): point is PreviewPoint =>
+          Number.isFinite(point.lat) && Number.isFinite(point.lon),
       ),
     [routePoints],
-  )
+  );
   const hasPrimaryPoint =
     primaryPoint != null &&
     Number.isFinite(primaryPoint.lat) &&
-    Number.isFinite(primaryPoint.lon)
-  const primaryLatLng = hasPrimaryPoint ? toLatLng(primaryPoint) : null
-  const routeLatLngs = useMemo(() => normalizedRoute.map(toLatLng), [normalizedRoute])
+    Number.isFinite(primaryPoint.lon);
+  const primaryLatLng = hasPrimaryPoint ? toLatLng(primaryPoint) : null;
+  const routeLatLngs = useMemo(
+    () => normalizedRoute.map(toLatLng),
+    [normalizedRoute],
+  );
   const points = useMemo(
     () => [...(primaryLatLng ? [primaryLatLng] : []), ...routeLatLngs],
     [primaryLatLng, routeLatLngs],
-  )
+  );
+  const mapSignature = useMemo(
+    () => points.map((point) => `${point.lat}:${point.lng}`).join("|"),
+    [points],
+  );
 
   if (!points.length) {
-    return null
+    return null;
   }
 
   if (!config.map.apiKey) {
@@ -67,18 +75,21 @@ export function PlannerPreviewMap({
       <div className="rounded-[14px] border border-black/8 bg-white px-4 py-4 text-sm text-[var(--color-text-muted)]">
         Map preview is unavailable without a Google Maps API key.
       </div>
-    )
+    );
   }
 
-  const defaultCenter = points[0] ?? null
-  const hasRoute = normalizedRoute.length >= 2
+  const defaultCenter = points[0] ?? null;
+  const hasRoute = normalizedRoute.length >= 2;
 
   return (
     <div className="overflow-hidden rounded-[14px] border border-black/8 bg-white">
       <div style={{ height: heightPx }}>
         <GoogleMapCanvas
+          key={mapSignature}
+          reuseMaps={false}
           defaultCenter={defaultCenter ?? { lat: 48.8566, lng: 2.3522 }}
           defaultZoom={hasRoute ? 10.8 : 13.8}
+          style={{ width: "100%", height: "100%" }}
           disableDefaultUI
           mapTypeControl={false}
           fullscreenControl={false}
@@ -86,7 +97,12 @@ export function PlannerPreviewMap({
           gestureHandling="cooperative"
         >
           {hasRoute ? (
-            <MapFitBounds points={points} padding={48} maxZoom={13} singlePointZoom={13.8} />
+            <MapFitBounds
+              points={points}
+              padding={48}
+              maxZoom={13}
+              singlePointZoom={13.8}
+            />
           ) : defaultCenter ? (
             <MapPanTo point={defaultCenter} zoom={13.8} />
           ) : null}
@@ -113,14 +129,19 @@ export function PlannerPreviewMap({
               key={`${point.title}-${index}`}
               position={routeLatLngs[index]}
               title={point.title}
-              label={index === 0 ? 'Origin' : index === normalizedRoute.length - 1 ? 'Destination' : undefined}
-              color="#17344C"
-              selected={index === normalizedRoute.length - 1}
-              zIndex={index === normalizedRoute.length - 1 ? 3 : 2}
+              label={
+                index === 0
+                  ? "Origin"
+                  : index === normalizedRoute.length - 1
+                    ? "Destination"
+                    : undefined
+              }
+              selected
+              zIndex={3}
             />
           ))}
         </GoogleMapCanvas>
       </div>
     </div>
-  )
+  );
 }

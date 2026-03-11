@@ -176,7 +176,6 @@ async def test_recommend_shortlist_items_falls_back_when_llm_disabled(monkeypatc
         budget_amount=Decimal("300.00"),
         budget_currency="EUR",
         trip_type="food",
-        preferences_json=["food", "bistros"],
         version=1,
     )
     day = TripDay(id=uuid4(), trip_id=trip.id, day_index=0, date=date(2026, 5, 1))

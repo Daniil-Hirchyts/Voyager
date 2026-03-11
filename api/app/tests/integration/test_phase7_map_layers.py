@@ -17,7 +17,6 @@ def _create_trip(api_client, headers, *, title: str) -> dict:
             "budget_amount": 2400,
             "budget_currency": "EUR",
             "trip_type": "city",
-            "preferences": ["maps", "walking"],
         },
     )
     assert response.status_code == 201

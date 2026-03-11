@@ -1541,8 +1541,8 @@ export default function MapWorkspace({ tripId }: Props) {
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Trip Layers</p>
                   <p className="text-sm text-[var(--color-text-muted)]">
-                    Persisted overlays shared across the planner, offers, and activities maps.
-                  </p>
+                    Persisted overlays shared across the planner, map, and activity workspaces.
+                </p>
                 </div>
                 <span className="rounded-full bg-[rgba(114,174,230,0.12)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
                   {tripLayers.length}

@@ -1,0 +1,171 @@
+
+ RUN  v2.1.9 /Users/hirchytsdaniil/Developer/Hobby/Voyager/frontend
+
+ ❯ src/widgets/app-shell/index.test.tsx (0 test)
+ ✓ src/widgets/planner-board/planner-map-utils.test.ts (4 tests) 235ms
+ ✓ src/app/router/index.test.tsx (3 tests) 304ms
+ ✓ src/widgets/planner-board/categories.test.ts (2 tests) 13ms
+ ✓ src/pages/app/settings/index.test.tsx (1 test) 2594ms
+   ✓ SettingsPage > loads and saves voyager preferences through the profile API 2584ms
+ ✓ src/pages/app/proposals/index.test.tsx (1 test) 197ms
+ ✓ src/widgets/app-shell/header-slots.test.tsx (1 test) 1231ms
+   ✓ App shell header slots > renders leading header actions separately from trailing header actions 1173ms
+ ✓ src/pages/app/trip-settings/index.test.tsx (3 tests) 5905ms
+   ✓ TripSettingsPage > patches trip metadata and renders cover photo controls 3714ms
+   ✓ TripSettingsPage > duplicates the trip from settings 1107ms
+   ✓ TripSettingsPage > deletes the trip from settings 1062ms
+ ✓ src/widgets/map-workspace/index.test.tsx (1 test) 2371ms
+   ✓ MapWorkspace > restores planner context from the deep link and assigns the selected place back to the planner 2326ms
+ ✓ src/pages/app/map/index.test.tsx (1 test) 62ms
+ ✓ src/pages/app/events/index.test.tsx (1 test) 48ms
+ ✓ src/pages/app/trip-detail/index.test.tsx (2 tests) 278ms
+ ✓ src/pages/app/trips/new/index.test.tsx (5 tests) 5361ms
+   ✓ TripCreatePage > shows required field validation before submitting 412ms
+   ✓ TripCreatePage > validates that the end date is after the start date 1093ms
+   ✓ TripCreatePage > creates a backend place record for a selected destination before storing the cover photo preference 2271ms
+   ✓ TripCreatePage > submits the shaped payload for trip creation 1318ms
+ ❯ src/widgets/planner-board/index.test.tsx (11 tests | 11 failed) 12113ms
+   × PlannerBoard > renders inbox activities separately from untimed day activities in kanban view 1049ms
+     → Unable to find an element with the text: Inbox museum shortlist. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > renders travel estimates between consecutive day activities 1009ms
+     → Unable to find an element with the text: Old Town Square. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > opens the activity details drawer when a card is clicked 1184ms
+     → Unable to find role="button" and name "Seine riverside walk"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > creates a manual travel activity from the planner drawer 1795ms
+     → Unable to find role="button" and name "Add activity"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > creates a manual hotel activity from the planner drawer 1012ms
+     → Unable to find role="button" and name "Add activity"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > round-trips manual travel edits without offer linkage 1012ms
+     → Unable to find role="button" and name "Paris to Lisbon"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > round-trips manual hotel edits without offer linkage 1010ms
+     → Unable to find role="button" and name "Hotel Atlas"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > opens the recommendation drawer and adds a live discovery item after choosing a day 1009ms
+     → Unable to find role="button" and name "Recommendations"
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > keeps the recommendation sheet closed by default in map view 1006ms
+     → Unable to find an element with the text: Day 1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > opens map search and layers controls accessibly and uses the bottom sheet for saved marker details 1008ms
+     → Unable to find an element with the text: Day 1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+   × PlannerBoard > opens the map bottom sheet with live Google detail for search results 1013ms
+     → Unable to find an element with the text: Day 1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<body>[39m
+  [36m<div />[39m
+[36m</body>[39m
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 11 unhandled errors during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+ Test Files  2 failed | 12 passed (14)
+      Tests  11 failed | 25 passed (36)
+     Errors  11 errors
+   Start at  18:33:16
+   Duration  28.66s (transform 6.94s, setup 15.40s, collect 64.35s, tests 30.71s, environment 26.95s, prepare 3.36s)
+

@@ -65,7 +65,6 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     trip_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    preferences_json: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     last_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -78,18 +77,6 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     activities: Mapped[list["Activity"]] = relationship(
         "Activity", back_populates="trip", cascade="all,delete", order_by="Activity.order_index"
-    )
-    transport_offers: Mapped[list["TransportOffer"]] = relationship(
-        "TransportOffer",
-        back_populates="trip",
-        cascade="all,delete",
-        order_by="TransportOffer.created_at.desc()",
-    )
-    lodging_offers: Mapped[list["LodgingOffer"]] = relationship(
-        "LodgingOffer",
-        back_populates="trip",
-        cascade="all,delete",
-        order_by="LodgingOffer.created_at.desc()",
     )
     exports: Mapped[list["TripExport"]] = relationship(
         "TripExport",
@@ -132,14 +119,6 @@ class TripDay(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     trip: Mapped[Trip] = relationship("Trip", back_populates="days")
     activities: Mapped[list["Activity"]] = relationship(
         "Activity", back_populates="trip_day", cascade="all,delete", order_by="Activity.order_index"
-    )
-    transport_offers: Mapped[list["TransportOffer"]] = relationship(
-        "TransportOffer",
-        back_populates="trip_day",
-    )
-    lodging_offers: Mapped[list["LodgingOffer"]] = relationship(
-        "LodgingOffer",
-        back_populates="trip_day",
     )
     event_snapshots: Mapped[list["EventSnapshot"]] = relationship(
         "EventSnapshot",
@@ -206,10 +185,6 @@ class Place(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all,delete",
         order_by="PlacePhoto.rank.asc()",
     )
-    lodging_offers: Mapped[list["LodgingOffer"]] = relationship(
-        "LodgingOffer",
-        back_populates="place",
-    )
     proposal_activities: Mapped[list["ItineraryProposalActivity"]] = relationship(
         "ItineraryProposalActivity",
         back_populates="place",
@@ -264,11 +239,8 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    visited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
-    linked_offer_kind: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
-    linked_offer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), nullable=True, index=True
-    )
     generation_batch_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
     )
@@ -295,13 +267,6 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
             "order_index",
             unique=True,
             postgresql_where=text("trip_day_id IS NULL"),
-        ),
-        Index(
-            "ix_activity_linked_offer_unique",
-            "linked_offer_kind",
-            "linked_offer_id",
-            unique=True,
-            postgresql_where=text("linked_offer_id IS NOT NULL"),
         ),
     )
 
@@ -416,7 +381,7 @@ class PlacePhoto(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("place.id", ondelete="CASCADE"), nullable=False, index=True
     )
     source: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    source_media_ref: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_media_ref: Mapped[str] = mapped_column(Text, nullable=False)
     image_url: Mapped[str] = mapped_column(Text, nullable=False)
     thumbnail_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -612,106 +577,3 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
         Index("ix_audit_log_entity_created_desc", "entity_type", "entity_id", "created_at"),
     )
 
-
-class TransportOffer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "transport_offer"
-
-    trip_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    trip_day_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("trip_day.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    provider_offer_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    transport_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
-    origin_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    destination_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    depart_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    arrive_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
-    )
-    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
-    superseded_by_offer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("transport_offer.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    raw_payload_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-
-    trip: Mapped["Trip"] = relationship("Trip", back_populates="transport_offers")
-    trip_day: Mapped["TripDay"] = relationship("TripDay", back_populates="transport_offers")
-
-    __table_args__ = (
-        Index("ix_transport_offer_trip_created", "trip_id", "created_at"),
-        CheckConstraint(
-            "superseded_by_offer_id IS NULL OR superseded_by_offer_id <> id",
-            name="ck_transport_offer_not_self_superseded",
-        ),
-    )
-
-
-class LodgingOffer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
-    __tablename__ = "lodging_offer"
-
-    trip_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
-    )
-    trip_day_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("trip_day.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    provider: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    provider_offer_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    title: Mapped[str] = mapped_column(String(255), nullable=False)
-    lodging_type: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
-    location_text: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    room_type: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    checkin_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    checkout_date: Mapped[date | None] = mapped_column(Date, nullable=True)
-    nights: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    place_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("place.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    price_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False)
-    deep_link: Mapped[str | None] = mapped_column(Text, nullable=True)
-    expires_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, index=True
-    )
-    is_current: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
-    superseded_by_offer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("lodging_offer.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    raw_payload_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-
-    trip: Mapped["Trip"] = relationship("Trip", back_populates="lodging_offers")
-    trip_day: Mapped["TripDay"] = relationship("TripDay", back_populates="lodging_offers")
-    place: Mapped["Place | None"] = relationship("Place", back_populates="lodging_offers")
-
-    __table_args__ = (
-        Index("ix_lodging_offer_trip_created", "trip_id", "created_at"),
-        CheckConstraint(
-            "superseded_by_offer_id IS NULL OR superseded_by_offer_id <> id",
-            name="ck_lodging_offer_not_self_superseded",
-        ),
-    )

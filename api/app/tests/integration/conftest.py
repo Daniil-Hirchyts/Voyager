@@ -90,10 +90,9 @@ def unique_idempotency_key() -> str:
 def reset_redis_for_phase2_tests(request):
     has_phase2 = request.node.get_closest_marker("phase2") is not None
     has_phase3 = request.node.get_closest_marker("phase3") is not None
-    has_phase4 = request.node.get_closest_marker("phase4") is not None
     has_phase5 = request.node.get_closest_marker("phase5") is not None
     has_phase6 = request.node.get_closest_marker("phase6") is not None
-    if not has_phase2 and not has_phase3 and not has_phase4 and not has_phase5 and not has_phase6:
+    if not has_phase2 and not has_phase3 and not has_phase5 and not has_phase6:
         yield
         return
 

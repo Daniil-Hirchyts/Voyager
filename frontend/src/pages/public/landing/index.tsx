@@ -204,7 +204,7 @@ export default function LandingPage() {
           </h1>
 
           <p className="hero-fade-in text-xl md:text-2xl text-[#1A1615]/80 max-w-2xl font-medium leading-relaxed mb-12 drop-shadow-sm">
-            Voyager builds rich, editable itineraries from your preferences — then lets you shape every day exactly as you want in a beautiful workspace.
+            Voyager builds rich, editable itineraries from your destination and trip details, then lets you shape every day exactly as you want in a beautiful workspace.
           </p>
 
           <div className="hero-fade-in flex flex-wrap items-center gap-4">

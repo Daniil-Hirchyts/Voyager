@@ -36,8 +36,6 @@ describe('MapWorkspace', () => {
           notes: null,
           is_favorite: false,
           source: 'manual',
-          linked_offer_kind: null,
-          linked_offer_id: null,
           created_at: '2026-03-06T09:00:00.000Z',
           updated_at: '2026-03-06T09:00:00.000Z',
         })

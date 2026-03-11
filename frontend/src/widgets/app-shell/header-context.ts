@@ -2,8 +2,28 @@ import { useEffect, type ReactNode } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
 export type AppShellOutletContext = {
+  setHeaderLeadingActions?: (actions: ReactNode | null) => void
   setHeaderActions?: (actions: ReactNode | null) => void
   setHeaderMeta?: (meta: ReactNode | null) => void
+}
+
+export function useAppShellHeaderLeadingActions(actions: ReactNode | null) {
+  const setHeaderLeadingActions =
+    useOutletContext<AppShellOutletContext | null>()?.setHeaderLeadingActions
+
+  useEffect(() => {
+    if (!setHeaderLeadingActions) {
+      return
+    }
+
+    setHeaderLeadingActions(actions)
+
+    return () => {
+      setHeaderLeadingActions(null)
+    }
+  }, [actions, setHeaderLeadingActions])
+
+  return Boolean(setHeaderLeadingActions)
 }
 
 export function useAppShellHeaderActions(actions: ReactNode | null) {

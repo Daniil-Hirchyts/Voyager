@@ -47,19 +47,12 @@ class Settings(BaseSettings):
     rate_limit_optimize_submit_per_hour: int = Field(
         default=20, alias="VOYAGER_RATE_LIMIT_OPTIMIZE_SUBMIT_PER_HOUR"
     )
-    rate_limit_offers_submit_per_hour: int = Field(
-        default=20, alias="VOYAGER_RATE_LIMIT_OFFERS_SUBMIT_PER_HOUR"
-    )
     rate_limit_export_submit_per_hour: int = Field(
         default=20, alias="VOYAGER_RATE_LIMIT_EXPORT_SUBMIT_PER_HOUR"
     )
     rate_limit_audit_read_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN"
     )
-    rate_limit_offers_provider_per_min: int = Field(
-        default=120, alias="VOYAGER_RATE_LIMIT_OFFERS_PROVIDER_PER_MIN"
-    )
-
     trip_cache_ttl_sec: int = 30
     place_cache_ttl_sec: int = 60
     job_cache_ttl_sec: int = 5
@@ -74,8 +67,6 @@ class Settings(BaseSettings):
     place_photo_cache_ttl_sec: int = Field(
         default=60, alias="VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC"
     )
-    offer_cache_ttl_sec: int = Field(default=30, alias="VOYAGER_OFFER_CACHE_TTL_SEC")
-    offer_search_cache_ttl_sec: int = Field(default=180, alias="VOYAGER_OFFER_SEARCH_CACHE_TTL_SEC")
     export_cache_ttl_sec: int = Field(default=20, alias="VOYAGER_EXPORT_CACHE_TTL_SEC")
     audit_cache_ttl_sec: int = Field(default=15, alias="VOYAGER_AUDIT_CACHE_TTL_SEC")
     idempotency_ttl_sec: int = 86400
@@ -84,12 +75,6 @@ class Settings(BaseSettings):
     job_max_attempts: int = Field(default=3, alias="VOYAGER_JOB_MAX_ATTEMPTS")
     exports_dir: str = Field(default="/var/lib/voyager/exports", alias="VOYAGER_EXPORTS_DIR")
     export_retention_days: int = Field(default=14, alias="VOYAGER_EXPORT_RETENTION_DAYS")
-    offers_provider_failure_threshold: int = Field(
-        default=3, alias="VOYAGER_OFFERS_PROVIDER_FAILURE_THRESHOLD"
-    )
-    offers_provider_cooldown_sec: int = Field(
-        default=60, alias="VOYAGER_OFFERS_PROVIDER_COOLDOWN_SEC"
-    )
     itinerary_llm_enabled: bool = Field(default=True, alias="VOYAGER_ITINERARY_LLM_ENABLED")
     llm_openrouter_api_key: str | None = Field(
         default=None, alias="VOYAGER_LLM_OPENROUTER_API_KEY"
@@ -98,7 +83,10 @@ class Settings(BaseSettings):
         default="https://openrouter.ai/api/v1", alias="VOYAGER_LLM_OPENROUTER_BASE_URL"
     )
     llm_openrouter_model_order_raw: str = Field(
-        default="openai/gpt-oss-20b:free,qwen/qwen3-coder:free,meta-llama/llama-3.3-70b-instruct:free",
+        default=(
+            "stepfun/step-3.5-flash:free,"
+            "z-ai/glm-4.5-air:free"
+        ),
         alias="VOYAGER_LLM_OPENROUTER_MODEL_ORDER",
     )
     llm_openrouter_timeout_sec: int = Field(
@@ -108,29 +96,6 @@ class Settings(BaseSettings):
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )
 
-    offers_transport_providers: str = Field(
-        default="amadeus_transport",
-        alias="VOYAGER_OFFERS_TRANSPORT_PROVIDERS",
-    )
-    offers_lodging_providers: str = Field(
-        default="amadeus_lodging",
-        alias="VOYAGER_OFFERS_LODGING_PROVIDERS",
-    )
-
-    flights_amadeus_client_id: str | None = Field(
-        default=None, alias="VOYAGER_FLIGHTS_AMADEUS_CLIENT_ID"
-    )
-    flights_amadeus_client_secret: str | None = Field(
-        default=None, alias="VOYAGER_FLIGHTS_AMADEUS_CLIENT_SECRET"
-    )
-    flights_amadeus_base_url: str = Field(
-        default="https://test.api.amadeus.com",
-        alias="VOYAGER_FLIGHTS_AMADEUS_BASE_URL",
-    )
-    flights_amadeus_timeout_sec: int = Field(
-        default=20,
-        alias="VOYAGER_FLIGHTS_AMADEUS_TIMEOUT_SEC",
-    )
     activities_tripadvisor_api_key: str | None = Field(
         default=None,
         validation_alias=AliasChoices(
@@ -195,12 +160,6 @@ class Settings(BaseSettings):
         default="/var/lib/voyager/exports/media-cache",
         alias="VOYAGER_MEDIA_CACHE_DIR",
     )
-
-    def transport_provider_order(self) -> list[str]:
-        return [part.strip() for part in self.offers_transport_providers.split(",") if part.strip()]
-
-    def lodging_provider_order(self) -> list[str]:
-        return [part.strip() for part in self.offers_lodging_providers.split(",") if part.strip()]
 
     def itinerary_llm_model_order(self) -> list[str]:
         return [

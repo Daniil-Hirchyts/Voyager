@@ -25,7 +25,6 @@ export const config = {
         : mapFeatureFlag === 'true' || Boolean(import.meta.env.VITE_GOOGLE_MAPS_API_KEY),
     landingMotion: import.meta.env.VITE_ENABLE_LANDING_MOTION === 'true',
     activitiesUI: import.meta.env.VITE_ENABLE_ACTIVITIES_UI !== 'false',
-    offersUI: import.meta.env.VITE_ENABLE_OFFERS_UI === 'true',
     exportsUI: import.meta.env.VITE_ENABLE_EXPORTS_UI === 'true',
     mapExperiments:
       mapExperimentsFlag === 'true' ||

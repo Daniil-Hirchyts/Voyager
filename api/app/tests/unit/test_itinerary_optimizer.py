@@ -19,7 +19,6 @@ def _trip_fixture() -> Trip:
         budget_amount=Decimal("400.00"),
         budget_currency="EUR",
         trip_type="cultural",
-        preferences_json=["museums", "food"],
         version=1,
     )
 

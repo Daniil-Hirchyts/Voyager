@@ -12,7 +12,6 @@ def _trip(destination_text: str) -> tuple[Trip, list[TripDay]]:
         id=uuid4(),
         destination_text=destination_text,
         trip_type="city_break",
-        preferences_json=["art", "food"],
         title="Planner catalog test",
         start_date=date(2026, 4, 10),
         end_date=date(2026, 4, 12),

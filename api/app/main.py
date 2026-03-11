@@ -15,7 +15,6 @@ from app.routers import (
     health,
     jobs,
     map_layers,
-    offers,
     places,
     proposals,
     routing,
@@ -108,5 +107,4 @@ app.include_router(routing.router)
 app.include_router(map_layers.router)
 app.include_router(proposals.router)
 app.include_router(jobs.router)
-app.include_router(offers.router)
 app.include_router(exports.router)

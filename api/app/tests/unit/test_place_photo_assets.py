@@ -10,7 +10,9 @@ from app.services import place_photo_assets
 
 @pytest.fixture(autouse=True)
 def _base_settings_env(monkeypatch, tmp_path):
-    monkeypatch.setenv("VOYAGER_DB_DSN", "postgresql+asyncpg://voyager:voyager@localhost:5432/voyager")
+    monkeypatch.setenv(
+        "VOYAGER_DB_DSN", "postgresql+asyncpg://voyager:voyager@localhost:5432/voyager"
+    )
     monkeypatch.setenv("VOYAGER_REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setenv("VOYAGER_KEYCLOAK_ISSUER", "http://localhost:8080/realms/travel")
     monkeypatch.setenv("VOYAGER_KEYCLOAK_AUDIENCE", "voyager-api")
@@ -80,3 +82,39 @@ async def test_ensure_place_photo_asset_caches_thumbnail(monkeypatch):
     assert first_path.read_bytes() == b"fake-image-bytes"
     assert requested_urls == ["https://images.example.com/eiffel-thumb.jpg"]
     assert first_path.name == "thumb.jpg"
+
+
+@pytest.mark.anyio
+async def test_ensure_place_photo_asset_uses_google_api_key(monkeypatch):
+    settings = get_settings()
+    settings.google_maps_api_key = "google-test-key"
+    photo = _photo_fixture()
+    photo.source = "google_places"
+    photo.image_url = "https://places.googleapis.com/v1/places/google-place-1/photos/photo-1/media?maxWidthPx=1600"
+    captured_headers: dict[str, str] = {}
+
+    class _FakeClient:
+        def __init__(self, *args, **kwargs):
+            captured_headers.update(kwargs.get("headers") or {})
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def get(self, url):
+            return httpx.Response(
+                200,
+                content=b"google-image-bytes",
+                headers={"content-type": "image/jpeg"},
+                request=httpx.Request("GET", url),
+            )
+
+    monkeypatch.setattr(place_photo_assets.httpx, "AsyncClient", _FakeClient)
+
+    asset_path = await place_photo_assets.ensure_place_photo_asset(photo, variant="full")
+
+    assert asset_path.exists()
+    assert asset_path.read_bytes() == b"google-image-bytes"
+    assert captured_headers["X-Goog-Api-Key"] == "google-test-key"

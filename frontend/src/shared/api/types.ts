@@ -32,15 +32,6 @@ export type PlannerPlaceSummary = {
   primary_photo: Place['primary_photo'] | null
 }
 
-export type PlannerLinkedOfferSummary = {
-  kind: OfferKind
-  offer_id: string
-  title: string
-  deep_link: string | null
-  price_amount: string | null
-  currency: string | null
-}
-
 export interface Activity {
   id: string
   trip_day_id: string | null
@@ -57,9 +48,8 @@ export interface Activity {
   event_snapshot_id: string | null
   notes: string | null
   is_favorite: boolean
+  visited_at: string | null
   source: string
-  linked_offer_kind: OfferKind | null
-  linked_offer_id: string | null
   created_at: string
   updated_at: string
 }
@@ -82,6 +72,7 @@ export interface ActivityCreateInput {
   estimated_cost_amount?: number | string | null
   estimated_cost_currency?: string | null
   place_id?: string | null
+  event_snapshot_id?: string | null
   notes?: string | null
   is_favorite?: boolean
   source?: string
@@ -99,12 +90,12 @@ export interface ActivityUpdateInput {
   place_id?: string | null
   notes?: string | null
   is_favorite?: boolean | null
+  visited_at?: string | null
   source?: string | null
 }
 
 export interface PlannerActivity extends Activity {
   place: PlannerPlaceSummary | null
-  linked_offer_summary?: PlannerLinkedOfferSummary | null
   legacy_source_day_id?: string | null
   legacy_inbox_item?: boolean
 }
@@ -202,6 +193,56 @@ export interface GooglePlaceCandidate {
   metadata: Record<string, unknown>
 }
 
+export interface GooglePlaceDetailLink {
+  label: string
+  url: string | null
+}
+
+export interface GooglePlaceDetail {
+  place: GooglePlaceCandidate
+  summary: string | null
+  rating: number | null
+  review_count: number | null
+  status_text: string | null
+  price_label: string | null
+  photos: ActivityDiscoveryPhoto[]
+  reviews: ActivityDiscoveryReview[]
+  hours: ActivityDiscoveryHoursDay[]
+  booking_links: ActivityDiscoveryBookingLink[]
+  tags: string[]
+  mentions: GooglePlaceDetailLink[]
+}
+
+export interface PlannerMapPlaceDetailRelatedActivity {
+  activity_id: string
+  trip_day_id: string | null
+  order_index: number
+  title: string
+  category: ActivityCategory
+  visited_at: string | null
+}
+
+export interface PlannerMapMentionLink {
+  label: string
+  url: string | null
+}
+
+export interface PlannerMapPlaceDetail {
+  place: Place
+  summary: string | null
+  rating: number | null
+  review_count: number | null
+  status_text: string | null
+  price_label: string | null
+  photos: ActivityDiscoveryPhoto[]
+  reviews: ActivityDiscoveryReview[]
+  hours: ActivityDiscoveryHoursDay[]
+  booking_links: ActivityDiscoveryBookingLink[]
+  tags: string[]
+  mentions: PlannerMapMentionLink[]
+  related_activities: PlannerMapPlaceDetailRelatedActivity[]
+}
+
 export interface GooglePlaceSearchResponse {
   total: number
   limit: number
@@ -259,15 +300,6 @@ export interface RouteLegEstimateResponse {
   items: RouteLegEstimateItem[]
 }
 
-export type OfferKind = components['schemas']['OfferKind']
-export type OfferAttachDayInput = components['schemas']['OfferAttachDayRequest']
-export type OfferRefreshInput = components['schemas']['OfferRefreshRequest']
-export type TripOffersRefreshInput = components['schemas']['TripOffersRefreshRequest']
-export type TransportOfferSearchInput = components['schemas']['TransportOfferSearchRequest']
-export type LodgingOfferSearchInput = components['schemas']['LodgingOfferSearchRequest']
-export type TransportMode = components['schemas']['TransportMode']
-export type LodgingType = components['schemas']['LodgingType']
-
 export interface PlacePhotoSummary {
   id: string
   source: string
@@ -278,91 +310,6 @@ export interface PlacePhotoSummary {
   license_code: string | null
   license_url: string | null
   attribution_text: string | null
-}
-
-export interface OfferGeoPoint {
-  latitude: number
-  longitude: number
-}
-
-export interface TransportSegmentDetail {
-  itinerary_index: number
-  sequence: number
-  airline_code: string | null
-  airline_name: string | null
-  operating_airline_code: string | null
-  operating_airline_name: string | null
-  flight_number: string | null
-  departure_iata: string | null
-  departure_at: string | null
-  departure_terminal: string | null
-  arrival_iata: string | null
-  arrival_at: string | null
-  arrival_terminal: string | null
-  duration_min: number | null
-  cabin: string | null
-  fare_basis: string | null
-  branded_fare: string | null
-  baggage_summary: string | null
-}
-
-export interface TransportLayoverDetail {
-  itinerary_index: number
-  airport_code: string | null
-  duration_min: number | null
-}
-
-export interface TransportOfferDetails {
-  segments: TransportSegmentDetail[]
-  layovers: TransportLayoverDetail[]
-  stops_count: number | null
-  total_duration_min: number | null
-  cabin: string | null
-  baggage_summary: string | null
-  validating_airline_codes: string[]
-  bookable_seats: number | null
-  additional_baggage_price: string | null
-  additional_baggage_currency: string | null
-  emissions_kg: string | null
-  emissions_description: string | null
-  origin_geo: OfferGeoPoint | null
-  destination_geo: OfferGeoPoint | null
-}
-
-export interface LodgingOfferDetails {
-  hotel_id: string | null
-  hotel_name: string | null
-  chain_code: string | null
-  brand: string | null
-  star_rating: number | null
-  sentiment_rating: number | null
-  amenities: string[]
-  address_text: string | null
-  latitude: number | null
-  longitude: number | null
-  distance_km: number | null
-  room_description: string | null
-  payment_type: string | null
-  cancellation_summary: string | null
-  nightly_rate_amount: string | null
-  taxes_amount: string | null
-  place_id: string | null
-  photo_count: number
-  primary_photo: PlacePhotoSummary | null
-}
-
-type OfferBase = components['schemas']['OfferResponse']
-
-export type Offer = OfferBase & {
-  transport_details?: TransportOfferDetails | null
-  lodging_details?: LodgingOfferDetails | null
-}
-
-export interface OfferListResponse {
-  total: number
-  limit: number
-  offset: number
-  items: Offer[]
 }
 
 export type ExportFormat = components['schemas']['ExportFormat']
@@ -515,12 +462,6 @@ export interface ActivityRecommendationItem {
 export interface ActivityRecommendationResponse {
   total: number
   items: ActivityRecommendationItem[]
-}
-
-export interface PlannerActivityFromOfferInput {
-  offer_kind: OfferKind
-  offer_id: string
-  trip_day_id?: string | null
 }
 
 export type OptimizeObjective = components['schemas']['OptimizeObjective']

@@ -6,7 +6,6 @@ import type {
   Day,
   ExportResponse,
   Job,
-  Offer,
   Place,
   PlacePhoto,
   PlannerActivity,
@@ -31,7 +30,6 @@ export function buildTrip(overrides: Partial<Trip> = {}): Trip {
     budget_amount: '1600.00',
     budget_currency: 'EUR',
     trip_type: 'city_break',
-    preferences: ['museums', 'cafes'],
     version: 3,
     created_at: NOW,
     updated_at: NOW,
@@ -69,9 +67,8 @@ export function buildActivity(overrides: Partial<Activity> = {}): Activity {
     event_snapshot_id: null,
     notes: null,
     is_favorite: false,
+    visited_at: null,
     source: 'manual',
-    linked_offer_kind: null,
-    linked_offer_id: null,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
@@ -106,10 +103,8 @@ export function buildPlannerActivity(overrides: Partial<PlannerActivity> = {}): 
     event_snapshot_id: null,
     notes: null,
     is_favorite: false,
+    visited_at: null,
     source: 'generated',
-    linked_offer_kind: null,
-    linked_offer_id: null,
-    linked_offer_summary: null,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,
@@ -208,132 +203,11 @@ export function buildTripMapLayer(overrides: Partial<TripMapLayer> = {}): TripMa
   }
 }
 
-export function buildOffer(overrides: Partial<Offer> = {}): Offer {
-  const kind = overrides.kind ?? 'transport'
-
-  const baseOffer: Offer = {
-    id: 'offer-1',
-    kind,
-    trip_id: 'trip-1',
-    trip_day_id: null,
-    provider: 'Amadeus',
-    title: kind === 'lodging' ? 'Hotel Louvre Palace' : 'CDG to BCN nonstop',
-    price_amount: '189.90',
-    currency: 'EUR',
-    deep_link: 'https://provider.example.com/offer-1',
-    expires_at: '2026-03-06T18:00:00.000Z',
-    is_current: true,
-    superseded_by_offer_id: null,
-    created_at: NOW,
-    updated_at: NOW,
-    transport_mode: 'flight',
-    origin_text: 'CDG',
-    destination_text: 'BCN',
-    depart_at: '2026-04-10T07:00:00.000Z',
-    arrive_at: '2026-04-10T08:55:00.000Z',
-    location_text: null,
-    lodging_type: null,
-    room_type: null,
-    checkin_date: null,
-    checkout_date: null,
-    nights: null,
-    transport_details: kind === 'transport'
-      ? {
-        segments: [
-          {
-            itinerary_index: 0,
-            sequence: 1,
-            airline_code: 'AF',
-            airline_name: 'Air France',
-            operating_airline_code: 'AF',
-            operating_airline_name: 'Air France',
-            flight_number: '1148',
-            departure_iata: 'CDG',
-            departure_at: '2026-04-10T07:00:00.000Z',
-            departure_terminal: '2F',
-            arrival_iata: 'BCN',
-            arrival_at: '2026-04-10T08:55:00.000Z',
-            arrival_terminal: '1',
-            duration_min: 115,
-            cabin: 'ECONOMY',
-            fare_basis: 'LITE',
-            branded_fare: 'Light',
-            baggage_summary: '1 checked bag',
-          },
-        ],
-        layovers: [],
-        stops_count: 0,
-        total_duration_min: 115,
-        cabin: 'ECONOMY',
-        baggage_summary: '1 checked bag',
-        validating_airline_codes: ['AF'],
-        bookable_seats: 4,
-        additional_baggage_price: '35.00',
-        additional_baggage_currency: 'EUR',
-        emissions_kg: '115',
-        emissions_description: '+8% emissions',
-        origin_geo: { latitude: 49.0097, longitude: 2.5479 },
-        destination_geo: { latitude: 41.2974, longitude: 2.0833 },
-      }
-      : null,
-    lodging_details: kind === 'lodging'
-      ? {
-        hotel_id: 'H1',
-        hotel_name: 'Hotel Louvre Palace',
-        chain_code: 'HL',
-        brand: 'Voyager Collection',
-        star_rating: 4.6,
-        sentiment_rating: 86.2,
-        amenities: ['wifi', 'breakfast', 'pool'],
-        address_text: '12 Rue de Rivoli, Paris',
-        latitude: 48.8606,
-        longitude: 2.3376,
-        distance_km: 0.8,
-        room_description: 'Deluxe king room with courtyard view',
-        payment_type: 'Guarantee required',
-        cancellation_summary: 'Free cancellation before Apr 8',
-        nightly_rate_amount: '94.95',
-        taxes_amount: '18.00',
-        place_id: 'place-1',
-        photo_count: 1,
-        primary_photo: {
-          id: 'photo-1',
-          source: 'seed',
-          image_url: 'https://images.example.com/hotel-1.jpg',
-          thumbnail_url: 'https://images.example.com/hotel-1-thumb.jpg',
-          license_code: null,
-          license_url: null,
-          attribution_text: null,
-        },
-      }
-      : null,
-  }
-
-  if (kind === 'lodging') {
-    baseOffer.transport_mode = null
-    baseOffer.origin_text = null
-    baseOffer.destination_text = null
-    baseOffer.depart_at = null
-    baseOffer.arrive_at = null
-    baseOffer.location_text = 'Paris'
-    baseOffer.lodging_type = 'hotel'
-    baseOffer.room_type = 'Deluxe king room'
-    baseOffer.checkin_date = '2026-04-10'
-    baseOffer.checkout_date = '2026-04-12'
-    baseOffer.nights = 2
-  }
-
-  return {
-    ...baseOffer,
-    ...overrides,
-  }
-}
-
 export function buildJob(overrides: Partial<Job> = {}): Job {
   return {
     id: 'job-1',
     user_id: 'user-1',
-    job_type: 'offers.transport.search',
+    job_type: 'itinerary.generate',
     status: 'SUCCEEDED',
     payload: {},
     result: {},

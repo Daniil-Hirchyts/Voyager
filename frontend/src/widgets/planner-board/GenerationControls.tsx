@@ -2,11 +2,12 @@ import { useState, useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Sparkles, RefreshCw, Trash2, Loader2 } from 'lucide-react'
+import { Sparkles, RefreshCw, Trash2, Loader2, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import type { Day } from '@/shared/api/types'
 
 const schema = z.object({
@@ -76,7 +77,7 @@ export function GenerationControls({
   }
 
   const isRunning = isGenerating || jobStatus === 'PENDING' || jobStatus === 'RUNNING'
-  const buttonClassName = compact ? 'h-8 rounded-[8px] px-3 shadow-none hover:shadow-none' : undefined
+  const buttonClassName = compact ? 'h-8 w-8 p-0 rounded-[8px] shadow-none hover:shadow-none' : undefined
   const statusClassName = compact
     ? 'inline-flex h-8 items-center gap-2 rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 text-[0.84rem] text-[var(--color-text-muted)]'
     : 'flex items-center gap-2 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2 text-sm text-[var(--color-text-muted)]'
@@ -94,37 +95,29 @@ export function GenerationControls({
             {jobStatus === 'RUNNING' ? 'Generating' : 'Queued'}
           </div>
         ) : (
-          <>
-            <Button onClick={() => openDialog('generate')} size={compact ? 'sm' : 'default'} className={buttonClassName}>
-              <Sparkles className="h-4 w-4" />
-              Generate
-            </Button>
-            {hasActivities && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => openDialog('regenerate')}
-                  size={compact ? 'sm' : 'default'}
-                  className={buttonClassName}
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Regenerate
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => openDialog('reset')}
-                  size={compact ? 'sm' : 'default'}
-                  className={cn(
-                    buttonClassName,
-                    'hover:border-[rgba(196,95,79,0.28)] hover:bg-[rgba(196,95,79,0.06)]',
-                  )}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Reset
-                </Button>
-              </>
-            )}
-          </>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(buttonClassName, 'bg-white')}>
+                {compact ? <MoreHorizontal className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                {!compact && <span className="ml-2">Actions</span>}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => openDialog('generate')} className="cursor-pointer">
+                <Sparkles className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
+                <span>Generate</span>
+              </DropdownMenuItem>
+              {hasActivities && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => openDialog('reset')} className="cursor-pointer text-[rgba(196,95,79,1)] focus:text-[rgba(196,95,79,1)] focus:bg-[rgba(196,95,79,0.06)]">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    <span>Reset</span>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
 
         {jobStatus === 'SUCCEEDED' && (
@@ -224,17 +217,18 @@ export function GenerationControls({
           </form>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
+            <Button variant="outline" type="button" onClick={() => setOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
               Cancel
             </Button>
             <Button
+              type="button"
               onClick={handleSubmit(onSubmit)}
               variant={action === 'reset' ? 'destructive' : 'default'}
               className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
             >
-              {action === 'generate' && <><Sparkles className="w-4 h-4" /> Generate</>}
-              {action === 'regenerate' && <><RefreshCw className="w-4 h-4" /> Regenerate</>}
-              {action === 'reset' && <><Trash2 className="w-4 h-4" /> Reset</>}
+              {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
+              {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
+              {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
             </Button>
           </DialogFooter>
         </DialogContent>

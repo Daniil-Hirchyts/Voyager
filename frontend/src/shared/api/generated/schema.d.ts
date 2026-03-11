@@ -127,6 +127,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{trip_id}/planner-map/places/{place_id}/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Planner Map Place Detail */
+        get: operations["get_planner_map_place_detail_trips__trip_id__planner_map_places__place_id__detail_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips/{trip_id}/duplicate": {
         parameters: {
             query?: never;
@@ -246,6 +263,23 @@ export interface paths {
         patch: operations["patch_day_days__day_id__patch"];
         trace?: never;
     };
+    "/trips/{trip_id}/planner/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Trip Activity */
+        post: operations["create_trip_activity_trips__trip_id__planner_activities_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/days/{day_id}/activities": {
         parameters: {
             query?: never;
@@ -325,6 +359,23 @@ export interface paths {
         };
         /** Discover Activities */
         get: operations["discover_activities_trips__trip_id__activities_discover_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/activities/discover/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Discovered Activity Detail */
+        get: operations["get_discovered_activity_detail_trips__trip_id__activities_discover_detail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -436,6 +487,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/places/photos/{photo_id}/asset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Place Photo Asset */
+        get: operations["get_place_photo_asset_places_photos__photo_id__asset_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/places/search": {
         parameters: {
             query?: never;
@@ -445,6 +513,91 @@ export interface paths {
         };
         /** Search Places */
         get: operations["search_places_places_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/autocomplete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Autocomplete Destinations */
+        get: operations["autocomplete_destinations_places_autocomplete_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/google-search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Google Place Search */
+        get: operations["google_place_search_places_google_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/google-photo-asset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Google Place Photo Asset */
+        get: operations["get_google_place_photo_asset_places_google_photo_asset_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/google/{place_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Google Place */
+        get: operations["get_google_place_places_google__place_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/places/google/{place_id}/detail": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Google Place Detail */
+        get: operations["get_google_place_detail_places_google__place_id__detail_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -573,6 +726,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/routes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Routes */
+        post: operations["preview_routes_routes_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/routes/legs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Estimate Route Legs */
+        post: operations["estimate_route_legs_routes_legs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/map-layers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Trip Map Layers */
+        get: operations["list_trip_map_layers_trips__trip_id__map_layers_get"];
+        put?: never;
+        /** Create Trip Map Layer */
+        post: operations["create_trip_map_layer_trips__trip_id__map_layers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/map-layers/{layer_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trip Map Layer */
+        get: operations["get_trip_map_layer_trips__trip_id__map_layers__layer_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Trip Map Layer */
+        delete: operations["delete_trip_map_layer_trips__trip_id__map_layers__layer_id__delete"];
+        options?: never;
+        head?: never;
+        /** Patch Trip Map Layer */
+        patch: operations["patch_trip_map_layer_trips__trip_id__map_layers__layer_id__patch"];
+        trace?: never;
+    };
     "/trips/{trip_id}/optimize": {
         parameters: {
             query?: never;
@@ -675,108 +899,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/offers/transport/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit Transport Offer Search */
-        post: operations["submit_transport_offer_search_offers_transport_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/offers/lodging/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Submit Lodging Offer Search */
-        post: operations["submit_lodging_offer_search_offers_lodging_search_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trips/{trip_id}/offers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Trip Offers */
-        get: operations["list_trip_offers_trips__trip_id__offers_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trips/{trip_id}/offers/{offer_id}/attach-day": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Attach Offer To Day */
-        post: operations["attach_offer_to_day_trips__trip_id__offers__offer_id__attach_day_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/offers/{offer_id}/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Single Offer */
-        post: operations["refresh_single_offer_offers__offer_id__refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/trips/{trip_id}/offers/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Trip Offers */
-        post: operations["refresh_trip_offers_trips__trip_id__offers_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/trips/{trip_id}/exports": {
         parameters: {
             query?: never;
@@ -840,13 +962,21 @@ export interface components {
              */
             trip_day_id: string;
         };
+        /**
+         * ActivityCategory
+         * @enum {string}
+         */
+        ActivityCategory: "visit" | "eat" | "activity" | "hotel" | "travel";
         /** ActivityCreateRequest */
         ActivityCreateRequest: {
-            /**
-             * Trip Day Id
-             * Format: uuid
-             */
+            /** Trip Day Id */
             trip_day_id?: string | null;
+            /** @default visit */
+            category: components["schemas"]["ActivityCategory"];
+            /** Category Details */
+            category_details?: {
+                [key: string]: unknown;
+            };
             /** Title */
             title: string;
             /** Description */
@@ -855,14 +985,14 @@ export interface components {
             start_time?: string | null;
             /** Duration Min */
             duration_min?: number | null;
-            /** Tags */
-            tags?: string[];
             /** Estimated Cost Amount */
             estimated_cost_amount?: number | string | null;
             /** Estimated Cost Currency */
             estimated_cost_currency?: string | null;
             /** Place Id */
             place_id?: string | null;
+            /** Event Snapshot Id */
+            event_snapshot_id?: string | null;
             /** Notes */
             notes?: string | null;
             /**
@@ -920,8 +1050,6 @@ export interface components {
             lat?: number | null;
             /** Lon */
             lon?: number | null;
-            /** Tags */
-            tags?: string[];
             /** Status Text */
             status_text?: string | null;
             /** Is Attachable */
@@ -994,8 +1122,6 @@ export interface components {
             lat?: number | null;
             /** Lon */
             lon?: number | null;
-            /** Tags */
-            tags?: string[];
             /** Status Text */
             status_text?: string | null;
             /** Is Attachable */
@@ -1069,16 +1195,18 @@ export interface components {
         };
         /** ActivityMoveRequest */
         ActivityMoveRequest: {
-            /**
-             * Target Day Id
-             * Format: uuid
-             */
+            /** Target Day Id */
             target_day_id: string | null;
             /** Target Index */
             target_index: number;
         };
         /** ActivityPatchRequest */
         ActivityPatchRequest: {
+            category?: components["schemas"]["ActivityCategory"] | null;
+            /** Category Details */
+            category_details?: {
+                [key: string]: unknown;
+            } | null;
             /** Title */
             title?: string | null;
             /** Description */
@@ -1087,8 +1215,6 @@ export interface components {
             start_time?: string | null;
             /** Duration Min */
             duration_min?: number | null;
-            /** Tags */
-            tags?: string[] | null;
             /** Estimated Cost Amount */
             estimated_cost_amount?: number | string | null;
             /** Estimated Cost Currency */
@@ -1099,6 +1225,8 @@ export interface components {
             notes?: string | null;
             /** Is Favorite */
             is_favorite?: boolean | null;
+            /** Visited At */
+            visited_at?: string | null;
             /** Source */
             source?: string | null;
         };
@@ -1166,13 +1294,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Trip Day Id
-             * Format: uuid
-             */
+            /** Trip Day Id */
             trip_day_id: string | null;
             /** Order Index */
             order_index: number;
+            category: components["schemas"]["ActivityCategory"];
+            /** Category Details */
+            category_details?: {
+                [key: string]: unknown;
+            };
             /** Title */
             title: string;
             /** Description */
@@ -1181,8 +1311,6 @@ export interface components {
             start_time: string | null;
             /** Duration Min */
             duration_min: number | null;
-            /** Tags */
-            tags: string[];
             /** Estimated Cost Amount */
             estimated_cost_amount: string | null;
             /** Estimated Cost Currency */
@@ -1195,6 +1323,8 @@ export interface components {
             notes: string | null;
             /** Is Favorite */
             is_favorite: boolean;
+            /** Visited At */
+            visited_at: string | null;
             /** Source */
             source: string;
             /**
@@ -1249,8 +1379,6 @@ export interface components {
             lat?: number | null;
             /** Lon */
             lon?: number | null;
-            /** Tags */
-            tags?: string[];
             /** Status Text */
             status_text?: string | null;
             /** Start At */
@@ -1364,6 +1492,44 @@ export interface components {
              */
             updated_at: string;
         };
+        /** DestinationAutocompleteItem */
+        DestinationAutocompleteItem: {
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Name */
+            name?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Address Text */
+            address_text?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /** DestinationAutocompleteResponse */
+        DestinationAutocompleteResponse: {
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Items */
+            items: components["schemas"]["DestinationAutocompleteItem"][];
+        };
         /**
          * ExportFormat
          * @enum {string}
@@ -1425,6 +1591,77 @@ export interface components {
          * @enum {string}
          */
         GenerationMode: "replace" | "merge" | "append";
+        /** GooglePlaceCandidate */
+        GooglePlaceCandidate: {
+            /** Place Id */
+            place_id: string;
+            /** Label */
+            label: string;
+            /** Name */
+            name: string;
+            /** Address Text */
+            address_text?: string | null;
+            /** Category */
+            category?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Region */
+            region?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lon */
+            lon?: number | null;
+            /** Timezone */
+            timezone?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+        };
+        /** GooglePlaceDetailResponse */
+        GooglePlaceDetailResponse: {
+            place: components["schemas"]["GooglePlaceCandidate"];
+            /** Summary */
+            summary?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Status Text */
+            status_text?: string | null;
+            /** Price Label */
+            price_label?: string | null;
+            /** Photos */
+            photos?: components["schemas"]["ActivityDiscoveryPhoto"][];
+            /** Reviews */
+            reviews?: components["schemas"]["ActivityDiscoveryReview"][];
+            /** Hours */
+            hours?: components["schemas"]["ActivityDiscoveryHoursDay"][];
+            /** Booking Links */
+            booking_links?: components["schemas"]["ActivityDiscoveryBookingLink"][];
+            /** Tags */
+            tags?: string[];
+            /** Mentions */
+            mentions?: components["schemas"]["GooglePlaceMentionLink"][];
+        };
+        /** GooglePlaceMentionLink */
+        GooglePlaceMentionLink: {
+            /** Label */
+            label: string;
+            /** Url */
+            url?: string | null;
+        };
+        /** GooglePlaceSearchResponse */
+        GooglePlaceSearchResponse: {
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Items */
+            items: components["schemas"]["GooglePlaceCandidate"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1502,207 +1739,16 @@ export interface components {
             /** Finished At */
             finished_at: string | null;
         };
-        /** LodgingOfferDetails */
-        LodgingOfferDetails: {
-            /** Hotel Id */
-            hotel_id?: string | null;
-            /** Hotel Name */
-            hotel_name?: string | null;
-            /** Chain Code */
-            chain_code?: string | null;
-            /** Brand */
-            brand?: string | null;
-            /** Star Rating */
-            star_rating?: number | null;
-            /** Sentiment Rating */
-            sentiment_rating?: number | null;
-            /** Amenities */
-            amenities?: string[];
-            /** Address Text */
-            address_text?: string | null;
-            /** Latitude */
-            latitude?: number | null;
-            /** Longitude */
-            longitude?: number | null;
-            /** Distance Km */
-            distance_km?: number | null;
-            /** Room Description */
-            room_description?: string | null;
-            /** Payment Type */
-            payment_type?: string | null;
-            /** Cancellation Summary */
-            cancellation_summary?: string | null;
-            /** Nightly Rate Amount */
-            nightly_rate_amount?: string | null;
-            /** Taxes Amount */
-            taxes_amount?: string | null;
-            /** Place Id */
-            place_id?: string | null;
-            /**
-             * Photo Count
-             * @default 0
-             */
-            photo_count: number;
-            primary_photo?: components["schemas"]["PlacePhotoSummary"] | null;
-        };
-        /** LodgingOfferSearchRequest */
-        LodgingOfferSearchRequest: {
-            /**
-             * Trip Id
-             * Format: uuid
-             */
-            trip_id: string;
-            /** Trip Day Id */
-            trip_day_id?: string | null;
-            /** Location Text */
-            location_text?: string | null;
-            /**
-             * Checkin Date
-             * Format: date
-             */
-            checkin_date: string;
-            /**
-             * Checkout Date
-             * Format: date
-             */
-            checkout_date: string;
-            /**
-             * Guests
-             * @default 2
-             */
-            guests: number;
-            /**
-             * Currency
-             * @default EUR
-             */
-            currency: string;
-            /** Lodging Types */
-            lodging_types?: components["schemas"]["LodgingType"][] | null;
-            /** Providers */
-            providers?: string[] | null;
-            /** Constraints */
-            constraints?: {
-                [key: string]: unknown;
-            };
-        };
         /**
-         * LodgingType
+         * MapLayerRenderer
          * @enum {string}
          */
-        LodgingType: "hotel";
-        /** OfferAttachDayRequest */
-        OfferAttachDayRequest: {
-            offer_kind: components["schemas"]["OfferKind"];
-            /**
-             * Trip Day Id
-             * Format: uuid
-             */
-            trip_day_id: string;
-        };
-        /** OfferGeoPoint */
-        OfferGeoPoint: {
-            /** Latitude */
-            latitude: number;
-            /** Longitude */
-            longitude: number;
-        };
+        MapLayerRenderer: "native" | "deckgl" | "dds-boundary" | "dds-dataset";
         /**
-         * OfferKind
+         * MapLayerSource
          * @enum {string}
          */
-        OfferKind: "transport" | "lodging";
-        /** OfferListResponse */
-        OfferListResponse: {
-            /** Total */
-            total: number;
-            /** Limit */
-            limit: number;
-            /** Offset */
-            offset: number;
-            /** Items */
-            items: components["schemas"]["OfferResponse"][];
-        };
-        /** OfferRefreshRequest */
-        OfferRefreshRequest: {
-            offer_kind: components["schemas"]["OfferKind"];
-            /** Constraints */
-            constraints?: {
-                [key: string]: unknown;
-            };
-        };
-        /** OfferResponse */
-        OfferResponse: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            kind: components["schemas"]["OfferKind"];
-            /**
-             * Trip Id
-             * Format: uuid
-             */
-            trip_id: string;
-            /** Trip Day Id */
-            trip_day_id: string | null;
-            /** Provider */
-            provider: string;
-            /** Title */
-            title: string;
-            /** Price Amount */
-            price_amount: string;
-            /** Currency */
-            currency: string;
-            /** Deep Link */
-            deep_link: string | null;
-            /**
-             * Expires At
-             * Format: date-time
-             */
-            expires_at: string;
-            /** Is Current */
-            is_current: boolean;
-            /** Superseded By Offer Id */
-            superseded_by_offer_id: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /**
-             * Updated At
-             * Format: date-time
-             */
-            updated_at: string;
-            /** Raw Payload Json */
-            raw_payload_json?: {
-                [key: string]: unknown;
-            } | null;
-            /** Transport Mode */
-            transport_mode?: string | null;
-            /** Origin Text */
-            origin_text?: string | null;
-            /** Destination Text */
-            destination_text?: string | null;
-            /** Depart At */
-            depart_at?: string | null;
-            /** Arrive At */
-            arrive_at?: string | null;
-            /** Location Text */
-            location_text?: string | null;
-            /** Lodging Type */
-            lodging_type?: string | null;
-            /** Room Type */
-            room_type?: string | null;
-            /** Checkin Date */
-            checkin_date?: string | null;
-            /** Checkout Date */
-            checkout_date?: string | null;
-            /** Nights */
-            nights?: number | null;
-            transport_details?: components["schemas"]["TransportOfferDetails"] | null;
-            lodging_details?: components["schemas"]["LodgingOfferDetails"] | null;
-        };
+        MapLayerSource: "manual_draw" | "routes" | "places" | "analytics";
         /**
          * OptimizeObjective
          * @enum {string}
@@ -1811,6 +1857,10 @@ export interface components {
             image_url: string;
             /** Thumbnail Url */
             thumbnail_url: string | null;
+            /** Display Url */
+            display_url?: string | null;
+            /** Display Thumbnail Url */
+            display_thumbnail_url?: string | null;
             /** Width */
             width: number | null;
             /** Height */
@@ -1853,6 +1903,10 @@ export interface components {
             image_url: string;
             /** Thumbnail Url */
             thumbnail_url: string | null;
+            /** Display Url */
+            display_url?: string | null;
+            /** Display Thumbnail Url */
+            display_thumbnail_url?: string | null;
             /** License Code */
             license_code: string | null;
             /** License Url */
@@ -1919,13 +1973,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
-            /**
-             * Trip Day Id
-             * Format: uuid
-             */
+            /** Trip Day Id */
             trip_day_id: string | null;
             /** Order Index */
             order_index: number;
+            category: components["schemas"]["ActivityCategory"];
+            /** Category Details */
+            category_details?: {
+                [key: string]: unknown;
+            };
             /** Title */
             title: string;
             /** Description */
@@ -1934,8 +1990,6 @@ export interface components {
             start_time: string | null;
             /** Duration Min */
             duration_min: number | null;
-            /** Tags */
-            tags: string[];
             /** Estimated Cost Amount */
             estimated_cost_amount: string | null;
             /** Estimated Cost Currency */
@@ -1949,6 +2003,8 @@ export interface components {
             notes: string | null;
             /** Is Favorite */
             is_favorite: boolean;
+            /** Visited At */
+            visited_at: string | null;
             /** Source */
             source: string;
             /**
@@ -1995,6 +2051,58 @@ export interface components {
             updated_at: string;
             /** Activities */
             activities?: components["schemas"]["PlannerActivityResponse"][];
+        };
+        /** PlannerMapMentionLink */
+        PlannerMapMentionLink: {
+            /** Label */
+            label: string;
+            /** Url */
+            url?: string | null;
+        };
+        /** PlannerMapPlaceDetailResponse */
+        PlannerMapPlaceDetailResponse: {
+            place: components["schemas"]["PlaceResponse"];
+            /** Summary */
+            summary?: string | null;
+            /** Rating */
+            rating?: number | null;
+            /** Review Count */
+            review_count?: number | null;
+            /** Status Text */
+            status_text?: string | null;
+            /** Price Label */
+            price_label?: string | null;
+            /** Photos */
+            photos?: components["schemas"]["ActivityDiscoveryPhoto"][];
+            /** Reviews */
+            reviews?: components["schemas"]["ActivityDiscoveryReview"][];
+            /** Hours */
+            hours?: components["schemas"]["ActivityDiscoveryHoursDay"][];
+            /** Booking Links */
+            booking_links?: components["schemas"]["ActivityDiscoveryBookingLink"][];
+            /** Tags */
+            tags?: string[];
+            /** Mentions */
+            mentions?: components["schemas"]["PlannerMapMentionLink"][];
+            /** Related Activities */
+            related_activities?: components["schemas"]["PlannerMapRelatedActivitySummary"][];
+        };
+        /** PlannerMapRelatedActivitySummary */
+        PlannerMapRelatedActivitySummary: {
+            /**
+             * Activity Id
+             * Format: uuid
+             */
+            activity_id: string;
+            /** Trip Day Id */
+            trip_day_id: string | null;
+            /** Order Index */
+            order_index: number;
+            /** Title */
+            title: string;
+            category: components["schemas"]["ActivityCategory"];
+            /** Visited At */
+            visited_at?: string | null;
         };
         /** PlannerPlaceSummary */
         PlannerPlaceSummary: {
@@ -2049,6 +2157,7 @@ export interface components {
             title: string;
             /** Description */
             description: string | null;
+            category: components["schemas"]["ActivityCategory"];
             /** Start Time */
             start_time: string | null;
             /** Duration Min */
@@ -2057,8 +2166,6 @@ export interface components {
             estimated_cost_amount: string | null;
             /** Estimated Cost Currency */
             estimated_cost_currency: string | null;
-            /** Tags */
-            tags: string[];
             /** Rationale */
             rationale: {
                 [key: string]: unknown;
@@ -2159,140 +2266,84 @@ export interface components {
              */
             updated_at: string;
         };
-        /** TransportLayoverDetail */
-        TransportLayoverDetail: {
-            /**
-             * Itinerary Index
-             * @default 0
-             */
-            itinerary_index: number;
-            /** Airport Code */
-            airport_code?: string | null;
+        /** RouteLegEstimateItem */
+        RouteLegEstimateItem: {
+            /** From Activity Id */
+            from_activity_id: string;
+            /** To Activity Id */
+            to_activity_id: string;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Duration Min */
             duration_min?: number | null;
+        };
+        /** RouteLegEstimateRequest */
+        RouteLegEstimateRequest: {
+            /** Legs */
+            legs?: components["schemas"]["RouteLegEstimateRequestItem"][];
+            /** @default WALK */
+            travel_mode: components["schemas"]["RouteTravelMode"];
+        };
+        /** RouteLegEstimateRequestItem */
+        RouteLegEstimateRequestItem: {
+            /** From Activity Id */
+            from_activity_id: string;
+            /** To Activity Id */
+            to_activity_id: string;
+            origin: components["schemas"]["RoutePoint"];
+            destination: components["schemas"]["RoutePoint"];
+        };
+        /** RouteLegEstimateResponse */
+        RouteLegEstimateResponse: {
+            /** Items */
+            items?: components["schemas"]["RouteLegEstimateItem"][];
+        };
+        /** RoutePoint */
+        RoutePoint: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+        };
+        /** RoutePreviewItem */
+        RoutePreviewItem: {
+            /** Summary */
+            summary?: string | null;
+            /** Distance M */
+            distance_m?: number | null;
+            /** Duration Min */
+            duration_min?: number | null;
+            /** Static Duration Min */
+            static_duration_min?: number | null;
+            /** Path */
+            path?: components["schemas"]["RoutePoint"][];
+        };
+        /** RoutePreviewRequest */
+        RoutePreviewRequest: {
+            origin: components["schemas"]["RoutePoint"];
+            destination: components["schemas"]["RoutePoint"];
+            /** Waypoints */
+            waypoints?: components["schemas"]["RoutePoint"][];
+            /** @default WALK */
+            travel_mode: components["schemas"]["RouteTravelMode"];
+            /**
+             * Compute Alternatives
+             * @default true
+             */
+            compute_alternatives: boolean;
+        };
+        /** RoutePreviewResponse */
+        RoutePreviewResponse: {
+            /** Routes */
+            routes?: components["schemas"]["RoutePreviewItem"][];
         };
         /**
-         * TransportMode
+         * RouteTravelMode
          * @enum {string}
          */
-        TransportMode: "flight";
-        /** TransportOfferDetails */
-        TransportOfferDetails: {
-            /** Segments */
-            segments?: components["schemas"]["TransportSegmentDetail"][];
-            /** Layovers */
-            layovers?: components["schemas"]["TransportLayoverDetail"][];
-            /** Stops Count */
-            stops_count?: number | null;
-            /** Total Duration Min */
-            total_duration_min?: number | null;
-            /** Cabin */
-            cabin?: string | null;
-            /** Baggage Summary */
-            baggage_summary?: string | null;
-            /** Validating Airline Codes */
-            validating_airline_codes?: string[];
-            /** Bookable Seats */
-            bookable_seats?: number | null;
-            /** Additional Baggage Price */
-            additional_baggage_price?: string | null;
-            /** Additional Baggage Currency */
-            additional_baggage_currency?: string | null;
-            /** Emissions Kg */
-            emissions_kg?: string | null;
-            /** Emissions Description */
-            emissions_description?: string | null;
-            origin_geo?: components["schemas"]["OfferGeoPoint"] | null;
-            destination_geo?: components["schemas"]["OfferGeoPoint"] | null;
-        };
-        /** TransportOfferSearchRequest */
-        TransportOfferSearchRequest: {
-            /**
-             * Trip Id
-             * Format: uuid
-             */
-            trip_id: string;
-            /** Trip Day Id */
-            trip_day_id?: string | null;
-            /** Origin Text */
-            origin_text: string;
-            /** Destination Text */
-            destination_text?: string | null;
-            /**
-             * Depart Date
-             * Format: date
-             */
-            depart_date: string;
-            /** Return Date */
-            return_date?: string | null;
-            /**
-             * Adults
-             * @default 1
-             */
-            adults: number;
-            /**
-             * Currency
-             * @default EUR
-             */
-            currency: string;
-            /** Transport Modes */
-            transport_modes?: components["schemas"]["TransportMode"][] | null;
-            /** Providers */
-            providers?: string[] | null;
-            /** Constraints */
-            constraints?: {
-                [key: string]: unknown;
-            };
-        };
-        /** TransportSegmentDetail */
-        TransportSegmentDetail: {
-            /**
-             * Itinerary Index
-             * @default 0
-             */
-            itinerary_index: number;
-            /**
-             * Sequence
-             * @default 0
-             */
-            sequence: number;
-            /** Airline Code */
-            airline_code?: string | null;
-            /** Airline Name */
-            airline_name?: string | null;
-            /** Operating Airline Code */
-            operating_airline_code?: string | null;
-            /** Operating Airline Name */
-            operating_airline_name?: string | null;
-            /** Flight Number */
-            flight_number?: string | null;
-            /** Departure Iata */
-            departure_iata?: string | null;
-            /** Departure At */
-            departure_at?: string | null;
-            /** Departure Terminal */
-            departure_terminal?: string | null;
-            /** Arrival Iata */
-            arrival_iata?: string | null;
-            /** Arrival At */
-            arrival_at?: string | null;
-            /** Arrival Terminal */
-            arrival_terminal?: string | null;
-            /** Duration Min */
-            duration_min?: number | null;
-            /** Cabin */
-            cabin?: string | null;
-            /** Fare Basis */
-            fare_basis?: string | null;
-            /** Branded Fare */
-            branded_fare?: string | null;
-            /** Baggage Summary */
-            baggage_summary?: string | null;
-        };
+        RouteTravelMode: "WALK" | "DRIVE" | "BICYCLE" | "TRANSIT";
         /** TripCreateRequest */
         TripCreateRequest: {
-            /** Title */
-            title: string;
             /** Destination Text */
             destination_text: string;
             /**
@@ -2311,8 +2362,6 @@ export interface components {
             budget_currency?: string | null;
             /** Trip Type */
             trip_type?: string | null;
-            /** Preferences */
-            preferences?: string[];
         };
         /** TripExportCreateRequest */
         TripExportCreateRequest: {
@@ -2341,18 +2390,117 @@ export interface components {
             /** Items */
             items: components["schemas"]["TripResponse"][];
         };
-        /** TripOffersRefreshRequest */
-        TripOffersRefreshRequest: {
-            offer_kind?: components["schemas"]["OfferKind"] | null;
-            /**
-             * Current Only
-             * @default true
-             */
-            current_only: boolean;
-            /** Constraints */
-            constraints?: {
+        /** TripMapLayerCreateRequest */
+        TripMapLayerCreateRequest: {
+            /** Name */
+            name: string;
+            source: components["schemas"]["MapLayerSource"];
+            renderer: components["schemas"]["MapLayerRenderer"];
+            /** Feature Collection */
+            feature_collection?: {
                 [key: string]: unknown;
             };
+            /** Style */
+            style?: {
+                [key: string]: unknown;
+            };
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Is Visible
+             * @default true
+             */
+            is_visible: boolean;
+            /**
+             * Is Locked
+             * @default false
+             */
+            is_locked: boolean;
+            /** Order Index */
+            order_index?: number | null;
+        };
+        /** TripMapLayerListResponse */
+        TripMapLayerListResponse: {
+            /** Total */
+            total: number;
+            /** Limit */
+            limit: number;
+            /** Offset */
+            offset: number;
+            /** Items */
+            items: components["schemas"]["TripMapLayerResponse"][];
+        };
+        /** TripMapLayerPatchRequest */
+        TripMapLayerPatchRequest: {
+            /** Name */
+            name?: string | null;
+            source?: components["schemas"]["MapLayerSource"] | null;
+            renderer?: components["schemas"]["MapLayerRenderer"] | null;
+            /** Feature Collection */
+            feature_collection?: {
+                [key: string]: unknown;
+            } | null;
+            /** Style */
+            style?: {
+                [key: string]: unknown;
+            } | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            } | null;
+            /** Is Visible */
+            is_visible?: boolean | null;
+            /** Is Locked */
+            is_locked?: boolean | null;
+            /** Order Index */
+            order_index?: number | null;
+        };
+        /** TripMapLayerResponse */
+        TripMapLayerResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /** Name */
+            name: string;
+            source: components["schemas"]["MapLayerSource"];
+            renderer: components["schemas"]["MapLayerRenderer"];
+            /** Feature Collection */
+            feature_collection: {
+                [key: string]: unknown;
+            };
+            /** Style */
+            style: {
+                [key: string]: unknown;
+            };
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            };
+            /** Is Visible */
+            is_visible: boolean;
+            /** Is Locked */
+            is_locked: boolean;
+            /** Order Index */
+            order_index: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** TripOptimizeRequest */
         TripOptimizeRequest: {
@@ -2393,8 +2541,6 @@ export interface components {
             budget_currency?: string | null;
             /** Trip Type */
             trip_type?: string | null;
-            /** Preferences */
-            preferences?: string[] | null;
         };
         /** TripPlannerResponse */
         TripPlannerResponse: {
@@ -2454,8 +2600,6 @@ export interface components {
             budget_currency: string | null;
             /** Trip Type */
             trip_type: string | null;
-            /** Preferences */
-            preferences: string[];
             /** Version */
             version: number;
             /**
@@ -2829,6 +2973,38 @@ export interface operations {
             };
         };
     };
+    get_planner_map_place_detail_trips__trip_id__planner_map_places__place_id__detail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlannerMapPlaceDetailResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     duplicate_trip_trips__trip_id__duplicate_post: {
         parameters: {
             query?: never;
@@ -3070,6 +3246,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DayResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_trip_activity_trips__trip_id__planner_activities_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ActivityCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3336,6 +3549,42 @@ export interface operations {
             };
         };
     };
+    get_discovered_activity_detail_trips__trip_id__activities_discover_detail_get: {
+        parameters: {
+            query: {
+                entity_type?: components["schemas"]["ActivityEntityType"];
+                provider?: string;
+                provider_ref: string;
+                locale?: string;
+            };
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityDiscoveryDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     save_activity_to_shortlist_trips__trip_id__activities_save_post: {
         parameters: {
             query?: never;
@@ -3582,6 +3831,39 @@ export interface operations {
             };
         };
     };
+    get_place_photo_asset_places_photos__photo_id__asset_get: {
+        parameters: {
+            query?: {
+                variant?: string;
+            };
+            header?: never;
+            path: {
+                photo_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     search_places_places_search_get: {
         parameters: {
             query?: {
@@ -3602,6 +3884,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaceListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    autocomplete_destinations_places_autocomplete_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DestinationAutocompleteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    google_place_search_places_google_search_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+                lat?: number | null;
+                lon?: number | null;
+                radius_m?: number | null;
+                category?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GooglePlaceSearchResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_google_place_photo_asset_places_google_photo_asset_get: {
+        parameters: {
+            query: {
+                name: string;
+                max_width_px?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_google_place_places_google__place_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GooglePlaceCandidate"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_google_place_detail_places_google__place_id__detail_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                place_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GooglePlaceDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3888,6 +4334,241 @@ export interface operations {
             };
         };
     };
+    preview_routes_routes_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoutePreviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimate_route_legs_routes_legs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteLegEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteLegEstimateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_trip_map_layers_trips__trip_id__map_layers_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripMapLayerListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_trip_map_layer_trips__trip_id__map_layers_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TripMapLayerCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripMapLayerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_map_layer_trips__trip_id__map_layers__layer_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                layer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripMapLayerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_trip_map_layer_trips__trip_id__map_layers__layer_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                layer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_trip_map_layer_trips__trip_id__map_layers__layer_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                layer_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TripMapLayerPatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripMapLayerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     optimize_trip_trips__trip_id__optimize_post: {
         parameters: {
             query?: never;
@@ -4074,226 +4755,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submit_transport_offer_search_offers_transport_search_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TransportOfferSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    submit_lodging_offer_search_offers_lodging_search_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LodgingOfferSearchRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_trip_offers_trips__trip_id__offers_get: {
-        parameters: {
-            query?: {
-                kind?: components["schemas"]["OfferKind"] | null;
-                transport_modes?: components["schemas"]["TransportMode"][] | null;
-                lodging_types?: components["schemas"]["LodgingType"][] | null;
-                current_only?: boolean;
-                limit?: number;
-                offset?: number;
-            };
-            header?: never;
-            path: {
-                trip_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OfferListResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    attach_offer_to_day_trips__trip_id__offers__offer_id__attach_day_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path: {
-                trip_id: string;
-                offer_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OfferAttachDayRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["OfferResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refresh_single_offer_offers__offer_id__refresh_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path: {
-                offer_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["OfferRefreshRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobAcceptedResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    refresh_trip_offers_trips__trip_id__offers_refresh_post: {
-        parameters: {
-            query?: never;
-            header?: {
-                "Idempotency-Key"?: string | null;
-            };
-            path: {
-                trip_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TripOffersRefreshRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JobAcceptedResponse"];
                 };
             };
             /** @description Validation Error */

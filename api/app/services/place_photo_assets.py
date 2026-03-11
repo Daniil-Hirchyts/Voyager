@@ -52,6 +52,8 @@ async def ensure_place_photo_asset(photo: PlacePhoto, *, variant: str) -> Path:
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     headers = {"User-Agent": get_settings().media_user_agent}
+    if photo.source == "google_places" and get_settings().google_maps_api_key:
+        headers["X-Goog-Api-Key"] = get_settings().google_maps_api_key
 
     async with httpx.AsyncClient(timeout=20.0, follow_redirects=True, headers=headers) as client:
         response = await client.get(source_url)

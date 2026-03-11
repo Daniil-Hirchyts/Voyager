@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { screen } from '@testing-library/react'
-import { FeatureRouteGate } from './index'
+import { FeatureRouteGate, LegacyActivitiesRedirect } from './index'
 import { renderWithQueryClient } from '@/test/utils'
 
 describe('FeatureRouteGate', () => {
@@ -43,5 +43,18 @@ describe('FeatureRouteGate', () => {
     )
 
     expect(await screen.findByText('Map Workspace')).toBeInTheDocument()
+  })
+
+  it('redirects the legacy activities route into planner', async () => {
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/app/trips/trip-123/activities']}>
+        <Routes>
+          <Route path="/app/trips/:tripId/activities" element={<LegacyActivitiesRedirect />} />
+          <Route path="/app/trips/:tripId/plan" element={<div>Planner Workspace</div>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Planner Workspace')).toBeInTheDocument()
   })
 })

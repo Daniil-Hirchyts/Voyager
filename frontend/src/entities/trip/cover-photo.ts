@@ -2,6 +2,9 @@ export type TripCoverPhotoPreference = {
   placeId?: string | null
   placeLabel?: string | null
   photoId?: string | null
+  /** Raw relative URL from Google Place Detail (e.g. /places/google-photo-asset?name=...).
+   *  Pass through resolveMediaUrl before using as <img src>. */
+  googlePhotoUrl?: string | null
 }
 
 const TRIP_COVER_PHOTO_PREFIX = 'voyager.trip-cover'

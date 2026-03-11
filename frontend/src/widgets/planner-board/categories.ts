@@ -50,7 +50,12 @@ export function plannerCategoryLabel(category: ActivityCategory) {
   return PLANNER_CATEGORY_META[category]?.label ?? 'Activity'
 }
 
-export function plannerPrimaryPlace(activity: PlannerActivity): PlannerPlaceSummary | null {
+export function plannerPrimaryPlace(
+  activity: PlannerActivity | null | undefined,
+): PlannerPlaceSummary | null {
+  if (!activity) {
+    return null
+  }
   if (activity.place) {
     return activity.place
   }
@@ -74,7 +79,10 @@ export function plannerPrimaryPlace(activity: PlannerActivity): PlannerPlaceSumm
   return null
 }
 
-export function plannerTravelRoute(activity: PlannerActivity): TravelRoutePoint[] {
+export function plannerTravelRoute(activity: PlannerActivity | null | undefined): TravelRoutePoint[] {
+  if (!activity) {
+    return []
+  }
   if (activity.category !== 'travel') {
     return []
   }
@@ -108,7 +116,10 @@ export function plannerTravelRoute(activity: PlannerActivity): TravelRoutePoint[
   return points
 }
 
-export function plannerCategoryDescription(activity: PlannerActivity) {
+export function plannerCategoryDescription(activity: PlannerActivity | null | undefined) {
+  if (!activity) {
+    return null
+  }
   const details = asRecord(activity.category_details)
   if (activity.category === 'travel') {
     const origin = typeof details.origin_text === 'string' ? details.origin_text : null

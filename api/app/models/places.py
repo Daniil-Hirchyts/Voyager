@@ -3,6 +3,13 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
+from app.models.activity_discovery import (
+    ActivityDiscoveryBookingLink,
+    ActivityDiscoveryHoursDay,
+    ActivityDiscoveryPhoto,
+    ActivityDiscoveryReview,
+)
+
 
 class PlaceCreateRequest(BaseModel):
     source: str
@@ -99,6 +106,26 @@ class GooglePlaceSearchResponse(BaseModel):
     limit: int
     offset: int
     items: list[GooglePlaceCandidate]
+
+
+class GooglePlaceMentionLink(BaseModel):
+    label: str
+    url: str | None = None
+
+
+class GooglePlaceDetailResponse(BaseModel):
+    place: GooglePlaceCandidate
+    summary: str | None = None
+    rating: float | None = None
+    review_count: int | None = None
+    status_text: str | None = None
+    price_label: str | None = None
+    photos: list[ActivityDiscoveryPhoto] = Field(default_factory=list)
+    reviews: list[ActivityDiscoveryReview] = Field(default_factory=list)
+    hours: list[ActivityDiscoveryHoursDay] = Field(default_factory=list)
+    booking_links: list[ActivityDiscoveryBookingLink] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    mentions: list[GooglePlaceMentionLink] = Field(default_factory=list)
 
 
 class PlaceMergeRequest(BaseModel):

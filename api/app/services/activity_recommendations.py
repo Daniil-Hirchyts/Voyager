@@ -19,8 +19,8 @@ from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
 
 
-def _preference_terms(trip: Trip) -> set[str]:
-    raw = [trip.destination_text or "", trip.trip_type or "", *(trip.preferences_json or [])]
+def _trip_terms(trip: Trip) -> set[str]:
+    raw = [trip.destination_text or "", trip.trip_type or ""]
     terms: set[str] = set()
     for value in raw:
         if not isinstance(value, str):
@@ -102,12 +102,12 @@ def _fallback_rationale(
     *,
     snapshot: EventSnapshot,
     day: TripDay,
-    preference_matches: list[str],
+    context_matches: list[str],
     distance_score: float,
 ) -> str:
     parts = [f"{snapshot.title} fits day {day.day_index + 1}"]
-    if preference_matches:
-        parts.append(f"matches {', '.join(preference_matches[:2])}")
+    if context_matches:
+        parts.append(f"matches {', '.join(context_matches[:2])}")
     if snapshot.rating is not None:
         parts.append(f"carries a {snapshot.rating:.1f} TripAdvisor rating")
     if distance_score >= 12:
@@ -169,7 +169,6 @@ async def _llm_rationales(
         "trip": {
             "destination_text": trip.destination_text,
             "trip_type": trip.trip_type,
-            "preferences": [item for item in trip.preferences_json if isinstance(item, str)],
         },
         "recommendations": [
             {
@@ -295,7 +294,7 @@ async def recommend_shortlist_items(
         day.id: _centroid_for_day(activities_by_day.get(day.id, []), places_by_id)
         for day in scoped_days
     }
-    preference_terms = _preference_terms(trip)
+    trip_terms = _trip_terms(trip)
 
     scored: list[dict[str, Any]] = []
     for snapshot in snapshots:
@@ -306,18 +305,18 @@ async def recommend_shortlist_items(
         best: dict[str, Any] | None = None
         for day in scoped_days:
             day_context_terms = _day_terms(activities_by_day.get(day.id, []))
-            preference_matches = sorted(snapshot_terms & (preference_terms | day_context_terms))
-            preference_score = min(len(preference_matches) * 10.0, 30.0)
+            context_matches = sorted(snapshot_terms & (trip_terms | day_context_terms))
+            context_score = min(len(context_matches) * 10.0, 30.0)
             rating_score = (float(snapshot.rating) if snapshot.rating is not None else 3.5) * 12.0
             review_score = min(math.log10((snapshot.review_count or 0) + 10) * 6.0, 18.0)
             distance_score = _distance_score(snapshot, centroid=centroids.get(day.id), place=place)
             day_bias = max(0, 12 - day.day_index)
-            total_score = round(preference_score + rating_score + review_score + distance_score + day_bias, 2)
+            total_score = round(context_score + rating_score + review_score + distance_score + day_bias, 2)
             candidate = {
                 "snapshot": snapshot,
                 "day": day,
                 "score": total_score,
-                "preference_matches": preference_matches,
+                "context_matches": context_matches,
                 "distance_score": distance_score,
             }
             if best is None or candidate["score"] > best["score"]:
@@ -345,12 +344,12 @@ async def recommend_shortlist_items(
                 "rationale": llm_rationales.get(
                     snapshot.id,
                     _fallback_rationale(
-                        snapshot=snapshot,
-                        day=day,
-                        preference_matches=item["preference_matches"],
-                        distance_score=item["distance_score"],
-                    ),
+                    snapshot=snapshot,
+                    day=day,
+                    context_matches=item["context_matches"],
+                    distance_score=item["distance_score"],
                 ),
+            ),
                 "item": EventRepository.to_discovery_item(snapshot),
             }
         )

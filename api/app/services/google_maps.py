@@ -5,6 +5,7 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -57,6 +58,32 @@ class GooglePlaceDetails:
 
 
 @dataclass(slots=True)
+class GooglePlacePhoto:
+    name: str
+    width_px: int | None
+    height_px: int | None
+    attribution_text: str | None
+    author_name: str | None
+    author_url: str | None
+
+
+@dataclass(slots=True)
+class GooglePlaceRichDetail:
+    place: GooglePlaceCandidate
+    summary: str | None
+    rating: float | None
+    review_count: int | None
+    status_text: str | None
+    price_label: str | None
+    photos: list[dict[str, Any]]
+    reviews: list[dict[str, Any]]
+    hours: list[dict[str, Any]]
+    booking_links: list[dict[str, str]]
+    tags: list[str]
+    mentions: list[dict[str, str | None]]
+
+
+@dataclass(slots=True)
 class GeocodeResult:
     place_id: str | None
     formatted_address: str | None
@@ -95,11 +122,11 @@ def _field_text(value: Any) -> str | None:
 def _component_text(component: dict[str, Any], *, short: bool = False) -> str | None:
     if short:
         return _field_text(
-            component.get("shortText")
-            or component.get("short_name")
-            or component.get("shortName")
+            component.get("shortText") or component.get("short_name") or component.get("shortName")
         )
-    return _field_text(component.get("longText") or component.get("long_name") or component.get("longName"))
+    return _field_text(
+        component.get("longText") or component.get("long_name") or component.get("longName")
+    )
 
 
 def _component_types(component: dict[str, Any]) -> list[str]:
@@ -155,6 +182,284 @@ def _duration_minutes(value: str | None) -> float | None:
     except ValueError:
         return None
     return round(seconds / 60.0, 1)
+
+
+def _coerce_int(value: Any) -> int | None:
+    try:
+        return int(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _coerce_float(value: Any) -> float | None:
+    try:
+        return float(value) if value is not None else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _google_place_photo_media_url(photo_name: str, *, max_width_px: int) -> str:
+    return f"{_PLACES_BASE_URL}/{photo_name}/media?maxWidthPx={max(1, int(max_width_px))}"
+
+
+def _google_place_photo_asset_url(photo_name: str, *, max_width_px: int) -> str:
+    return (
+        "/places/google-photo-asset"
+        f"?name={quote(photo_name, safe='')}"
+        f"&max_width_px={max(1, int(max_width_px))}"
+    )
+
+
+def _author_attribution_fields(raw: Any) -> tuple[str | None, str | None, str | None]:
+    if not isinstance(raw, list):
+        return None, None, None
+
+    labels: list[str] = []
+    first_name: str | None = None
+    first_url: str | None = None
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        display_name = _field_text(item.get("displayName"))
+        uri = _field_text(item.get("uri"))
+        if display_name:
+            labels.append(display_name)
+            if first_name is None:
+                first_name = display_name
+        if uri and first_url is None:
+            first_url = uri
+
+    attribution_text = ", ".join(labels) if labels else None
+    return attribution_text, first_name, first_url
+
+
+async def _google_place_payload(place_id: str, *, field_mask: str) -> dict[str, Any]:
+    normalized_place_id = _field_text(place_id)
+    if not normalized_place_id:
+        raise GoogleMapsRequestError("Google Place id is required")
+
+    return await _request_json(
+        method="GET",
+        url=f"{_PLACES_BASE_URL}/places/{normalized_place_id}",
+        timeout=_settings().google_places_timeout_sec,
+        field_mask=field_mask,
+    )
+
+
+def _google_place_details_from_payload(
+    payload: dict[str, Any], *, normalized_place_id: str
+) -> GooglePlaceDetails:
+    components = payload.get("addressComponents")
+    if not isinstance(components, list):
+        components = []
+    lat, lng = _lat_lng_from_location(payload.get("location"))
+    return GooglePlaceDetails(
+        place_id=_field_text(payload.get("id")) or normalized_place_id,
+        name=_field_text((payload.get("displayName") or {}).get("text")),
+        formatted_address=_field_text(payload.get("formattedAddress")),
+        category=_field_text(payload.get("primaryType")),
+        country=_country_from_components(components),
+        region=_region_from_components(components),
+        lat=lat,
+        lng=lng,
+        timezone=None,
+        metadata={
+            "types": payload.get("types") if isinstance(payload.get("types"), list) else [],
+            "google_maps_uri": _field_text(payload.get("googleMapsUri")),
+            "website_uri": _field_text(payload.get("websiteUri")),
+            "viewport": payload.get("viewport")
+            if isinstance(payload.get("viewport"), dict)
+            else None,
+            "business_status": _field_text(payload.get("businessStatus")),
+        },
+    )
+
+
+def _normalize_google_place_photos(
+    raw_photos: Any, *, limit: int = 8
+) -> list[GooglePlacePhoto]:
+    if not isinstance(raw_photos, list):
+        return []
+
+    photos: list[GooglePlacePhoto] = []
+    for item in raw_photos[:limit]:
+        if not isinstance(item, dict):
+            continue
+        photo_name = _field_text(item.get("name"))
+        if not photo_name:
+            continue
+        attribution_text, author_name, author_url = _author_attribution_fields(
+            item.get("authorAttributions")
+        )
+        photos.append(
+            GooglePlacePhoto(
+                name=photo_name,
+                width_px=_coerce_int(item.get("widthPx")),
+                height_px=_coerce_int(item.get("heightPx")),
+                attribution_text=attribution_text,
+                author_name=author_name,
+                author_url=author_url,
+            )
+        )
+
+    photos.sort(
+        key=lambda item: (
+            int(item.width_px or 0) * int(item.height_px or 0),
+            bool(item.attribution_text),
+        ),
+        reverse=True,
+    )
+    return photos[:limit]
+
+
+def _serialize_google_place_photos(photos: list[GooglePlacePhoto]) -> list[dict[str, Any]]:
+    return [
+        {
+            "source": "google_places",
+            "source_media_ref": photo.name,
+            "image_url": _google_place_photo_asset_url(photo.name, max_width_px=1600),
+            "thumbnail_url": _google_place_photo_asset_url(photo.name, max_width_px=480),
+            "width": photo.width_px,
+            "height": photo.height_px,
+            "license_code": None,
+            "license_url": None,
+            "author_name": photo.author_name,
+            "author_url": photo.author_url,
+            "attribution_text": photo.attribution_text,
+            "raw_payload_json": {
+                "name": photo.name,
+                "widthPx": photo.width_px,
+                "heightPx": photo.height_px,
+                "authorAttributions": photo.attribution_text,
+            },
+        }
+        for photo in photos
+    ]
+
+
+def _price_label_from_google_value(value: Any) -> str | None:
+    normalized = _field_text(value)
+    if not normalized:
+        return None
+    price_map = {
+        "PRICE_LEVEL_FREE": "Free",
+        "PRICE_LEVEL_INEXPENSIVE": "$",
+        "PRICE_LEVEL_MODERATE": "$$",
+        "PRICE_LEVEL_EXPENSIVE": "$$$",
+        "PRICE_LEVEL_VERY_EXPENSIVE": "$$$$",
+    }
+    return price_map.get(normalized, normalized.replace("_", " ").title())
+
+
+def _normalize_google_hours(raw_hours: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_hours, dict):
+        return []
+
+    descriptions = raw_hours.get("weekdayDescriptions")
+    if not isinstance(descriptions, list):
+        return []
+
+    hours: list[dict[str, Any]] = []
+    for item in descriptions:
+        if not isinstance(item, str):
+            continue
+        day, _, value = item.partition(":")
+        label = day.strip()
+        summary = value.strip()
+        if not label:
+            continue
+        if not summary:
+            hours.append({"day": label, "times": []})
+            continue
+        windows = [
+            {"open": part.strip(), "close": None}
+            for part in summary.split(",")
+            if part.strip()
+        ]
+        hours.append({"day": label, "times": windows})
+    return hours
+
+
+def _normalize_google_reviews(raw_reviews: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_reviews, list):
+        return []
+
+    reviews: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_reviews[:6]):
+        if not isinstance(item, dict):
+            continue
+        author = item.get("authorAttribution") if isinstance(item.get("authorAttribution"), dict) else {}
+        text_payload = item.get("text") if isinstance(item.get("text"), dict) else {}
+        original_text_payload = (
+            item.get("originalText") if isinstance(item.get("originalText"), dict) else {}
+        )
+        text = _field_text(text_payload.get("text")) or _field_text(original_text_payload.get("text"))
+        reviews.append(
+            {
+                "review_id": _field_text(item.get("name")) or f"google-review-{index}",
+                "title": None,
+                "text": text,
+                "rating": _coerce_float(item.get("rating")),
+                "published_at": _field_text(item.get("publishTime")),
+                "reviewer_name": _field_text(author.get("displayName")),
+                "reviewer_username": None,
+                "review_url": None,
+            }
+        )
+    return reviews
+
+
+def _google_editorial_summary(payload: dict[str, Any]) -> str | None:
+    editorial_summary = payload.get("editorialSummary")
+    if isinstance(editorial_summary, dict):
+        return _field_text(editorial_summary.get("text") or editorial_summary.get("overview"))
+    return _field_text(editorial_summary)
+
+
+def _google_status_text(payload: dict[str, Any]) -> str | None:
+    current_hours = (
+        payload.get("currentOpeningHours")
+        if isinstance(payload.get("currentOpeningHours"), dict)
+        else {}
+    )
+    open_now = current_hours.get("openNow")
+    if isinstance(open_now, bool):
+        return "Open now" if open_now else "Closed now"
+
+    business_status = _field_text(payload.get("businessStatus"))
+    if business_status == "OPERATIONAL":
+        return "Operational"
+    if business_status:
+        return business_status.replace("_", " ").title()
+    return None
+
+
+def _normalize_google_tags(details: GooglePlaceDetails) -> list[str]:
+    raw_types = details.metadata.get("types")
+    raw_tags = [details.category, *(raw_types if isinstance(raw_types, list) else [])]
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for item in raw_tags:
+        text = _field_text(item)
+        if not text:
+            continue
+        label = text.replace("_", " ").title()
+        dedupe_key = label.casefold()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        deduped.append(label)
+    return deduped
+
+
+def _google_mentions(details: GooglePlaceDetails) -> list[dict[str, str | None]]:
+    google_maps_uri = _field_text(details.metadata.get("google_maps_uri"))
+    website_uri = _field_text(details.metadata.get("website_uri"))
+    mentions = [
+        {"label": "Google Maps", "url": google_maps_uri},
+        {"label": "Website", "url": website_uri},
+    ]
+    return [item for item in mentions if item["url"]]
 
 
 def _decode_polyline(encoded: str | None) -> list[dict[str, float]]:
@@ -286,7 +591,8 @@ async def _request_json(
     status = payload.get("status")
     if isinstance(status, str) and status not in {"OK", "ZERO_RESULTS"}:
         raise GoogleMapsRequestError(
-            _field_text(payload.get("error_message")) or f"Google Maps request failed with status {status}"
+            _field_text(payload.get("error_message"))
+            or f"Google Maps request failed with status {status}"
         )
     return payload
 
@@ -296,36 +602,130 @@ async def lookup_google_place(place_id: str) -> GooglePlaceDetails | None:
     if not normalized_place_id:
         return None
 
-    payload = await _request_json(
-        method="GET",
-        url=f"{_PLACES_BASE_URL}/places/{normalized_place_id}",
-        timeout=_settings().google_places_timeout_sec,
-        field_mask="id,displayName,formattedAddress,location,primaryType,types,addressComponents,googleMapsUri,websiteUri,viewport",
+    payload = await _google_place_payload(
+        normalized_place_id,
+        field_mask=(
+            "id,displayName,formattedAddress,location,primaryType,types,addressComponents,"
+            "googleMapsUri,websiteUri,viewport,businessStatus"
+        ),
     )
-    components = payload.get("addressComponents")
-    if not isinstance(components, list):
-        components = []
-    lat, lng = _lat_lng_from_location(payload.get("location"))
+    details = _google_place_details_from_payload(
+        payload,
+        normalized_place_id=normalized_place_id,
+    )
     try:
-        timezone = await resolve_time_zone(lat=lat, lng=lng) if lat is not None and lng is not None else None
+        details.timezone = (
+            await resolve_time_zone(lat=details.lat, lng=details.lng)
+            if details.lat is not None and details.lng is not None
+            else None
+        )
     except GoogleMapsError:
-        timezone = None
-    return GooglePlaceDetails(
-        place_id=_field_text(payload.get("id")) or normalized_place_id,
-        name=_field_text((payload.get("displayName") or {}).get("text")),
-        formatted_address=_field_text(payload.get("formattedAddress")),
-        category=_field_text(payload.get("primaryType")),
-        country=_country_from_components(components),
-        region=_region_from_components(components),
-        lat=lat,
-        lng=lng,
-        timezone=timezone,
-        metadata={
-            "types": payload.get("types") if isinstance(payload.get("types"), list) else [],
-            "google_maps_uri": _field_text(payload.get("googleMapsUri")),
-            "website_uri": _field_text(payload.get("websiteUri")),
-            "viewport": payload.get("viewport") if isinstance(payload.get("viewport"), dict) else None,
-        },
+        details.timezone = None
+    return details
+
+
+async def fetch_google_place_photos(place_id: str, *, limit: int = 8) -> list[dict[str, Any]]:
+    normalized_place_id = _field_text(place_id)
+    if not normalized_place_id:
+        return []
+
+    payload = await _google_place_payload(
+        normalized_place_id,
+        field_mask="photos.name,photos.widthPx,photos.heightPx,photos.authorAttributions",
+    )
+    photos = _normalize_google_place_photos(payload.get("photos"), limit=limit)
+    return _serialize_google_place_photos(photos)
+
+
+async def fetch_google_place_photo_asset(
+    photo_name: str, *, max_width_px: int = 1600
+) -> tuple[bytes, str | None]:
+    normalized_photo_name = _field_text(photo_name)
+    if not normalized_photo_name:
+        raise GoogleMapsRequestError("Google Place photo name is required")
+
+    settings = _settings()
+    if not settings.google_maps_api_key:
+        raise GoogleMapsNotConfiguredError("Google Maps API key is not configured")
+
+    headers = {
+        "User-Agent": settings.media_user_agent,
+        "X-Goog-Api-Key": settings.google_maps_api_key,
+    }
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=settings.google_places_timeout_sec,
+            headers=headers,
+            follow_redirects=True,
+        ) as client:
+            response = await client.get(
+                _google_place_photo_media_url(
+                    normalized_photo_name, max_width_px=max_width_px
+                )
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        body = exc.response.text[:500]
+        logger.warning("google place photo request failed: %s %s", exc, body)
+        raise GoogleMapsRequestError("Google Place photo request failed") from exc
+    except httpx.HTTPError as exc:
+        logger.warning("google place photo transport failed: %s", exc)
+        raise GoogleMapsRequestError("Google Place photo request failed") from exc
+
+    return response.content, response.headers.get("content-type")
+
+
+async def fetch_google_place_detail(place_id: str) -> GooglePlaceRichDetail | None:
+    normalized_place_id = _field_text(place_id)
+    if not normalized_place_id:
+        return None
+
+    payload = await _google_place_payload(
+        normalized_place_id,
+        field_mask=(
+            "id,displayName,formattedAddress,location,primaryType,types,addressComponents,"
+            "googleMapsUri,websiteUri,viewport,businessStatus,editorialSummary,rating,"
+            "userRatingCount,priceLevel,currentOpeningHours,regularOpeningHours,reviews,"
+            "photos.name,photos.widthPx,photos.heightPx,photos.authorAttributions"
+        ),
+    )
+    details = _google_place_details_from_payload(
+        payload,
+        normalized_place_id=normalized_place_id,
+    )
+    try:
+        details.timezone = (
+            await resolve_time_zone(lat=details.lat, lng=details.lng)
+            if details.lat is not None and details.lng is not None
+            else None
+        )
+    except GoogleMapsError:
+        details.timezone = None
+
+    place = _place_candidate_from_details(details)
+    photos = _serialize_google_place_photos(
+        _normalize_google_place_photos(payload.get("photos"), limit=8)
+    )
+    mentions = _google_mentions(details)
+    booking_links = [
+        {"label": item["label"], "url": item["url"]}
+        for item in mentions
+        if item["url"] is not None
+    ]
+    return GooglePlaceRichDetail(
+        place=place,
+        summary=_google_editorial_summary(payload),
+        rating=_coerce_float(payload.get("rating")),
+        review_count=_coerce_int(payload.get("userRatingCount")),
+        status_text=_google_status_text(payload),
+        price_label=_price_label_from_google_value(payload.get("priceLevel")),
+        photos=photos,
+        reviews=_normalize_google_reviews(payload.get("reviews")),
+        hours=_normalize_google_hours(payload.get("regularOpeningHours")),
+        booking_links=booking_links,
+        tags=_normalize_google_tags(details),
+        mentions=mentions,
     )
 
 
@@ -468,26 +868,46 @@ async def search_destination_suggestions(q: str, limit: int) -> list[Destination
     return [item for _, item in ranked_items[:limit]]
 
 
-async def search_google_places(q: str, limit: int) -> list[GooglePlaceCandidate]:
-    query = q.strip()
+async def search_google_places(
+    q: str,
+    limit: int,
+    *,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_m: int | None = None,
+    category: str | None = None,
+) -> list[GooglePlaceCandidate]:
+    query = q.strip() or (category or "").replace("_", " ").strip()
     if len(query) < 2 or not google_maps_enabled():
         return []
+
+    json_body: dict[str, Any] = {
+        "textQuery": query,
+        "pageSize": max(1, min(limit, 10)),
+        "languageCode": _settings().google_maps_language,
+        **(
+            {"regionCode": _settings().google_maps_region}
+            if _settings().google_maps_region
+            else {}
+        ),
+    }
+    normalized_category = _field_text(category)
+    if normalized_category:
+        json_body["includedType"] = normalized_category
+    if lat is not None and lng is not None and radius_m is not None and radius_m > 0:
+        json_body["locationBias"] = {
+            "circle": {
+                "center": {"latitude": lat, "longitude": lng},
+                "radius": float(radius_m),
+            }
+        }
 
     payload = await _request_json(
         method="POST",
         url=f"{_PLACES_BASE_URL}/places:searchText",
         timeout=_settings().google_places_timeout_sec,
         field_mask="places.id,places.displayName,places.formattedAddress,places.location,places.primaryType,places.types,places.googleMapsUri,places.websiteUri,places.addressComponents,places.viewport",
-        json_body={
-            "textQuery": query,
-            "pageSize": max(1, min(limit, 10)),
-            "languageCode": _settings().google_maps_language,
-            **(
-                {"regionCode": _settings().google_maps_region}
-                if _settings().google_maps_region
-                else {}
-            ),
-        },
+        json_body=json_body,
     )
     places = payload.get("places")
     if not isinstance(places, list):
@@ -518,7 +938,9 @@ async def search_google_places(q: str, limit: int) -> list[GooglePlaceCandidate]
                     "types": place.get("types") if isinstance(place.get("types"), list) else [],
                     "google_maps_uri": _field_text(place.get("googleMapsUri")),
                     "website_uri": _field_text(place.get("websiteUri")),
-                    "viewport": place.get("viewport") if isinstance(place.get("viewport"), dict) else None,
+                    "viewport": place.get("viewport")
+                    if isinstance(place.get("viewport"), dict)
+                    else None,
                 },
             )
         )
@@ -537,7 +959,9 @@ async def geocode_address(address_text: str) -> GeocodeResult | None:
             "address": query,
             "key": _settings().google_maps_api_key,
             "language": _settings().google_maps_language,
-            **({"region": _settings().google_maps_region} if _settings().google_maps_region else {}),
+            **(
+                {"region": _settings().google_maps_region} if _settings().google_maps_region else {}
+            ),
         },
     )
     results = payload.get("results")
@@ -639,7 +1063,9 @@ async def compute_routes(request: RoutePreviewRequest) -> list[RoutePreviewItem]
         items.append(
             RoutePreviewItem(
                 summary=_field_text(route.get("description")) or f"Route {index + 1}",
-                distance_m=int(route["distanceMeters"]) if route.get("distanceMeters") is not None else None,
+                distance_m=int(route["distanceMeters"])
+                if route.get("distanceMeters") is not None
+                else None,
                 duration_min=_duration_minutes(_field_text(route.get("duration"))),
                 static_duration_min=_duration_minutes(_field_text(route.get("staticDuration"))),
                 path=[

@@ -16,14 +16,11 @@ const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
 
 // App pages
 const AppShell = lazy(() => import('@/widgets/app-shell'))
+const SettingsPage = lazy(() => import('@/pages/app/settings'))
 const TripsPage = lazy(() => import('@/pages/app/trips'))
 const TripCreatePage = lazy(() => import('@/pages/app/trips/new'))
-const TripDetailPage = lazy(() => import('@/pages/app/trip-detail'))
 const PlanPage = lazy(() => import('@/pages/app/plan'))
 const MapPage = lazy(() => import('@/pages/app/map'))
-const OffersPage = lazy(() => import('@/pages/app/offers'))
-const ActivitiesPage = lazy(() => import('@/pages/app/activities'))
-const ExportsPage = lazy(() => import('@/pages/app/exports'))
 const EventsPage = lazy(() => import('@/pages/app/events'))
 const ProposalsPage = lazy(() => import('@/pages/app/proposals'))
 
@@ -88,6 +85,11 @@ export function FeatureRouteGate({
   return <>{children}</>
 }
 
+export function LegacyActivitiesRedirect() {
+  const { tripId } = useParams<{ tripId: string }>()
+  return <Navigate to={tripId ? `/app/trips/${tripId}/plan` : '/app/trips'} replace />
+}
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -143,6 +145,14 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="trips" replace /> },
       {
+        path: 'settings',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SettingsPage />
+          </Suspense>
+        ),
+      },
+      {
         path: 'trips',
         element: (
           <Suspense fallback={<PageLoader />}>
@@ -160,11 +170,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'trips/:tripId',
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <TripDetailPage />
-          </Suspense>
-        ),
+        element: <Navigate to="plan" replace />,
       },
       {
         path: 'trips/:tripId/plan',
@@ -184,40 +190,10 @@ const router = createBrowserRouter([
           </FeatureRouteGate>
         ),
       },
-      {
-        path: 'trips/:tripId/offers',
-        element: (
-          <FeatureRouteGate enabled={config.features.offersUI}>
-            <Suspense fallback={<PageLoader />}>
-              <OffersPage />
-            </Suspense>
-          </FeatureRouteGate>
-        ),
-      },
-      {
-        path: 'trips/:tripId/exports',
-        element: (
-          <FeatureRouteGate enabled={config.features.exportsUI}>
-            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
-              <Suspense fallback={<PageLoader />}>
-                <ExportsPage />
-              </Suspense>
-            </ErrorBoundary>
-          </FeatureRouteGate>
-        ),
-      },
 
       {
         path: 'trips/:tripId/activities',
-        element: (
-          <FeatureRouteGate enabled={config.features.activitiesUI}>
-            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
-              <Suspense fallback={<PageLoader />}>
-                <ActivitiesPage />
-              </Suspense>
-            </ErrorBoundary>
-          </FeatureRouteGate>
-        ),
+        element: <LegacyActivitiesRedirect />,
       },
       {
         path: 'trips/:tripId/events',

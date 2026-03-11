@@ -4,7 +4,7 @@ import uuid
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,6 +23,7 @@ from app.models.jobs import JobAcceptedResponse
 from app.models.places import (
     DestinationAutocompleteResponse,
     GooglePlaceCandidate,
+    GooglePlaceDetailResponse,
     GooglePlaceSearchResponse,
     PlaceCreateRequest,
     PlaceDedupRunRequest,
@@ -42,6 +43,8 @@ from app.security.dependencies import (
 )
 from app.services.google_maps import (
     GoogleMapsNotConfiguredError,
+    fetch_google_place_detail,
+    fetch_google_place_photo_asset,
     GoogleMapsRequestError,
     geocode_address,
     lookup_google_place,
@@ -411,6 +414,10 @@ async def google_place_search(
     q: str | None = Query(default=None),
     limit: int = Query(default=8, ge=1, le=20),
     offset: int = Query(default=0, ge=0),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lon: float | None = Query(default=None, ge=-180, le=180),
+    radius_m: int | None = Query(default=None, ge=1, le=50_000),
+    category: str | None = Query(default=None),
     auth: AuthContext = Depends(get_auth_context),
     redis: Redis = Depends(get_redis),
 ) -> GooglePlaceSearchResponse:
@@ -423,14 +430,29 @@ async def google_place_search(
     )
 
     query = (q or "").strip()
-    cache_key = "place:google-search:v1:" + build_cache_key(query, str(limit), str(offset))
+    cache_key = "place:google-search:v2:" + build_cache_key(
+        query,
+        str(limit),
+        str(offset),
+        _quantize(lat) if lat is not None else "",
+        _quantize(lon) if lon is not None else "",
+        str(radius_m or ""),
+        category or "",
+    )
     cached = await cache_get_json(redis, cache_key)
     if cached:
         return GooglePlaceSearchResponse.model_validate(cached)
 
     try:
         fetch_limit = min(limit + offset, 20)
-        items = await search_google_places(query, fetch_limit)
+        items = await search_google_places(
+            query,
+            fetch_limit,
+            lat=lat,
+            lng=lon,
+            radius_m=radius_m,
+            category=category,
+        )
     except GoogleMapsNotConfiguredError as exc:
         raise _service_unavailable_for_google() from exc
     except GoogleMapsRequestError as exc:
@@ -449,6 +471,25 @@ async def google_place_search(
         response.model_dump(mode="json"),
         settings.place_cache_ttl_sec,
     )
+    return response
+
+
+@router.get("/google-photo-asset")
+async def get_google_place_photo_asset(
+    name: str = Query(min_length=1),
+    max_width_px: int = Query(default=1600, ge=1, le=2400),
+) -> Response:
+    try:
+        content, content_type = await fetch_google_place_photo_asset(
+            name, max_width_px=max_width_px
+        )
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError as exc:
+        raise HTTPException(status_code=502, detail="Google Place photo lookup failed") from exc
+
+    response = Response(content=content, media_type=content_type or "image/jpeg")
+    response.headers["Cache-Control"] = "public, max-age=86400"
     return response
 
 
@@ -494,6 +535,57 @@ async def get_google_place(
             "timezone": details.timezone,
             "metadata": details.metadata,
         }
+    )
+    await cache_set_json(
+        redis,
+        cache_key,
+        response.model_dump(mode="json"),
+        settings.place_cache_ttl_sec,
+    )
+    return response
+
+
+@router.get("/google/{place_id}/detail", response_model=GooglePlaceDetailResponse)
+async def get_google_place_detail(
+    place_id: str,
+    auth: AuthContext = Depends(get_auth_context),
+    redis: Redis = Depends(get_redis),
+) -> GooglePlaceDetailResponse:
+    settings = get_settings()
+    await limit_user_request(
+        redis,
+        str(auth.user_id),
+        "places:autocomplete",
+        settings.rate_limit_places_autocomplete_per_min,
+    )
+    cache_key = "place:google:detail:get:" + build_cache_key(place_id)
+    cached = await cache_get_json(redis, cache_key)
+    if cached:
+        return GooglePlaceDetailResponse.model_validate(cached)
+
+    try:
+        details = await fetch_google_place_detail(place_id)
+    except GoogleMapsNotConfiguredError as exc:
+        raise _service_unavailable_for_google() from exc
+    except GoogleMapsRequestError as exc:
+        raise HTTPException(status_code=502, detail="Google Place detail lookup failed") from exc
+
+    if details is None:
+        raise NotFoundError("Google Place not found")
+
+    response = GooglePlaceDetailResponse(
+        place=details.place,
+        summary=details.summary,
+        rating=details.rating,
+        review_count=details.review_count,
+        status_text=details.status_text,
+        price_label=details.price_label,
+        photos=details.photos,
+        reviews=details.reviews,
+        hours=details.hours,
+        booking_links=details.booking_links,
+        tags=details.tags,
+        mentions=details.mentions,
     )
     await cache_set_json(
         redis,

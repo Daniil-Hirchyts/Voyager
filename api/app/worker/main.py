@@ -17,7 +17,6 @@ from app.services.itinerary_generation import (
     execute_itinerary_job,
 )
 from app.services.itinerary_optimizer import execute_itinerary_optimization_job
-from app.services.offers_pipeline import execute_offers_job
 from app.services.place_dedup import execute_places_dedup_job
 from app.services.place_photos import execute_place_photo_refresh_job
 
@@ -64,11 +63,6 @@ async def _invalidate_activity_shortlist_caches() -> None:
 async def _invalidate_proposal_caches() -> None:
     await cache_delete_prefix(redis_client, "proposal:get:")
     await cache_delete_prefix(redis_client, "proposal:list:")
-
-
-async def _invalidate_offer_caches() -> None:
-    await cache_delete_prefix(redis_client, "offer:list:")
-    await cache_delete_prefix(redis_client, "offer:search:v1:")
 
 
 async def _invalidate_export_caches() -> None:
@@ -173,13 +167,6 @@ async def _process_job(job_id: uuid.UUID) -> None:
                         "provider_used": result.provider_used,
                         "errors": result.errors,
                     }
-                elif job.job_type.startswith("offers."):
-                    result = await execute_offers_job(db, job)
-                    result_payload = {
-                        "summary": result.summary,
-                        "offer_ids": result.offer_ids,
-                        "errors": result.errors,
-                    }
                 elif job.job_type.startswith("export.generate."):
                     result = await execute_export_job(db, job)
                     result_payload = {
@@ -248,8 +235,6 @@ async def _process_job(job_id: uuid.UUID) -> None:
         await _invalidate_place_caches()
     if job_type == "places.photos.refresh" and final_status == "SUCCEEDED":
         await _invalidate_place_caches()
-    if job_type.startswith("offers.") and final_status == "SUCCEEDED":
-        await _invalidate_offer_caches()
     if job_type.startswith("export.generate."):
         await _invalidate_export_caches()
     await _invalidate_audit_caches()

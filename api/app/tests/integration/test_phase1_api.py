@@ -25,7 +25,6 @@ def test_trip_create_and_idempotency(api_client, headers_user1, unique_idempoten
         "budget_amount": 1200,
         "budget_currency": "EUR",
         "trip_type": "cultural",
-        "preferences": ["museums", "food"],
     }
 
     first = api_client.post(
@@ -46,6 +45,8 @@ def test_trip_create_and_idempotency(api_client, headers_user1, unique_idempoten
 
     assert trip_1["id"] == trip_2["id"]
     assert trip_1["version"] == trip_2["version"] == 1
+    assert trip_1["title"] == "Trip to Lisbon"
+    assert "preferences" not in trip_1
 
 
 def test_trip_version_conflict(api_client, headers_user1):
@@ -58,7 +59,6 @@ def test_trip_version_conflict(api_client, headers_user1):
         "budget_amount": 500,
         "budget_currency": "EUR",
         "trip_type": "food",
-        "preferences": ["restaurants"],
     }
 
     created = api_client.post(
@@ -99,7 +99,6 @@ def test_reorder_and_move_activity(api_client, headers_user1):
             "budget_amount": 700,
             "budget_currency": "EUR",
             "trip_type": "cultural",
-            "preferences": ["history"],
         },
     )
     assert created.status_code == 201
@@ -192,7 +191,6 @@ def test_trip_scoped_inbox_activity_roundtrip_and_planner_partition(api_client, 
             "budget_amount": 900,
             "budget_currency": "EUR",
             "trip_type": "city_break",
-            "preferences": ["food", "walking"],
         },
     )
     assert created.status_code == 201
@@ -280,7 +278,6 @@ def test_duplicate_trip_preserves_inbox_activities(api_client, headers_user1):
             "budget_amount": 800,
             "budget_currency": "EUR",
             "trip_type": "city_break",
-            "preferences": ["history"],
         },
     )
     assert created.status_code == 201
@@ -340,7 +337,6 @@ def test_ownership_isolation(api_client, headers_user1, headers_user2):
             "budget_amount": 300,
             "budget_currency": "EUR",
             "trip_type": "city",
-            "preferences": ["walk"],
         },
     )
     assert created.status_code == 201

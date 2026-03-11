@@ -1,6 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Inbox } from 'lucide-react'
+import { Inbox, Pin, PinOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/cn'
 import type { PlannerActivity } from '@/shared/api/types'
@@ -13,6 +13,8 @@ interface PlannerInboxProps {
   subtitle?: string
   className?: string
   emptyMessage?: string
+  isDetached?: boolean
+  onToggleDetached?: () => void
   onSelectActivity?: (activity: PlannerActivity) => void
   onAddActivity?: () => void
 }
@@ -24,6 +26,8 @@ export function PlannerInbox({
   subtitle = 'Unassigned activities',
   className,
   emptyMessage = 'No activities in inbox.',
+  isDetached = false,
+  onToggleDetached,
   onSelectActivity,
   onAddActivity,
 }: PlannerInboxProps) {
@@ -40,26 +44,35 @@ export function PlannerInbox({
     <section
       ref={setNodeRef}
       className={cn(
-        'flex h-full min-h-0 flex-col rounded-[14px] border border-black/8 bg-white',
+        'flex h-full min-h-0 w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] flex-col rounded-[14px] border border-black/8 bg-white',
         isOver && 'border-black/16 ring-2 ring-black/6',
         className,
       )}
       aria-label={title}
     >
-      <header className="border-b border-black/8 bg-[var(--color-secondary-surface)] px-3.5 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3">
+      <header className="hidden lg:flex flex-col justify-center h-[4.5rem] border-b border-black/8 bg-[var(--color-secondary-surface)] px-4">
+        <div className="flex items-center justify-between gap-3 w-full">
+          <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white text-[var(--color-text-muted)]">
               <Inbox className="h-4 w-4" />
             </span>
-            <div>
+            <div className="flex flex-col items-start gap-0.5">
               <h3 className="text-[0.92rem] font-medium text-[var(--color-text)]">{title}</h3>
-              <p className="mt-1 text-[0.74rem] text-[var(--color-text-muted)]">{subtitle}</p>
+              <p className="text-[0.74rem] text-[var(--color-text-muted)]">{subtitle}</p>
             </div>
           </div>
-          <span className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
-            {activities.length}
-          </span>
+
+          {onToggleDetached ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-[8px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)] shadow-none"
+              onClick={onToggleDetached}
+              title={isDetached ? 'Attach to side' : 'Detach from side'}
+            >
+              {isDetached ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5 rotate-45" />}
+            </Button>
+          ) : null}
         </div>
       </header>
 

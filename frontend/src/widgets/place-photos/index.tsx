@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { RefreshCw, X, ChevronLeft, ChevronRight, Image } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, Image } from 'lucide-react'
 import { toast } from 'sonner'
 import { usePlacePhotos, useRefreshPlacePhotos } from '@/entities/photo/queries'
 import { useJob } from '@/entities/job/queries'
@@ -175,16 +175,6 @@ export default function PlacePhotos({
     triggerRefresh,
   ])
 
-  const handleRefresh = async () => {
-    const idempotencyKey = `photo-refresh-${placeId}-${Date.now()}`
-    try {
-      const accepted = await triggerRefresh(idempotencyKey)
-      setRefreshJobId(accepted.job_id)
-    } catch {
-      toast.error('Photo refresh failed')
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="space-y-2">
@@ -206,32 +196,12 @@ export default function PlacePhotos({
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
           Photos{placeName ? ` — ${placeName}` : ''}
         </p>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={refreshPending || refreshRunning}
-          aria-label="Refresh photos"
-          className="h-auto py-0.5 px-1 text-xs"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${refreshRunning ? 'animate-spin' : ''}`} />
-          {refreshRunning ? 'Refreshing…' : 'Refresh'}
-        </Button>
       </div>
 
       {photos.length === 0 && (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
           <Image className="w-8 h-8 text-[var(--color-text-muted)]/30" />
           <p className="text-xs text-[var(--color-text-muted)]">No photos yet</p>
-          <Button
-            variant="link"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshPending || refreshRunning}
-            className="h-auto p-0 text-xs"
-          >
-            Fetch photos
-          </Button>
         </div>
       )}
 

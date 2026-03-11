@@ -1,0 +1,493 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Copy,
+  Image as ImageIcon,
+  Loader2,
+  Settings2,
+  Trash2,
+} from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
+import {
+  useDeleteTrip,
+  useDuplicateTrip,
+  usePatchTrip,
+  useTrip,
+} from '@/entities/trip/queries'
+import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
+
+
+const sectionClassName = 'rounded-[20px] border border-black/8 bg-white p-5 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.22)]'
+const fieldLabelClassName = 'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]'
+
+const TRIP_TYPES = [
+  'leisure',
+  'business',
+  'adventure',
+  'cultural',
+  'family',
+  'romantic',
+  'solo',
+  'group',
+] as const
+
+type TripSettingsForm = {
+  title: string
+  destination_text: string
+  start_date: string
+  end_date: string
+  budget_amount: string
+  budget_currency: string
+  trip_type: string
+}
+
+function toTripSettingsForm(value: NonNullable<ReturnType<typeof useTrip>['data']>): TripSettingsForm {
+  return {
+    title: value.title,
+    destination_text: value.destination_text,
+    start_date: value.start_date,
+    end_date: value.end_date,
+    budget_amount: value.budget_amount ? String(value.budget_amount) : '',
+    budget_currency: value.budget_currency ?? 'USD',
+    trip_type: value.trip_type ?? 'leisure',
+  }
+}
+
+interface TripSettingsMenuProps {
+  tripId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMenuProps) {
+  const navigate = useNavigate()
+  const { data: trip } = useTrip(tripId)
+  const patchTrip = usePatchTrip(tripId)
+  const duplicateTrip = useDuplicateTrip()
+  const deleteTrip = useDeleteTrip()
+  
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [form, setForm] = useState<TripSettingsForm>({
+    title: '',
+    destination_text: '',
+    start_date: '',
+    end_date: '',
+    budget_amount: '',
+    budget_currency: 'USD',
+    trip_type: 'leisure',
+  })
+  
+  const dupKey = useMemo(() => crypto.randomUUID(), [])
+  
+  const {
+    coverPreference,
+    coverPhotoCandidates,
+    selectedCoverPhoto,
+    photoAttributionLabel,
+    photoAttributionText,
+    coverPhotoUrl,
+    isCoverPhotoBusy,
+    coverPhotoEmptyMessage,
+    coverPhotosLoading,
+    coverPhotoRefreshError,
+    resolvedPlaceId,
+    handlePhotoSelection,
+    handleCoverPhotoRefresh,
+  } = useTripCoverPhotoManager(tripId, trip)
+
+  useEffect(() => {
+    if (!trip) {
+      return
+    }
+    setForm(toTripSettingsForm(trip))
+  }, [trip, open])
+
+  async function handleSave() {
+    if (!trip) {
+      return
+    }
+
+    try {
+      await patchTrip.mutateAsync({
+        version: trip.version,
+        data: {
+          title: form.title.trim(),
+          destination_text: form.destination_text.trim(),
+          start_date: form.start_date,
+          end_date: form.end_date,
+          budget_amount: form.budget_amount ? Number(form.budget_amount) : null,
+          budget_currency: form.budget_currency,
+          trip_type: form.trip_type,
+        },
+      })
+      toast.success('Trip settings saved')
+      onOpenChange(false)
+    } catch {
+      toast.error('Could not save trip settings')
+    }
+  }
+
+  async function handleDuplicate() {
+    try {
+      const duplicated = await duplicateTrip.mutateAsync({
+        tripId,
+        idempotencyKey: dupKey,
+      })
+      toast.success('Trip duplicated')
+      onOpenChange(false)
+      navigate(`/app/trips/${duplicated.id}`)
+    } catch {
+      toast.error('Could not duplicate this trip')
+    }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteTrip.mutateAsync(tripId)
+      toast.success('Trip deleted')
+      onOpenChange(false)
+      navigate('/app/trips')
+    } catch {
+      toast.error('Could not delete this trip')
+    } finally {
+      setShowDeleteConfirm(false)
+    }
+  }
+
+  if (!trip) return null
+
+  return (
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent className="flex h-[100dvh] w-full flex-col gap-0 overflow-hidden bg-[#F3F5F7] p-0 sm:max-w-2xl border-l border-black/8">
+          <SheetHeader className="shrink-0 border-b border-black/8 bg-white px-6 py-4">
+            <SheetTitle className="text-xl">Trip Settings</SheetTitle>
+            <SheetDescription>
+              Edit trip details, cover photo, and parameters
+            </SheetDescription>
+          </SheetHeader>
+          
+          <ScrollArea className="flex-1 p-6">
+            <div className="flex flex-col gap-6 max-w-xl mx-auto pb-6">
+              <section className={sectionClassName}>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(114,174,230,0.14)] text-[var(--color-text)]">
+                    <Settings2 className="size-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                      Trip details
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2 sm:col-span-2">
+                    <span className={fieldLabelClassName}>Title</span>
+                    <Input
+                      value={form.title}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, title: event.target.value }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2 sm:col-span-2">
+                    <span className={fieldLabelClassName}>Destination</span>
+                    <Input
+                      value={form.destination_text}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          destination_text: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className={fieldLabelClassName}>Start date</span>
+                    <Input
+                      type="date"
+                      value={form.start_date}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, start_date: event.target.value }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className={fieldLabelClassName}>End date</span>
+                    <Input
+                      type="date"
+                      value={form.end_date}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, end_date: event.target.value }))
+                      }
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className={fieldLabelClassName}>Budget</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      value={form.budget_amount}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, budget_amount: event.target.value }))
+                      }
+                      placeholder="Optional"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className={fieldLabelClassName}>Currency</span>
+                    <Select
+                      value={form.budget_currency}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, budget_currency: value }))
+                      }
+                    >
+                      <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64 rounded-[16px] border-black/8">
+                        {CURRENCY_OPTIONS.map((currency) => (
+                          <SelectItem key={currency.value} value={currency.value}>
+                            {currency.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+
+                  <label className="space-y-2 sm:col-span-2">
+                    <span className={fieldLabelClassName}>Trip type</span>
+                    <Select
+                      value={form.trip_type}
+                      onValueChange={(value) =>
+                        setForm((current) => ({ ...current, trip_type: value }))
+                      }
+                    >
+                      <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-[16px] border-black/8">
+                        {TRIP_TYPES.map((tripType) => (
+                          <SelectItem key={tripType} value={tripType}>
+                            {tripType.replace(/_/g, ' ')}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </label>
+                </div>
+              </section>
+
+              <section className={sectionClassName}>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(255,140,98,0.14)] text-[var(--color-text)]">
+                    <ImageIcon className="size-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                      Cover photo
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="mt-5 overflow-hidden rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)]">
+                  {coverPhotoUrl ? (
+                    <img
+                      src={coverPhotoUrl}
+                      alt={photoAttributionLabel ?? trip.destination_text}
+                      className="aspect-[16/10] w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 text-center text-[var(--color-text-muted)]">
+                      {isCoverPhotoBusy ? (
+                        <Loader2 className="size-8 animate-spin" />
+                      ) : (
+                        <ImageIcon className="size-8" />
+                      )}
+                      <p className="text-sm">
+                        {isCoverPhotoBusy ? 'Loading city photo…' : coverPhotoEmptyMessage}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+                  {photoAttributionText || 'Destination-based cover photo'}
+                </p>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleCoverPhotoRefresh()}
+                    disabled={!resolvedPlaceId || isCoverPhotoBusy}
+                  >
+                    Refresh city photos
+                  </Button>
+                </div>
+
+                <div className="mt-4">
+                  {coverPhotosLoading ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="aspect-[4/3] animate-pulse rounded-[14px] bg-[var(--color-secondary-surface)]"
+                        />
+                      ))}
+                    </div>
+                  ) : coverPhotoCandidates.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {coverPhotoCandidates.map((photo) => {
+                        const thumbUrl = photo.thumbnail_url || photo.image_url
+                        const isActive =
+                          coverPreference?.photoId === photo.id ||
+                          (!coverPreference?.photoId && selectedCoverPhoto?.id === photo.id)
+
+                        return (
+                          <button
+                            key={photo.id}
+                            type="button"
+                            onClick={() => handlePhotoSelection(photo.id)}
+                            className={`overflow-hidden rounded-[14px] border ${
+                              isActive
+                                ? 'border-[rgba(0,0,0,0.18)]'
+                                : 'border-black/8 hover:border-black/16'
+                            }`}
+                          >
+                            {thumbUrl ? (
+                              <img
+                                src={thumbUrl}
+                                alt={photoAttributionLabel ?? trip.destination_text}
+                                className="aspect-[4/3] w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex aspect-[4/3] items-center justify-center bg-[var(--color-secondary-surface)] text-[var(--color-text-muted)]">
+                                <ImageIcon className="size-5" />
+                              </div>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-[16px] border border-dashed border-black/8 px-4 py-6 text-sm text-[var(--color-text-muted)]">
+                      {coverPhotoRefreshError || 'No alternative city photos are available yet.'}
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              <section className={sectionClassName}>
+                <div className="flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(15,23,42,0.08)] text-[var(--color-text)]">
+                    <Trash2 className="size-4" />
+                  </span>
+                  <div>
+                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                      Trip management
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void handleDuplicate()}
+                    disabled={duplicateTrip.isPending}
+                  >
+                    {duplicateTrip.isPending ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Copy className="size-4" />
+                    )}
+                    Duplicate trip
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => setShowDeleteConfirm(true)}
+                  >
+                    <Trash2 className="size-4" />
+                    Delete trip
+                  </Button>
+                </div>
+              </section>
+            </div>
+          </ScrollArea>
+          
+          <div className="shrink-0 border-t border-black/8 bg-white px-6 py-4 flex justify-end gap-3">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={patchTrip.isPending}>
+              {patchTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              Save changes
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this trip?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action is irreversible. All planning data for &quot;{trip.title}&quot; will be
+              permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDelete()
+              }}
+            >
+              {deleteTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              Delete trip
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

@@ -6,6 +6,7 @@ import type {
   ActivityDiscoveryItem,
   ActivityDiscoveryListResponse,
   ActivityDiscoverInput,
+  ActivityEntityType,
   ActivityRecommendationInput,
   ActivityRecommendationResponse,
   ActivityShortlistListResponse,
@@ -60,6 +61,20 @@ export async function getSavedActivityDetail(
 ): Promise<ActivityDiscoveryDetail> {
   return requestJson<ActivityDiscoveryDetail>(
     `/activities/${snapshotId}${withQuery(params)}`,
+  )
+}
+
+export async function getDiscoveredActivityDetail(
+  tripId: string,
+  params: {
+    entity_type: ActivityEntityType
+    provider: string
+    provider_ref: string
+    locale?: string
+  },
+): Promise<ActivityDiscoveryDetail> {
+  return requestJson<ActivityDiscoveryDetail>(
+    `/trips/${tripId}/activities/discover/detail${withQuery(params)}`,
   )
 }
 

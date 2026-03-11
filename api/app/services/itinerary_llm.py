@@ -15,6 +15,7 @@ from app.db.models import Trip, TripDay
 from app.errors import TooManyRequestsError
 from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
+from app.services.google_maps import GoogleMapsError, lookup_google_place, search_google_places
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,17 @@ SLOT_DEFAULT_DURATION: dict[str, int] = {
     "afternoon": 150,
     "evening": 120,
 }
+MIN_TOOL_TURNS = 10
+MAX_TOOL_TURNS_PER_DAY = 12
+MAX_FINAL_OUTPUT_REPAIRS = 2
+
+
+def _trip_focus_label(trip: Trip) -> str:
+    if isinstance(trip.trip_type, str):
+        normalized = trip.trip_type.strip().replace("_", " ")
+        if normalized:
+            return normalized
+    return "local highlights"
 
 
 @dataclass
@@ -139,6 +151,22 @@ def _normalize_day_candidates(
 
         description_raw = item.get("description")
         description = str(description_raw).strip() if isinstance(description_raw, str) else None
+        place_query_raw = item.get("place_query", item.get("placeQuery"))
+        place_query = str(place_query_raw).strip() if isinstance(place_query_raw, str) else None
+        google_place_id_raw = item.get("google_place_id", item.get("googlePlaceId"))
+        google_place_id = (
+            str(google_place_id_raw).strip() if isinstance(google_place_id_raw, str) else None
+        )
+        place_name_raw = item.get("place_name", item.get("placeName"))
+        place_name = str(place_name_raw).strip() if isinstance(place_name_raw, str) else None
+        address_text_raw = item.get("address_text", item.get("addressText"))
+        address_text = str(address_text_raw).strip() if isinstance(address_text_raw, str) else None
+        if not google_place_id:
+            raise ValueError(f"Day {day_id} slot {slot} is missing google_place_id")
+        if not place_name:
+            raise ValueError(f"Day {day_id} slot {slot} is missing place_name")
+        if not address_text:
+            raise ValueError(f"Day {day_id} slot {slot} is missing address_text")
         normalized_rows.append(
             {
                 "title": title[:255],
@@ -146,6 +174,10 @@ def _normalize_day_candidates(
                 "start_time": SLOT_START_TIMES[slot],
                 "duration_min": _normalize_duration(item.get("duration_min"), slot=slot),
                 "tags_json": _normalize_tags(item.get("tags"), slot=slot),
+                "place_query": place_query[:255] if place_query else title[:255],
+                "google_place_id": google_place_id[:255] if google_place_id else None,
+                "place_name": place_name[:255] if place_name else None,
+                "address_text": address_text[:500] if address_text else None,
             }
         )
     return normalized_rows
@@ -180,7 +212,36 @@ def _normalize_output(
     missing = [str(day.id) for day in days if day.id not in candidates_by_day]
     if missing:
         raise ValueError(f"LLM payload missing scoped days: {missing}")
+    _validate_candidate_diversity(candidates_by_day)
     return candidates_by_day
+
+
+def _normalize_title_key(value: str) -> str:
+    return " ".join(value.casefold().split())
+
+
+def _validate_candidate_diversity(
+    candidates_by_day: dict[uuid.UUID, list[dict[str, Any]]],
+) -> None:
+    seen_place_ids: dict[str, uuid.UUID] = {}
+    seen_titles: dict[str, uuid.UUID] = {}
+    for day_id, rows in candidates_by_day.items():
+        for row in rows:
+            place_id = str(row.get("google_place_id") or "").strip().casefold()
+            if place_id:
+                prior_day_id = seen_place_ids.get(place_id)
+                if prior_day_id is not None:
+                    raise ValueError(
+                        "LLM payload reused the same google_place_id across multiple days"
+                    )
+                seen_place_ids[place_id] = day_id
+
+            title_key = _normalize_title_key(str(row.get("title") or ""))
+            if title_key:
+                prior_day_id = seen_titles.get(title_key)
+                if prior_day_id is not None:
+                    raise ValueError("LLM payload reused the same activity title across multiple days")
+                seen_titles[title_key] = day_id
 
 
 def _deterministic_mock_candidates(
@@ -191,28 +252,31 @@ def _deterministic_mock_candidates(
     seed: int | None,
 ) -> dict[uuid.UUID, list[dict[str, Any]]]:
     destination = trip.destination_text.split(",")[0].strip() or "destination"
-    preferences = [p for p in trip.preferences_json if isinstance(p, str)]
-    if not preferences:
-        preferences = ["local highlights"]
+    focus_label = _trip_focus_label(trip)
     seed_base = seed if seed is not None else 0
 
     rows: dict[uuid.UUID, list[dict[str, Any]]] = {}
     for day in days:
         day_rows: list[dict[str, Any]] = []
-        for slot_idx, slot in enumerate(SLOT_ORDER):
-            preference = preferences[(day.day_index + slot_idx) % len(preferences)]
-            key = f"{model}:{trip.id}:{day.id}:{slot}:{seed_base}:{preference}"
+        for slot in SLOT_ORDER:
+            key = f"{model}:{trip.id}:{day.id}:{slot}:{seed_base}:{focus_label}"
             digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:8]
+            place_name = f"{slot.title()} venue in {destination}"
+            address_text = f"{slot.title()} Mock Address {digest}, {destination}"
             day_rows.append(
                 {
                     "title": f"{slot.title()} plan in {destination} ({digest})",
                     "description": (
                         f"OpenRouter mocked {slot} plan for day {day.day_index + 1} "
-                        f"focused on {preference}."
+                        f"focused on {focus_label}."
                     ),
                     "start_time": SLOT_START_TIMES[slot],
                     "duration_min": SLOT_DEFAULT_DURATION[slot],
-                    "tags_json": [slot, preference],
+                    "tags_json": [slot, focus_label],
+                    "place_query": f"{place_name} {destination}",
+                    "google_place_id": f"mock-google-place:{day.id}:{slot}:{digest}",
+                    "place_name": place_name,
+                    "address_text": address_text,
                 }
             )
         rows[day.id] = day_rows
@@ -221,23 +285,37 @@ def _deterministic_mock_candidates(
 
 def _system_prompt() -> str:
     return (
-        "You are a trip itinerary planner. Respond with JSON only. "
-        "Schema: {\"days\":[{\"day_id\":\"uuid\",\"activities\":["
-        "{\"slot\":\"morning|afternoon|evening\",\"title\":\"string\","
-        "\"description\":\"string\",\"duration_min\":int,\"tags\":[\"string\"]}"
-        "]}]}. Return exactly 3 activities per day for morning, afternoon, and evening."
+        "You are a trip itinerary planner. "
+        "Use the provided Google place tools to ground every activity to a real, specific venue, "
+        "landmark, museum, restaurant, park, square, bridge, or attraction in the destination "
+        "before your final answer. "
+        "Every activity must be backed by a Google place ID and the exact formatted address returned "
+        "by google_place_details. "
+        "If you cannot ground an activity to a real Google place with a canonical formatted address, "
+        "replace that activity with one you can ground. "
+        "Never use the destination city, region, district, neighborhood, or locality itself as the "
+        "activity place. Every place must be specific enough that someone can navigate to it directly. "
+        "Do not repeat the same Google place ID or the same activity title across different days "
+        "unless the user explicitly asked for repeats. "
+        "Never invent Google place IDs or addresses. Respond with JSON only. "
+        'Schema: {"days":[{"day_id":"uuid","activities":['
+        '{"slot":"morning|afternoon|evening","title":"string",'
+        '"description":"string","duration_min":int,"tags":["string"],'
+        '"place_query":"string","google_place_id":"string|null",'
+        '"place_name":"string|null","address_text":"string|null"}'
+        "]}]}. Return exactly 3 activities per day for morning, afternoon, and evening. "
+        "Every activity must include google_place_id, place_name, and address_text from Google."
     )
 
 
 def _user_prompt(*, trip: Trip, days: list[TripDay], seed: int | None) -> str:
     destination = trip.destination_text
-    preferences = [p for p in trip.preferences_json if isinstance(p, str)]
     payload = {
         "trip": {
             "id": str(trip.id),
             "destination_text": destination,
             "trip_type": trip.trip_type,
-            "preferences": preferences,
+            "title": trip.title,
             "seed": seed,
         },
         "days": [
@@ -250,6 +328,162 @@ def _user_prompt(*, trip: Trip, days: list[TripDay], seed: int | None) -> str:
         ],
     }
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+
+
+def _google_places_search_tool() -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": "google_places_search",
+            "description": "Search Google Places for real destinations, landmarks, venues, restaurants, museums, and neighborhoods.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Natural-language place query that includes the city or region when needed.",
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of Google place candidates to return.",
+                        "minimum": 1,
+                        "maximum": 5,
+                    },
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _google_place_details_tool() -> dict[str, Any]:
+    return {
+        "type": "function",
+        "function": {
+            "name": "google_place_details",
+            "description": "Fetch details for a Google place ID, including its canonical name and formatted address.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "place_id": {
+                        "type": "string",
+                        "description": "The Google place ID returned by google_places_search.",
+                    }
+                },
+                "required": ["place_id"],
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
+def _tool_definitions() -> list[dict[str, Any]]:
+    return [_google_places_search_tool(), _google_place_details_tool()]
+
+
+def _tool_message_payload(message: dict[str, Any]) -> dict[str, Any]:
+    payload: dict[str, Any] = {"role": "assistant"}
+    if "content" in message:
+        payload["content"] = message.get("content")
+    tool_calls = message.get("tool_calls")
+    if isinstance(tool_calls, list):
+        payload["tool_calls"] = tool_calls
+    return payload
+
+
+def _serialize_google_search_item(item: Any) -> dict[str, Any]:
+    metadata = item.metadata if isinstance(getattr(item, "metadata", None), dict) else {}
+    return {
+        "place_id": item.place_id,
+        "name": item.name,
+        "label": item.label,
+        "address_text": item.address_text,
+        "category": item.category,
+        "country": item.country,
+        "region": item.region,
+        "lat": item.lat,
+        "lon": item.lon,
+        "types": metadata.get("types"),
+        "google_maps_uri": metadata.get("google_maps_uri"),
+    }
+
+
+def _serialize_google_details(details: Any) -> dict[str, Any]:
+    metadata = details.metadata if isinstance(getattr(details, "metadata", None), dict) else {}
+    return {
+        "place_id": details.place_id,
+        "name": details.name,
+        "formatted_address": details.formatted_address,
+        "category": details.category,
+        "country": details.country,
+        "region": details.region,
+        "lat": details.lat,
+        "lon": details.lng,
+        "timezone": details.timezone,
+        "types": metadata.get("types"),
+        "google_maps_uri": metadata.get("google_maps_uri"),
+        "website_uri": metadata.get("website_uri"),
+    }
+
+
+def _decode_tool_arguments(raw: Any) -> dict[str, Any]:
+    if isinstance(raw, dict):
+        return raw
+    if not isinstance(raw, str) or not raw.strip():
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _tool_result_content(payload: dict[str, Any]) -> str:
+    return json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
+
+
+async def _execute_tool_call(name: str, arguments: Any) -> dict[str, Any]:
+    payload = _decode_tool_arguments(arguments)
+    if name == "google_places_search":
+        query = str(payload.get("query", "")).strip()
+        if not query:
+            return {"error": {"code": "INVALID_ARGUMENT", "message": "query is required"}}
+        raw_limit = payload.get("limit")
+        try:
+            limit = int(raw_limit) if raw_limit is not None else 3
+        except (TypeError, ValueError):
+            limit = 3
+        limit = max(1, min(limit, 5))
+        try:
+            items = await search_google_places(query, limit)
+        except GoogleMapsError as exc:
+            return {
+                "error": {
+                    "code": "GOOGLE_MAPS_ERROR",
+                    "message": "Google place search failed",
+                    "details": {"error": str(exc)},
+                }
+            }
+        return {"items": [_serialize_google_search_item(item) for item in items]}
+
+    if name == "google_place_details":
+        place_id = str(payload.get("place_id", "")).strip()
+        if not place_id:
+            return {"error": {"code": "INVALID_ARGUMENT", "message": "place_id is required"}}
+        try:
+            details = await lookup_google_place(place_id)
+        except GoogleMapsError as exc:
+            return {
+                "error": {
+                    "code": "GOOGLE_MAPS_ERROR",
+                    "message": "Google place details lookup failed",
+                    "details": {"error": str(exc)},
+                }
+            }
+        return {"item": _serialize_google_details(details) if details is not None else None}
+
+    return {"error": {"code": "UNKNOWN_TOOL", "message": f"Unsupported tool {name}"}}
 
 
 def _get_redis_client():
@@ -273,37 +507,86 @@ async def _call_openrouter(
         "Authorization": f"Bearer {settings.llm_openrouter_api_key}",
         "Content-Type": "application/json",
     }
-    body = {
-        "model": model,
-        "temperature": 0.2,
-        "messages": [
-            {"role": "system", "content": _system_prompt()},
-            {"role": "user", "content": _user_prompt(trip=trip, days=days, seed=seed)},
-        ],
-    }
-
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": _system_prompt()},
+        {"role": "user", "content": _user_prompt(trip=trip, days=days, seed=seed)},
+    ]
     async with httpx.AsyncClient(timeout=settings.llm_openrouter_timeout_sec) as client:
-        response = await client.post(endpoint, headers=headers, json=body)
+        max_tool_turns = max(MIN_TOOL_TURNS, len(days) * MAX_TOOL_TURNS_PER_DAY)
+        final_output_repairs = 0
+        for _ in range(max_tool_turns):
+            body = {
+                "model": model,
+                "temperature": 0.2,
+                "messages": messages,
+                "tools": _tool_definitions(),
+                "tool_choice": "auto",
+            }
+            response = await client.post(endpoint, headers=headers, json=body)
 
-    if response.status_code == 429:
-        raise RuntimeError("PROVIDER_LIMITED")
-    if response.status_code >= 500:
-        raise RuntimeError(f"PROVIDER_ERROR:{response.status_code}")
-    if response.status_code >= 400:
-        raise ValueError(f"PROVIDER_BAD_REQUEST:{response.status_code}")
+            if response.status_code == 429:
+                raise RuntimeError("PROVIDER_LIMITED")
+            if response.status_code >= 500:
+                raise RuntimeError(f"PROVIDER_ERROR:{response.status_code}")
+            if response.status_code >= 400:
+                raise ValueError(f"PROVIDER_BAD_REQUEST:{response.status_code}")
 
-    payload = response.json()
-    choices = payload.get("choices")
-    if not isinstance(choices, list) or not choices:
-        raise ValueError("Missing choices in provider response")
-    first = choices[0]
-    if not isinstance(first, dict):
-        raise ValueError("Invalid provider choice shape")
-    message = first.get("message")
-    if not isinstance(message, dict):
-        raise ValueError("Missing message in provider choice")
-    content = _extract_message_text(message.get("content"))
-    return _normalize_output(response_text=content, days=days)
+            payload = response.json()
+            choices = payload.get("choices")
+            if not isinstance(choices, list) or not choices:
+                raise ValueError("Missing choices in provider response")
+            first = choices[0]
+            if not isinstance(first, dict):
+                raise ValueError("Invalid provider choice shape")
+            message = first.get("message")
+            if not isinstance(message, dict):
+                raise ValueError("Missing message in provider choice")
+
+            tool_calls = message.get("tool_calls")
+            if isinstance(tool_calls, list) and tool_calls:
+                messages.append(_tool_message_payload(message))
+                for tool_call in tool_calls:
+                    if not isinstance(tool_call, dict):
+                        continue
+                    tool_call_id = str(tool_call.get("id") or "").strip()
+                    function = tool_call.get("function")
+                    if not tool_call_id or not isinstance(function, dict):
+                        continue
+                    tool_name = str(function.get("name") or "").strip()
+                    tool_result = await _execute_tool_call(tool_name, function.get("arguments"))
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "name": tool_name,
+                            "content": _tool_result_content(tool_result),
+                        }
+                    )
+                continue
+
+            content = _extract_message_text(message.get("content"))
+            try:
+                return _normalize_output(response_text=content, days=days)
+            except (ValueError, json.JSONDecodeError) as exc:
+                if final_output_repairs >= MAX_FINAL_OUTPUT_REPAIRS:
+                    raise
+                final_output_repairs += 1
+                messages.append({"role": "assistant", "content": content})
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            "Your previous JSON was invalid: "
+                            f"{exc}. Return corrected JSON only. "
+                            "Keep the same schema, do not repeat any google_place_id "
+                            "or activity title across different days, and use tools again "
+                            "if you need additional distinct places."
+                        ),
+                    }
+                )
+                continue
+
+    raise ValueError("Provider did not finish grounded itinerary generation")
 
 
 async def generate_with_openrouter(

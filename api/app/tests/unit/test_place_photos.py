@@ -10,7 +10,9 @@ from app.services import place_photos
 
 @pytest.fixture(autouse=True)
 def _base_settings_env(monkeypatch):
-    monkeypatch.setenv("VOYAGER_DB_DSN", "postgresql+asyncpg://voyager:voyager@localhost:5432/voyager")
+    monkeypatch.setenv(
+        "VOYAGER_DB_DSN", "postgresql+asyncpg://voyager:voyager@localhost:5432/voyager"
+    )
     monkeypatch.setenv("VOYAGER_REDIS_URL", "redis://localhost:6379/0")
     monkeypatch.setenv("VOYAGER_KEYCLOAK_ISSUER", "http://localhost:8080/realms/travel")
     monkeypatch.setenv("VOYAGER_KEYCLOAK_AUDIENCE", "voyager-api")
@@ -41,6 +43,56 @@ def test_normalize_license_code_accepts_provider_variants():
     assert place_photos._normalize_license_code("CC BY-SA 3.0") == "cc-by-sa"
     assert place_photos._normalize_license_code("CC0 1.0") == "cc0"
     assert place_photos._normalize_license_code("CC BY-NC 4.0") is None
+
+
+@pytest.mark.anyio
+async def test_place_photo_fetch_prefers_google_place_photos(monkeypatch):
+    place = Place(
+        id=uuid4(),
+        source="google_places",
+        external_id="google-place-1",
+        name="Eiffel Tower",
+        category="tourist_attraction",
+        address_text="Paris, France",
+        metadata_json={"google_place_id": "google-place-1"},
+    )
+
+    async def _google(place_id: str, *, limit: int = 8):
+        assert place_id == "google-place-1"
+        assert limit == 8
+        return [
+            {
+                "source": "google_places",
+                "source_media_ref": "places/google-place-1/photos/photo-1",
+                "image_url": "https://places.googleapis.com/v1/places/google-place-1/photos/photo-1/media?maxWidthPx=1600",
+                "thumbnail_url": "https://places.googleapis.com/v1/places/google-place-1/photos/photo-1/media?maxWidthPx=480",
+                "width": 1600,
+                "height": 1200,
+                "license_code": None,
+                "license_url": None,
+                "author_name": "Google Contributor",
+                "author_url": "https://maps.google.com",
+                "attribution_text": "Google Contributor",
+                "raw_payload_json": {"name": "places/google-place-1/photos/photo-1"},
+            }
+        ]
+
+    async def _unexpected(_place):
+        raise AssertionError("Fallback providers should not run when Google photos are available")
+
+    monkeypatch.setattr(place_photos, "google_maps_enabled", lambda: True)
+    monkeypatch.setattr(place_photos, "fetch_google_place_photos", _google)
+    monkeypatch.setattr(place_photos, "_fetch_wikipedia_candidates", _unexpected)
+    monkeypatch.setattr(place_photos, "_fetch_wikidata_candidates", _unexpected)
+    monkeypatch.setattr(place_photos, "_fetch_wikimedia_candidates", _unexpected)
+    monkeypatch.setattr(place_photos, "_fetch_openverse_candidates", _unexpected)
+
+    provider_name, photos, errors = await place_photos._fetch_place_photos(place)
+
+    assert provider_name == "google_places"
+    assert len(photos) == 1
+    assert photos[0]["source_media_ref"] == "places/google-place-1/photos/photo-1"
+    assert errors == []
 
 
 @pytest.mark.anyio
@@ -75,7 +127,9 @@ async def test_fetch_wikimedia_filters_to_open_license(monkeypatch):
                                         "height": 800,
                                         "extmetadata": {
                                             "LicenseShortName": {"value": "CC BY-SA"},
-                                            "LicenseUrl": {"value": "https://license.example/by-sa"},
+                                            "LicenseUrl": {
+                                                "value": "https://license.example/by-sa"
+                                            },
                                             "Artist": {"value": "Photographer"},
                                         },
                                     }
@@ -177,7 +231,9 @@ async def test_fetch_wikidata_candidates_resolves_entity_images(monkeypatch):
                                             "height": 1800,
                                             "extmetadata": {
                                                 "LicenseShortName": {"value": "CC BY"},
-                                                "LicenseUrl": {"value": "https://license.example/by"},
+                                                "LicenseUrl": {
+                                                    "value": "https://license.example/by"
+                                                },
                                                 "Artist": {"value": "Commons Photographer"},
                                             },
                                         }
@@ -189,7 +245,9 @@ async def test_fetch_wikidata_candidates_resolves_entity_images(monkeypatch):
                     request=request,
                 )
 
-            raise AssertionError(f"Unexpected request: base={self.base_url} action={action} params={params}")
+            raise AssertionError(
+                f"Unexpected request: base={self.base_url} action={action} params={params}"
+            )
 
     monkeypatch.setattr(place_photos.httpx, "AsyncClient", _FakeClient)
 
@@ -220,7 +278,11 @@ async def test_fetch_wikipedia_candidates_uses_page_lead_image(monkeypatch):
             request = httpx.Request("GET", f"{self.base_url}{path}")
             action = params.get("action") if params else None
 
-            if "en.wikipedia.org" in self.base_url and action == "query" and params.get("prop") == "pageimages":
+            if (
+                "en.wikipedia.org" in self.base_url
+                and action == "query"
+                and params.get("prop") == "pageimages"
+            ):
                 return httpx.Response(
                     200,
                     json={
@@ -254,7 +316,9 @@ async def test_fetch_wikipedia_candidates_uses_page_lead_image(monkeypatch):
                                             "height": 1000,
                                             "extmetadata": {
                                                 "LicenseShortName": {"value": "CC BY-SA 4.0"},
-                                                "LicenseUrl": {"value": "https://license.example/by-sa"},
+                                                "LicenseUrl": {
+                                                    "value": "https://license.example/by-sa"
+                                                },
                                                 "Artist": {"value": "Commons Photographer"},
                                             },
                                         }
@@ -266,7 +330,9 @@ async def test_fetch_wikipedia_candidates_uses_page_lead_image(monkeypatch):
                     request=request,
                 )
 
-            raise AssertionError(f"Unexpected request: base={self.base_url} action={action} params={params}")
+            raise AssertionError(
+                f"Unexpected request: base={self.base_url} action={action} params={params}"
+            )
 
     monkeypatch.setattr(place_photos.httpx, "AsyncClient", _FakeClient)
 

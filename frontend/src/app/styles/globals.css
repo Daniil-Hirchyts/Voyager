@@ -60,6 +60,14 @@
 
   * {
     box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   *::selection {
@@ -97,6 +105,21 @@
     overscroll-behavior: none;
   }
 
+  html,
+  body,
+  #root {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar,
+  #root::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+  }
+
   body.voyager-app-scroll-lock {
     min-height: 100dvh;
   }
@@ -106,18 +129,11 @@
     background: #f3f5f7;
   }
 
-  .voyager-app-shell * {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .voyager-app-shell *::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-
   .voyager-app-shell [data-radix-scroll-area-scrollbar] {
+    display: none !important;
+  }
+
+  [data-radix-scroll-area-scrollbar] {
     display: none !important;
   }
 

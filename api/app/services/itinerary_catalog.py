@@ -1225,9 +1225,11 @@ def build_catalog_candidates(
 ) -> dict[Any, list[dict[str, Any]]]:
     destination_key = _normalize_destination(trip.destination_text)
     destination_label = trip.destination_text.split(",")[0].strip() or trip.destination_text
-    preferences = [str(item).strip().lower() for item in trip.preferences_json if isinstance(item, str)]
-    if not preferences:
-        preferences = ["local highlights"]
+    focus_label = (
+        trip.trip_type.strip().replace("_", " ")
+        if isinstance(trip.trip_type, str) and trip.trip_type.strip()
+        else "local highlights"
+    )
 
     catalog = DESTINATION_CATALOGS.get(destination_key, _generic_catalog(destination_label))
     base_seed = seed if seed is not None else 0
@@ -1242,11 +1244,10 @@ def build_catalog_candidates(
                 len(pool),
             )
             item = pool[(choice_index + day.day_index + slot_index) % len(pool)]
-            preference = preferences[(day.day_index + slot_index) % len(preferences)]
-            tags_json = list(dict.fromkeys([slot, *item.tags, preference]))
+            tags_json = list(dict.fromkeys([slot, *item.tags, focus_label]))
             description = item.description
-            if preference not in description.lower():
-                description = f"{description} Keeps the focus on {preference}."
+            if focus_label not in description.lower():
+                description = f"{description} Keeps the focus on {focus_label}."
             day_rows.append(
                 {
                     "title": item.title,

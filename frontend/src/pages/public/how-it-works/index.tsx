@@ -19,7 +19,7 @@ const steps = [
     number: '02',
     icon: Blocks,
     title: 'Generate Itinerary',
-    description: 'Our AI builds a complete day-by-day itinerary structured as real, editable block data. The generation respects your pace and preferences.',
+    description: 'Our AI builds a complete day-by-day itinerary structured as real, editable block data. The generation respects your pace and trip details.',
   },
   {
     number: '03',

@@ -15,10 +15,30 @@ from app.db.repositories import (
     PlaceRepository,
     TripRepository,
 )
-from app.models.places import PlaceCreateRequest
+from app.services.google_maps import (
+    GoogleMapsError,
+    geocode_address,
+    lookup_google_place,
+    search_google_places,
+)
 from app.services.itinerary_catalog import CatalogPlaceSeed, build_catalog_candidates
+from app.services.itinerary_llm import generate_with_openrouter
 
 PHOTO_ENRICHMENT_LIMIT = 6
+RETRYABLE_GROUNDING_ERROR_CODES = {
+    "PROVIDER_LIMITED",
+    "UPSTREAM_PROVIDER_TIMEOUT",
+    "UPSTREAM_PROVIDER_ERROR",
+}
+DESTINATION_LEVEL_PLACE_TYPES = {
+    "country",
+    "locality",
+    "administrative_area_level_1",
+    "administrative_area_level_2",
+    "postal_town",
+    "sublocality",
+    "neighborhood",
+}
 
 
 class JobExecutionError(Exception):
@@ -67,24 +87,15 @@ def _normalize_title(value: str) -> str:
     return " ".join(value.lower().split())
 
 
-def _candidate_category(candidate: dict[str, Any], place_seed: CatalogPlaceSeed | None) -> ActivityCategory:
-    if place_seed and isinstance(place_seed.category, str):
-        category_text = place_seed.category.lower()
-        if any(token in category_text for token in ("restaurant", "cafe", "food", "bar")):
-            return ActivityCategory.EAT
-        if any(token in category_text for token in ("tour", "experience", "activity", "event")):
-            return ActivityCategory.ACTIVITY
+def _candidate_category(candidate: dict[str, Any]) -> ActivityCategory:
     title = str(candidate.get("title") or "").lower()
-    if any(token in title for token in ("breakfast", "lunch", "dinner", "cafe", "bistro", "restaurant")):
+    if any(
+        token in title for token in ("breakfast", "lunch", "dinner", "cafe", "bistro", "restaurant")
+    ):
         return ActivityCategory.EAT
     if any(token in title for token in ("tour", "cruise", "workshop", "experience", "show")):
         return ActivityCategory.ACTIVITY
     return ActivityCategory.VISIT
-
-
-def _seed_external_id(trip: Trip, place_seed: CatalogPlaceSeed) -> str:
-    destination_key = " ".join(trip.destination_text.lower().split())
-    return f"planner-seed:{destination_key}:{place_seed.slug}"
 
 
 async def _load_trip_for_job(db: AsyncSession, payload: dict[str, Any]) -> Trip:
@@ -174,48 +185,240 @@ async def _normalize_day(db: AsyncSession, day_id: uuid.UUID) -> None:
     await ActivityRepository._apply_order_for_day(db, day_id, [row.id for row in rows])
 
 
-async def _resolve_place_seed(
+def _merge_metadata(*items: dict | None) -> dict[str, Any]:
+    merged: dict[str, Any] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        for key, value in item.items():
+            if value is not None:
+                merged[key] = value
+    return merged
+
+
+def _candidate_category_from_place(
+    candidate: dict[str, Any],
+    *,
+    place_category: str | None,
+) -> ActivityCategory:
+    if isinstance(place_category, str):
+        category_text = place_category.lower()
+        if any(token in category_text for token in ("restaurant", "cafe", "food", "bar", "bakery")):
+            return ActivityCategory.EAT
+        if any(token in category_text for token in ("tour", "experience", "activity", "event")):
+            return ActivityCategory.ACTIVITY
+    return _candidate_category(candidate)
+
+
+def _provider_errors_are_retryable(provider_errors: list[dict[str, Any]]) -> bool:
+    return bool(provider_errors) and all(
+        str(item.get("code") or "") in RETRYABLE_GROUNDING_ERROR_CODES for item in provider_errors
+    )
+
+
+def _is_destination_level_google_place(details: Any) -> bool:
+    category = str(getattr(details, "category", "") or "").strip().casefold()
+    if category in DESTINATION_LEVEL_PLACE_TYPES:
+        return True
+
+    metadata = getattr(details, "metadata", None)
+    raw_types = metadata.get("types") if isinstance(metadata, dict) else None
+    if not isinstance(raw_types, list):
+        return False
+
+    normalized_types = {
+        str(item).strip().casefold()
+        for item in raw_types
+        if isinstance(item, str) and item.strip()
+    }
+    return bool(normalized_types & DESTINATION_LEVEL_PLACE_TYPES)
+
+
+def _raise_strict_grounding_error(
+    *,
+    provider_errors: list[dict[str, Any]],
+    llm_model: str | None,
+    unresolved_activity_count: int | None = None,
+) -> None:
+    details: dict[str, Any] = {"provider_errors": provider_errors}
+    if llm_model:
+        details["llm_model"] = llm_model
+    if unresolved_activity_count is not None:
+        details["unresolved_activity_count"] = unresolved_activity_count
+
+    message = (
+        "AI itinerary generation requires every activity to resolve to a Google place "
+        "with a canonical Google address"
+    )
+    if _provider_errors_are_retryable(provider_errors):
+        raise RetryableJobError("ITINERARY_GROUNDING_UPSTREAM_ERROR", message, details)
+    raise NonRetryableJobError("ITINERARY_GROUNDING_REQUIRED", message, details)
+
+
+async def _resolve_google_place(
+    db: AsyncSession,
+    *,
+    google_place_id: str,
+    place_cache: dict[str, Place],
+) -> Place | None:
+    normalized_place_id = str(google_place_id).strip()
+    if not normalized_place_id:
+        return None
+    cached = place_cache.get(normalized_place_id)
+    if cached is not None:
+        return cached
+
+    details = await lookup_google_place(normalized_place_id)
+    if details is None or not details.formatted_address:
+        return None
+    if _is_destination_level_google_place(details):
+        return None
+
+    place = await PlaceRepository.get_or_create_external_place(
+        db,
+        source="google_places",
+        external_id=details.place_id,
+        name=details.name or details.formatted_address or details.place_id,
+        category=details.category,
+        address_text=details.formatted_address,
+        lat=details.lat,
+        lon=details.lng,
+        metadata=_merge_metadata(
+            details.metadata,
+            {
+                "country": details.country,
+                "region": details.region,
+                "google_place_id": details.place_id,
+                "time_zone_id": details.timezone,
+            },
+        ),
+    )
+    place_cache[details.place_id] = place
+    return place
+
+
+async def _resolve_mock_llm_candidate_place(
+    db: AsyncSession,
+    *,
+    candidate: dict[str, Any],
+    place_cache: dict[str, Place],
+) -> Place | None:
+    google_place_id = str(candidate.get("google_place_id") or "").strip()
+    address_text = str(candidate.get("address_text") or "").strip()
+    if not google_place_id or not address_text:
+        return None
+
+    cached = place_cache.get(google_place_id)
+    if cached is not None:
+        return cached
+
+    place_name = str(candidate.get("place_name") or "").strip() or address_text
+    place = await PlaceRepository.get_or_create_external_place(
+        db,
+        source="google_places",
+        external_id=google_place_id,
+        name=place_name,
+        category=None,
+        address_text=address_text,
+        lat=None,
+        lon=None,
+        metadata={
+            "google_place_id": google_place_id,
+            "mock_google_grounding": True,
+        },
+    )
+    place_cache[google_place_id] = place
+    return place
+
+
+async def _resolve_llm_candidate_place(
+    db: AsyncSession,
+    *,
+    candidate: dict[str, Any],
+    place_cache: dict[str, Place],
+) -> Place | None:
+    google_place_id = candidate.get("google_place_id")
+    if not isinstance(google_place_id, str) or not google_place_id.strip():
+        return None
+    return await _resolve_google_place(
+        db,
+        google_place_id=google_place_id,
+        place_cache=place_cache,
+    )
+
+
+def _catalog_queries_for_seed(trip: Trip, place_seed: CatalogPlaceSeed) -> list[str]:
+    destination = " ".join(str(trip.destination_text or "").split())
+    raw_queries = [
+        (
+            f"{place_seed.name} {place_seed.address_text}"
+            if place_seed.name and place_seed.address_text
+            else None
+        ),
+        place_seed.address_text,
+        (
+            place_seed.name
+            if not destination or destination.lower() in place_seed.name.lower()
+            else f"{place_seed.name} {destination}"
+        )
+        if place_seed.name
+        else None,
+        place_seed.name,
+    ]
+
+    queries: list[str] = []
+    seen: set[str] = set()
+    for item in raw_queries:
+        if not isinstance(item, str):
+            continue
+        query = " ".join(item.split())
+        if not query:
+            continue
+        dedupe_key = query.casefold()
+        if dedupe_key in seen:
+            continue
+        seen.add(dedupe_key)
+        queries.append(query)
+    return queries
+
+
+async def _resolve_catalog_seed_place(
     db: AsyncSession,
     *,
     trip: Trip,
     place_seed: CatalogPlaceSeed,
     place_cache: dict[str, Place],
 ) -> Place | None:
-    external_id = _seed_external_id(trip, place_seed)
-    cached = place_cache.get(external_id)
-    if cached is not None:
-        return cached
+    if place_seed.address_text:
+        geocode = await geocode_address(place_seed.address_text)
+        if geocode and geocode.place_id:
+            place = await _resolve_google_place(
+                db,
+                google_place_id=geocode.place_id,
+                place_cache=place_cache,
+            )
+            if place is not None:
+                return place
 
-    matched = await PlaceRepository.find_seed_match(
-        db,
-        name=place_seed.name,
-        address_text=place_seed.address_text,
-        lat=place_seed.lat,
-        lon=place_seed.lon,
-    )
-    if matched is not None:
-        place_cache[external_id] = matched
-        return matched
-
-    created = await PlaceRepository.create_place(
-        db,
-        PlaceCreateRequest(
-            source="seed",
-            external_id=external_id,
-            name=place_seed.name,
-            category=place_seed.category,
-            address_text=place_seed.address_text,
+    radius_m = 2500 if place_seed.lat is not None and place_seed.lon is not None else None
+    for query in _catalog_queries_for_seed(trip, place_seed):
+        results = await search_google_places(
+            query,
+            3,
             lat=place_seed.lat,
-            lon=place_seed.lon,
-            metadata={
-                **place_seed.metadata,
-                "planner_seed_slug": place_seed.slug,
-                "planner_destination": trip.destination_text,
-            },
-        ),
-    )
-    place_cache[external_id] = created
-    return created
+            lng=place_seed.lon,
+            radius_m=radius_m,
+        )
+        for result in results:
+            place = await _resolve_google_place(
+                db,
+                google_place_id=result.place_id,
+                place_cache=place_cache,
+            )
+            if place is not None:
+                return place
+
+    return None
 
 
 async def _enrich_places_with_photos(
@@ -233,9 +436,7 @@ async def _enrich_places_with_photos(
         list(place_ids),
     )
     candidate_ids = [
-        place_id
-        for place_id in place_ids
-        if photo_summaries.get(place_id, (0, None))[0] == 0
+        place_id for place_id in place_ids if photo_summaries.get(place_id, (0, None))[0] == 0
     ][:limit]
     if not candidate_ids:
         return 0, provider_errors
@@ -262,7 +463,7 @@ async def _enrich_places_with_photos(
     return enriched, provider_errors
 
 
-async def _resolve_candidates_for_scope(
+async def _resolve_catalog_candidates_for_scope(
     db: AsyncSession,
     *,
     trip: Trip,
@@ -273,48 +474,93 @@ async def _resolve_candidates_for_scope(
     raw_candidates = build_catalog_candidates(trip=trip, days=days, seed=seed)
     place_cache: dict[str, Place] = {}
     resolved_place_ids: set[uuid.UUID] = set()
+    provider_errors: list[dict[str, Any]] = []
     unresolved_activity_count = 0
     resolved_candidates: dict[uuid.UUID, list[dict[str, Any]]] = {}
 
     for day in days:
         resolved_rows: list[dict[str, Any]] = []
         for candidate in raw_candidates.get(day.id, []):
-            next_row = {key: value for key, value in candidate.items() if key != "place_seed"}
             place_seed = candidate.get("place_seed")
-            if isinstance(place_seed, CatalogPlaceSeed):
-                place = await _resolve_place_seed(
+            if not isinstance(place_seed, CatalogPlaceSeed):
+                provider_errors.append(
+                    {
+                        "provider": "catalog",
+                        "code": "PLACE_SEED_MISSING",
+                        "message": "Deterministic fallback candidate is missing a place seed",
+                        "details": {"title": candidate.get("title")},
+                    }
+                )
+                unresolved_activity_count += 1
+                continue
+
+            try:
+                place = await _resolve_catalog_seed_place(
                     db,
                     trip=trip,
                     place_seed=place_seed,
                     place_cache=place_cache,
                 )
-                if place is not None:
-                    next_row["place_id"] = place.id
-                    next_row["category"] = _candidate_category(candidate, place_seed)
-                    resolved_place_ids.add(place.id)
-                else:
-                    unresolved_activity_count += 1
-                    continue
-            else:
+            except GoogleMapsError as exc:
+                provider_errors.append(
+                    {
+                        "provider": "google_maps",
+                        "code": "UPSTREAM_PROVIDER_ERROR",
+                        "message": "Google grounding failed for deterministic fallback",
+                        "details": {
+                            "error": str(exc),
+                            "title": candidate.get("title"),
+                            "place_name": place_seed.name,
+                            "address_text": place_seed.address_text,
+                        },
+                    }
+                )
                 unresolved_activity_count += 1
                 continue
+
+            if place is None:
+                provider_errors.append(
+                    {
+                        "provider": "google_maps",
+                        "code": "PLACE_NOT_FOUND",
+                        "message": "Deterministic fallback could not resolve a canonical Google address",
+                        "details": {
+                            "title": candidate.get("title"),
+                            "place_name": place_seed.name,
+                            "address_text": place_seed.address_text,
+                        },
+                    }
+                )
+                unresolved_activity_count += 1
+                continue
+
+            next_row = {key: value for key, value in candidate.items() if key != "place_seed"}
+            next_row["place_id"] = place.id
+            next_row["category"] = _candidate_category_from_place(
+                candidate,
+                place_category=place.category,
+            )
             resolved_rows.append(next_row)
+            resolved_place_ids.add(place.id)
         resolved_candidates[day.id] = resolved_rows
 
-    photo_limit_raw = constraints.get("photo_enrichment_limit")
-    photo_limit = PHOTO_ENRICHMENT_LIMIT
-    if isinstance(photo_limit_raw, int):
-        photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
+    photo_enriched_place_count = 0
+    if unresolved_activity_count == 0:
+        photo_limit_raw = constraints.get("photo_enrichment_limit")
+        photo_limit = PHOTO_ENRICHMENT_LIMIT
+        if isinstance(photo_limit_raw, int):
+            photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
 
-    photo_enriched_place_count, provider_errors = await _enrich_places_with_photos(
-        db,
-        place_ids=resolved_place_ids,
-        limit=photo_limit,
-    )
+        photo_enriched_place_count, photo_errors = await _enrich_places_with_photos(
+            db,
+            place_ids=resolved_place_ids,
+            limit=photo_limit,
+        )
+        provider_errors.extend(photo_errors)
 
     return CandidateResolutionResult(
         candidates_by_day=resolved_candidates,
-        generator_engine="deterministic_place_backed",
+        generator_engine="deterministic_google_grounded",
         llm_model=None,
         fallback_used=False,
         provider_errors=provider_errors,
@@ -322,6 +568,160 @@ async def _resolve_candidates_for_scope(
         photo_enriched_place_count=photo_enriched_place_count,
         unresolved_activity_count=unresolved_activity_count,
     )
+
+
+async def _resolve_llm_candidates_for_scope(
+    db: AsyncSession,
+    *,
+    trip: Trip,
+    days: list[TripDay],
+    candidates_by_day: dict[uuid.UUID, list[dict[str, Any]]],
+    llm_model: str | None,
+    constraints: dict[str, Any],
+) -> CandidateResolutionResult:
+    place_cache: dict[str, Place] = {}
+    resolved_place_ids: set[uuid.UUID] = set()
+    provider_errors: list[dict[str, Any]] = []
+    unresolved_activity_count = 0
+    resolved_candidates: dict[uuid.UUID, list[dict[str, Any]]] = {}
+    llm_mock_mode = str(constraints.get("llm_mock_mode", "")).strip().lower()
+
+    for day in days:
+        day_candidates = candidates_by_day.get(day.id, [])
+        resolved_rows: list[dict[str, Any]] = []
+        for candidate in day_candidates:
+            google_place_id = str(candidate.get("google_place_id") or "").strip()
+            if not google_place_id:
+                provider_errors.append(
+                    {
+                        "provider": "google_maps",
+                        "code": "MISSING_GOOGLE_PLACE_ID",
+                        "message": "Generated activity is missing a Google place ID",
+                        "details": {
+                            "title": candidate.get("title"),
+                            "place_query": candidate.get("place_query"),
+                        },
+                    }
+                )
+                unresolved_activity_count += 1
+                continue
+            try:
+                if llm_mock_mode == "success":
+                    place = await _resolve_mock_llm_candidate_place(
+                        db,
+                        candidate=candidate,
+                        place_cache=place_cache,
+                    )
+                else:
+                    place = await _resolve_llm_candidate_place(
+                        db,
+                        candidate=candidate,
+                        place_cache=place_cache,
+                    )
+            except GoogleMapsError as exc:
+                provider_errors.append(
+                    {
+                        "provider": "google_maps",
+                        "code": "UPSTREAM_PROVIDER_ERROR",
+                        "message": "Google place grounding failed",
+                        "details": {
+                            "error": str(exc),
+                            "title": candidate.get("title"),
+                            "place_query": candidate.get("place_query"),
+                        },
+                    }
+                )
+                unresolved_activity_count += 1
+                continue
+
+            if place is None:
+                provider_errors.append(
+                    {
+                        "provider": "google_maps",
+                        "code": "PLACE_NOT_FOUND",
+                        "message": "Google place grounding did not return a canonical address",
+                        "details": {
+                            "title": candidate.get("title"),
+                            "place_query": candidate.get("place_query"),
+                            "google_place_id": google_place_id,
+                        },
+                    }
+                )
+                unresolved_activity_count += 1
+                continue
+
+            next_row = dict(candidate)
+            next_row["place_id"] = place.id
+            next_row["category"] = _candidate_category_from_place(
+                candidate,
+                place_category=place.category,
+            )
+            resolved_rows.append(next_row)
+            resolved_place_ids.add(place.id)
+        resolved_candidates[day.id] = resolved_rows
+
+    photo_enriched_place_count = 0
+    if unresolved_activity_count == 0:
+        photo_limit_raw = constraints.get("photo_enrichment_limit")
+        photo_limit = PHOTO_ENRICHMENT_LIMIT
+        if isinstance(photo_limit_raw, int):
+            photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
+
+        photo_enriched_place_count, photo_errors = await _enrich_places_with_photos(
+            db,
+            place_ids=resolved_place_ids,
+            limit=photo_limit,
+        )
+        provider_errors.extend(photo_errors)
+
+    return CandidateResolutionResult(
+        candidates_by_day=resolved_candidates,
+        generator_engine="llm_google_grounded",
+        llm_model=llm_model,
+        fallback_used=False,
+        provider_errors=provider_errors,
+        resolved_place_count=len(resolved_place_ids),
+        photo_enriched_place_count=photo_enriched_place_count,
+        unresolved_activity_count=unresolved_activity_count,
+    )
+
+
+async def _resolve_candidates_for_scope(
+    db: AsyncSession,
+    *,
+    trip: Trip,
+    days: list[TripDay],
+    seed: int | None,
+    constraints: dict[str, Any],
+) -> CandidateResolutionResult:
+    llm_result = await generate_with_openrouter(
+        trip=trip,
+        days=days,
+        seed=seed,
+        constraints=constraints,
+    )
+    llm_errors = list(llm_result.errors)
+    accumulated_errors = list(llm_errors)
+
+    if llm_result.success:
+        llm_resolution = await _resolve_llm_candidates_for_scope(
+            db,
+            trip=trip,
+            days=days,
+            candidates_by_day=llm_result.candidates_by_day,
+            llm_model=llm_result.model,
+            constraints=constraints,
+        )
+        llm_resolution.provider_errors = llm_errors + llm_resolution.provider_errors
+        if llm_resolution.unresolved_activity_count == 0:
+            return llm_resolution
+        accumulated_errors = llm_resolution.provider_errors
+
+    _raise_strict_grounding_error(
+        provider_errors=accumulated_errors,
+        llm_model=llm_result.model,
+    )
+    raise AssertionError("unreachable")
 
 
 async def _apply_replace(
@@ -600,7 +1000,9 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
         unresolved_activity_count = 0
     else:
         scope_days = await _resolve_scope_days(db, trip, payload, require_non_empty=False)
-        constraints = payload.get("constraints") if isinstance(payload.get("constraints"), dict) else {}
+        constraints = (
+            payload.get("constraints") if isinstance(payload.get("constraints"), dict) else {}
+        )
         candidate_resolution = await _resolve_candidates_for_scope(
             db,
             trip=trip,

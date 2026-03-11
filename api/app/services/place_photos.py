@@ -12,6 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.models import Job
 from app.db.repositories import PlacePhotoRepository, PlaceRepository
+from app.services.google_maps import (
+    GoogleMapsError,
+    fetch_google_place_photos,
+    google_maps_enabled,
+)
 from app.services.itinerary_generation import NonRetryableJobError, RetryableJobError
 
 WIKIMEDIA_BASE_URL = "https://commons.wikimedia.org"
@@ -89,7 +94,9 @@ def _search_term(place) -> str:
 
 
 def _search_terms(place) -> list[str]:
-    metadata = place.metadata_json if isinstance(getattr(place, "metadata_json", None), dict) else {}
+    metadata = (
+        place.metadata_json if isinstance(getattr(place, "metadata_json", None), dict) else {}
+    )
     name = _clean_text(getattr(place, "name", None))
     category = _clean_text(getattr(place, "category", None))
     address_text = _clean_text(getattr(place, "address_text", None))
@@ -97,11 +104,7 @@ def _search_terms(place) -> list[str]:
     country = _clean_text(metadata.get("country"))
     address_parts = [part.strip() for part in (address_text or "").split(",") if part.strip()]
     locality = next(
-        (
-            part
-            for part in address_parts
-            if not name or part.casefold() != name.casefold()
-        ),
+        (part for part in address_parts if not name or part.casefold() != name.casefold()),
         None,
     )
 
@@ -128,6 +131,22 @@ def _search_terms(place) -> list[str]:
         deduped.append(cleaned)
 
     return deduped or ["travel destination photo"]
+
+
+def _google_place_id(place) -> str | None:
+    metadata = (
+        place.metadata_json if isinstance(getattr(place, "metadata_json", None), dict) else {}
+    )
+    if place.source in {"google_places", "destination"}:
+        external_id = _clean_text(getattr(place, "external_id", None))
+        if external_id:
+            return external_id
+
+    for key in ("google_place_id",):
+        value = _clean_text(metadata.get(key))
+        if value:
+            return value
+    return None
 
 
 def _normalize_file_title(value: str | None) -> str | None:
@@ -257,7 +276,9 @@ async def _resolve_wikidata_image_titles(place) -> list[str]:
                 if search_response.status_code >= 500:
                     raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata upstream error")
                 if search_response.status_code >= 400:
-                    raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata request rejected")
+                    raise NonRetryableJobError(
+                        "UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata request rejected"
+                    )
 
                 search_payload = search_response.json()
                 search_results = (
@@ -296,14 +317,20 @@ async def _resolve_wikidata_image_titles(place) -> list[str]:
         ) as client:
             entity_response = await client.get("/w/api.php", params=entity_params)
     except httpx.TimeoutException as exc:
-        raise RetryableJobError("UPSTREAM_PROVIDER_TIMEOUT", "Wikidata entity request timed out") from exc
+        raise RetryableJobError(
+            "UPSTREAM_PROVIDER_TIMEOUT", "Wikidata entity request timed out"
+        ) from exc
     except httpx.HTTPError as exc:
-        raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata entity request failed") from exc
+        raise RetryableJobError(
+            "UPSTREAM_PROVIDER_ERROR", "Wikidata entity request failed"
+        ) from exc
 
     if entity_response.status_code >= 500:
         raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikidata entity upstream error")
     if entity_response.status_code >= 400:
-        raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata entity request rejected")
+        raise NonRetryableJobError(
+            "UPSTREAM_PROVIDER_BAD_REQUEST", "Wikidata entity request rejected"
+        )
 
     payload = entity_response.json()
     entities = payload.get("entities") if isinstance(payload, dict) else None
@@ -379,7 +406,9 @@ async def _fetch_wikimedia_candidates(place) -> list[dict[str, Any]]:
                 if response.status_code >= 500:
                     raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikimedia upstream error")
                 if response.status_code >= 400:
-                    raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikimedia request rejected")
+                    raise NonRetryableJobError(
+                        "UPSTREAM_PROVIDER_BAD_REQUEST", "Wikimedia request rejected"
+                    )
 
                 payload = response.json()
                 query = payload.get("query") if isinstance(payload, dict) else None
@@ -429,7 +458,9 @@ async def _fetch_openverse_candidates(place) -> list[dict[str, Any]]:
                 if response.status_code >= 500:
                     raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Openverse upstream error")
                 if response.status_code >= 400:
-                    raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Openverse request rejected")
+                    raise NonRetryableJobError(
+                        "UPSTREAM_PROVIDER_BAD_REQUEST", "Openverse request rejected"
+                    )
 
                 payload = response.json()
                 results_raw = payload.get("results") if isinstance(payload, dict) else None
@@ -446,7 +477,9 @@ async def _fetch_openverse_candidates(place) -> list[dict[str, Any]]:
                     results.append(
                         {
                             "source": "openverse",
-                            "source_media_ref": str(item.get("id") or item.get("foreign_landing_url") or ""),
+                            "source_media_ref": str(
+                                item.get("id") or item.get("foreign_landing_url") or ""
+                            ),
                             "image_url": item.get("url"),
                             "thumbnail_url": item.get("thumbnail"),
                             "width": item.get("width"),
@@ -556,10 +589,14 @@ async def _search_wikipedia_page_titles(place) -> list[str]:
                 if response.status_code >= 500:
                     raise RetryableJobError("UPSTREAM_PROVIDER_ERROR", "Wikipedia upstream error")
                 if response.status_code >= 400:
-                    raise NonRetryableJobError("UPSTREAM_PROVIDER_BAD_REQUEST", "Wikipedia request rejected")
+                    raise NonRetryableJobError(
+                        "UPSTREAM_PROVIDER_BAD_REQUEST", "Wikipedia request rejected"
+                    )
 
                 payload = response.json()
-                search_results = payload.get("query", {}).get("search") if isinstance(payload, dict) else None
+                search_results = (
+                    payload.get("query", {}).get("search") if isinstance(payload, dict) else None
+                )
                 if not isinstance(search_results, list):
                     continue
 
@@ -603,9 +640,25 @@ async def _fetch_wikipedia_candidates(place) -> list[dict[str, Any]]:
     return results
 
 
+async def _fetch_google_place_candidates(place) -> list[dict[str, Any]]:
+    place_id = _google_place_id(place)
+    if not place_id or not google_maps_enabled():
+        return []
+
+    try:
+        return await fetch_google_place_photos(place_id, limit=8)
+    except GoogleMapsError as exc:
+        raise RetryableJobError(
+            "UPSTREAM_PROVIDER_ERROR",
+            "Google Place Photos request failed",
+            {"error": str(exc), "place_id": place_id},
+        ) from exc
+
+
 async def _fetch_place_photos(place) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]]]:
     errors: list[dict[str, Any]] = []
     for provider_name, fetcher in (
+        ("google_places", _fetch_google_place_candidates),
         ("wikipedia_commons", _fetch_wikipedia_candidates),
         ("wikidata_commons", _fetch_wikidata_candidates),
         ("wikimedia_commons", _fetch_wikimedia_candidates),
@@ -615,12 +668,22 @@ async def _fetch_place_photos(place) -> tuple[str, list[dict[str, Any]], list[di
             results = await fetcher(place)
         except RetryableJobError as exc:
             errors.append(
-                {"provider": provider_name, "code": exc.code, "message": exc.message, "details": exc.details}
+                {
+                    "provider": provider_name,
+                    "code": exc.code,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             )
             continue
         except NonRetryableJobError as exc:
             errors.append(
-                {"provider": provider_name, "code": exc.code, "message": exc.message, "details": exc.details}
+                {
+                    "provider": provider_name,
+                    "code": exc.code,
+                    "message": exc.message,
+                    "details": exc.details,
+                }
             )
             continue
         if results:

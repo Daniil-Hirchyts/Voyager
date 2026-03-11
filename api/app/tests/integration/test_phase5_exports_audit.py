@@ -19,7 +19,6 @@ def _create_trip(api_client, headers, *, title: str) -> dict:
             "budget_amount": 1800,
             "budget_currency": "EUR",
             "trip_type": "city",
-            "preferences": ["food", "culture"],
         },
     )
     assert response.status_code == 201
@@ -73,25 +72,6 @@ def _extract_pdf_text(pdf_bytes: bytes) -> str:
     return "\n".join(normalized)
 
 
-def _submit_transport_search(api_client, headers, *, trip_id: str, trip_day_id: str) -> dict:
-    response = api_client.post(
-        "/offers/transport/search",
-        headers=headers | {"Idempotency-Key": f"p5-offers-{uuid.uuid4()}"},
-        json={
-            "trip_id": trip_id,
-            "trip_day_id": trip_day_id,
-            "origin_text": "Paris",
-            "destination_text": "Lisbon",
-            "depart_date": "2026-12-10",
-            "currency": "EUR",
-            "providers": ["mock_transport"],
-            "constraints": {},
-        },
-    )
-    assert response.status_code == 202
-    return response.json()
-
-
 def test_export_submit_poll_metadata_and_content(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, title="Phase5 export flow")
     submit = _submit_export(
@@ -118,6 +98,7 @@ def test_export_submit_poll_metadata_and_content(api_client, headers_user1):
     assert content.status_code == 200
     assert content.headers["content-type"].startswith("application/json")
     assert content.text.strip().startswith("{")
+    assert "offers" not in content.json()
 
 
 def test_stale_if_match_conflict_and_no_job_created(api_client, headers_user1):
@@ -273,27 +254,6 @@ def test_audit_logs_capture_mutations_and_filters(api_client, headers_user1):
     deleted_activity = api_client.delete(f"/activities/{activity_id}", headers=headers_user1)
     assert deleted_activity.status_code == 204
 
-    offers_job = _submit_transport_search(
-        api_client,
-        headers_user1,
-        trip_id=trip["id"],
-        trip_day_id=day_id,
-    )
-    _wait_for_job(api_client, headers_user1, offers_job["job_id"])
-
-    offers = api_client.get(
-        f"/trips/{trip['id']}/offers?kind=transport&current_only=true",
-        headers=headers_user1,
-    )
-    assert offers.status_code == 200
-    offer_id = offers.json()["items"][0]["id"]
-    attach = api_client.post(
-        f"/trips/{trip['id']}/offers/{offer_id}/attach-day",
-        headers=headers_user1 | {"Idempotency-Key": f"p5-attach-{uuid.uuid4()}"},
-        json={"offer_kind": "transport", "trip_day_id": day_id},
-    )
-    assert attach.status_code == 200
-
     audit_all = api_client.get(
         f"/trips/{trip['id']}/audit?limit=500&offset=0",
         headers=headers_user1,
@@ -363,4 +323,3 @@ def test_export_submit_rate_limit_and_metrics(api_client, headers_user1):
     assert "voyager_http_requests_total" in metrics.text
     assert "voyager_worker_jobs_total" in metrics.text
     assert "voyager_job_queue_depth" in metrics.text
-

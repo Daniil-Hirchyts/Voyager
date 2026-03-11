@@ -8,7 +8,6 @@ function normalizeActivity(activity: PlannerActivity): PlannerActivity {
       activity.category_details && typeof activity.category_details === 'object'
         ? activity.category_details
         : {},
-    linked_offer_summary: activity.linked_offer_summary ?? null,
     place: activity.place ?? null,
   }
 }

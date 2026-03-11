@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import Activity, Job, LodgingOffer, TransportOffer, Trip, TripDay
+from app.db.models import Activity, Job, Trip, TripDay
 from app.db.repositories import ExportRepository
 from app.services.itinerary_generation import NonRetryableJobError
 
@@ -247,19 +247,6 @@ async def _load_trip_payload(
     for row in activity_rows.scalars().all():
         activity_map.setdefault(row.trip_day_id, []).append(row)
 
-    transport_rows = await db.execute(
-        select(TransportOffer)
-        .where(TransportOffer.trip_id == trip.id)
-        .where(TransportOffer.is_current.is_(True))
-        .order_by(TransportOffer.created_at.desc(), TransportOffer.id.desc())
-    )
-    lodging_rows = await db.execute(
-        select(LodgingOffer)
-        .where(LodgingOffer.trip_id == trip.id)
-        .where(LodgingOffer.is_current.is_(True))
-        .order_by(LodgingOffer.created_at.desc(), LodgingOffer.id.desc())
-    )
-
     payload_days: list[dict[str, Any]] = []
     for day in days:
         activities: list[dict[str, Any]] = []
@@ -304,37 +291,12 @@ async def _load_trip_payload(
             "budget_amount": str(trip.budget_amount) if trip.budget_amount is not None else None,
             "budget_currency": trip.budget_currency,
             "trip_type": trip.trip_type,
-            "preferences": list(trip.preferences_json or []),
             "version": trip.version,
             "last_generated_at": trip.last_generated_at.isoformat()
             if trip.last_generated_at
             else None,
         },
         "days": payload_days,
-        "offers": {
-            "transport": [
-                {
-                    "id": str(offer.id),
-                    "provider": offer.provider,
-                    "title": offer.title,
-                    "price_amount": str(offer.price_amount),
-                    "currency": offer.currency,
-                    "expires_at": offer.expires_at.isoformat(),
-                }
-                for offer in transport_rows.scalars().all()
-            ],
-            "lodging": [
-                {
-                    "id": str(offer.id),
-                    "provider": offer.provider,
-                    "title": offer.title,
-                    "price_amount": str(offer.price_amount),
-                    "currency": offer.currency,
-                    "expires_at": offer.expires_at.isoformat(),
-                }
-                for offer in lodging_rows.scalars().all()
-            ],
-        },
     }
 
 
