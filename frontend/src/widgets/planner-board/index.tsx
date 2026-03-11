@@ -1043,27 +1043,6 @@ export default function PlannerBoard({ tripId }: Props) {
     }
   };
 
-  const recommendationsAction = useMemo(
-    () =>
-      currentView === "kanban" && recommendations.enabled ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-full"
-          onClick={openRecommendationsDrawer}
-        >
-          <Compass className="h-3.5 w-3.5" />
-          Recommendations
-        </Button>
-      ) : null,
-    [currentView, openRecommendationsDrawer, recommendations.enabled],
-  );
-
-  const headerLeadingActions = useMemo(
-    () => (planner && !isMobile ? recommendationsAction : null),
-    [isMobile, planner, recommendationsAction],
-  );
 
   const headerActions = useMemo(
     () =>
@@ -1094,6 +1073,18 @@ export default function PlannerBoard({ tripId }: Props) {
               </TabsList>
             </Tabs>
 
+            {recommendations.enabled && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-[8px] px-2.5 min-w-8"
+                onClick={openRecommendationsDrawer}
+              >
+                <Compass className="h-3.5 w-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Recommendations</span>
+              </Button>
+            )}
+
             <Button
               variant="outline"
               size="sm"
@@ -1104,8 +1095,6 @@ export default function PlannerBoard({ tripId }: Props) {
               <span className="hidden sm:inline">Settings</span>
             </Button>
 
-            {recommendationsAction}
-            
             <ExportMenu tripId={tripId} tripVersion={planner.trip.version} />
 
             <GenerationControls
@@ -1198,7 +1187,7 @@ export default function PlannerBoard({ tripId }: Props) {
       isMobile,
       latestReport?.status,
       planner,
-      recommendationsAction,
+      recommendations.enabled,
       regenerateMutation.isPending,
       resetMutation.isPending,
       updateParams,
@@ -1234,7 +1223,7 @@ export default function PlannerBoard({ tripId }: Props) {
   );
 
   const hasShellHeaderLeadingActions =
-    useAppShellHeaderLeadingActions(headerLeadingActions);
+    useAppShellHeaderLeadingActions(null);
   const hasShellHeaderActions = useAppShellHeaderActions(headerActions);
   useAppShellHeaderMeta(headerMeta);
 
@@ -1303,11 +1292,6 @@ export default function PlannerBoard({ tripId }: Props) {
       {!hasShellHeaderActions && !hasShellHeaderLeadingActions ? (
         <section className="mb-3 rounded-[12px] border border-black/8 bg-white px-4 py-3">
           <div className="flex items-center justify-between gap-3">
-            {headerLeadingActions ? (
-              <div className="hidden shrink-0 items-center gap-2 lg:flex">
-                {headerLeadingActions}
-              </div>
-            ) : null}
             {headerActions}
           </div>
         </section>
@@ -1495,7 +1479,6 @@ export default function PlannerBoard({ tripId }: Props) {
 
       <Sheet
         open={
-          currentView === "kanban" &&
           recommendations.enabled &&
           boardRecommendationsOpen
         }

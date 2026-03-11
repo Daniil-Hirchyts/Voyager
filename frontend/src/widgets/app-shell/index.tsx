@@ -7,8 +7,6 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Compass,
-  Download,
   LayoutGrid,
   LogOut,
   MoreVertical,
@@ -18,7 +16,7 @@ import {
 import { useTrips } from '@/entities/trip/queries'
 import { SIDEBAR_RECENT_TRIPS_LIMIT, TRIP_LIST_PAGE_SIZE } from '@/entities/trip/constants'
 import { useProfile } from '@/entities/user/queries'
-import { config } from '@/app/config'
+
 import { VoyagerLogo } from './logo'
 import { cn } from '@/shared/lib/cn'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -103,12 +101,9 @@ function getSectionLabel(pathname: string, tripId?: string) {
   }
 
   const sections: Array<{ path: string; label: string }> = [
-    { path: `/app/trips/${tripId}`, label: 'Overview' },
-    { path: `/app/trips/${tripId}/settings`, label: 'Settings' },
     { path: `/app/trips/${tripId}/plan`, label: 'Planner' },
     { path: `/app/trips/${tripId}/events`, label: 'Events' },
     { path: `/app/trips/${tripId}/proposals`, label: 'Proposals' },
-    { path: `/app/trips/${tripId}/exports`, label: 'Exports' },
     { path: `/app/trips/${tripId}/audit`, label: 'Audit' },
   ]
 
@@ -347,14 +342,8 @@ export function AppShellLayout({
 
   const tripNavItems: NavItem[] = tripId
     ? [
-        { to: `/app/trips/${tripId}`, icon: Compass, label: 'Overview', end: true },
-        { to: `/app/trips/${tripId}/settings`, icon: Settings2, label: 'Settings', end: true },
         { to: `/app/trips/${tripId}/plan`, icon: Calendar, label: 'Planner', end: true },
-        { to: `/app/trips/${tripId}/exports`, icon: Download, label: 'Exports', end: true },
-      ].filter((item) => {
-        if (item.label === 'Exports') return config.features.exportsUI
-        return true
-      })
+      ]
     : []
 
   const sidebarState = Cookies.get('sidebar_state')

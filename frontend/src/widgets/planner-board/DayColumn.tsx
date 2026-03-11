@@ -9,7 +9,12 @@ import { cn } from '@/shared/lib/cn'
 import type { PlannerActivity, PlannerDay } from '@/shared/api/types'
 import { ActivityCard } from './ActivityCard'
 import { TravelConnector } from './TravelConnector'
-import { buildPlannerTravelLegs } from './travel-estimates'
+import {
+  buildPlannerTravelLegs,
+  formatTravelDistance,
+  formatTravelDuration,
+  summarizePlannerTravelLegs,
+} from './travel-estimates'
 
 interface Props {
   day: PlannerDay
@@ -88,6 +93,7 @@ export function DayColumn({
       })
     : fallbackTravelLegs
   const travelLegsByToActivityId = new Map(travelLegs.map((leg) => [leg.toActivityId, leg]))
+  const travelSummary = summarizePlannerTravelLegs(travelLegs)
 
 
   return (
@@ -114,6 +120,14 @@ export function DayColumn({
               {format(new Date(day.date), 'MMM d, yyyy')}
             </p>
           </div>
+          {travelSummary && travelSummary.distanceKm > 0 ? (
+            <p
+              className="text-[0.72rem] text-[var(--color-text-muted)]"
+              data-testid={`planner-day-travel-summary-${day.id}`}
+            >
+              {formatTravelDistance(travelSummary.distanceKm)} · {formatTravelDuration(travelSummary.durationMin)}
+            </p>
+          ) : null}
         </div>
       </header>
 

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
+
 import {
   Select,
   SelectContent,
@@ -195,8 +195,8 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
             </SheetDescription>
           </SheetHeader>
           
-          <ScrollArea className="flex-1 p-6">
-            <div className="flex flex-col gap-6 max-w-xl mx-auto pb-6">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="flex flex-col gap-6 max-w-xl mx-auto px-6 py-6 pb-8">
               <section className={sectionClassName}>
                 <div className="flex items-center gap-3">
                   <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(114,174,230,0.14)] text-[var(--color-text)]">
@@ -450,7 +450,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                 </div>
               </section>
             </div>
-          </ScrollArea>
+          </div>
           
           <div className="shrink-0 border-t border-black/8 bg-white px-6 py-4 flex justify-end gap-3">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

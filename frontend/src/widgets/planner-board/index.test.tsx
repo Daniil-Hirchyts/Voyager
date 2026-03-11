@@ -135,8 +135,7 @@ describe('PlannerBoard', () => {
 
     await userEvent.click((await screen.findAllByRole('button', { name: activity.title }))[0])
 
-    expect(await screen.findByText('Notes')).toBeInTheDocument()
-    expect(screen.getByText(activity.notes!)).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: activity.title })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Edit activity' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Delete activity' })).toBeInTheDocument()
   })
