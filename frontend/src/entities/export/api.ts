@@ -26,3 +26,9 @@ export async function downloadExportContent(exportId: string): Promise<Response>
   const headers = createRequestHeaders()
   return fetch(url, { headers })
 }
+
+export async function downloadExportContentAtPath(path: string): Promise<Response> {
+  const url = buildApiUrl(path)
+  const headers = createRequestHeaders()
+  return fetch(url, { headers })
+}

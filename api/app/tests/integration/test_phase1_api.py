@@ -85,6 +85,39 @@ def test_trip_version_conflict(api_client, headers_user1):
     assert stale_patch.json()["error"]["code"] == "CONFLICT_VERSION_MISMATCH"
 
 
+def test_trip_route_travel_mode_roundtrip(api_client, headers_user1):
+    idem_key = f"travel-mode-trip-{uuid.uuid4()}"
+    created = api_client.post(
+        "/trips",
+        headers=headers_user1 | {"Idempotency-Key": idem_key},
+        json={
+            "title": "Travel mode trip",
+            "destination_text": "Prague",
+            "start_date": "2026-07-10",
+            "end_date": "2026-07-12",
+            "budget_amount": 500,
+            "budget_currency": "EUR",
+            "trip_type": "city_break",
+            "route_travel_mode": "BICYCLE",
+        },
+    )
+    assert created.status_code == 201
+    trip = created.json()
+    assert trip["route_travel_mode"] == "BICYCLE"
+
+    updated = api_client.patch(
+        f"/trips/{trip['id']}",
+        headers=headers_user1 | {"If-Match": str(trip["version"])},
+        json={"route_travel_mode": "TRANSIT"},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["route_travel_mode"] == "TRANSIT"
+
+    fetched = api_client.get(f"/trips/{trip['id']}", headers=headers_user1)
+    assert fetched.status_code == 200
+    assert fetched.json()["route_travel_mode"] == "TRANSIT"
+
+
 def test_reorder_and_move_activity(api_client, headers_user1):
     trip_key = f"reorder-trip-{uuid.uuid4()}"
     activity_key_prefix = f"reorder-act-{uuid.uuid4()}"

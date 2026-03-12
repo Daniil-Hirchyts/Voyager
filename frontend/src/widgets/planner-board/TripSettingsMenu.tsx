@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Copy,
@@ -6,6 +6,7 @@ import {
   Loader2,
   Settings2,
   Trash2,
+  Upload,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -36,13 +37,18 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
+import { useUploadTripAsset } from '@/entities/trip-asset/queries'
 import {
   useDeleteTrip,
   useDuplicateTrip,
   usePatchTrip,
   useTrip,
 } from '@/entities/trip/queries'
+import type { RouteTravelMode } from '@/shared/api/types'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
+import { resolvePhotoUrl } from '@/shared/lib/media'
+import TripAssetManager from '@/widgets/trip-assets'
+import { ROUTE_TRAVEL_MODE_OPTIONS } from './travel-modes'
 
 
 const sectionClassName = 'rounded-[20px] border border-black/8 bg-white p-5 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.22)]'
@@ -67,6 +73,7 @@ type TripSettingsForm = {
   budget_amount: string
   budget_currency: string
   trip_type: string
+  route_travel_mode: RouteTravelMode
 }
 
 function toTripSettingsForm(value: NonNullable<ReturnType<typeof useTrip>['data']>): TripSettingsForm {
@@ -78,6 +85,7 @@ function toTripSettingsForm(value: NonNullable<ReturnType<typeof useTrip>['data'
     budget_amount: value.budget_amount ? String(value.budget_amount) : '',
     budget_currency: value.budget_currency ?? 'USD',
     trip_type: value.trip_type ?? 'leisure',
+    route_travel_mode: value.route_travel_mode ?? 'WALK',
   }
 }
 
@@ -91,10 +99,13 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
   const navigate = useNavigate()
   const { data: trip } = useTrip(tripId)
   const patchTrip = usePatchTrip(tripId)
+  const uploadTripAsset = useUploadTripAsset(tripId)
   const duplicateTrip = useDuplicateTrip()
   const deleteTrip = useDeleteTrip()
+  const coverUploadInputRef = useRef<HTMLInputElement | null>(null)
   
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isUploadingCoverPhoto, setIsUploadingCoverPhoto] = useState(false)
   const [form, setForm] = useState<TripSettingsForm>({
     title: '',
     destination_text: '',
@@ -103,6 +114,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     budget_amount: '',
     budget_currency: 'USD',
     trip_type: 'leisure',
+    route_travel_mode: 'WALK',
   })
   
   const dupKey = useMemo(() => crypto.randomUUID(), [])
@@ -146,6 +158,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
           budget_amount: form.budget_amount ? Number(form.budget_amount) : null,
           budget_currency: form.budget_currency,
           trip_type: form.trip_type,
+          route_travel_mode: form.route_travel_mode,
         },
       })
       toast.success('Trip settings saved')
@@ -179,6 +192,24 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
       toast.error('Could not delete this trip')
     } finally {
       setShowDeleteConfirm(false)
+    }
+  }
+
+  async function handleCoverUpload(fileList: FileList | null) {
+    const file = fileList?.[0]
+    if (!file) {
+      return
+    }
+
+    setIsUploadingCoverPhoto(true)
+    try {
+      const uploaded = await uploadTripAsset.mutateAsync({ file, activityId: null })
+      handlePhotoSelection(uploaded.id, 'uploaded')
+      toast.success('Cover photo uploaded')
+    } catch {
+      toast.error('Could not upload cover photo')
+    } finally {
+      setIsUploadingCoverPhoto(false)
     }
   }
 
@@ -310,6 +341,36 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                       </SelectContent>
                     </Select>
                   </label>
+
+                  <label className="space-y-2 sm:col-span-2">
+                    <span className={fieldLabelClassName}>Travel time mode</span>
+                    <Select
+                      value={form.route_travel_mode}
+                      onValueChange={(value) =>
+                        setForm((current) => ({
+                          ...current,
+                          route_travel_mode: value as RouteTravelMode,
+                        }))
+                      }
+                    >
+                      <SelectTrigger
+                        aria-label="Travel time mode"
+                        className="rounded-[14px] border-black/8 bg-white shadow-none"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-[16px] border-black/8">
+                        {ROUTE_TRAVEL_MODE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[0.78rem] text-[var(--color-text-muted)]">
+                      Used for day travel estimates, map routes, and itinerary optimization.
+                    </p>
+                  </label>
                 </div>
               </section>
 
@@ -358,10 +419,34 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                   >
                     Refresh city photos
                   </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => coverUploadInputRef.current?.click()}
+                    disabled={isUploadingCoverPhoto}
+                  >
+                    {isUploadingCoverPhoto ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-2 size-4" />
+                    )}
+                    Upload cover photo
+                  </Button>
                 </div>
 
+                <input
+                  ref={coverUploadInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    void handleCoverUpload(event.target.files)
+                    event.target.value = ''
+                  }}
+                />
+
                 <div className="mt-4">
-                  {coverPhotosLoading ? (
+                  {coverPhotosLoading && coverPhotoCandidates.length === 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       {Array.from({ length: 4 }).map((_, index) => (
                         <div
@@ -373,17 +458,20 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                   ) : coverPhotoCandidates.length > 0 ? (
                     <div className="grid grid-cols-2 gap-2">
                       {coverPhotoCandidates.map((photo) => {
-                        const thumbUrl = photo.thumbnail_url || photo.image_url
+                        const thumbUrl = resolvePhotoUrl(photo, 'thumb')
                         const isActive =
+                          coverPreference?.assetId === photo.id ||
                           coverPreference?.photoId === photo.id ||
-                          (!coverPreference?.photoId && selectedCoverPhoto?.id === photo.id)
+                          (!coverPreference?.assetId &&
+                            !coverPreference?.photoId &&
+                            selectedCoverPhoto?.id === photo.id)
 
                         return (
                           <button
                             key={photo.id}
                             type="button"
-                            onClick={() => handlePhotoSelection(photo.id)}
-                            className={`overflow-hidden rounded-[14px] border ${
+                            onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
+                            className={`relative overflow-hidden rounded-[14px] border ${
                               isActive
                                 ? 'border-[rgba(0,0,0,0.18)]'
                                 : 'border-black/8 hover:border-black/16'
@@ -400,6 +488,9 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                                 <ImageIcon className="size-5" />
                               </div>
                             )}
+                            <span className="absolute left-2 top-2 rounded-full bg-white/88 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                              {photo.candidateSource === 'uploaded' ? 'Uploaded' : 'City'}
+                            </span>
                           </button>
                         )
                       })}
@@ -449,6 +540,12 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                   </Button>
                 </div>
               </section>
+
+              <TripAssetManager
+                tripId={tripId}
+                title="Trip uploads"
+                description="Keep tickets, PDFs, hotel confirmations, scanned notes, and extra photo references on the trip itself."
+              />
             </div>
           </div>
           

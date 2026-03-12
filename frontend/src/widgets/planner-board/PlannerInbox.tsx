@@ -12,6 +12,7 @@ interface PlannerInboxProps {
   title?: string
   subtitle?: string
   className?: string
+  isDragActive?: boolean
   emptyMessage?: string
   isDetached?: boolean
   onToggleDetached?: () => void
@@ -25,6 +26,7 @@ export function PlannerInbox({
   title = 'Inbox',
   subtitle = 'Unassigned activities',
   className,
+  isDragActive = false,
   emptyMessage = 'No activities in inbox.',
   isDetached = false,
   onToggleDetached,
@@ -82,21 +84,24 @@ export function PlannerInbox({
             {emptyMessage}
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             <SortableContext items={activities.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
-              {activities.map((activity) => (
-                <ActivityCard
-                  key={activity.id}
-                  activity={activity}
-                  onOpen={onSelectActivity}
-                  isSelected={selectedActivityId === activity.id}
-                />
-              ))}
+              <div className="flex min-h-0 flex-1 flex-col gap-2">
+                {activities.map((activity) => (
+                  <ActivityCard
+                    key={activity.id}
+                    activity={activity}
+                    onOpen={onSelectActivity}
+                    isSelected={selectedActivityId === activity.id}
+                  />
+                ))}
+              </div>
             </SortableContext>
             <div
               ref={setEndZoneRef}
               className={cn(
-                'min-h-10 rounded-[12px] border border-dashed border-transparent transition-colors',
+                'overflow-hidden rounded-[12px] border border-dashed border-transparent transition-[min-height,margin,opacity,background-color,border-color]',
+                isDragActive ? 'mt-2 min-h-10 opacity-100' : 'min-h-0 opacity-0',
                 isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
               )}
             />

@@ -8,6 +8,8 @@ import {
 import { isBackendPlaceId } from '@/entities/place/destination'
 import { placeKeys } from '@/entities/place/queries'
 import { listPlacePhotos } from '@/entities/photo/api'
+import { getTripAsset } from '@/entities/trip-asset/api'
+import { tripAssetKeys } from '@/entities/trip-asset/queries'
 import {
   mergeTripCoverPhotoPreference,
   readTripCoverPhotoPreference,
@@ -27,24 +29,32 @@ export type TripCardCover = {
 }
 
 export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover> {
-  // Read all stored preferences once on mount (includes cached googlePhotoUrl)
   const storedPrefs = useMemo(
     () => trips.map((trip) => readTripCoverPhotoPreference(trip.id)),
     [trips],
   )
 
-  // Trips that already have a resolved backend placeId stored in localStorage
   const storedPlaceIds = useMemo(
     () =>
       storedPrefs.map((pref) =>
-        isBackendPlaceId(pref?.placeId) ? (pref!.placeId ?? null) : null,
+        isBackendPlaceId(pref?.placeId) ? (pref?.placeId ?? null) : null,
       ),
     [storedPrefs],
   )
 
-  // Run autocomplete for ALL trips to obtain Google Place IDs.
-  // These are used both for Google Detail photos (primary path) and as a
-  // fallback when backend stored photos are unavailable.
+  const coverAssetQueries = useQueries({
+    queries: trips.map((trip, index) => {
+      const assetId = storedPrefs[index]?.assetId ?? null
+      return {
+        queryKey: tripAssetKeys.detail(assetId ?? `__skip_${trip.id}`),
+        queryFn: () => getTripAsset(assetId!),
+        enabled: Boolean(assetId),
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+      }
+    }),
+  })
+
   const autocompleteQueries = useQueries({
     queries: trips.map((trip) => {
       const q = trip.destination_text.trim()
@@ -57,13 +67,9 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
     }),
   })
 
-  // Fetch Google Place Detail for all trips using the autocomplete Google Place ID.
-  // autocomplete always returns Google Place IDs (never backend UUIDs), so
-  // we can use them directly with getGooglePlaceDetail.
   const googleDetailQueries = useQueries({
-    queries: trips.map((trip, i) => {
-      const first = autocompleteQueries[i]?.data?.items?.[0]
-      // autocomplete items always have Google Place IDs (ChIJ... format)
+    queries: trips.map((trip, index) => {
+      const first = autocompleteQueries[index]?.data?.items?.[0]
       const googleId = first?.id && !isBackendPlaceId(first.id) ? first.id : null
       return {
         queryKey: placeKeys.googleRichDetail(googleId ?? `__none_${trip.id}`),
@@ -74,11 +80,9 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
     }),
   })
 
-  // Fetch backend stored photos for trips that have a saved placeId in localStorage.
-  // These respect the user's previously chosen photo preference from the detail page.
   const coverPlaceQueries = useQueries({
-    queries: trips.map((trip, i) => {
-      const placeId = storedPlaceIds[i]
+    queries: trips.map((trip, index) => {
+      const placeId = storedPlaceIds[index]
       return {
         queryKey: placeKeys.detail(placeId ?? `__skip_${trip.id}`),
         queryFn: () => getPlace(placeId!),
@@ -89,8 +93,8 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
   })
 
   const coverPhotoQueries = useQueries({
-    queries: trips.map((trip, i) => {
-      const placeId = storedPlaceIds[i]
+    queries: trips.map((trip, index) => {
+      const placeId = storedPlaceIds[index]
       return {
         queryKey: ['place-photos', placeId ?? `__skip_${trip.id}`],
         queryFn: () => listPlacePhotos(placeId!),
@@ -100,18 +104,22 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
     }),
   })
 
-  // Persist the raw Google photo URL to localStorage so subsequent visits
-  // can render the cached cover instantly without waiting for network requests.
   useEffect(() => {
-    trips.forEach((trip, i) => {
-      if (storedPlaceIds[i]) return // backend photos track — nothing to cache here
-      const rawUrl = googleDetailQueries[i]?.data?.photos?.[0]?.image_url
-      if (!rawUrl) return
-      const cached = storedPrefs[i]?.googlePhotoUrl
-      if (cached === rawUrl) return // already up to date
+    trips.forEach((trip, index) => {
+      if (storedPlaceIds[index]) {
+        return
+      }
+      const rawUrl = googleDetailQueries[index]?.data?.photos?.[0]?.image_url
+      if (!rawUrl) {
+        return
+      }
+      const cached = storedPrefs[index]?.googlePhotoUrl
+      if (cached === rawUrl) {
+        return
+      }
       mergeTripCoverPhotoPreference(trip.id, { googlePhotoUrl: rawUrl })
     })
-  }, [trips, storedPlaceIds, storedPrefs, googleDetailQueries])
+  }, [googleDetailQueries, storedPlaceIds, storedPrefs, trips])
 
   return useMemo(() => {
     const coverPreferences = new Map(
@@ -119,13 +127,25 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
     )
 
     return new Map(
-      trips.map((trip, i) => {
-        // Primary: backend stored photos when the user has previously opened this trip
-        // (respects the user's chosen photo preference from the detail page)
-        if (storedPlaceIds[i]) {
-          const coverPreference = coverPreferences.get(trip.id)
-          const coverPlace = coverPlaceQueries[i]?.data
-          const coverPhotos = coverPhotoQueries[i]?.data?.items ?? []
+      trips.map((trip, index) => {
+        const coverPreference = coverPreferences.get(trip.id)
+        const uploadedAsset = coverPreference?.assetId
+          ? coverAssetQueries[index]?.data
+          : null
+        const uploadedCoverUrl = resolveMediaUrl(
+          uploadedAsset?.download_url ?? uploadedAsset?.preview_url,
+        )
+
+        if (uploadedCoverUrl) {
+          return [trip.id, { url: uploadedCoverUrl, isFallback: false } as TripCardCover] as [
+            string,
+            TripCardCover,
+          ]
+        }
+
+        if (storedPlaceIds[index]) {
+          const coverPlace = coverPlaceQueries[index]?.data
+          const coverPhotos = coverPhotoQueries[index]?.data?.items ?? []
           const candidates: CoverPhotoCandidate[] = []
 
           if (coverPlace?.primary_photo) {
@@ -137,13 +157,15 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
           }
 
           for (const photo of coverPhotos) {
-            if (candidates.some((c) => c.id === photo.id)) continue
+            if (candidates.some((candidate) => candidate.id === photo.id)) {
+              continue
+            }
             candidates.push({ id: photo.id, photo, isPrimary: photo.is_primary })
           }
 
           const selectedPhoto =
-            candidates.find((c) => c.id === coverPreference?.photoId) ??
-            candidates.find((c) => c.isPrimary) ??
+            candidates.find((candidate) => candidate.id === coverPreference?.photoId) ??
+            candidates.find((candidate) => candidate.isPrimary) ??
             candidates[0] ??
             null
 
@@ -152,25 +174,36 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
             resolvePhotoUrl(selectedPhoto?.photo, 'thumb')
 
           if (selectedPhotoUrl) {
-            return [trip.id, { url: selectedPhotoUrl, isFallback: false } as TripCardCover] as [string, TripCardCover]
+            return [trip.id, { url: selectedPhotoUrl, isFallback: false } as TripCardCover] as [
+              string,
+              TripCardCover,
+            ]
           }
-          // Fall through to Google photo if backend has no stored photos yet
         }
 
-        // Google Place Detail photo via proxy.
-        // Prefer the freshly-fetched URL; fall back to the localStorage-cached raw URL
-        // so the photo is visible instantly on subsequent visits without any network wait.
-        // resolveMediaUrl prepends the API base URL so the relative path
-        // /places/google-photo-asset?name=... is correctly proxied to the backend.
-        const freshGoogleUrl = googleDetailQueries[i]?.data?.photos?.[0]?.image_url
-        const cachedGoogleUrl = storedPrefs[i]?.googlePhotoUrl
+        const freshGoogleUrl = googleDetailQueries[index]?.data?.photos?.[0]?.image_url
+        const cachedGoogleUrl = storedPrefs[index]?.googlePhotoUrl
         const googlePhotoUrl = resolveMediaUrl(freshGoogleUrl ?? cachedGoogleUrl)
         if (googlePhotoUrl) {
-          return [trip.id, { url: googlePhotoUrl, isFallback: false } as TripCardCover] as [string, TripCardCover]
+          return [trip.id, { url: googlePhotoUrl, isFallback: false } as TripCardCover] as [
+            string,
+            TripCardCover,
+          ]
         }
 
-        return [trip.id, { url: null, isFallback: true } as TripCardCover] as [string, TripCardCover]
+        return [trip.id, { url: null, isFallback: true } as TripCardCover] as [
+          string,
+          TripCardCover,
+        ]
       }),
     )
-  }, [trips, storedPrefs, storedPlaceIds, googleDetailQueries, coverPlaceQueries, coverPhotoQueries])
+  }, [
+    coverAssetQueries,
+    coverPhotoQueries,
+    coverPlaceQueries,
+    googleDetailQueries,
+    storedPlaceIds,
+    storedPrefs,
+    trips,
+  ])
 }

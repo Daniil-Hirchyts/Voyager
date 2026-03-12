@@ -160,6 +160,38 @@ class Settings(BaseSettings):
         default="/var/lib/voyager/exports/media-cache",
         alias="VOYAGER_MEDIA_CACHE_DIR",
     )
+    object_storage_endpoint: str = Field(
+        default="http://localhost:9000",
+        alias="VOYAGER_OBJECT_STORAGE_ENDPOINT",
+    )
+    object_storage_public_endpoint: str = Field(
+        default="http://localhost:9000",
+        alias="VOYAGER_OBJECT_STORAGE_PUBLIC_ENDPOINT",
+    )
+    object_storage_access_key: str = Field(
+        default="rustfsadmin",
+        alias="VOYAGER_OBJECT_STORAGE_ACCESS_KEY",
+    )
+    object_storage_secret_key: str = Field(
+        default="rustfsadmin",
+        alias="VOYAGER_OBJECT_STORAGE_SECRET_KEY",
+    )
+    object_storage_bucket: str = Field(
+        default="voyager-media",
+        alias="VOYAGER_OBJECT_STORAGE_BUCKET",
+    )
+    object_storage_region: str = Field(
+        default="us-east-1",
+        alias="VOYAGER_OBJECT_STORAGE_REGION",
+    )
+    object_storage_url_ttl_sec: int = Field(
+        default=900,
+        alias="VOYAGER_OBJECT_STORAGE_URL_TTL_SEC",
+    )
+    object_storage_max_upload_bytes: int = Field(
+        default=25 * 1024 * 1024,
+        alias="VOYAGER_OBJECT_STORAGE_MAX_UPLOAD_BYTES",
+    )
 
     def itinerary_llm_model_order(self) -> list[str]:
         return [

@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from app.models.places import PlacePhotoSummary
+from app.models.routing import RouteTravelMode
 
 
 class TripCreateRequest(BaseModel):
@@ -15,6 +16,7 @@ class TripCreateRequest(BaseModel):
     budget_amount: Decimal | None = None
     budget_currency: str | None = None
     trip_type: str | None = None
+    route_travel_mode: RouteTravelMode = RouteTravelMode.WALK
 
 
 class TripPatchRequest(BaseModel):
@@ -25,6 +27,7 @@ class TripPatchRequest(BaseModel):
     budget_amount: Decimal | None = None
     budget_currency: str | None = None
     trip_type: str | None = None
+    route_travel_mode: RouteTravelMode | None = None
 
 
 class TripResponse(BaseModel):
@@ -37,6 +40,7 @@ class TripResponse(BaseModel):
     budget_amount: Decimal | None
     budget_currency: str | None
     trip_type: str | None
+    route_travel_mode: RouteTravelMode
     version: int
     created_at: datetime
     updated_at: datetime

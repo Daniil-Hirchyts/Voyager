@@ -10,6 +10,7 @@ from app.logging import attach_trace_filter, configure_logging
 from app.middleware import IpRateLimitMiddleware, TraceAndLoggingMiddleware
 from app.routers import (
     activities,
+    assets,
     days,
     exports,
     health,
@@ -102,6 +103,7 @@ app.include_router(users.router)
 app.include_router(trips.router)
 app.include_router(days.router)
 app.include_router(activities.router)
+app.include_router(assets.router)
 app.include_router(places.router)
 app.include_router(routing.router)
 app.include_router(map_layers.router)

@@ -1,5 +1,6 @@
 import uuid
-from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
@@ -19,6 +20,7 @@ from app.db.models import (
     Place,
     PlacePhoto,
     Trip,
+    TripAsset,
     TripDay,
     TripExport,
     TripMapLayer,
@@ -40,6 +42,13 @@ from app.models.trips import (
     TripPatchRequest,
 )
 from app.services.place_photo_assets import build_place_photo_asset_url
+
+
+@dataclass
+class TripDuplicationResult:
+    trip: Trip
+    activity_id_map: dict[uuid.UUID, uuid.UUID]
+
 
 def _coerce_string(value: Any) -> str | None:
     if value is None:
@@ -69,6 +78,22 @@ def _coerce_int(value: Any) -> int | None:
         return None
 
 
+def _normalize_audit_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): _normalize_audit_payload(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_audit_payload(item) for item in value]
+    if isinstance(value, tuple):
+        return [_normalize_audit_payload(item) for item in value]
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, (datetime, date, time)):
+        return value.isoformat()
+    return value
+
+
 def _coerce_float(value: Any) -> float | None:
     if value in (None, ""):
         return None
@@ -76,6 +101,8 @@ def _coerce_float(value: Any) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
 def _build_trip_title(destination_text: str) -> str:
     destination = destination_text.split(",", 1)[0].strip() or destination_text.strip()
     return f"Trip to {destination or 'your destination'}"[:255]
@@ -176,6 +203,7 @@ class TripRepository:
             budget_amount=payload.budget_amount,
             budget_currency=payload.budget_currency,
             trip_type=payload.trip_type,
+            route_travel_mode=payload.route_travel_mode,
             version=1,
         )
         db.add(trip)
@@ -264,7 +292,9 @@ class TripRepository:
         await db.flush()
 
     @staticmethod
-    async def duplicate_trip(db: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+    async def duplicate_trip_with_maps(
+        db: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID
+    ) -> TripDuplicationResult:
         source = await TripRepository.get_trip(db, user_id, trip_id)
 
         duplicate = Trip(
@@ -276,6 +306,7 @@ class TripRepository:
             budget_amount=source.budget_amount,
             budget_currency=source.budget_currency,
             trip_type=source.trip_type,
+            route_travel_mode=source.route_travel_mode,
             version=1,
         )
         db.add(duplicate)
@@ -339,36 +370,43 @@ class TripRepository:
             .where(Activity.trip_id == source.id)
             .order_by(Activity.trip_day_id.asc().nulls_last(), Activity.order_index)
         )
+        activity_id_map: dict[uuid.UUID, uuid.UUID] = {}
         for activity in source_activities_result.scalars().all():
-            db.add(
-                Activity(
-                    trip_id=duplicate.id,
-                    trip_day_id=(
-                        old_to_new_day_id[activity.trip_day_id]
-                        if activity.trip_day_id is not None
-                        else None
-                    ),
-                    order_index=activity.order_index,
-                    category=activity.category,
-                    category_details_json=activity.category_details_json or {},
-                    title=activity.title,
-                    description=activity.description,
-                    start_time=activity.start_time,
-                    duration_min=activity.duration_min,
-                    estimated_cost_amount=activity.estimated_cost_amount,
-                    estimated_cost_currency=activity.estimated_cost_currency,
-                    place_id=activity.place_id,
-                    event_snapshot_id=old_to_new_event_id.get(activity.event_snapshot_id),
-                    notes=activity.notes,
-                    is_favorite=activity.is_favorite,
-                    visited_at=activity.visited_at,
-                    source=activity.source,
-                )
+            duplicated_activity = Activity(
+                trip_id=duplicate.id,
+                trip_day_id=(
+                    old_to_new_day_id[activity.trip_day_id]
+                    if activity.trip_day_id is not None
+                    else None
+                ),
+                order_index=activity.order_index,
+                category=activity.category,
+                category_details_json=activity.category_details_json or {},
+                title=activity.title,
+                description=activity.description,
+                start_time=activity.start_time,
+                duration_min=activity.duration_min,
+                estimated_cost_amount=activity.estimated_cost_amount,
+                estimated_cost_currency=activity.estimated_cost_currency,
+                place_id=activity.place_id,
+                event_snapshot_id=old_to_new_event_id.get(activity.event_snapshot_id),
+                notes=activity.notes,
+                is_favorite=activity.is_favorite,
+                visited_at=activity.visited_at,
+                source=activity.source,
             )
+            db.add(duplicated_activity)
+            await db.flush()
+            activity_id_map[activity.id] = duplicated_activity.id
 
         await db.flush()
         await db.refresh(duplicate)
-        return duplicate
+        return TripDuplicationResult(trip=duplicate, activity_id_map=activity_id_map)
+
+    @staticmethod
+    async def duplicate_trip(db: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
+        result = await TripRepository.duplicate_trip_with_maps(db, user_id, trip_id)
+        return result.trip
 
     @staticmethod
     async def _sync_days_to_date_range(db: AsyncSession, trip: Trip) -> None:
@@ -2043,6 +2081,164 @@ class PlacePhotoRepository:
         return PlacePhotoRepository._response(item)
 
 
+class TripAssetRepository:
+    @staticmethod
+    async def _get_trip_asset_for_user(
+        db: AsyncSession,
+        *,
+        asset_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> TripAsset:
+        row = await db.execute(
+            select(TripAsset)
+            .where(TripAsset.id == asset_id)
+            .where(TripAsset.user_id == user_id)
+        )
+        item = row.scalar_one_or_none()
+        if item is None:
+            raise NotFoundError("Trip asset not found")
+        return item
+
+    @staticmethod
+    async def validate_trip_asset_scope(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        activity_id: uuid.UUID | None,
+    ) -> None:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        if activity_id is None:
+            return
+        activity, trip, _day = await ActivityRepository._get_activity_for_user(
+            db, user_id, activity_id
+        )
+        if trip.id != trip_id or activity.trip_id != trip_id:
+            raise ValidationApiError("activity_id must belong to trip_id")
+
+    @staticmethod
+    async def create_trip_asset(
+        db: AsyncSession,
+        *,
+        asset_id: uuid.UUID,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        activity_id: uuid.UUID | None,
+        kind: str,
+        original_filename: str,
+        content_type: str,
+        size_bytes: int,
+        sha256: str,
+        object_key: str,
+        thumbnail_object_key: str | None,
+        image_width: int | None,
+        image_height: int | None,
+    ) -> TripAsset:
+        item = TripAsset(
+            id=asset_id,
+            user_id=user_id,
+            trip_id=trip_id,
+            activity_id=activity_id,
+            kind=kind,
+            original_filename=original_filename,
+            content_type=content_type,
+            size_bytes=size_bytes,
+            sha256=sha256,
+            object_key=object_key,
+            thumbnail_object_key=thumbnail_object_key,
+            image_width=image_width,
+            image_height=image_height,
+        )
+        db.add(item)
+        await db.flush()
+        await db.refresh(item)
+        return item
+
+    @staticmethod
+    async def list_trip_assets(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        activity_id: uuid.UUID | None,
+    ) -> list[TripAsset]:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        query = (
+            select(TripAsset)
+            .where(TripAsset.user_id == user_id)
+            .where(TripAsset.trip_id == trip_id)
+        )
+        if activity_id is None:
+            query = query.where(TripAsset.activity_id.is_(None))
+        else:
+            query = query.where(TripAsset.activity_id == activity_id)
+        rows = await db.execute(query.order_by(TripAsset.created_at.desc(), TripAsset.id.desc()))
+        return list(rows.scalars().all())
+
+    @staticmethod
+    async def list_assets_for_trip(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> list[TripAsset]:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        rows = await db.execute(
+            select(TripAsset)
+            .where(TripAsset.user_id == user_id)
+            .where(TripAsset.trip_id == trip_id)
+            .order_by(TripAsset.created_at.asc(), TripAsset.id.asc())
+        )
+        return list(rows.scalars().all())
+
+    @staticmethod
+    async def get_trip_asset(
+        db: AsyncSession,
+        *,
+        asset_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> TripAsset:
+        return await TripAssetRepository._get_trip_asset_for_user(
+            db, asset_id=asset_id, user_id=user_id
+        )
+
+    @staticmethod
+    async def delete_trip_asset(
+        db: AsyncSession,
+        *,
+        asset_id: uuid.UUID,
+        user_id: uuid.UUID,
+    ) -> TripAsset:
+        item = await TripAssetRepository._get_trip_asset_for_user(
+            db, asset_id=asset_id, user_id=user_id
+        )
+        await db.delete(item)
+        await db.flush()
+        return item
+
+    @staticmethod
+    async def detach_assets_for_activity(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        activity_id: uuid.UUID,
+    ) -> list[TripAsset]:
+        activity, _trip, _day = await ActivityRepository._get_activity_for_user(
+            db, user_id, activity_id
+        )
+        rows = await db.execute(
+            select(TripAsset)
+            .where(TripAsset.user_id == user_id)
+            .where(TripAsset.activity_id == activity.id)
+            .order_by(TripAsset.created_at.asc(), TripAsset.id.asc())
+        )
+        items = list(rows.scalars().all())
+        for item in items:
+            item.activity_id = None
+        await db.flush()
+        return items
+
+
 class ProposalRepository:
     @staticmethod
     def _activity_response(item: ItineraryProposalActivity) -> ProposalActivityResponse:
@@ -2369,8 +2565,8 @@ class AuditRepository:
             entity_type=entity_type,
             entity_id=entity_id,
             action=action,
-            before_json=before,
-            after_json=after,
+            before_json=_normalize_audit_payload(before),
+            after_json=_normalize_audit_payload(after),
             correlation_id=correlation_id,
             request_path=request_path,
         )

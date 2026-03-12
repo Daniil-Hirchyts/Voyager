@@ -315,6 +315,30 @@ export interface PlacePhotoSummary {
 export type ExportFormat = components['schemas']['ExportFormat']
 export type ExportResponse = components['schemas']['ExportResponse']
 export type TripExportCreateInput = components['schemas']['TripExportCreateRequest']
+export type TripAssetKind = 'photo' | 'file'
+
+export interface TripAssetResponse {
+  id: string
+  user_id: string
+  trip_id: string
+  activity_id: string | null
+  kind: TripAssetKind
+  original_filename: string
+  content_type: string
+  size_bytes: number
+  sha256: string
+  image_width: number | null
+  image_height: number | null
+  preview_url: string | null
+  download_url: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TripAssetListResponse {
+  total: number
+  items: TripAssetResponse[]
+}
 
 export type ActivityEntityType = 'attraction' | 'restaurant' | 'hotel' | 'cruise'
 

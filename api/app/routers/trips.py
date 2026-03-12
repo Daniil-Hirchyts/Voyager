@@ -1,6 +1,8 @@
+import asyncio
 import uuid
 from datetime import datetime
 
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
@@ -22,10 +24,11 @@ from app.db.repositories import (
     EventRepository,
     JobRepository,
     PlacePhotoRepository,
+    TripAssetRepository,
     TripRepository,
 )
 from app.db.session import get_db_session, get_redis
-from app.errors import ConflictError, NotFoundError, ValidationApiError
+from app.errors import ConflictError, NotFoundError, ServiceUnavailableError, ValidationApiError
 from app.models.activity_discovery import ActivityDiscoveryPhoto
 from app.models.audit import AuditLogEntry, AuditLogListResponse
 from app.models.jobs import JobAcceptedResponse
@@ -53,8 +56,22 @@ from app.models.trips import (
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import parse_if_match, payload_fingerprint
 from app.security.dependencies import AuthContext, get_auth_context
+from app.services.trip_assets import (
+    build_trip_asset_object_key,
+    build_trip_asset_thumbnail_key,
+    copy_trip_asset_objects,
+    delete_trip_asset_objects,
+)
 
 router = APIRouter(prefix="/trips", tags=["trips"])
+
+
+def _storage_unavailable(exc: Exception) -> ServiceUnavailableError:
+    return ServiceUnavailableError(
+        code="OBJECT_STORAGE_UNAVAILABLE",
+        message="RustFS object storage is unavailable",
+        details={"provider": "rustfs", "error": exc.__class__.__name__},
+    )
 
 
 def _trip_response(trip) -> TripResponse:
@@ -68,6 +85,7 @@ def _trip_response(trip) -> TripResponse:
         budget_amount=trip.budget_amount,
         budget_currency=trip.budget_currency,
         trip_type=trip.trip_type,
+        route_travel_mode=trip.route_travel_mode,
         version=trip.version,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
@@ -557,7 +575,23 @@ async def delete_trip(
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> None:
+    assets = await TripAssetRepository.list_assets_for_trip(
+        db,
+        user_id=auth.user_id,
+        trip_id=trip_id,
+    )
+    for item in assets:
+        try:
+            await asyncio.to_thread(
+                delete_trip_asset_objects,
+                object_key=item.object_key,
+                thumbnail_object_key=item.thumbnail_object_key,
+            )
+        except (BotoCoreError, ClientError, OSError) as exc:
+            raise _storage_unavailable(exc) from exc
     await TripRepository.delete_trip(db, auth.user_id, trip_id)
+    await cache_delete_prefix(redis, "trip:asset:")
+    await cache_delete_prefix(redis, "audit:list:")
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
 
@@ -583,8 +617,78 @@ async def duplicate_trip(
     if replay:
         return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
 
-    trip = await TripRepository.duplicate_trip(db, auth.user_id, trip_id)
-    response = _trip_response(trip)
+    source_assets = await TripAssetRepository.list_assets_for_trip(
+        db,
+        user_id=auth.user_id,
+        trip_id=trip_id,
+    )
+    duplication = await TripRepository.duplicate_trip_with_maps(db, auth.user_id, trip_id)
+    copied_assets: list[tuple[str, str | None]] = []
+    try:
+        for source_asset in source_assets:
+            duplicated_asset_id = uuid.uuid4()
+            duplicated_activity_id = None
+            if source_asset.activity_id is not None:
+                duplicated_activity_id = duplication.activity_id_map.get(source_asset.activity_id)
+                if duplicated_activity_id is None:
+                    raise ValidationApiError("Could not resolve duplicated activity for asset copy")
+
+            duplicated_object_key = build_trip_asset_object_key(
+                user_id=auth.user_id,
+                trip_id=duplication.trip.id,
+                asset_id=duplicated_asset_id,
+                original_filename=source_asset.original_filename,
+            )
+            duplicated_thumbnail_object_key = (
+                build_trip_asset_thumbnail_key(
+                    user_id=auth.user_id,
+                    trip_id=duplication.trip.id,
+                    asset_id=duplicated_asset_id,
+                    original_filename=source_asset.original_filename,
+                )
+                if source_asset.thumbnail_object_key
+                else None
+            )
+            await asyncio.to_thread(
+                copy_trip_asset_objects,
+                source_object_key=source_asset.object_key,
+                source_thumbnail_object_key=source_asset.thumbnail_object_key,
+                destination_object_key=duplicated_object_key,
+                destination_thumbnail_object_key=duplicated_thumbnail_object_key,
+            )
+            copied_assets.append((duplicated_object_key, duplicated_thumbnail_object_key))
+            await TripAssetRepository.create_trip_asset(
+                db,
+                asset_id=duplicated_asset_id,
+                user_id=auth.user_id,
+                trip_id=duplication.trip.id,
+                activity_id=duplicated_activity_id,
+                kind=source_asset.kind,
+                original_filename=source_asset.original_filename,
+                content_type=source_asset.content_type,
+                size_bytes=source_asset.size_bytes,
+                sha256=source_asset.sha256,
+                object_key=duplicated_object_key,
+                thumbnail_object_key=duplicated_thumbnail_object_key,
+                image_width=source_asset.image_width,
+                image_height=source_asset.image_height,
+            )
+    except Exception as exc:
+        for object_key, thumbnail_object_key in copied_assets:
+            try:
+                await asyncio.to_thread(
+                    delete_trip_asset_objects,
+                    object_key=object_key,
+                    thumbnail_object_key=thumbnail_object_key,
+                )
+            except Exception:
+                pass
+        if isinstance(exc, (BotoCoreError, ClientError, OSError)):
+            raise _storage_unavailable(exc) from exc
+        raise
+
+    response = _trip_response(duplication.trip)
+    await cache_delete_prefix(redis, "trip:asset:")
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
 

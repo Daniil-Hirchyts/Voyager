@@ -15,14 +15,13 @@ const SignInPage = lazy(() => import('@/pages/public/signin'))
 const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
 
 // App pages
-const AppShell = lazy(() => import('@/widgets/app-shell'))
 const SettingsPage = lazy(() => import('@/pages/app/settings'))
 const TripsPage = lazy(() => import('@/pages/app/trips'))
 const TripCreatePage = lazy(() => import('@/pages/app/trips/new'))
 const PlanPage = lazy(() => import('@/pages/app/plan'))
-const MapPage = lazy(() => import('@/pages/app/map'))
 const EventsPage = lazy(() => import('@/pages/app/events'))
 const ProposalsPage = lazy(() => import('@/pages/app/proposals'))
+const AppLayout = lazy(() => import('@/widgets/app-side-rail').then((m) => ({ default: m.AppLayout })))
 
 function PageLoader() {
   const showLoading = useDelayedLoading(true, 250)
@@ -137,7 +136,7 @@ const router = createBrowserRouter([
       <RequireAuth>
         <ErrorBoundary FallbackComponent={RouteErrorFallback}>
           <Suspense fallback={<PageLoader />}>
-            <AppShell />
+            <AppLayout />
           </Suspense>
         </ErrorBoundary>
       </RequireAuth>
@@ -182,15 +181,8 @@ const router = createBrowserRouter([
       },
       {
         path: 'trips/:tripId/map',
-        element: (
-          <FeatureRouteGate enabled={config.features.mapUI}>
-            <Suspense fallback={<PageLoader />}>
-              <MapPage />
-            </Suspense>
-          </FeatureRouteGate>
-        ),
+        element: <Navigate to="../plan" replace />,
       },
-
       {
         path: 'trips/:tripId/activities',
         element: <LegacyActivitiesRedirect />,

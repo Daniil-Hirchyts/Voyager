@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from './msw/server'
 import { useMapStore } from '@/shared/stores/map.store'
 import { usePlannerStore } from '@/shared/stores/planner.store'
+import { useSideRailStore } from '@/shared/stores/side-rail.store'
 
 vi.mock('react-oidc-context', () => ({
   useAuth: () => ({
@@ -214,6 +215,7 @@ vi.mock('terra-draw-google-maps-adapter', () => ({
 
 const initialMapState = useMapStore.getState()
 const initialPlannerState = usePlannerStore.getState()
+const initialSideRailState = useSideRailStore.getState()
 
 const defaultServerHandlers = [
   http.get('http://localhost:8000/users/profile', () =>
@@ -257,6 +259,35 @@ const defaultServerHandlers = [
       items: [],
     }),
   ),
+  http.get('http://localhost:8000/trips/:tripId/assets', () =>
+    HttpResponse.json({
+      total: 0,
+      items: [],
+    }),
+  ),
+  http.post('http://localhost:8000/trips/:tripId/assets', () =>
+    HttpResponse.json(
+      {
+        id: 'asset-uploaded',
+        user_id: 'user-1',
+        trip_id: 'trip-1',
+        activity_id: null,
+        kind: 'file',
+        original_filename: 'uploaded.pdf',
+        content_type: 'application/pdf',
+        size_bytes: 1024,
+        sha256: 'uploaded-sha',
+        image_width: null,
+        image_height: null,
+        preview_url: 'http://localhost:9000/voyager-media/uploaded-preview?signature=test',
+        download_url: 'http://localhost:9000/voyager-media/uploaded?signature=test',
+        created_at: '2026-03-06T09:00:00.000Z',
+        updated_at: '2026-03-06T09:00:00.000Z',
+      },
+      { status: 201 },
+    ),
+  ),
+  http.delete('http://localhost:8000/assets/:assetId', () => new HttpResponse(null, { status: 204 })),
   http.post('http://localhost:8000/routes/legs', () =>
     HttpResponse.json({
       items: [],
@@ -359,6 +390,7 @@ afterEach(() => {
   server.use(...defaultServerHandlers)
   useMapStore.setState(initialMapState, true)
   usePlannerStore.setState(initialPlannerState, true)
+  useSideRailStore.setState(initialSideRailState, true)
 })
 
 afterAll(() => {

@@ -8,6 +8,7 @@ import type {
   Job,
   Place,
   PlacePhoto,
+  TripAssetResponse,
   PlannerActivity,
   PlannerDay,
   PlannerResponse,
@@ -30,6 +31,7 @@ export function buildTrip(overrides: Partial<Trip> = {}): Trip {
     budget_amount: '1600.00',
     budget_currency: 'EUR',
     trip_type: 'city_break',
+    route_travel_mode: 'WALK',
     version: 3,
     created_at: NOW,
     updated_at: NOW,
@@ -219,6 +221,27 @@ export function buildJob(overrides: Partial<Job> = {}): Job {
     created_at: NOW,
     started_at: NOW,
     finished_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildTripAsset(overrides: Partial<TripAssetResponse> = {}): TripAssetResponse {
+  return {
+    id: 'asset-1',
+    user_id: 'user-1',
+    trip_id: 'trip-1',
+    activity_id: null,
+    kind: 'file',
+    original_filename: 'boarding-pass.pdf',
+    content_type: 'application/pdf',
+    size_bytes: 185024,
+    sha256: 'abc123',
+    image_width: null,
+    image_height: null,
+    preview_url: 'http://localhost:9000/voyager-media/asset-1-preview?signature=test',
+    download_url: 'http://localhost:9000/voyager-media/asset-1?signature=test',
+    created_at: NOW,
+    updated_at: NOW,
     ...overrides,
   }
 }

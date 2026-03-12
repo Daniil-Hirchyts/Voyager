@@ -1,7 +1,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from sqlalchemy import select
@@ -16,7 +16,14 @@ from app.cache.redis_helpers import (
 )
 from app.config import get_settings
 from app.db.models import EventSnapshot
-from app.db.repositories import ActivityRepository, EventRepository, PlaceRepository, TripRepository
+from app.db.repositories import (
+    ActivityRepository,
+    AuditRepository,
+    EventRepository,
+    PlaceRepository,
+    TripAssetRepository,
+    TripRepository,
+)
 from app.db.session import get_db_session, get_redis
 from app.errors import (
     ConflictError,
@@ -56,6 +63,7 @@ from app.services.activity_discovery_provider import (
 )
 from app.services.activity_recommendations import recommend_shortlist_items
 from app.services.google_maps import GoogleMapsRequestError, geocode_address, resolve_time_zone
+from app.services.trip_assets import trip_asset_record_payload
 
 router = APIRouter(tags=["activities"])
 
@@ -312,13 +320,34 @@ async def patch_activity(
 @router.delete("/activities/{activity_id}", status_code=204)
 async def delete_activity(
     activity_id: uuid.UUID,
+    request: Request,
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> None:
+    detached_assets = await TripAssetRepository.detach_assets_for_activity(
+        db,
+        user_id=auth.user_id,
+        activity_id=activity_id,
+    )
     await ActivityRepository.delete_activity(db, auth.user_id, activity_id)
+    for item in detached_assets:
+        await AuditRepository.create_entry(
+            db,
+            user_id=auth.user_id,
+            trip_id=item.trip_id,
+            entity_type="trip_asset",
+            entity_id=item.id,
+            action="UPDATE",
+            before=trip_asset_record_payload(item) | {"activity_id": activity_id},
+            after=trip_asset_record_payload(item),
+            correlation_id=getattr(request.state, "trace_id", None),
+            request_path=str(request.url.path),
+        )
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
+    await cache_delete_prefix(redis, "trip:asset:")
+    await cache_delete_prefix(redis, "audit:list:")
     await cache_delete_prefix(redis, "activity:shortlist:")
 
 

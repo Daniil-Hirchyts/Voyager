@@ -3,6 +3,7 @@ import type { PlannerDay, RouteLegEstimateItem } from '@/shared/api/types'
 import { buildDay, buildPlannerActivity } from '@/test/fixtures/api'
 import {
   buildPlannerMapDayMetrics,
+  buildPlannerMapMetricsForActivities,
   buildPlannerMapLegPayload,
   buildPlannerMapSections,
   filterVisibleStops,
@@ -185,6 +186,99 @@ describe('planner-map-utils', () => {
       estimatedLegCount: 2,
     })
     expect(metrics['day-1']?.legs).toHaveLength(2)
+  })
+
+  it('matches preview metrics by route leg instead of destination alone', () => {
+    const origin = buildPlannerActivity({
+      id: 'origin',
+      trip_day_id: 'day-1',
+      order_index: 0,
+      title: 'Origin',
+      place_id: 'place-origin',
+      place: {
+        id: 'place-origin',
+        name: 'Origin',
+        category: 'landmark',
+        address_text: 'A',
+        lat: 0,
+        lon: 0,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+    const middle = buildPlannerActivity({
+      id: 'middle',
+      trip_day_id: 'day-1',
+      order_index: 1,
+      title: 'Middle',
+      place_id: 'place-middle',
+      place: {
+        id: 'place-middle',
+        name: 'Middle',
+        category: 'landmark',
+        address_text: 'B',
+        lat: 0,
+        lon: 1,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+    const destination = buildPlannerActivity({
+      id: 'destination',
+      trip_day_id: 'day-1',
+      order_index: 2,
+      title: 'Destination',
+      place_id: 'place-destination',
+      place: {
+        id: 'place-destination',
+        name: 'Destination',
+        category: 'landmark',
+        address_text: 'C',
+        lat: 0,
+        lon: 2,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+
+    const metrics = buildPlannerMapMetricsForActivities(
+      [origin, middle, destination],
+      [
+        {
+          from_activity_id: 'origin',
+          to_activity_id: 'middle',
+          distance_km: 1,
+          duration_min: 12,
+        },
+        {
+          from_activity_id: 'origin',
+          to_activity_id: 'destination',
+          distance_km: 2,
+          duration_min: 24,
+        },
+        {
+          from_activity_id: 'middle',
+          to_activity_id: 'destination',
+          distance_km: 0.5,
+          duration_min: 6,
+        },
+      ],
+    )
+
+    expect(metrics.legs).toMatchObject([
+      {
+        fromActivityId: 'origin',
+        toActivityId: 'middle',
+        distanceKm: 1,
+        durationMin: 12,
+      },
+      {
+        fromActivityId: 'middle',
+        toActivityId: 'destination',
+        distanceKm: 0.5,
+        durationMin: 6,
+      },
+    ])
   })
 
   it('filters visible stops by day and planner layer groups', () => {

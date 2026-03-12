@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getTrips, getTrip, createTrip, patchTrip, deleteTrip, duplicateTrip } from './api'
 import type { TripCreateInput, TripUpdateInput } from '@/shared/api/types'
+import { plannerKeys } from '@/entities/planner/queries'
 import type { TripListParams } from './api'
 
 export const tripKeys = {
@@ -52,6 +53,7 @@ export function usePatchTrip(tripId: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) })
       qc.invalidateQueries({ queryKey: tripKeys.all })
+      qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
     },
   })
 }

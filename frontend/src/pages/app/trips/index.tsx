@@ -1,7 +1,7 @@
 import { Link, useSearchParams } from 'react-router-dom'
 import { useTrips } from '@/entities/trip/queries'
 import { TRIP_LIST_PAGE_SIZE } from '@/entities/trip/constants'
-import { ArrowUpRight, CalendarDays, Plus } from 'lucide-react'
+import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -143,14 +143,26 @@ function TripSkeleton() {
 }
 
 export default function TripsPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const requestedPage = Number.parseInt(searchParams.get('page') ?? '1', 10)
   const currentPage = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1
   const offset = (currentPage - 1) * TRIP_LIST_PAGE_SIZE
-  const { data, isLoading, error } = useTrips({ limit: TRIP_LIST_PAGE_SIZE, offset })
+  const { data, isLoading, isFetching, error } = useTrips({ limit: TRIP_LIST_PAGE_SIZE, offset })
   const trips = data?.items ?? []
   const showSkeleton = useDelayedLoading(isLoading, 250)
   const tripCovers = useTripListCoverPhotos(trips)
+  const totalItems = data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalItems / TRIP_LIST_PAGE_SIZE))
+
+  function updatePage(page: number) {
+    const next = new URLSearchParams(searchParams)
+    if (page <= 1) {
+      next.delete('page')
+    } else {
+      next.set('page', String(page))
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   return (
     <WorkspacePage className="gap-6">
@@ -213,7 +225,7 @@ export default function TripsPage() {
       )}
 
       {!isLoading && trips.length > 0 && (
-        <div className="grid animate-in gap-4 fade-in slide-in-from-bottom-4 duration-300 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">  
+        <div className="grid animate-in gap-4 fade-in slide-in-from-bottom-4 duration-300 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
           {trips.map((trip) => (
             <TripCard
               key={trip.id}
@@ -221,6 +233,34 @@ export default function TripsPage() {
               cover={tripCovers.get(trip.id) ?? { url: null, isFallback: true }}
             />
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pb-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5 shadow-none"
+            onClick={() => updatePage(currentPage - 1)}
+            disabled={currentPage <= 1 || isFetching}
+            aria-label="Previous page"
+          >
+            <ChevronLeft className="size-3.5" />
+          </Button>
+          <span className="min-w-[3.5rem] text-center text-[0.78rem] font-medium text-[#5f6b7a]">
+            {currentPage} / {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5 shadow-none"
+            onClick={() => updatePage(currentPage + 1)}
+            disabled={currentPage >= totalPages || isFetching}
+            aria-label="Next page"
+          >
+            <ChevronRight className="size-3.5" />
+          </Button>
         </div>
       )}
     </WorkspacePage>

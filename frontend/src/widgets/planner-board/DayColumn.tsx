@@ -6,7 +6,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouteLegEstimates } from '@/entities/routes/queries'
 import { cn } from '@/shared/lib/cn'
-import type { PlannerActivity, PlannerDay } from '@/shared/api/types'
+import type { PlannerActivity, PlannerDay, RouteTravelMode } from '@/shared/api/types'
 import { ActivityCard } from './ActivityCard'
 import { TravelConnector } from './TravelConnector'
 import {
@@ -19,6 +19,8 @@ import {
 interface Props {
   day: PlannerDay
   selectedActivityId?: string | null
+  isDragActive?: boolean
+  travelMode?: RouteTravelMode
   onAddActivity: (dayId: string) => void
   onOpenActivity: (activity: PlannerActivity) => void
   className?: string
@@ -28,6 +30,8 @@ interface Props {
 export function DayColumn({
   day,
   selectedActivityId = null,
+  isDragActive = false,
+  travelMode = 'WALK',
   onAddActivity,
   onOpenActivity,
   className,
@@ -42,7 +46,7 @@ export function DayColumn({
   })
 
   const activities = [...day.activities].sort((left, right) => left.order_index - right.order_index)
-  const fallbackTravelLegs = buildPlannerTravelLegs(activities)
+  const fallbackTravelLegs = buildPlannerTravelLegs(activities, travelMode)
   const routeLegPayload = activities.length > 1
     ? {
         legs: activities.slice(1).flatMap((activity, index) => {
@@ -70,7 +74,7 @@ export function DayColumn({
             },
           ]
         }),
-        travel_mode: 'WALK' as const,
+        travel_mode: travelMode,
       }
     : null
   const routeLegEstimates = useRouteLegEstimates(
@@ -175,7 +179,8 @@ export function DayColumn({
           <div
             ref={setEndZoneRef}
             className={cn(
-              'min-h-10 rounded-[12px] border border-dashed border-transparent transition-colors',
+              'overflow-hidden rounded-[12px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+              isDragActive ? 'min-h-10 opacity-100' : 'min-h-0 opacity-0',
               isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
             )}
           />

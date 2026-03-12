@@ -9,17 +9,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { submitExport, downloadExportContent, getExport } from '@/entities/export/api'
+import {
+  downloadExportContent,
+  downloadExportContentAtPath,
+  getExport,
+  submitExport,
+} from '@/entities/export/api'
 import { getJob } from '@/entities/job/api'
 import { plannerKeys } from '@/entities/planner/queries'
 import { isConflict, isRateLimit } from '@/shared/api/client'
 import { isJobTerminal, isJobSuccessful } from '@/shared/lib/jobs'
 import type { ExportFormat } from '@/shared/api/types'
+import type { ReactNode } from 'react'
 
 interface Props {
   tripId: string
   tripVersion: number
   asMenuItems?: boolean
+  trigger?: ReactNode
 }
 
 const FORMAT_META: Record<ExportFormat, { label: string; icon: LucideIcon }> = {
@@ -28,7 +35,13 @@ const FORMAT_META: Record<ExportFormat, { label: string; icon: LucideIcon }> = {
   pdf: { label: 'PDF', icon: FileText },
 }
 
-export function ExportMenu({ tripId, tripVersion, asMenuItems }: Props) {
+function inferFilename(response: Response, fallback: string) {
+  const disposition = response.headers.get('Content-Disposition') || ''
+  const match = disposition.match(/filename=\"?([^\";]+)\"?/)
+  return match?.[1] || fallback
+}
+
+export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props) {
   const [isExporting, setIsExporting] = useState(false)
   const qc = useQueryClient()
 
@@ -72,12 +85,9 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems }: Props) {
 
         const exportRecord = await getExport(exportId)
 
-        if (exportRecord?.download_url) {
-          window.open(exportRecord.download_url, '_blank', 'noopener,noreferrer')
-          return
-        }
-
-        const res = await downloadExportContent(exportId)
+        const res = exportRecord?.download_url
+          ? await downloadExportContentAtPath(exportRecord.download_url)
+          : await downloadExportContent(exportId)
         if (!res.ok) {
           throw new Error('Download unavailable')
         }
@@ -87,7 +97,7 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems }: Props) {
         const a = document.createElement('a')
         a.href = url
         const ext = exportRecord?.format ?? 'export'
-        a.download = `trip-export.${ext}`
+        a.download = inferFilename(res, `trip-export.${ext}`)
         a.click()
         URL.revokeObjectURL(url)
       },
@@ -120,6 +130,17 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems }: Props) {
 
   if (asMenuItems) {
     return <>{items}</>
+  }
+
+  if (trigger) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {items}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
   }
 
   return (

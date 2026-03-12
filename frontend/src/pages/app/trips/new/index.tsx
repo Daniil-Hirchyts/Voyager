@@ -61,7 +61,6 @@ import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { cn } from '@/shared/lib/cn'
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps'
 import {
-  GoogleMapsProvider,
   VoyagerMap,
   VoyagerMarker,
   MapPanTo,
@@ -491,7 +490,7 @@ export default function TripCreatePage() {
   }, [animating, step, trigger, selectedDestinationSuggestion])
 
   return (
-    <div className="h-full flex flex-col-reverse md:flex-row bg-[var(--color-bg)] overflow-hidden">
+    <div className="h-dvh flex flex-col-reverse md:flex-row bg-white overflow-hidden">
       {/* ── Wizard panel (LEFT on desktop, BOTTOM on mobile) ── */}
       <div className="relative z-10 flex shrink-0 flex-col overflow-hidden
         md:w-[440px] md:border-r md:border-[var(--color-border-strong)]
@@ -880,7 +879,6 @@ export default function TripCreatePage() {
 
       {/* ── Map (RIGHT on desktop, TOP on mobile) ── */}
       <div className="relative h-[28%] md:h-full md:flex-1 overflow-hidden">
-        <GoogleMapsProvider>
           <VoyagerMap
             defaultCenter={{ lat: 20, lng: 10 }}
             defaultZoom={2}
@@ -899,7 +897,6 @@ export default function TripCreatePage() {
               />
             )}
           </VoyagerMap>
-        </GoogleMapsProvider>
         {/* Tap-to-set hint — only on step 1 before a destination is chosen */}
         {step === 1 && !selectedDestinationSuggestion && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
@@ -910,7 +907,7 @@ export default function TripCreatePage() {
           </div>
         )}
         {/* Left edge fade towards wizard panel */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[rgba(228,240,251,0.4)] to-transparent md:block hidden" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-white/20 to-transparent md:block hidden" />
         {/* Bottom fade on mobile */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white/60 to-transparent md:hidden" />
       </div>

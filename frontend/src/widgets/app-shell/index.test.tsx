@@ -2,12 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
-import { http, HttpResponse } from 'msw'
 import { AppShellLayout } from './index'
-
-import { renderWithQueryClient } from '@/test/utils'
-import { server } from '@/test/msw/server'
-import { buildTrip } from '@/test/fixtures/api'
 
 describe('AppShellLayout', () => {
   it('renders primary and trip navigation and collapses the sidebar through the shadcn provider', async () => {

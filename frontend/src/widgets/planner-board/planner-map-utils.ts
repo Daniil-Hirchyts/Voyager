@@ -3,6 +3,7 @@ import type {
   PlannerDay,
   RouteLegEstimateInput,
   RouteLegEstimateItem,
+  RouteTravelMode,
 } from '@/shared/api/types'
 import { plannerPrimaryPlace } from './categories'
 import {
@@ -49,6 +50,10 @@ export const PLANNER_MAP_DAY_COLORS = [
   '#35B56A',
   '#C98A37',
 ] as const
+
+function routeEstimateKey(fromActivityId: string, toActivityId: string) {
+  return `${fromActivityId}:${toActivityId}`
+}
 
 function activityCoordinates(activity: PlannerActivity) {
   const place = plannerPrimaryPlace(activity)
@@ -168,29 +173,40 @@ export function buildPlannerMapLegPayload(
   }
 }
 
+export function buildPlannerMapMetricsForActivities(
+  activities: PlannerActivity[],
+  estimateItems: RouteLegEstimateItem[] = [],
+  travelMode: RouteTravelMode = 'WALK',
+): PlannerMapDayMetrics {
+  const estimatesByLegId = new Map(
+    estimateItems.map((item) => [
+      routeEstimateKey(item.from_activity_id, item.to_activity_id),
+      item,
+    ]),
+  )
+  const fallbackLegs = buildPlannerTravelLegs(activities, travelMode)
+  const legs = fallbackLegs.map((leg) => {
+    const estimate = estimatesByLegId.get(routeEstimateKey(leg.fromActivityId, leg.toActivityId))
+    return estimate
+      ? {
+          ...leg,
+          distanceKm: estimate.distance_km,
+          durationMin: estimate.duration_min,
+        }
+      : leg
+  })
+
+  return { ...summarizePlannerTravelLegs(legs), legs }
+}
+
 export function buildPlannerMapDayMetrics(
   sections: PlannerMapSection[],
   estimateItems: RouteLegEstimateItem[] = [],
+  travelMode: RouteTravelMode = 'WALK',
 ): Record<string, PlannerMapDayMetrics> {
-  const estimatesByToActivityId = new Map(
-    estimateItems.map((item) => [item.to_activity_id, item]),
-  )
-
   return Object.fromEntries(
     sections.map((section) => {
-      const fallbackLegs = buildPlannerTravelLegs(section.activities)
-      const legs = fallbackLegs.map((leg) => {
-        const estimate = estimatesByToActivityId.get(leg.toActivityId)
-        return estimate
-          ? {
-              ...leg,
-              distanceKm: estimate.distance_km,
-              durationMin: estimate.duration_min,
-            }
-          : leg
-      })
-
-      return [section.dayId, { ...summarizePlannerTravelLegs(legs), legs }]
+      return [section.dayId, buildPlannerMapMetricsForActivities(section.activities, estimateItems, travelMode)]
     }),
   )
 }
@@ -214,21 +230,26 @@ export function filterVisibleStops(
 function routeDistance(
   orderedStops: PlannerMapStop[],
   estimateMap: Map<string, RouteLegEstimateItem>,
+  travelMode: RouteTravelMode,
 ) {
   return orderedStops.slice(1).reduce((total, stop, index) => {
     const previous = orderedStops[index]
-    const estimate = estimateMap.get(`${previous.activity.id}:${stop.activity.id}`)
+    const estimate = estimateMap.get(routeEstimateKey(previous.activity.id, stop.activity.id))
+    if (estimate?.duration_min != null) {
+      return total + estimate.duration_min
+    }
     if (estimate?.distance_km != null) {
       return total + estimate.distance_km
     }
-    const fallback = buildPlannerTravelLegs([previous.activity, stop.activity])[0]
-    return total + (fallback?.distanceKm ?? 0)
+    const fallback = buildPlannerTravelLegs([previous.activity, stop.activity], travelMode)[0]
+    return total + (fallback?.durationMin ?? fallback?.distanceKm ?? 0)
   }, 0)
 }
 
 export function optimizePlannerDayStops(
   section: PlannerMapSection,
   estimateItems: RouteLegEstimateItem[] = [],
+  travelMode: RouteTravelMode = 'WALK',
 ) {
   const markerStops = section.stops.filter((stop) => stop.markerNumber != null)
   if (markerStops.length < 3) {
@@ -236,7 +257,7 @@ export function optimizePlannerDayStops(
   }
 
   const estimateMap = new Map(
-    estimateItems.map((item) => [`${item.from_activity_id}:${item.to_activity_id}`, item]),
+    estimateItems.map((item) => [routeEstimateKey(item.from_activity_id, item.to_activity_id), item]),
   )
 
   const remaining = [...markerStops]
@@ -248,9 +269,14 @@ export function optimizePlannerDayStops(
     let bestCost = Number.POSITIVE_INFINITY
 
     remaining.forEach((candidate, index) => {
-      const estimate = estimateMap.get(`${current.activity.id}:${candidate.activity.id}`)
-      const fallback = buildPlannerTravelLegs([current.activity, candidate.activity])[0]
-      const cost = estimate?.distance_km ?? fallback?.distanceKm ?? Number.POSITIVE_INFINITY
+      const estimate = estimateMap.get(routeEstimateKey(current.activity.id, candidate.activity.id))
+      const fallback = buildPlannerTravelLegs([current.activity, candidate.activity], travelMode)[0]
+      const cost =
+        estimate?.duration_min ??
+        estimate?.distance_km ??
+        fallback?.durationMin ??
+        fallback?.distanceKm ??
+        Number.POSITIVE_INFINITY
       if (cost < bestCost) {
         bestCost = cost
         bestIndex = index
@@ -271,7 +297,10 @@ export function optimizePlannerDayStops(
           ...best.slice(i, j + 1).reverse(),
           ...best.slice(j + 1),
         ]
-        if (routeDistance(candidate, estimateMap) + 0.001 < routeDistance(best, estimateMap)) {
+        if (
+          routeDistance(candidate, estimateMap, travelMode) + 0.001 <
+          routeDistance(best, estimateMap, travelMode)
+        ) {
           best = candidate
           improved = true
         }

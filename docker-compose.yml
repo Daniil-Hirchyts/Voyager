@@ -28,6 +28,32 @@ services:
       timeout: 5s
       retries: 20
 
+  rustfs:
+    image: rustfs/rustfs:latest
+    container_name: voyager-rustfs
+    environment:
+      RUSTFS_ACCESS_KEY: ${VOYAGER_OBJECT_STORAGE_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${VOYAGER_OBJECT_STORAGE_SECRET_KEY:-rustfsadmin}
+      RUSTFS_REGION: ${VOYAGER_OBJECT_STORAGE_REGION:-us-east-1}
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ADDRESS: ":9000"
+      RUSTFS_CONSOLE_ADDRESS: ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - voyager_rustfs_data:/data
+      - voyager_rustfs_logs:/logs
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -S -O - http://127.0.0.1:9000 2>&1 | grep -q '403 Forbidden'",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
   keycloak-db:
     image: postgres:16-alpine
     container_name: voyager-keycloak-db
@@ -118,12 +144,22 @@ services:
       VOYAGER_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
       VOYAGER_GOOGLE_MAPS_LANGUAGE: ${VITE_GOOGLE_MAPS_LANGUAGE:-en}
       VOYAGER_GOOGLE_MAPS_REGION: ${VITE_GOOGLE_MAPS_REGION:-US}
+      VOYAGER_OBJECT_STORAGE_ENDPOINT: ${VOYAGER_OBJECT_STORAGE_ENDPOINT:-http://rustfs:9000}
+      VOYAGER_OBJECT_STORAGE_PUBLIC_ENDPOINT: ${VOYAGER_OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://localhost:9000}
+      VOYAGER_OBJECT_STORAGE_ACCESS_KEY: ${VOYAGER_OBJECT_STORAGE_ACCESS_KEY:-rustfsadmin}
+      VOYAGER_OBJECT_STORAGE_SECRET_KEY: ${VOYAGER_OBJECT_STORAGE_SECRET_KEY:-rustfsadmin}
+      VOYAGER_OBJECT_STORAGE_BUCKET: ${VOYAGER_OBJECT_STORAGE_BUCKET:-voyager-media}
+      VOYAGER_OBJECT_STORAGE_REGION: ${VOYAGER_OBJECT_STORAGE_REGION:-us-east-1}
+      VOYAGER_OBJECT_STORAGE_URL_TTL_SEC: ${VOYAGER_OBJECT_STORAGE_URL_TTL_SEC:-900}
+      VOYAGER_OBJECT_STORAGE_MAX_UPLOAD_BYTES: ${VOYAGER_OBJECT_STORAGE_MAX_UPLOAD_BYTES:-26214400}
       UV_LINK_MODE: copy
       UV_PROJECT_ENVIRONMENT: /tmp/venv
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
       keycloak:
         condition: service_started
@@ -189,12 +225,22 @@ services:
       VOYAGER_GOOGLE_MAPS_API_KEY: ${VITE_GOOGLE_MAPS_API_KEY:-}
       VOYAGER_GOOGLE_MAPS_LANGUAGE: ${VITE_GOOGLE_MAPS_LANGUAGE:-en}
       VOYAGER_GOOGLE_MAPS_REGION: ${VITE_GOOGLE_MAPS_REGION:-US}
+      VOYAGER_OBJECT_STORAGE_ENDPOINT: ${VOYAGER_OBJECT_STORAGE_ENDPOINT:-http://rustfs:9000}
+      VOYAGER_OBJECT_STORAGE_PUBLIC_ENDPOINT: ${VOYAGER_OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://localhost:9000}
+      VOYAGER_OBJECT_STORAGE_ACCESS_KEY: ${VOYAGER_OBJECT_STORAGE_ACCESS_KEY:-rustfsadmin}
+      VOYAGER_OBJECT_STORAGE_SECRET_KEY: ${VOYAGER_OBJECT_STORAGE_SECRET_KEY:-rustfsadmin}
+      VOYAGER_OBJECT_STORAGE_BUCKET: ${VOYAGER_OBJECT_STORAGE_BUCKET:-voyager-media}
+      VOYAGER_OBJECT_STORAGE_REGION: ${VOYAGER_OBJECT_STORAGE_REGION:-us-east-1}
+      VOYAGER_OBJECT_STORAGE_URL_TTL_SEC: ${VOYAGER_OBJECT_STORAGE_URL_TTL_SEC:-900}
+      VOYAGER_OBJECT_STORAGE_MAX_UPLOAD_BYTES: ${VOYAGER_OBJECT_STORAGE_MAX_UPLOAD_BYTES:-26214400}
       UV_LINK_MODE: copy
       UV_PROJECT_ENVIRONMENT: /tmp/venv
     depends_on:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rustfs:
         condition: service_healthy
       api:
         condition: service_started
@@ -212,3 +258,5 @@ volumes:
   voyager_db_data:
   voyager_keycloak_db_data:
   voyager_exports_data:
+  voyager_rustfs_data:
+  voyager_rustfs_logs:

@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { MemoryRouter } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { config } from '@/app/config'
-import PlannerBoard from './index'
+import { usePlannerStore } from '@/shared/stores/planner.store'
+import PlannerBoard, { resolveDragPreviewSize } from './index'
 import { renderWithQueryClient } from '@/test/utils'
 import { server } from '@/test/msw/server'
 import {
@@ -18,6 +19,82 @@ import {
 } from '@/test/fixtures/api'
 
 describe('PlannerBoard', () => {
+  it('captures the dragged card rect for the overlay preview size', () => {
+    expect(
+      resolveDragPreviewSize({
+        active: {
+          rect: {
+            current: {
+              initial: {
+                width: 286,
+                height: 142,
+                top: 0,
+                left: 0,
+                right: 286,
+                bottom: 142,
+              },
+              translated: null,
+            },
+          },
+        },
+      } as never),
+    ).toEqual({
+      width: 286,
+      height: 142,
+    })
+  })
+
+  it('falls back to the source card element when the dnd rect is unavailable', () => {
+    const article = document.createElement('article')
+    const handle = document.createElement('button')
+    article.append(handle)
+    document.body.append(article)
+
+    Object.defineProperty(article, 'getBoundingClientRect', {
+      value: () => ({
+        width: 304,
+        height: 156,
+        top: 0,
+        left: 0,
+        right: 304,
+        bottom: 156,
+      }),
+    })
+
+    expect(
+      resolveDragPreviewSize({
+        active: {
+          rect: {
+            current: {
+              initial: null,
+              translated: null,
+            },
+          },
+        },
+        activatorEvent: new MouseEvent('pointerdown', { bubbles: true }),
+      } as never),
+    ).toBeNull()
+
+    expect(
+      resolveDragPreviewSize({
+        active: {
+          rect: {
+            current: {
+              initial: null,
+              translated: null,
+            },
+          },
+        },
+        activatorEvent: { target: handle },
+      } as never),
+    ).toEqual({
+      width: 304,
+      height: 156,
+    })
+
+    article.remove()
+  })
+
   it('renders inbox activities separately from untimed day activities in kanban view', async () => {
     const trip = buildTrip()
     const inboxActivity = buildPlannerActivity({
@@ -519,6 +596,239 @@ describe('PlannerBoard', () => {
     expect(await screen.findByText('Day 1')).toBeInTheDocument()
     expect(screen.queryByTestId('planner-recommendations-sheet')).not.toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('preserves collapsed map day accordions across remounts', async () => {
+    const trip = buildTrip({ id: 'trip-map-accordion-state' })
+    const activity = buildPlannerActivity({
+      id: 'map-accordion-activity',
+      trip_day_id: 'day-1',
+      title: 'Grand Palais',
+      place_id: 'place-grand-palais',
+    })
+    const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [activity] })
+    const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+    )
+
+    const renderMapView = () =>
+      renderWithQueryClient(
+        <MemoryRouter initialEntries={[`/app/trips/${trip.id}/plan?view=map`]}>
+          <PlannerBoard tripId={trip.id} />
+        </MemoryRouter>,
+      )
+
+    const firstRender = renderMapView()
+
+    expect(await screen.findByText('Day 1')).toBeInTheDocument()
+    expect(screen.getByTestId('planner-map-day-trigger-day-1')).toHaveAttribute('data-state', 'open')
+
+    act(() => {
+      usePlannerStore.getState().setMapDayAccordionState(trip.id, { 'day-1': false })
+    })
+
+    await waitFor(() => {
+      expect(usePlannerStore.getState().mapDayAccordionStateByTrip[trip.id]).toMatchObject({ 'day-1': false })
+    })
+    expect(screen.getByTestId('planner-map-day-trigger-day-1')).toHaveAttribute('data-state', 'closed')
+    const persistedAccordionState = await Promise.resolve(
+      usePlannerStore.persist.getOptions().storage?.getItem('voyager-planner-store'),
+    )
+
+    firstRender.unmount()
+
+    act(() => {
+      usePlannerStore.setState({ mapDayAccordionStateByTrip: {} })
+    })
+    await Promise.resolve(
+      usePlannerStore.persist
+        .getOptions()
+        .storage?.setItem('voyager-planner-store', persistedAccordionState!),
+    )
+    await act(async () => {
+      await usePlannerStore.persist.rehydrate()
+    })
+
+    renderMapView()
+
+    expect(await screen.findByText('Day 1')).toBeInTheDocument()
+    expect(usePlannerStore.getState().mapDayAccordionStateByTrip[trip.id]).toMatchObject({ 'day-1': false })
+    expect(screen.getByTestId('planner-map-day-trigger-day-1')).toHaveAttribute('data-state', 'closed')
+  })
+
+  it('keeps map preview travel separators visible with the reordered route metrics', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({ id: 'trip-map-preview-metrics', route_travel_mode: 'DRIVE' })
+    const firstActivity = buildPlannerActivity({
+      id: 'map-stop-a',
+      trip_day_id: 'day-1',
+      order_index: 0,
+      title: 'Start',
+      place_id: 'place-map-a',
+      place: {
+        id: 'place-map-a',
+        name: 'Start',
+        category: 'landmark',
+        address_text: 'A',
+        lat: 0,
+        lon: 0,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+    const secondActivity = buildPlannerActivity({
+      id: 'map-stop-b',
+      trip_day_id: 'day-1',
+      order_index: 1,
+      title: 'Second',
+      place_id: 'place-map-b',
+      place: {
+        id: 'place-map-b',
+        name: 'Second',
+        category: 'landmark',
+        address_text: 'B',
+        lat: 0,
+        lon: 2,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+    const thirdActivity = buildPlannerActivity({
+      id: 'map-stop-c',
+      trip_day_id: 'day-1',
+      order_index: 2,
+      title: 'Third',
+      place_id: 'place-map-c',
+      place: {
+        id: 'place-map-c',
+        name: 'Third',
+        category: 'landmark',
+        address_text: 'C',
+        lat: 0,
+        lon: 1,
+        photo_count: 0,
+        primary_photo: null,
+      },
+    })
+    const day = buildPlannerDay({
+      id: 'day-1',
+      trip_id: trip.id,
+      activities: [firstActivity, secondActivity, thirdActivity],
+    })
+    const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
+    const routeRequests: Array<{ travel_mode?: string; legs: Array<{ from_activity_id: string; to_activity_id: string }> }> = []
+    let reorderedActivityIds: string[] | null = null
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+      http.get('http://localhost:8000/trips/:tripId', () => HttpResponse.json(trip)),
+      http.post('http://localhost:8000/routes/legs', async ({ request }) => {
+        const body = (await request.json()) as {
+          travel_mode?: string
+          legs: Array<{ from_activity_id: string; to_activity_id: string }>
+        }
+        routeRequests.push(body)
+
+        if (body.legs.length === 2) {
+          return HttpResponse.json({
+            items: [
+              {
+                from_activity_id: 'map-stop-a',
+                to_activity_id: 'map-stop-b',
+                distance_km: 1,
+                duration_min: 14,
+              },
+              {
+                from_activity_id: 'map-stop-b',
+                to_activity_id: 'map-stop-c',
+                distance_km: 0.8,
+                duration_min: 11,
+              },
+            ],
+          })
+        }
+
+        return HttpResponse.json({
+          items: [
+            {
+              from_activity_id: 'map-stop-a',
+              to_activity_id: 'map-stop-b',
+              distance_km: 1,
+              duration_min: 14,
+            },
+            {
+              from_activity_id: 'map-stop-a',
+              to_activity_id: 'map-stop-c',
+              distance_km: 0.4,
+              duration_min: 5,
+            },
+            {
+              from_activity_id: 'map-stop-b',
+              to_activity_id: 'map-stop-a',
+              distance_km: 1.1,
+              duration_min: 16,
+            },
+            {
+              from_activity_id: 'map-stop-b',
+              to_activity_id: 'map-stop-c',
+              distance_km: 0.8,
+              duration_min: 11,
+            },
+            {
+              from_activity_id: 'map-stop-c',
+              to_activity_id: 'map-stop-a',
+              distance_km: 0.5,
+              duration_min: 7,
+            },
+            {
+              from_activity_id: 'map-stop-c',
+              to_activity_id: 'map-stop-b',
+              distance_km: 0.5,
+              duration_min: 6,
+            },
+          ],
+        })
+      }),
+      http.post('http://localhost:8000/days/:dayId/activities/reorder', async ({ request }) => {
+        const body = (await request.json()) as {
+          items: Array<{ activity_id: string; order_index: number }>
+        }
+        reorderedActivityIds = body.items.map((item) => item.activity_id)
+        return HttpResponse.json(listResponse([]))
+      }),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={[`/app/trips/${trip.id}/plan?view=map`]}>
+        <PlannerBoard tripId={trip.id} />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Day 1')).toBeInTheDocument()
+    expect(screen.getByTestId('planner-map-day-trigger-day-1')).toHaveAttribute('data-state', 'open')
+    expect(await screen.findByTestId('planner-map-travel-leg-map-stop-b')).toHaveTextContent('14 min')
+    expect(screen.getByTestId('planner-map-travel-leg-map-stop-b')).toHaveTextContent('1 km')
+
+    await user.click(screen.getByRole('button', { name: 'Optimise itinerary' }))
+
+    expect(await screen.findByText('Voyager found a shorter driving order for this day.')).toBeInTheDocument()
+    expect(screen.getByTestId('planner-map-travel-leg-map-stop-c')).toHaveTextContent('5 min')
+    expect(screen.getByTestId('planner-map-travel-leg-map-stop-c')).toHaveTextContent('0.4 km')
+    expect(screen.getByTestId('planner-map-travel-leg-map-stop-b')).toHaveTextContent('6 min')
+    expect(screen.getByTestId('planner-map-travel-leg-map-stop-b')).toHaveTextContent('0.5 km')
+
+    await waitFor(() => {
+      expect(routeRequests[routeRequests.length - 1]?.travel_mode).toBe('DRIVE')
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Apply' }))
+
+    await waitFor(() => {
+      expect(reorderedActivityIds).toEqual(['map-stop-a', 'map-stop-c', 'map-stop-b'])
+    })
+    expect(screen.getByTestId('planner-map-day-trigger-day-1')).toHaveAttribute('data-state', 'open')
   })
 
   it('opens map search and layers controls accessibly and uses the bottom sheet for saved marker details', async () => {

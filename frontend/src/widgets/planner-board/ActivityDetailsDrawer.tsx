@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
+  SheetTitle,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { formatMoney } from "@/shared/lib/format";
@@ -24,6 +26,7 @@ import {
   plannerTravelRoute,
 } from "./categories";
 import { PlannerPreviewMap } from "./PlannerPreviewMap";
+import TripAssetManager from "@/widgets/trip-assets";
 import { cn } from "@/shared/lib/cn";
 import {
   BedDouble,
@@ -101,7 +104,7 @@ function MapPreview({ activity }: { activity: PlannerActivity }) {
 
 export function ActivityDetailsDrawer({
   open,
-  tripId: _tripId,
+  tripId,
   activity,
   dayLabel,
   onClose,
@@ -141,6 +144,10 @@ export function ActivityDetailsDrawer({
             : "h-full w-full max-w-[28rem] sm:max-w-[28rem]",
         )}
       >
+        <SheetTitle className="sr-only">{activity.title}</SheetTitle>
+        <SheetDescription className="sr-only">
+          {categoryDescription || dayLabel || "Activity details"}
+        </SheetDescription>
         {/* Header */}
         <div className="shrink-0 border-b border-black/8 bg-white px-5 py-5">
           <div className="flex items-start gap-3">
@@ -302,6 +309,14 @@ export function ActivityDetailsDrawer({
                 </p>
               </div>
             ) : null}
+
+            <TripAssetManager
+              tripId={tripId}
+              activityId={activity.id}
+              title="Attachments"
+              description="Add receipts, reservation PDFs, screenshots, and extra photos that belong to this activity."
+              className="shadow-none"
+            />
           </div>
         </div>
       </SheetContent>

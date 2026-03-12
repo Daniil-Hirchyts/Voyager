@@ -25,6 +25,34 @@ def _create_trip(api_client, headers, *, title: str) -> dict:
     return response.json()
 
 
+def _create_place(
+    api_client,
+    headers,
+    *,
+    name: str,
+    lat: float,
+    lon: float,
+    address_text: str,
+    category: str = "poi",
+) -> dict:
+    response = api_client.post(
+        "/places",
+        headers=headers | {"Idempotency-Key": f"p5-place-{uuid.uuid4()}"},
+        json={
+            "source": "phase5",
+            "external_id": None,
+            "name": name,
+            "category": category,
+            "address_text": address_text,
+            "lat": lat,
+            "lon": lon,
+            "metadata": {},
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
 def _list_days(api_client, headers, trip_id: str) -> list[dict]:
     response = api_client.get(f"/trips/{trip_id}/days", headers=headers)
     assert response.status_code == 200
@@ -99,6 +127,100 @@ def test_export_submit_poll_metadata_and_content(api_client, headers_user1):
     assert content.headers["content-type"].startswith("application/json")
     assert content.text.strip().startswith("{")
     assert "offers" not in content.json()
+
+
+def test_export_content_includes_locations_and_richer_formats(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase5 rich export")
+    day_id = _list_days(api_client, headers_user1, trip["id"])[0]["id"]
+    place = _create_place(
+        api_client,
+        headers_user1,
+        name="Time Out Market",
+        lat=38.7071,
+        lon=-9.1453,
+        address_text="Avenida 24 de Julho 49, Lisbon",
+        category="food_hall",
+    )
+
+    activity = api_client.post(
+        f"/days/{day_id}/activities",
+        headers=headers_user1 | {"Idempotency-Key": f"p5-rich-activity-{uuid.uuid4()}"},
+        json={
+            "title": "Breakfast at Time Out Market",
+            "source": "manual",
+            "category": "eat",
+            "description": "Start the morning with a tasting stop at the market.",
+            "notes": "Try the local pastries before the crowds build.",
+            "place_id": place["id"],
+            "start_time": "08:30",
+            "duration_min": 90,
+            "estimated_cost_amount": 18,
+            "estimated_cost_currency": "EUR",
+        },
+    )
+    assert activity.status_code == 201
+    current_trip = api_client.get(f"/trips/{trip['id']}", headers=headers_user1)
+    assert current_trip.status_code == 200
+    current_version = current_trip.json()["version"]
+
+    json_submit = _submit_export(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        trip_version=current_version,
+        format_name="json",
+    )
+    json_job = _wait_for_job(api_client, headers_user1, json_submit.json()["job_id"])
+    assert json_job["status"] == "SUCCEEDED"
+    json_content = api_client.get(
+        f"/exports/{json_job['result']['export_id']}/content",
+        headers=headers_user1,
+    )
+    assert json_content.status_code == 200
+    assert '\n  "days": [' in json_content.text
+    payload = json_content.json()
+    exported_activity = payload["days"][0]["activities"][0]
+    assert exported_activity["location"]["name"] == "Time Out Market"
+    assert exported_activity["location"]["address_text"] == "Avenida 24 de Julho 49, Lisbon"
+    assert exported_activity["location"]["lat"] == pytest.approx(38.7071)
+    assert exported_activity["cost_label"] == "18.00 EUR"
+
+    ics_submit = _submit_export(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        trip_version=current_version,
+        format_name="ics",
+    )
+    ics_job = _wait_for_job(api_client, headers_user1, ics_submit.json()["job_id"])
+    assert ics_job["status"] == "SUCCEEDED"
+    ics_content = api_client.get(
+        f"/exports/{ics_job['result']['export_id']}/content",
+        headers=headers_user1,
+    )
+    assert ics_content.status_code == 200
+    assert "LOCATION:Time Out Market" in ics_content.text
+    assert "GEO:38.707100;-9.145300" in ics_content.text
+    assert "Budget: 18.00 EUR" in ics_content.text
+
+    pdf_submit = _submit_export(
+        api_client,
+        headers_user1,
+        trip_id=trip["id"],
+        trip_version=current_version,
+        format_name="pdf",
+    )
+    pdf_job = _wait_for_job(api_client, headers_user1, pdf_submit.json()["job_id"])
+    assert pdf_job["status"] == "SUCCEEDED"
+    pdf_content = api_client.get(
+        f"/exports/{pdf_job['result']['export_id']}/content",
+        headers=headers_user1,
+    )
+    assert pdf_content.status_code == 200
+    pdf_text = _extract_pdf_text(pdf_content.content)
+    assert "Breakfast at Time Out Market" in pdf_text
+    assert "Location: Time Out Market, Avenida 24 de Julho 49, Lisbon" in pdf_text
+    assert "Notes: Try the local pastries before the crowds build." in pdf_text
 
 
 def test_stale_if_match_conflict_and_no_job_created(api_client, headers_user1):

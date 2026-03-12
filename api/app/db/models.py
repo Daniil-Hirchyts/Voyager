@@ -65,6 +65,7 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     budget_amount: Mapped[Decimal | None] = mapped_column(Numeric(12, 2), nullable=True)
     budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     trip_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    route_travel_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="WALK")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     last_generated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -83,6 +84,12 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         back_populates="trip",
         cascade="all,delete",
         order_by="TripExport.created_at.desc()",
+    )
+    assets: Mapped[list["TripAsset"]] = relationship(
+        "TripAsset",
+        back_populates="trip",
+        cascade="all,delete",
+        order_by="TripAsset.created_at.desc()",
     )
     event_snapshots: Mapped[list["EventSnapshot"]] = relationship(
         "EventSnapshot",
@@ -251,6 +258,11 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     event_snapshot: Mapped["EventSnapshot | None"] = relationship(
         "EventSnapshot",
         back_populates="activities",
+    )
+    assets: Mapped[list["TripAsset"]] = relationship(
+        "TripAsset",
+        back_populates="activity",
+        order_by="TripAsset.created_at.desc()",
     )
 
     __table_args__ = (
@@ -514,6 +526,48 @@ class ItineraryProposalActivity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
 
 
+class TripAsset(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "trip_asset"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("trip.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    activity_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("activity.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content_type: Mapped[str] = mapped_column(String(255), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    object_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    thumbnail_object_key: Mapped[str | None] = mapped_column(Text, nullable=True, unique=True)
+    image_width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    image_height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="assets")
+    activity: Mapped["Activity | None"] = relationship("Activity", back_populates="assets")
+    user: Mapped["UserProfile"] = relationship("UserProfile")
+
+    __table_args__ = (
+        CheckConstraint("kind IN ('photo', 'file')", name="trip_asset_kind"),
+        Index("ix_trip_asset_trip_activity_created", "trip_id", "activity_id", "created_at"),
+        Index("ix_trip_asset_user_created", "user_id", "created_at"),
+    )
+
+
 class TripExport(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "trip_export"
 
@@ -576,4 +630,3 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
         Index("ix_audit_log_user_created_desc", "user_id", "created_at"),
         Index("ix_audit_log_entity_created_desc", "entity_type", "entity_id", "created_at"),
     )
-

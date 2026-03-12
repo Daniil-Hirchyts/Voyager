@@ -2362,6 +2362,8 @@ export interface components {
             budget_currency?: string | null;
             /** Trip Type */
             trip_type?: string | null;
+            /** @default WALK */
+            route_travel_mode?: components["schemas"]["RouteTravelMode"];
         };
         /** TripExportCreateRequest */
         TripExportCreateRequest: {
@@ -2541,6 +2543,7 @@ export interface components {
             budget_currency?: string | null;
             /** Trip Type */
             trip_type?: string | null;
+            route_travel_mode?: components["schemas"]["RouteTravelMode"] | null;
         };
         /** TripPlannerResponse */
         TripPlannerResponse: {
@@ -2600,6 +2603,8 @@ export interface components {
             budget_currency: string | null;
             /** Trip Type */
             trip_type: string | null;
+            /** Route Travel Mode */
+            route_travel_mode: components["schemas"]["RouteTravelMode"];
             /** Version */
             version: number;
             /**

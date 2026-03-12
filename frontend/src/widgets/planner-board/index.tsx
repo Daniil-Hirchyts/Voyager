@@ -19,8 +19,7 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { Check, Compass, LayoutGrid, MapPinned, Settings2 } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+
 import { toast } from "sonner";
 import { config } from "@/app/config";
 import {
@@ -33,9 +32,9 @@ import { getPlanner } from "@/entities/planner/api";
 import { plannerKeys, usePlanner } from "@/entities/planner/queries";
 import { isConflict, isRateLimit } from "@/shared/api/client";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
-import { formatMoney } from "@/shared/lib/format";
 import { isJobSuccessful, isJobTerminal } from "@/shared/lib/jobs";
 import { usePlannerStore } from "@/shared/stores/planner.store";
+import { useSideRailStore } from "@/shared/stores/side-rail.store";
 import type {
   ActivityCreateInput,
   PlannerActivity,
@@ -44,60 +43,26 @@ import type {
   TripGenerateInput,
 } from "@/shared/api/types";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ComboboxOption } from "@/components/ui/combobox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  useAppShellHeaderActions,
-  useAppShellHeaderLeadingActions,
-  useAppShellHeaderMeta,
-} from "@/widgets/app-shell";
 import { ActivityCardView } from "./ActivityCard";
 import { ActivityDrawer } from "./ActivityDrawer";
-import { DayColumn } from "./DayColumn";
-import { GenerationControls } from "./GenerationControls";
-import { PlannerInbox } from "./PlannerInbox";
 import { ActivityMapDetailSheet, PlannerMapView } from "./PlannerMapView";
-import {
-  PlannerRecommendationDetailPanel,
-  PlannerRecommendationsPanel,
-} from "./PlannerRecommendations";
 import type { PlannerRecommendationEntry } from "./usePlannerRecommendations";
 import { usePlannerRecommendations } from "./usePlannerRecommendations";
-import { ExportMenu } from "./ExportMenu";
 import { TripSettingsMenu } from "./TripSettingsMenu";
 
 interface Props {
   tripId: string;
 }
-
-type PlannerView = "kanban" | "map";
 type PlannerContainerId = "inbox" | string;
 type ActivityLocation = {
   containerId: PlannerContainerId;
   dayId: string | null;
   index: number;
+};
+type DragPreviewSize = {
+  width: number;
+  height: number;
 };
 type EditorState = {
   activityId: string | null;
@@ -108,21 +73,6 @@ const INBOX_CONTAINER_ID = "inbox";
 const INBOX_DAY_VALUE = "__inbox__";
 const CHIP_PREFIX = "chip::";
 const END_SUFFIX = "::end";
-const EDGE_SCROLL_THRESHOLD = 80;
-const EDGE_SCROLL_STEP = 18;
-
-function getView(
-  raw: string | null,
-  fallback: PlannerView = "kanban",
-): PlannerView {
-  if (raw === "map") {
-    return "map";
-  }
-  if (raw === "kanban") {
-    return "kanban";
-  }
-  return fallback;
-}
 
 function clonePlanner(planner: PlannerResponse): PlannerResponse {
   return {
@@ -140,6 +90,35 @@ function clonePlanner(planner: PlannerResponse): PlannerResponse {
 
 function getEndZoneId(containerId: PlannerContainerId) {
   return `${containerId}${END_SUFFIX}`;
+}
+
+export function resolveDragPreviewSize(
+  event: Pick<DragStartEvent, "active" | "activatorEvent">,
+): DragPreviewSize | null {
+  const sourceRect =
+    event.active.rect.current.initial ?? event.active.rect.current.translated;
+  if (sourceRect) {
+    return {
+      width: sourceRect.width,
+      height: sourceRect.height,
+    };
+  }
+
+  const activatorTarget = event.activatorEvent.target;
+  if (!(activatorTarget instanceof Element)) {
+    return null;
+  }
+
+  const sourceCard = activatorTarget.closest("article");
+  if (!sourceCard) {
+    return null;
+  }
+
+  const fallbackRect = sourceCard.getBoundingClientRect();
+  return {
+    width: fallbackRect.width,
+    height: fallbackRect.height,
+  };
 }
 
 function normalizeActivityList(
@@ -391,30 +370,28 @@ function findDayLabel(
 export default function PlannerBoard({ tripId }: Props) {
   const qc = useQueryClient();
   const isMobile = useIsMobile();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [detailsActivityId, setDetailsActivityId] = useState<string | null>(
     null,
   );
   const [selectedRecommendation, setSelectedRecommendation] =
     useState<PlannerRecommendationEntry | null>(null);
-  const [boardRecommendationsOpen, setBoardRecommendationsOpen] =
-    useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
-  const [mobileContainerId, setMobileContainerId] =
-    useState<PlannerContainerId>(INBOX_CONTAINER_ID);
-  const [isInboxDetached, setIsInboxDetached] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const setPlannerInstruments = useSideRailStore((s) => s.setPlannerInstruments);
+  useEffect(() => {
+    setPlannerInstruments({ onOpenSettings: () => setSettingsMenuOpen(true) });
+    return () => { setPlannerInstruments(null); };
+  }, [setPlannerInstruments]);
   const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(
     null,
   );
-  const previousViewRef = useRef<PlannerView | null>(null);
+  const [activeDragPreviewSize, setActiveDragPreviewSize] =
+    useState<DragPreviewSize | null>(null);
   const prevJobStatus = useRef<string | null>(null);
   const lastOverIdRef = useRef<UniqueIdentifier | null>(null);
   const dragOriginPlannerRef = useRef<PlannerResponse | null>(null);
-  const boardRailRef = useRef<HTMLDivElement | null>(null);
-  const pointerPositionRef = useRef<{ x: number; y: number } | null>(null);
-  const edgeScrollFrameRef = useRef<number | null>(null);
 
   const { data: planner, isLoading, isError } = usePlanner(tripId);
 
@@ -454,12 +431,6 @@ export default function PlannerBoard({ tripId }: Props) {
         : [],
     [planner],
   );
-  const boardSelectedActivity = useMemo(
-    () =>
-      findActivity(planner, detailsActivityId) ??
-      findActivity(planner, editorState?.activityId ?? null),
-    [detailsActivityId, editorState?.activityId, planner],
-  );
   const detailsActivity = useMemo(
     () => findActivity(planner, detailsActivityId),
     [detailsActivityId, planner],
@@ -476,10 +447,6 @@ export default function PlannerBoard({ tripId }: Props) {
     allActivities,
     enabled: config.features.activitiesUI,
   });
-  const currentView = getView(
-    searchParams.get("view"),
-    recommendations.preferences.map.defaultPlannerView,
-  );
 
   const collisionDetectionStrategy = useCallback<CollisionDetection>(
     (args) => {
@@ -559,109 +526,10 @@ export default function PlannerBoard({ tripId }: Props) {
   ]);
 
   useEffect(() => {
-    if (currentView !== "kanban") {
-      setDetailsActivityId(null);
-    }
-  }, [currentView]);
-
-  useEffect(() => {
-    const previousView = previousViewRef.current;
-    if (currentView === "map" && previousView !== "map") {
-      if (selectedRecommendation) {
-        setSelectedRecommendation(null);
-      }
-      if (selectedActivityId || selectedPlaceId) {
-        setSelectedActivityId(null);
-        setSelectedPlaceId(null);
-      }
-    }
-    previousViewRef.current = currentView;
-  }, [
-    currentView,
-    selectedActivityId,
-    selectedPlaceId,
-    selectedRecommendation,
-  ]);
-
-  useEffect(() => {
     if (!recommendations.enabled) {
       setSelectedRecommendation(null);
-      setBoardRecommendationsOpen(false);
     }
   }, [recommendations.enabled]);
-
-  useEffect(() => {
-    if (currentView !== "kanban") {
-      setBoardRecommendationsOpen(false);
-    }
-  }, [currentView]);
-
-  useEffect(() => {
-    if (!planner) {
-      return;
-    }
-    const validContainerIds = new Set<PlannerContainerId>([
-      INBOX_CONTAINER_ID,
-      ...planner.days.map((day) => day.id),
-    ]);
-    if (!validContainerIds.has(mobileContainerId)) {
-      setMobileContainerId(INBOX_CONTAINER_ID);
-    }
-  }, [mobileContainerId, planner]);
-
-  useEffect(() => {
-    if (!activeActivity || currentView !== "kanban" || isMobile) {
-      if (edgeScrollFrameRef.current != null) {
-        window.cancelAnimationFrame(edgeScrollFrameRef.current);
-        edgeScrollFrameRef.current = null;
-      }
-      return;
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      pointerPositionRef.current = { x: event.clientX, y: event.clientY };
-    };
-
-    const tick = () => {
-      const rail = boardRailRef.current;
-      const pointer = pointerPositionRef.current;
-      if (rail && pointer) {
-        const rect = rail.getBoundingClientRect();
-        if (pointer.x < rect.left + EDGE_SCROLL_THRESHOLD) {
-          rail.scrollLeft -= EDGE_SCROLL_STEP;
-        } else if (pointer.x > rect.right - EDGE_SCROLL_THRESHOLD) {
-          rail.scrollLeft += EDGE_SCROLL_STEP;
-        }
-      }
-      edgeScrollFrameRef.current = window.requestAnimationFrame(tick);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    edgeScrollFrameRef.current = window.requestAnimationFrame(tick);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      if (edgeScrollFrameRef.current != null) {
-        window.cancelAnimationFrame(edgeScrollFrameRef.current);
-        edgeScrollFrameRef.current = null;
-      }
-    };
-  }, [activeActivity, currentView, isMobile]);
-
-  const updateParams = (
-    updates: Record<string, string | null>,
-    replace = false,
-  ) => {
-    const next = new URLSearchParams(searchParams);
-    Object.entries(updates).forEach(([key, value]) => {
-      if (!value) {
-        next.delete(key);
-      } else {
-        next.set(key, value);
-      }
-    });
-    setSearchParams(next, { replace });
-  };
 
   const invalidatePlanner = async () => {
     await qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
@@ -692,11 +560,6 @@ export default function PlannerBoard({ tripId }: Props) {
   };
 
   const closeEditor = () => setEditorState(null);
-
-  const openRecommendationsDrawer = () => {
-    setSelectedRecommendation(null);
-    setBoardRecommendationsOpen(true);
-  };
 
   const handleDrawerSave = async (data: ActivityCreateInput) => {
     if (!planner) {
@@ -894,8 +757,8 @@ export default function PlannerBoard({ tripId }: Props) {
       dragOriginPlannerRef.current = clonePlanner(planner);
     }
     lastOverIdRef.current = event.active.id;
+    setActiveDragPreviewSize(resolveDragPreviewSize(event));
     setActiveActivity(findActivity(planner, String(event.active.id)));
-    pointerPositionRef.current = null;
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -927,16 +790,13 @@ export default function PlannerBoard({ tripId }: Props) {
     if (!nextPlanner) {
       return;
     }
-    if (isMobile && overId.startsWith(CHIP_PREFIX)) {
-      setMobileContainerId(target.containerId);
-    }
     qc.setQueryData(plannerKeys.detail(tripId), nextPlanner);
   };
 
   const handleDragCancel = () => {
     setActiveActivity(null);
+    setActiveDragPreviewSize(null);
     lastOverIdRef.current = null;
-    pointerPositionRef.current = null;
     if (dragOriginPlannerRef.current) {
       qc.setQueryData(plannerKeys.detail(tripId), dragOriginPlannerRef.current);
       dragOriginPlannerRef.current = null;
@@ -950,8 +810,8 @@ export default function PlannerBoard({ tripId }: Props) {
       qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner;
 
     setActiveActivity(null);
+    setActiveDragPreviewSize(null);
     lastOverIdRef.current = null;
-    pointerPositionRef.current = null;
     dragOriginPlannerRef.current = null;
 
     if (!capturedActivity || !originPlanner || !currentPlanner || !event.over) {
@@ -1044,189 +904,6 @@ export default function PlannerBoard({ tripId }: Props) {
   };
 
 
-  const headerActions = useMemo(
-    () =>
-      planner ? (
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2 pb-1 -mb-1 md:flex-none">
-          
-          {/* Desktop Layout */}
-          <div className="hidden md:flex items-center gap-2 shrink-0">
-            <Tabs
-              value={currentView}
-              onValueChange={(value) => updateParams({ view: value }, false)}
-            >
-              <TabsList className="h-8 rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] p-0.5">
-                <TabsTrigger
-                  value="kanban"
-                  className="h-7 rounded-[6px] px-2.5 text-[0.78rem] min-w-8"
-                >
-                  <LayoutGrid className="sm:mr-1.5 h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                  <span className="hidden sm:inline">Board</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="map"
-                  className="h-7 rounded-[6px] px-2.5 text-[0.78rem] min-w-8"
-                >
-                  <MapPinned className="sm:mr-1.5 h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                  <span className="hidden sm:inline">Map</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {recommendations.enabled && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-[8px] px-2.5 min-w-8"
-                onClick={openRecommendationsDrawer}
-              >
-                <Compass className="h-3.5 w-3.5 sm:mr-1.5" />
-                <span className="hidden sm:inline">Recommendations</span>
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 rounded-[8px] px-2.5 min-w-8"
-              onClick={() => setSettingsMenuOpen(true)}
-            >
-              <Settings2 className="h-4 w-4 sm:mr-1.5" />
-              <span className="hidden sm:inline">Settings</span>
-            </Button>
-
-            <ExportMenu tripId={tripId} tripVersion={planner.trip.version} />
-
-            <GenerationControls
-              compact
-              days={planner.days}
-              hasActivities={hasActivities}
-              onGenerate={handleGenerate}
-              onRegenerate={handleRegenerate}
-              onReset={handleReset}
-              isGenerating={
-                generateMutation.isPending ||
-                regenerateMutation.isPending ||
-                resetMutation.isPending
-              }
-              jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
-            />
-          </div>
-
-          {/* Mobile Layout */}
-          <div className="flex md:hidden items-center gap-2 shrink-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 rounded-full">
-                  <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
-                  Options
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 rounded-[12px]">
-                <DropdownMenuLabel>View</DropdownMenuLabel>
-                <DropdownMenuItem onClick={() => updateParams({ view: 'kanban' }, false)}>
-                  <LayoutGrid className="mr-2 h-4 w-4" />
-                  <span>Board view</span>
-                  {currentView === 'kanban' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => updateParams({ view: 'map' }, false)}>
-                  <MapPinned className="mr-2 h-4 w-4" />
-                  <span>Map view</span>
-                  {currentView === 'map' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                
-                <div className="my-1 h-px bg-black/8" />
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                {recommendations.enabled && (
-                  <DropdownMenuItem onClick={openRecommendationsDrawer}>
-                    <Compass className="mr-2 h-4 w-4" />
-                    <span>Recommendations</span>
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => setSettingsMenuOpen(true)}>
-                  <Settings2 className="mr-2 h-4 w-4" />
-                  <span>Trip settings</span>
-                </DropdownMenuItem>
-                
-                <div className="my-1 h-px bg-black/8" />
-                <DropdownMenuLabel>Export</DropdownMenuLabel>
-                <ExportMenu tripId={tripId} tripVersion={planner.trip.version} asMenuItems />
-                
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-
-          {/* Render Generation controls on mobile outside the menu */}
-          <div className="md:hidden">
-            <GenerationControls
-              compact
-              days={planner.days}
-              hasActivities={hasActivities}
-              onGenerate={handleGenerate}
-              onRegenerate={handleRegenerate}
-              onReset={handleReset}
-              isGenerating={
-                generateMutation.isPending ||
-                regenerateMutation.isPending ||
-                resetMutation.isPending
-              }
-              jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
-            />
-          </div>
-
-        </div>
-      ) : null,
-    [
-      currentJob.data?.status,
-      currentView,
-      generateMutation.isPending,
-      handleGenerate,
-      handleRegenerate,
-      handleReset,
-      hasActivities,
-      isMobile,
-      latestReport?.status,
-      planner,
-      recommendations.enabled,
-      regenerateMutation.isPending,
-      resetMutation.isPending,
-      updateParams,
-    ],
-  );
-
-  const headerMeta = useMemo(
-    () =>
-      planner ? (
-        <div className="flex min-w-0 items-center gap-x-2 truncate">
-          <span className="truncate font-medium text-[var(--color-text)]">
-            {planner.trip.title}
-          </span>
-          <span className="hidden text-black/20 lg:inline">•</span>
-          <span className="truncate">{planner.trip.destination_text}</span>
-          <span className="hidden text-black/20 lg:inline">•</span>
-          <span className="truncate">{`${format(new Date(planner.trip.start_date), "MMM d")} - ${format(
-            new Date(planner.trip.end_date),
-            "MMM d, yyyy",
-          )}`}</span>
-          {planner.trip.budget_amount && planner.trip.budget_currency ? (
-            <>
-              <span className="hidden text-black/20 xl:inline">•</span>
-              <span className="truncate">{`Budget ${formatMoney(
-                planner.trip.budget_amount,
-                planner.trip.budget_currency,
-              )}`}</span>
-            </>
-          ) : null}
-        </div>
-      ) : null,
-    [planner],
-  );
-
-  const hasShellHeaderLeadingActions =
-    useAppShellHeaderLeadingActions(null);
-  const hasShellHeaderActions = useAppShellHeaderActions(headerActions);
-  useAppShellHeaderMeta(headerMeta);
-
   if (isLoading) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 md:p-5">
@@ -1250,22 +927,6 @@ export default function PlannerBoard({ tripId }: Props) {
     );
   }
 
-  const mobileContainers = [
-    {
-      id: INBOX_CONTAINER_ID as PlannerContainerId,
-      label: "Inbox",
-      date: "Unassigned activities",
-    },
-    ...planner.days.map((day) => ({
-      id: day.id as PlannerContainerId,
-      label: `Day ${day.day_index + 1}`,
-      date: day.date
-        ? `${format(new Date(day.date), "EEEE")} · ${format(new Date(day.date), "MMM d, yyyy")}`
-        : "",
-    })),
-  ];
-  const activeMobileDay =
-    planner.days.find((day) => day.id === mobileContainerId) ?? null;
   const activityDayOptions: ComboboxOption[] = [
     {
       value: INBOX_DAY_VALUE,
@@ -1288,15 +949,7 @@ export default function PlannerBoard({ tripId }: Props) {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col p-4 md:p-5">
-      {!hasShellHeaderActions && !hasShellHeaderLeadingActions ? (
-        <section className="mb-3 rounded-[12px] border border-black/8 bg-white px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
-            {headerActions}
-          </div>
-        </section>
-      ) : null}
-
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex min-h-0 flex-1 flex-col">
         <DndContext
           sensors={sensors}
@@ -1307,149 +960,54 @@ export default function PlannerBoard({ tripId }: Props) {
           onDragCancel={handleDragCancel}
           onDragEnd={handleDragEnd}
         >
-          {currentView === "kanban" ? (
-            <>
-              {isMobile ? (
-                <div className="flex min-h-0 flex-1 flex-col gap-4 lg:hidden">
-                  <div data-testid="planner-mobile-day-select">
-                    <Select
-                      value={mobileContainerId}
-                      onValueChange={setMobileContainerId}
-                    >
-                      <SelectTrigger className="w-full shadow-none border border-black/8 h-auto py-3 rounded-[12px] px-4 focus:ring-0 data-[state=open]:border-black/16 transition-all [&>span:first-child]:hidden bg-white hover:bg-[var(--color-secondary-surface)]">
-                        <SelectValue />
-                        <div className="flex w-full items-center justify-between gap-4">
-                          <div className="flex flex-col items-start gap-0.5 text-left">
-                            <span className="font-medium text-[0.92rem] text-[var(--color-text)]">
-                              {mobileContainers.find(
-                                (c) => c.id === mobileContainerId,
-                              )?.label || "Select day"}
-                            </span>
-                            <span className="text-[0.78rem] text-[var(--color-text-muted)] font-normal">
-                              {mobileContainers.find(
-                                (c) => c.id === mobileContainerId,
-                              )?.date || ""}
-                            </span>
-                          </div>
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[12px] p-1.5 border-black/8 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.1)] w-[var(--radix-select-trigger-width)]">
-                        {mobileContainers.map((container) => (
-                          <SelectItem
-                            key={container.id}
-                            value={container.id}
-                            className="rounded-[8px] py-2.5 cursor-pointer focus:bg-[var(--color-secondary-surface)]"
-                          >
-                            <div className="flex flex-col items-start gap-0.5 text-left w-full pr-1">
-                              <span className="font-medium text-[0.92rem] text-[var(--color-text)]">
-                                {container.label}
-                              </span>
-                              <span className="text-[0.78rem] text-[var(--color-text-muted)] font-normal">
-                                {container.date}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <div className="min-h-0 flex-1">
+            <PlannerMapView
+              tripId={tripId}
+              tripVersion={planner.trip.version}
+              travelMode={planner.trip.route_travel_mode}
+              days={planner.days}
+              inboxActivities={planner.inbox_activities}
+              isDragActive={Boolean(activeActivity)}
+              selectedActivityId={selectedActivityId}
+              selectedPlaceId={selectedPlaceId}
+              recommendations={recommendations}
+              selectedRecommendation={selectedRecommendation}
+              trip={planner.trip}
+              onAddActivity={openCreateDrawer}
+              onSelectActivityId={handleMapSelectActivityId}
+              onSelectPlaceId={setSelectedPlaceId}
+              onSelectRecommendation={setSelectedRecommendation}
+              onClearMapSelection={() => { setSelectedActivityId(null); setSelectedPlaceId(null); }}
+              onEditActivity={openEditDrawer}
+              onDeleteActivity={handleDeleteActivity}
+              onOpenSettings={() => setSettingsMenuOpen(true)}
+              hasActivities={hasActivities}
+              onGenerate={handleGenerate}
+              onRegenerate={handleRegenerate}
+              onReset={handleReset}
+              isGenerating={
+                generateMutation.isPending ||
+                regenerateMutation.isPending ||
+                resetMutation.isPending
+              }
+              jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
+            />
+          </div>
 
-                  <div className="flex min-h-0 flex-1 flex-col">
-                    {mobileContainerId === INBOX_CONTAINER_ID ? (
-                      <PlannerInbox
-                        activities={planner.inbox_activities}
-                        selectedActivityId={boardSelectedActivity?.id ?? null}
-                        className="h-full"
-                        onSelectActivity={openDetails}
-                        onAddActivity={() => openCreateDrawer(null)}
-                      />
-                    ) : activeMobileDay ? (
-                      <DayColumn
-                        day={activeMobileDay}
-                        selectedActivityId={boardSelectedActivity?.id ?? null}
-                        onAddActivity={(dayId) => openCreateDrawer(dayId)}
-                        onOpenActivity={openDetails}
-                        className="h-full min-w-0"
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <div className="hidden min-h-0 flex-1 gap-4 lg:flex">
-                  {!isInboxDetached && (
-                    <div className="h-full shrink-0 pb-1">
-                      <PlannerInbox
-                        activities={planner.inbox_activities}
-                        selectedActivityId={boardSelectedActivity?.id ?? null}
-                        className="h-full"
-                        isDetached={false}
-                        onToggleDetached={() => setIsInboxDetached(true)}
-                        onSelectActivity={openDetails}
-                        onAddActivity={() => openCreateDrawer(null)}
-                      />
-                    </div>
-                  )}
-
-                  <div
-                    ref={boardRailRef}
-                    data-testid="planner-board-rail"
-                    className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden pb-1"
-                  >
-                    <div className="flex h-full gap-4 pr-1">
-                      {isInboxDetached && (
-                        <PlannerInbox
-                          activities={planner.inbox_activities}
-                          selectedActivityId={boardSelectedActivity?.id ?? null}
-                          className="h-full shrink-0"
-                          isDetached={true}
-                          onToggleDetached={() => setIsInboxDetached(false)}
-                          onSelectActivity={openDetails}
-                          onAddActivity={() => openCreateDrawer(null)}
-                        />
-                      )}
-                      {planner.days.map((day) => (
-                        <DayColumn
-                          key={day.id}
-                          day={day}
-                          selectedActivityId={boardSelectedActivity?.id ?? null}
-                          onAddActivity={(dayId) => openCreateDrawer(dayId)}
-                          onOpenActivity={openDetails}
-                          className="shrink-0"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : null}
-
-          {currentView === "map" ? (
-            <div className="min-h-0 flex-1">
-              <PlannerMapView
-                tripId={tripId}
-                tripVersion={planner.trip.version}
-                days={planner.days}
-                inboxActivities={planner.inbox_activities}
-                selectedActivityId={selectedActivityId}
-                selectedPlaceId={selectedPlaceId}
-                recommendations={recommendations}
-                selectedRecommendation={selectedRecommendation}
-                onAddActivity={openCreateDrawer}
-                onSelectActivityId={handleMapSelectActivityId}
-                onSelectPlaceId={setSelectedPlaceId}
-                onSelectRecommendation={setSelectedRecommendation}
-                onClearMapSelection={() => { setSelectedActivityId(null); setSelectedPlaceId(null); }}
-                onEditActivity={openEditDrawer}
-                onDeleteActivity={handleDeleteActivity}
-              />
-            </div>
-          ) : null}
-
-          <DragOverlay>
+          <DragOverlay adjustScale={false}>
             {activeActivity ? (
-              <div className="w-[320px] opacity-95">
-                <ActivityCardView activity={activeActivity} isDragging />
+              <div
+                className="opacity-95"
+                style={{
+                  width: activeDragPreviewSize?.width,
+                  height: activeDragPreviewSize?.height,
+                }}
+              >
+                <ActivityCardView
+                  activity={activeActivity}
+                  isDragging
+                  showDragHandle
+                />
               </div>
             ) : null}
           </DragOverlay>
@@ -1476,50 +1034,6 @@ export default function PlannerBoard({ tripId }: Props) {
         onSave={handleDrawerSave}
         isSaving={isSaving}
       />
-
-      <Sheet
-        open={
-          recommendations.enabled &&
-          boardRecommendationsOpen
-        }
-        onOpenChange={(open) => {
-          setBoardRecommendationsOpen(open);
-          if (!open) {
-            setSelectedRecommendation(null);
-          }
-        }}
-      >
-        <SheetContent
-          side={isMobile ? "bottom" : "right"}
-          hideCloseButton={!selectedRecommendation}
-          className={
-            isMobile
-              ? "flex h-[82dvh] flex-col overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-[#F3F5F7] p-0 sm:max-w-none"
-              : "flex h-full w-full max-w-[28rem] flex-col overflow-hidden bg-[#F3F5F7] p-0 sm:max-w-[28rem]"
-          }
-        >
-          <SheetHeader className="sr-only">
-            <SheetTitle>{selectedRecommendation?.item.title ?? "Recommendations"}</SheetTitle>
-            <SheetDescription>
-              {selectedRecommendation?.item.address_text ?? "Trip recommendations"}
-            </SheetDescription>
-          </SheetHeader>
-          {selectedRecommendation ? (
-            <PlannerRecommendationDetailPanel
-              tripId={tripId}
-              locale={recommendations.preferences.regional.locale}
-              entry={selectedRecommendation}
-              recommendations={recommendations}
-              onBack={() => setSelectedRecommendation(null)}
-            />
-          ) : (
-            <PlannerRecommendationsPanel
-              recommendations={recommendations}
-              showCloseButton
-            />
-          )}
-        </SheetContent>
-      </Sheet>
 
       <TripSettingsMenu 
         tripId={tripId} 

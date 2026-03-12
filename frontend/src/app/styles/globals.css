@@ -129,6 +129,11 @@
     background: #f3f5f7;
   }
 
+  html.voyager-app-layout,
+  body.voyager-app-layout {
+    background: #f9fafb;
+  }
+
   .voyager-app-shell [data-radix-scroll-area-scrollbar] {
     display: none !important;
   }

@@ -400,25 +400,28 @@ export function VoyagerMarker({
   if (config.map.mapId && !useLegacyMarker) {
     return (
       <AdvancedMarker position={position} title={title} zIndex={zIndex} onClick={onClick}>
-        {children ?? (label ? (
-          <div
-            className="rounded-full border px-3 py-1.5 text-xs font-semibold"
-            style={{
-              color: '#FFFFFF',
-              background: selected ? DEFAULT_SELECTED_MARKER_COLOR : color,
-              borderColor: 'rgba(255,255,255,0.85)',
-              boxShadow: '0 14px 28px rgba(23,62,67,0.2)',
-            }}
-          >
-            {label}
+        {children ?? (
+          <div className="transition-transform hover:scale-110 origin-bottom pb-1">
+            <div
+              className={`flex items-center justify-center shadow-[0_6px_12px_rgba(0,0,0,0.15)] backdrop-blur-md border-[1.5px] border-white/80 rounded-[50%_50%_50%_10%] -rotate-45 ${
+                label ? 'w-9 h-9' : 'w-7 h-7'
+              }`}
+              style={{
+                backgroundColor: selected ? `${DEFAULT_SELECTED_MARKER_COLOR}d9` : `${color}d9`,
+              }}
+            >
+              <div className="rotate-45 flex items-center justify-center">
+                {label ? (
+                  <span className="text-[14px] font-bold text-white tracking-tight leading-none drop-shadow-md">
+                    {label}
+                  </span>
+                ) : (
+                  <div className="w-2.5 h-2.5 rounded-full bg-white shadow-sm" />
+                )}
+              </div>
+            </div>
           </div>
-        ) : (
-          <Pin
-            background={selected ? DEFAULT_SELECTED_MARKER_COLOR : color}
-            borderColor="#FFFFFF"
-            glyphColor="#FFFFFF"
-          />
-        ))}
+        )}
       </AdvancedMarker>
     )
   }
@@ -808,18 +811,28 @@ export function GoogleDirectionsRoute({
   destination,
   waypoints = [],
   travelMode = 'WALK' as const,
+  computeAlternatives = false,
   activeRouteIndex = 0,
   strokeColor = DEFAULT_VECTOR_MARKER_COLOR,
   alternateStrokeColor = '#B6D6F2',
+  strokeOpacity = 0.92,
+  alternateStrokeOpacity = 0.48,
+  strokeWeight = 5,
+  alternateStrokeWeight = 3,
   onRoutesChange,
 }: {
   origin: LatLngPoint | null
   destination: LatLngPoint | null
   waypoints?: LatLngPoint[]
   travelMode?: RoutePreviewInput['travel_mode']
+  computeAlternatives?: boolean
   activeRouteIndex?: number
   strokeColor?: string
   alternateStrokeColor?: string
+  strokeOpacity?: number
+  alternateStrokeOpacity?: number
+  strokeWeight?: number
+  alternateStrokeWeight?: number
   onRoutesChange?: (routes: RoutePreviewRoute[]) => void
 }) {
   const payload = useMemo<RoutePreviewInput | null>(
@@ -830,10 +843,10 @@ export function GoogleDirectionsRoute({
             destination,
             waypoints,
             travel_mode: travelMode,
-            compute_alternatives: true,
+            compute_alternatives: computeAlternatives,
           }
         : null,
-    [destination, origin, travelMode, waypoints],
+    [computeAlternatives, destination, origin, travelMode, waypoints],
   )
   const routePreview = useRoutePreview(payload, Boolean(payload))
   const routes = routePreview.data?.routes ?? []
@@ -854,8 +867,8 @@ export function GoogleDirectionsRoute({
             key={`${route.summary || 'route'}-${index}`}
             path={route.path}
             strokeColor={index === activeRouteIndex ? strokeColor : alternateStrokeColor}
-            strokeOpacity={index === activeRouteIndex ? 0.92 : 0.48}
-            strokeWeight={index === activeRouteIndex ? 5 : 3}
+            strokeOpacity={index === activeRouteIndex ? strokeOpacity : alternateStrokeOpacity}
+            strokeWeight={index === activeRouteIndex ? strokeWeight : alternateStrokeWeight}
           />
         )
       })}

@@ -23,6 +23,7 @@ interface BaseProps {
   isDragging?: boolean
   isSelected?: boolean
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
+  showDragHandle?: boolean
 }
 
 const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
@@ -57,6 +58,7 @@ export function ActivityCardView({
   isDragging = false,
   isSelected = false,
   dragHandleProps,
+  showDragHandle = false,
 }: BaseProps) {
   const schedule = scheduleLabel(activity)
   const categoryLabel = plannerCategoryLabel(activity.category)
@@ -70,6 +72,7 @@ export function ActivityCardView({
         ? activity.place.address_text
         : null
   const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark
+  const shouldRenderDragHandle = Boolean(dragHandleProps || showDragHandle)
 
   return (
     <article
@@ -110,10 +113,19 @@ export function ActivityCardView({
               size="icon"
               className="size-7 shrink-0 rounded-[8px] text-[var(--color-text-muted)] hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
               aria-label="Drag activity"
+              data-testid="activity-card-drag-handle"
               {...dragHandleProps}
             >
               <GripVertical className="h-4 w-4" />
             </Button>
+          ) : shouldRenderDragHandle ? (
+            <span
+              aria-hidden="true"
+              data-testid="activity-card-drag-handle"
+              className="inline-flex size-7 shrink-0 items-center justify-center rounded-[8px] text-[var(--color-text-muted)]"
+            >
+              <GripVertical className="h-4 w-4" />
+            </span>
           ) : null}
         </div>
       </div>

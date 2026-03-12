@@ -13,16 +13,19 @@ import {
   useDestinationAutocomplete,
   usePlace,
 } from '@/entities/place/queries'
-import { usePlacePhotos } from '@/entities/photo/queries'
 import { refreshPlacePhotos } from '@/entities/photo/api'
+import { usePlacePhotos } from '@/entities/photo/queries'
+import { useTripAssets } from '@/entities/trip-asset/queries'
 import {
   mergeTripCoverPhotoPreference,
   readTripCoverPhotoPreference,
   type TripCoverPhotoPreference,
 } from './cover-photo'
-import type { PlacePhotoSummary, Trip } from '@/shared/api/types'
+import type { PlacePhotoSummary, Trip, TripAssetResponse } from '@/shared/api/types'
 import { getJobResultErrors, isJobRunning, isJobSuccessful, isJobTerminal } from '@/shared/lib/jobs'
 import { resolvePhotoUrl } from '@/shared/lib/media'
+
+type CoverPhotoCandidateSource = 'destination' | 'uploaded'
 
 export type CoverPhotoCandidate = {
   id: string
@@ -35,12 +38,39 @@ export type CoverPhotoCandidate = {
   license_url: string | null
   attribution_text: string | null
   isPrimary?: boolean
+  candidateSource: CoverPhotoCandidateSource
+  originalFilename?: string | null
 }
 
 function mapPrimaryPhotoToCandidate(photo: PlacePhotoSummary): CoverPhotoCandidate {
   return {
     ...photo,
+    candidateSource: 'destination',
     isPrimary: true,
+    originalFilename: null,
+  }
+}
+
+function mapUploadedAssetToCandidate(asset: TripAssetResponse): CoverPhotoCandidate | null {
+  const imageUrl = asset.download_url || asset.preview_url
+  const thumbnailUrl = asset.preview_url || asset.download_url
+  if (!imageUrl || !thumbnailUrl) {
+    return null
+  }
+
+  return {
+    id: asset.id,
+    source: 'uploaded',
+    image_url: imageUrl,
+    thumbnail_url: thumbnailUrl,
+    display_url: imageUrl,
+    display_thumbnail_url: thumbnailUrl,
+    license_code: null,
+    license_url: null,
+    attribution_text: 'Uploaded photo',
+    isPrimary: false,
+    candidateSource: 'uploaded',
+    originalFilename: asset.original_filename,
   }
 }
 
@@ -90,11 +120,24 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
 
   const coverPlaceQuery = usePlace(resolvedPlaceId)
   const coverPhotosQuery = usePlacePhotos(resolvedPlaceId)
+  const uploadedAssetsQuery = useTripAssets(tripId ?? '', null)
   const { data: coverRefreshJob } = useJob(coverRefreshJobId)
 
   const coverPlace = coverPlaceQuery.data
   const coverPhotosData = coverPhotosQuery.data
   const coverPhotosLoading = coverPhotosQuery.isLoading
+  const uploadedPhotoCandidates = useMemo(
+    () =>
+      (uploadedAssetsQuery.data?.items ?? [])
+        .filter((item) => item.kind === 'photo')
+        .map(mapUploadedAssetToCandidate)
+        .filter((item): item is CoverPhotoCandidate => Boolean(item)),
+    [uploadedAssetsQuery.data?.items],
+  )
+  const uploadedAssetIds = useMemo(
+    () => new Set(uploadedPhotoCandidates.map((item) => item.id)),
+    [uploadedPhotoCandidates],
+  )
   const isCoverRefreshRunning = isJobRunning(coverRefreshJob?.status)
   const isCoverRefreshSuccessful = isJobSuccessful(coverRefreshJob?.status)
 
@@ -167,7 +210,7 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
       })
   }, [inferredDestination, storedBackendPlaceId, tripId])
 
-  const coverPhotoCandidates = useMemo<CoverPhotoCandidate[]>(() => {
+  const destinationPhotoCandidates = useMemo<CoverPhotoCandidate[]>(() => {
     const candidates: CoverPhotoCandidate[] = []
 
     if (coverPlace?.primary_photo) {
@@ -184,28 +227,64 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
         display_url: undefined,
         display_thumbnail_url: undefined,
         isPrimary: photo.is_primary,
+        candidateSource: 'destination',
+        originalFilename: null,
       })
     }
 
     return candidates
   }, [coverPhotosData?.items, coverPlace?.primary_photo])
 
+  const coverPhotoCandidates = useMemo<CoverPhotoCandidate[]>(
+    () => [...uploadedPhotoCandidates, ...destinationPhotoCandidates],
+    [destinationPhotoCandidates, uploadedPhotoCandidates],
+  )
+
   const selectedCoverPhoto = useMemo(() => {
     if (coverPhotoCandidates.length === 0) {
       return null
     }
 
+    if (coverPreference?.assetId) {
+      const uploadedCandidate = coverPhotoCandidates.find(
+        (photo) =>
+          photo.id === coverPreference.assetId &&
+          photo.candidateSource === 'uploaded',
+      )
+      if (uploadedCandidate) {
+        return uploadedCandidate
+      }
+    }
+
+    if (coverPreference?.photoId) {
+      const destinationCandidate = coverPhotoCandidates.find(
+        (photo) =>
+          photo.id === coverPreference.photoId &&
+          photo.candidateSource === 'destination',
+      )
+      if (destinationCandidate) {
+        return destinationCandidate
+      }
+    }
+
     return (
-      coverPhotoCandidates.find((photo) => photo.id === coverPreference?.photoId) ??
-      coverPhotoCandidates.find((photo) => photo.isPrimary) ??
-      coverPhotoCandidates[0]
+      destinationPhotoCandidates.find((photo) => photo.isPrimary) ??
+      destinationPhotoCandidates[0] ??
+      uploadedPhotoCandidates[0] ??
+      null
     )
-  }, [coverPhotoCandidates, coverPreference?.photoId])
+  }, [
+    coverPhotoCandidates,
+    coverPreference?.assetId,
+    coverPreference?.photoId,
+    destinationPhotoCandidates,
+    uploadedPhotoCandidates,
+  ])
 
   useEffect(() => {
     if (
       !resolvedPlaceId ||
-      coverPhotoCandidates.length > 0 ||
+      destinationPhotoCandidates.length > 0 ||
       coverPhotosLoading ||
       isRefreshingCoverPhotos ||
       isCoverRefreshRunning ||
@@ -228,8 +307,8 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
         toast.error('Failed to load city photos')
       })
   }, [
-    coverPhotoCandidates.length,
     coverPhotosLoading,
+    destinationPhotoCandidates.length,
     isCoverRefreshRunning,
     isRefreshingCoverPhotos,
     resolvedPlaceId,
@@ -266,33 +345,78 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   }, [coverPhotosQuery, coverPlaceQuery, coverRefreshJob, coverRefreshJobId, isCoverRefreshSuccessful])
 
   useEffect(() => {
-    if (!tripId || !selectedCoverPhoto || coverPreference?.photoId === selectedCoverPhoto.id) {
+    if (!tripId || !selectedCoverPhoto) {
+      return
+    }
+    if (coverPreference?.assetId || coverPreference?.photoId) {
       return
     }
 
-    mergeTripCoverPhotoPreference(tripId, { photoId: selectedCoverPhoto.id })
-    setCoverPreference((current) => ({ ...(current ?? {}), photoId: selectedCoverPhoto.id }))
-  }, [coverPreference?.photoId, selectedCoverPhoto, tripId])
+    if (selectedCoverPhoto.candidateSource === 'uploaded') {
+      mergeTripCoverPhotoPreference(tripId, { assetId: selectedCoverPhoto.id, photoId: null })
+      setCoverPreference((current) => ({
+        ...(current ?? {}),
+        assetId: selectedCoverPhoto.id,
+        photoId: null,
+      }))
+      return
+    }
+
+    mergeTripCoverPhotoPreference(tripId, { photoId: selectedCoverPhoto.id, assetId: null })
+    setCoverPreference((current) => ({
+      ...(current ?? {}),
+      photoId: selectedCoverPhoto.id,
+      assetId: null,
+    }))
+  }, [coverPreference?.assetId, coverPreference?.photoId, selectedCoverPhoto, tripId])
+
+  useEffect(() => {
+    if (!tripId || !coverPreference?.assetId || uploadedAssetsQuery.isLoading) {
+      return
+    }
+    if (uploadedAssetIds.has(coverPreference.assetId)) {
+      return
+    }
+
+    mergeTripCoverPhotoPreference(tripId, { assetId: null })
+    setCoverPreference((current) =>
+      current ? { ...current, assetId: null } : current,
+    )
+  }, [coverPreference?.assetId, tripId, uploadedAssetIds, uploadedAssetsQuery.isLoading])
 
   const photoAttributionLabel =
-    coverPreference?.placeLabel ?? inferredDestination?.label ?? trip?.destination_text ?? null
-  const photoAttributionParts = [photoAttributionLabel, selectedCoverPhoto?.attribution_text]
-    .filter((part): part is string => Boolean(part))
-    .filter((part, index, parts) =>
-      parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index,
-    )
-  const photoAttributionText = photoAttributionParts.join(' · ')
+    selectedCoverPhoto?.candidateSource === 'uploaded'
+      ? selectedCoverPhoto.originalFilename ?? 'Uploaded cover photo'
+      : coverPreference?.placeLabel ?? inferredDestination?.label ?? trip?.destination_text ?? null
+  const photoAttributionText =
+    selectedCoverPhoto?.candidateSource === 'uploaded'
+      ? photoAttributionLabel
+      : [photoAttributionLabel, selectedCoverPhoto?.attribution_text]
+          .filter((part): part is string => Boolean(part))
+          .filter((part, index, parts) =>
+            parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index,
+          )
+          .join(' · ')
   const coverPhotoUrl = resolvePhotoUrl(selectedCoverPhoto, 'full')
-  const isCoverPhotoBusy = coverPhotosLoading || isRefreshingCoverPhotos || isCoverRefreshRunning
-  const coverPhotoEmptyMessage = coverPhotoRefreshError ?? 'No city photo available yet.'
+  const isCoverPhotoBusy =
+    coverPhotosLoading || isRefreshingCoverPhotos || isCoverRefreshRunning || uploadedAssetsQuery.isLoading
+  const coverPhotoEmptyMessage = coverPhotoRefreshError ?? 'No city photo or uploaded cover photo is available yet.'
 
-  function handlePhotoSelection(photoId: string) {
+  function handlePhotoSelection(
+    candidateId: string,
+    candidateSource: CoverPhotoCandidateSource = 'destination',
+  ) {
     if (!tripId) {
       return
     }
 
-    mergeTripCoverPhotoPreference(tripId, { photoId })
-    setCoverPreference((current) => ({ ...(current ?? {}), photoId }))
+    const patch =
+      candidateSource === 'uploaded'
+        ? { assetId: candidateId, photoId: null }
+        : { assetId: null, photoId: candidateId }
+
+    mergeTripCoverPhotoPreference(tripId, patch)
+    setCoverPreference((current) => ({ ...(current ?? {}), ...patch }))
   }
 
   async function handleCoverPhotoRefresh() {

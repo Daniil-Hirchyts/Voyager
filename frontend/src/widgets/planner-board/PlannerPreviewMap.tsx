@@ -20,13 +20,13 @@ function toLatLng(point: PreviewPoint) {
 
 function PlannerMapMarker({ title }: { title: string }) {
   return (
-    <div className="relative flex flex-col items-center">
-      <div className="relative flex size-11 items-center justify-center rounded-[15px] border border-white/90 bg-white shadow-[0_18px_34px_-18px_rgba(26,22,21,0.38)]">
-        <div className="absolute inset-[7px] rounded-[11px] border border-black/8 bg-[rgba(247,248,250,0.92)]" />
-        <div className="relative size-4 rounded-full border border-[rgba(201,138,55,0.32)] bg-[#C98A37]" />
+    <div className="transition-transform origin-bottom pb-1">
+      <div className="relative flex items-center justify-center h-7 w-7 rounded-[50%_50%_50%_10%] -rotate-45 backdrop-blur-md border-[1.5px] border-white/80 shadow-[0_6px_12px_rgba(0,0,0,0.15)] bg-zinc-900/85">
+        <div className="rotate-45 flex items-center justify-center">
+          <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+        </div>
+        <span className="sr-only">{title}</span>
       </div>
-      <div className="-mt-1 h-3 w-3 rotate-45 rounded-[3px] border-r border-b border-black/8 bg-white shadow-[0_10px_18px_-14px_rgba(26,22,21,0.32)]" />
-      <span className="sr-only">{title}</span>
     </div>
   );
 }

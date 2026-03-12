@@ -1,8 +1,13 @@
-import type { PlannerActivity } from '@/shared/api/types'
+import type { PlannerActivity, RouteTravelMode } from '@/shared/api/types'
 import { plannerPrimaryPlace } from './categories'
 
 const EARTH_RADIUS_KM = 6371
-const ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR = 4.8
+const ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR: Record<RouteTravelMode, number> = {
+  WALK: 4.8,
+  BICYCLE: 15,
+  DRIVE: 40,
+  TRANSIT: 22,
+}
 
 export type PlannerTravelLeg = {
   fromActivityId: string
@@ -53,7 +58,10 @@ function getActivityCoordinates(activity: PlannerActivity) {
   return { lat, lon }
 }
 
-export function buildPlannerTravelLegs(activities: PlannerActivity[]): PlannerTravelLeg[] {
+export function buildPlannerTravelLegs(
+  activities: PlannerActivity[],
+  travelMode: RouteTravelMode = 'WALK',
+): PlannerTravelLeg[] {
   return activities.slice(1).map((activity, index) => {
     const previousActivity = activities[index]
     const origin = getActivityCoordinates(previousActivity)
@@ -69,12 +77,13 @@ export function buildPlannerTravelLegs(activities: PlannerActivity[]): PlannerTr
     }
 
     const distanceKm = haversineKm(origin.lat, origin.lon, destination.lat, destination.lon)
+    const speedKmPerHour = ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR[travelMode]
 
     return {
       fromActivityId: previousActivity.id,
       toActivityId: activity.id,
       distanceKm,
-      durationMin: Math.max(1, Math.round((distanceKm / ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR) * 60)),
+      durationMin: Math.max(1, Math.round((distanceKm / speedKmPerHour) * 60)),
     }
   })
 }
