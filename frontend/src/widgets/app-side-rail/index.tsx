@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { Children, type ComponentPropsWithoutRef, type ReactElement, type ReactNode, useEffect } from 'react'
 import { Link, Outlet, useMatch } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
 import {
@@ -14,6 +14,7 @@ import {
   Settings2,
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { AnimatedBackground, type AnimatedBackgroundProps } from '@/components/ui/animated-background'
 import { useProfile } from '@/entities/user/queries'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -39,9 +40,15 @@ function getInitials(name: string) {
   )
 }
 
-/** Single token for every rail button — no bg, same hover, same size & rounding */
-const BTN = 'flex h-9 w-9 items-center justify-center rounded-[12px] text-[#526072] transition-colors hover:bg-[#ECEEF0] hover:text-[#1D2430]'
-const BTN_ACTIVE = cn(BTN, 'text-[var(--color-cta)]')
+const BTN = 'flex size-9 items-center justify-center rounded-[12px] text-[#526072] transition-colors duration-300'
+const BTN_RAIL = cn(BTN, 'hover:text-[#1D2430] data-[checked=true]:text-[#1D2430]')
+const BTN_ACTIVE = cn(BTN_RAIL, 'text-[var(--color-cta)] data-[checked=true]:text-[var(--color-cta)]')
+const BTN_STANDALONE = cn(BTN, 'hover:bg-[#ECEEF0] hover:text-[#1D2430]')
+const RAIL_HOVER_TRANSITION = {
+  type: 'spring',
+  bounce: 0.2,
+  duration: 0.3,
+} satisfies NonNullable<AnimatedBackgroundProps['transition']>
 
 function Divider() {
   return <div className="mx-auto my-1 w-6 border-t border-black/[0.08]" />
@@ -58,45 +65,102 @@ function RailTooltip({ label, children }: { label: string; children: React.React
   )
 }
 
-function DayAnchors({
+type RailActionLinkProps = ComponentPropsWithoutRef<typeof Link> & {
+  tooltip: string
+}
+
+function RailActionLink({ tooltip, className, children, ...props }: RailActionLinkProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Link {...props} className={className}>
+          {children}
+        </Link>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10} className="text-[0.8rem]">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+type RailActionButtonProps = ComponentPropsWithoutRef<'button'> & {
+  tooltip: string
+}
+
+function RailActionButton({ tooltip, className, children, ...props }: RailActionButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button {...props} className={className}>
+          {children}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={10} className="text-[0.8rem]">
+        {tooltip}
+      </TooltipContent>
+    </Tooltip>
+  )
+}
+
+function RailAnimatedColumn({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  const items = Children.toArray(children) as ReactElement[]
+
+  return (
+    <div className={cn('flex flex-col items-center gap-0.5 py-1.5', className)}>
+      <AnimatedBackground
+        className="rounded-[12px] bg-[#ECEEF0]"
+        transition={RAIL_HOVER_TRANSITION}
+        enableHover
+      >
+        {items as AnimatedBackgroundProps['children']}
+      </AnimatedBackground>
+    </div>
+  )
+}
+
+function renderDayAnchors({
   days,
   onScrollToDay,
 }: {
   days: DayAnchor[]
   onScrollToDay: (dayId: string) => void
 }) {
-  return (
-    <div className="flex max-h-[38vh] w-full flex-col items-center overflow-y-auto">
-      {days.map((day) => {
-        const monthStr = !day.isInbox && day.date ? format(new Date(day.date), 'MMM').toUpperCase() : null
-        const dayStr   = !day.isInbox && day.date ? format(new Date(day.date), 'd') : null
+  return days.map((day) => {
+    const monthStr = !day.isInbox && day.date ? format(new Date(day.date), 'MMM').toUpperCase() : null
+    const dayStr   = !day.isInbox && day.date ? format(new Date(day.date), 'd') : null
 
-        return (
-          <RailTooltip key={day.dayId} label={day.isInbox ? 'Inbox' : `Day ${day.label}`}>
-            <button
-              type="button"
-              aria-label={day.isInbox ? 'Inbox' : `Day ${day.label} · ${monthStr} ${dayStr}`}
-              onClick={() => onScrollToDay(day.dayId)}
-              className={cn(BTN, 'flex-col gap-0')}
-            >
-              {day.isInbox ? (
-                <Inbox className="size-4" />
-              ) : (
-                <>
-                  <span className="text-[0.55rem] font-semibold uppercase leading-none tracking-[0.06em] text-[#94a3b8]">
-                    {monthStr}
-                  </span>
-                  <span className="mt-[1px] text-[0.9rem] font-bold leading-none tracking-[-0.02em] text-[#1D2430]">
-                    {dayStr}
-                  </span>
-                </>
-              )}
-            </button>
-          </RailTooltip>
-        )
-      })}
-    </div>
-  )
+    return (
+      <RailActionButton
+        key={day.dayId}
+        data-id={day.dayId}
+        tooltip={day.isInbox ? 'Inbox' : `Day ${day.label}`}
+        type="button"
+        aria-label={day.isInbox ? 'Inbox' : `Day ${day.label} · ${monthStr} ${dayStr}`}
+        onClick={() => onScrollToDay(day.dayId)}
+        className={cn(BTN_RAIL, 'flex-col gap-0')}
+      >
+        {day.isInbox ? (
+          <Inbox className="size-4" />
+        ) : (
+          <span className="flex flex-col items-center gap-0">
+            <span className="text-[0.55rem] font-semibold uppercase leading-none tracking-[0.06em] text-[#94a3b8]">
+              {monthStr}
+            </span>
+            <span className="mt-[1px] text-[0.9rem] font-bold leading-none tracking-[-0.02em] text-[#1D2430]">
+              {dayStr}
+            </span>
+          </span>
+        )}
+      </RailActionButton>
+    )
+  })
 }
 
 function AppSideRail() {
@@ -131,86 +195,98 @@ function AppSideRail() {
       <Divider />
 
       {/* Nav */}
-      <nav className="flex flex-col items-center gap-0.5 py-1.5">
-        <RailTooltip label="All trips">
-          <Link
+      <nav>
+        <RailAnimatedColumn>
+          <RailActionLink
+            data-id="all-trips"
+            tooltip="All trips"
             to="/app/trips"
             aria-label="All trips"
-            className={Boolean(tripsExactMatch) ? BTN_ACTIVE : BTN}
+            className={Boolean(tripsExactMatch) ? BTN_ACTIVE : BTN_RAIL}
           >
             <LayoutGrid className="size-[1rem]" />
-          </Link>
-        </RailTooltip>
-        <RailTooltip label="New trip">
-          <Link
+          </RailActionLink>
+          <RailActionLink
+            data-id="new-trip"
+            tooltip="New trip"
             to="/app/trips/new"
             aria-label="New trip"
-            className={Boolean(newTripMatch) ? BTN_ACTIVE : BTN}
+            className={Boolean(newTripMatch) ? BTN_ACTIVE : BTN_RAIL}
           >
             <Plus className="size-[1rem]" />
-          </Link>
-        </RailTooltip>
+          </RailActionLink>
+        </RailAnimatedColumn>
       </nav>
 
       {/* Planner instruments */}
       {isPlannerPage && plannerInstruments ? (
         <>
           <Divider />
-          <div className="flex flex-col items-center gap-0.5 py-1.5">
-            <RailTooltip label="Generate itinerary">
-              <button type="button" aria-label="Generate itinerary" onClick={plannerInstruments.onGenerate} className={BTN}>
-                <Sparkles className="size-[1rem]" />
-              </button>
-            </RailTooltip>
-            <RailTooltip label="Trip settings">
-              <button type="button" aria-label="Trip settings" onClick={plannerInstruments.onOpenSettings} className={BTN}>
-                <SlidersHorizontal className="size-[1rem]" />
-              </button>
-            </RailTooltip>
-          </div>
+          <RailAnimatedColumn>
+            <RailActionButton
+              data-id="generate-itinerary"
+              tooltip="Generate itinerary"
+              type="button"
+              aria-label="Generate itinerary"
+              onClick={plannerInstruments.onGenerate}
+              className={BTN_RAIL}
+            >
+              <Sparkles className="size-[1rem]" />
+            </RailActionButton>
+            <RailActionButton
+              data-id="trip-settings"
+              tooltip="Trip settings"
+              type="button"
+              aria-label="Trip settings"
+              onClick={plannerInstruments.onOpenSettings}
+              className={BTN_RAIL}
+            >
+              <SlidersHorizontal className="size-[1rem]" />
+            </RailActionButton>
+          </RailAnimatedColumn>
 
           {plannerInstruments.days.length > 0 && (
             <>
               <Divider />
-              <div className="flex flex-col items-center gap-0.5 py-1.5">
-                <RailTooltip label="Itinerary">
-                  <button
-                    type="button"
-                    aria-label="Scroll to itinerary"
-                    onClick={() => plannerInstruments.onScrollToSection('itinerary')}
-                    className={BTN}
-                  >
-                    <Route className="size-[1rem]" />
-                  </button>
-                </RailTooltip>
-                <DayAnchors
-                  days={plannerInstruments.days}
-                  onScrollToDay={plannerInstruments.onScrollToDay}
-                />
-              </div>
+              <RailAnimatedColumn className="max-h-[38vh] w-full overflow-y-auto">
+                <RailActionButton
+                  data-id="itinerary"
+                  tooltip="Itinerary"
+                  type="button"
+                  aria-label="Scroll to itinerary"
+                  onClick={() => plannerInstruments.onScrollToSection('itinerary')}
+                  className={BTN_RAIL}
+                >
+                  <Route className="size-[1rem]" />
+                </RailActionButton>
+                {renderDayAnchors({
+                  days: plannerInstruments.days,
+                  onScrollToDay: plannerInstruments.onScrollToDay,
+                })}
+              </RailAnimatedColumn>
               <Divider />
-              <div className="flex flex-col items-center gap-0.5 py-1.5">
-                <RailTooltip label="Accommodation">
-                  <button
-                    type="button"
-                    aria-label="Scroll to accommodation"
-                    onClick={() => plannerInstruments.onScrollToSection('hotel')}
-                    className={BTN}
-                  >
-                    <BedDouble className="size-[1rem]" />
-                  </button>
-                </RailTooltip>
-                <RailTooltip label="Travel">
-                  <button
-                    type="button"
-                    aria-label="Scroll to travel"
-                    onClick={() => plannerInstruments.onScrollToSection('travel')}
-                    className={BTN}
-                  >
-                    <Plane className="size-[1rem]" />
-                  </button>
-                </RailTooltip>
-              </div>
+              <RailAnimatedColumn>
+                <RailActionButton
+                  data-id="accommodation"
+                  tooltip="Accommodation"
+                  type="button"
+                  aria-label="Scroll to accommodation"
+                  onClick={() => plannerInstruments.onScrollToSection('hotel')}
+                  className={BTN_RAIL}
+                >
+                  <BedDouble className="size-[1rem]" />
+                </RailActionButton>
+                <RailActionButton
+                  data-id="travel"
+                  tooltip="Travel"
+                  type="button"
+                  aria-label="Scroll to travel"
+                  onClick={() => plannerInstruments.onScrollToSection('travel')}
+                  className={BTN_RAIL}
+                >
+                  <Plane className="size-[1rem]" />
+                </RailActionButton>
+              </RailAnimatedColumn>
             </>
           )}
         </>
@@ -227,7 +303,7 @@ function AppSideRail() {
             <button
               type="button"
               aria-label={userName}
-              className={cn(BTN, 'mt-1.5 text-[0.7rem] font-semibold tracking-wide')}
+              className={cn(BTN_STANDALONE, 'mt-1.5 text-[0.7rem] font-semibold tracking-wide')}
             >
               {initials}
             </button>

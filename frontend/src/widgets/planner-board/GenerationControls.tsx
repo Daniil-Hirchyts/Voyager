@@ -2,13 +2,15 @@ import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Sparkles, RefreshCw, Trash2, Loader2, MoreHorizontal } from 'lucide-react'
+import { Sparkles, RefreshCw, Trash2, MoreHorizontal } from 'lucide-react'
 import { cn } from '@/shared/lib/cn'
+import { AiLoadingText } from '@/components/ui/ai-loading-text'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import type { Day } from '@/shared/api/types'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 const schema = z.object({
   mode: z.enum(['replace', 'merge', 'append']),
@@ -101,6 +103,8 @@ export function GenerationControls({
   }
 
   const isRunning = isGenerating || jobStatus === 'PENDING' || jobStatus === 'RUNNING'
+  const generationStatusCopy =
+    jobStatus === 'RUNNING' ? 'Planning your itinerary...' : 'Preparing your itinerary...'
   const buttonClassName = compact ? 'h-8 w-8 p-0 rounded-[8px] shadow-none hover:shadow-none' : undefined
   const statusClassName = compact
     ? 'inline-flex h-8 items-center gap-2 rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 text-[0.84rem] text-[var(--color-text-muted)]'
@@ -110,13 +114,9 @@ export function GenerationControls({
     <>
       {!isControlled && <div className="flex flex-wrap items-center gap-2">
         {isRunning ? (
-          <div
-            className={statusClassName}
-            aria-live="polite"
-            aria-label={`Generation in progress: ${jobStatus}`}
-          >
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {jobStatus === 'RUNNING' ? 'Generating' : 'Queued'}
+          <div className={statusClassName}>
+            <VoyagerLoader className="h-4 w-4 " />
+            <AiLoadingText announce>{generationStatusCopy}</AiLoadingText>
           </div>
         ) : (
           <DropdownMenu>

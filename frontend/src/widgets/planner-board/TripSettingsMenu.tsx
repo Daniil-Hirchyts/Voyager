@@ -1,12 +1,8 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Calendar as CalendarIcon,
   Copy,
-  Globe,
   Image as ImageIcon,
-  Loader2,
-  MapPin,
   RefreshCw,
   Settings2,
   Trash2,
@@ -25,7 +21,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
 import {
   Select,
   SelectContent,
@@ -57,6 +53,7 @@ import { resolvePhotoUrl } from '@/shared/lib/media'
 import TripAssetManager from '@/widgets/trip-assets'
 import { ROUTE_TRAVEL_MODE_OPTIONS } from './travel-modes'
 import { cn } from '@/shared/lib/cn'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 const fieldLabelClassName = 'text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]'
 
@@ -137,7 +134,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
     const items = (destinationSearch.data?.items ?? []).map((item) => ({
       value: item.label,
       label: item.label,
-      description: item.secondary_text,
+      description: item.address_text ?? undefined,
     }))
 
     // Ensure the current value is always in the options so it shows up as selected
@@ -145,6 +142,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
       items.unshift({
         value: form.destination_text,
         label: form.destination_text,
+        description: undefined,
       })
     }
 
@@ -157,10 +155,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
     coverPreference,
     coverPhotoCandidates,
     selectedCoverPhoto,
-    photoAttributionLabel,
-    coverPhotoUrl,
     isCoverPhotoBusy,
-    coverPhotoEmptyMessage,
     coverPhotosLoading,
     coverPhotoRefreshError,
     resolvedPlaceId,
@@ -432,7 +427,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                       onClick={() => void handleCoverPhotoRefresh()}
                       disabled={!resolvedPlaceId || isCoverPhotoBusy}
                     >
-                      <RefreshCw className={cn("mr-1.5 size-3.5", isCoverPhotoBusy && "animate-spin")} />
+                      <RefreshCw className={cn("mr-1.5 size-3.5", isCoverPhotoBusy && "")} />
                       Refresh
                     </Button>
                     <Button
@@ -443,7 +438,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                       disabled={isUploadingCoverPhoto}
                     >
                       {isUploadingCoverPhoto ? (
-                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                        <VoyagerLoader className="mr-1.5 size-3.5 " />
                       ) : (
                         <Upload className="mr-1.5 size-3.5" />
                       )}
@@ -463,56 +458,83 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                   }}
                 />
 
-                <div className="grid grid-cols-3 gap-2">
-                  {coverPhotosLoading && coverPhotoCandidates.length === 0 ? (
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <div
-                        key={index}
-                        className="aspect-square animate-pulse rounded-[16px] bg-[var(--color-secondary-surface)]"
-                      />
-                    ))
-                  ) : coverPhotoCandidates.length > 0 ? (
-                    coverPhotoCandidates.slice(0, 6).map((photo) => {
-                      const thumbUrl = resolvePhotoUrl(photo, 'thumb')
-                      const isActive =
-                        coverPreference?.assetId === photo.id ||
-                        coverPreference?.photoId === photo.id ||
-                        (!coverPreference?.assetId &&
-                          !coverPreference?.photoId &&
-                          selectedCoverPhoto?.id === photo.id)
+                <PhotoViewerProvider>
+                  <div className="grid grid-cols-3 gap-2">
+                    {coverPhotosLoading && coverPhotoCandidates.length === 0 ? (
+                      Array.from({ length: 3 }).map((_, index) => (
+                        <div
+                          key={index}
+                          className="aspect-square animate-pulse rounded-[16px] bg-[var(--color-secondary-surface)]"
+                        />
+                      ))
+                    ) : coverPhotoCandidates.length > 0 ? (
+                      coverPhotoCandidates.slice(0, 6).map((photo) => {
+                        const thumbUrl = resolvePhotoUrl(photo, 'thumb')
+                        const fullUrl = resolvePhotoUrl(photo, 'full') || thumbUrl
+                        const isActive =
+                          coverPreference?.assetId === photo.id ||
+                          coverPreference?.photoId === photo.id ||
+                          (!coverPreference?.assetId &&
+                            !coverPreference?.photoId &&
+                            selectedCoverPhoto?.id === photo.id)
 
-                      return (
-                        <button
-                          key={photo.id}
-                          type="button"
-                          onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
-                          className={cn(
-                            "relative aspect-square overflow-hidden rounded-[16px] border-2 transition-all",
-                            isActive 
-                              ? "border-black shadow-md scale-[0.98]" 
-                              : "border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]"
-                          )}
-                        >
-                          {thumbUrl ? (
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-[var(--color-secondary-surface)] text-black/20">
-                              <ImageIcon className="size-5" />
-                            </div>
-                          )}
-                        </button>
-                      )
-                    })
-                  ) : (
-                    <div className="col-span-3 rounded-[18px] border border-dashed border-black/8 py-8 text-center text-[0.8rem] text-black/40">
-                      {coverPhotoRefreshError || 'No city photos available.'}
-                    </div>
-                  )}
-                </div>
+                        return (
+                          <div key={photo.id} className="relative">
+                            {thumbUrl ? (
+                              <PhotoViewer
+                                src={fullUrl}
+                                triggers={['onDoubleClick']}
+                                overlay={
+                                  photo.attribution_text ? (
+                                    <div className="absolute inset-x-4 bottom-4 rounded-[14px] bg-black/58 px-3 py-2 text-[0.72rem] text-white shadow-sm backdrop-blur-sm">
+                                      {photo.attribution_text}
+                                    </div>
+                                  ) : undefined
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
+                                  className={cn(
+                                    'relative aspect-square w-full overflow-hidden rounded-[16px] border-2 transition-all',
+                                    isActive
+                                      ? 'border-black shadow-md scale-[0.98]'
+                                      : 'border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]',
+                                  )}
+                                >
+                                  <img
+                                    src={thumbUrl}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                </button>
+                              </PhotoViewer>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
+                                className={cn(
+                                  'relative aspect-square w-full overflow-hidden rounded-[16px] border-2 transition-all',
+                                  isActive
+                                    ? 'border-black shadow-md scale-[0.98]'
+                                    : 'border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]',
+                                )}
+                              >
+                                <div className="flex h-full w-full items-center justify-center bg-[var(--color-secondary-surface)] text-black/20">
+                                  <ImageIcon className="size-5" />
+                                </div>
+                              </button>
+                            )}
+                          </div>
+                        )
+                      })
+                    ) : (
+                      <div className="col-span-3 rounded-[18px] border border-dashed border-black/8 py-8 text-center text-[0.8rem] text-black/40">
+                        {coverPhotoRefreshError || 'No city photos available.'}
+                      </div>
+                    )}
+                  </div>
+                </PhotoViewerProvider>
               </div>
 
               {/* Asset Manager */}
@@ -535,7 +557,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     disabled={duplicateTrip.isPending}
                   >
                     {duplicateTrip.isPending ? (
-                      <Loader2 className="mr-3 size-4 animate-spin text-[var(--color-text-muted)]" />
+                      <VoyagerLoader className="mr-3 size-4 text-[var(--color-text-muted)]" />
                     ) : (
                       <Copy className="mr-3 size-4 text-[var(--color-text-muted)]" />
                     )}
@@ -550,7 +572,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                       disabled={isResetting}
                     >
                       {isResetting ? (
-                        <Loader2 className="mr-3 size-4 animate-spin" />
+                        <VoyagerLoader className="mr-3 size-4 " />
                       ) : (
                         <RefreshCw className="mr-3 size-4" />
                       )}
@@ -576,7 +598,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
               Cancel
             </Button>
             <Button className="rounded-full px-8 h-11 font-bold shadow-lg shadow-black/10 transition-transform active:scale-[0.98]" onClick={handleSave} disabled={patchTrip.isPending}>
-              {patchTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {patchTrip.isPending ? <VoyagerLoader className="size-4 mr-2" /> : null}
               Save Changes
             </Button>
           </div>
@@ -601,7 +623,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                 void handleDelete()
               }}
             >
-              {deleteTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {deleteTrip.isPending ? <VoyagerLoader className="size-4 mr-2" /> : null}
               Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -625,7 +647,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                 void handleReset()
               }}
             >
-              {isResetting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              {isResetting ? <VoyagerLoader className="size-4 mr-2" /> : null}
               Confirm Reset
             </AlertDialogAction>
           </AlertDialogFooter>

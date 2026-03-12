@@ -6,10 +6,12 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
 } from 'react'
+import { motion, AnimatePresence } from 'motion/react'
 import { format, parseISO } from 'date-fns'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -28,7 +30,6 @@ import {
   FileText,
   Landmark,
   Layers3,
-  Loader2,
   MapPin,
   Pencil,
   Plane,
@@ -59,8 +60,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
+import { AnimatedMoney, AnimatedNumber } from '@/components/ui/animated-number'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { AnimatedBackground } from '@/components/ui/animated-background'
+import { ProgressiveBlur } from '@/components/ui/progressive-blur'
+import { Skeleton } from '@/components/ui/skeleton'
 import { Carousel } from '@/components/ui/carousel'
 import { Checkbox } from '@/components/ui/checkbox'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
@@ -91,6 +96,7 @@ import {
 } from '@/components/ui/sheet'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { config } from '@/app/config'
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
 import { createPlannerActivity, patchActivity, reorderActivities } from '@/entities/activity/api'
 import { getGooglePlace } from '@/entities/place/api'
 import {
@@ -117,13 +123,12 @@ import type {
   PlannerResponse,
   RouteTravelMode,
   Trip,
-  TripAssetResponse,
 } from '@/shared/api/types'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { cn } from '@/shared/lib/cn'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { formatMoney } from '@/shared/lib/format'
-import { resolveMediaUrl, resolvePhotoUrl } from '@/shared/lib/media'
+import { resolveMediaUrl } from '@/shared/lib/media'
 import { usePlannerStore } from '@/shared/stores/planner.store'
 import {
   ControlPosition,
@@ -178,7 +183,8 @@ import type {
   PlannerRecommendationEntry,
   PlannerRecommendationsController,
 } from './usePlannerRecommendations'
-import { routeTravelModeDescriptor, routeTravelModeLabel } from './travel-modes'
+import { routeTravelModeDescriptor } from './travel-modes'
+import { VoyagerLoader } from '../app-shell/logo'
 
 interface Props {
   trip: Trip
@@ -237,6 +243,15 @@ type ResolvedPlaceDetail = {
   related_activities: PlannerMapPlaceDetail['related_activities']
 }
 
+function asFiniteNumber(value: string | number | null | undefined) {
+  if (value == null || value === '') {
+    return null
+  }
+
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 type QuickCategory = {
   id: string
   label: string
@@ -251,9 +266,6 @@ type PreviewPlan = {
 
 const FLOATING_ICON_BUTTON_CLASS =
   'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] shadow-[0_20px_44px_-20px_rgba(32,56,83,0.38)] backdrop-blur transition-colors hover:bg-white'
-
-const DETAIL_TAB_CLASS =
-  'inline-flex h-10 items-center border-b-2 border-transparent px-4 text-[0.92rem] font-semibold tracking-[-0.02em] transition-colors'
 
 const QUICK_CATEGORIES: QuickCategory[] = [
   { id: 'food', label: 'Food', query: 'restaurants', category: 'restaurant' },
@@ -271,6 +283,90 @@ function areDayAccordionStatesEqual(
   return (
     Object.keys(left).length === Object.keys(right).length &&
     sectionDayIds.every((dayId) => left[dayId] === right[dayId])
+  )
+}
+
+function DetailSegmentedTabs({
+  tabs,
+  activeTab,
+  onTabChange,
+  compact,
+  idPrefix,
+  controls,
+}: {
+  tabs: Array<[string, string]>
+  activeTab: string
+  onTabChange: (tab: string) => void
+  compact: boolean
+  idPrefix: string
+  controls?: ReactNode
+}) {
+  return (
+    <div className={cn(
+      'shrink-0 border-b border-black/8 bg-white/94 backdrop-blur',
+      compact ? 'px-2.5 py-1.5' : 'px-3 py-1.5',
+    )}>
+      <div className={cn('flex items-center gap-2', !tabs.length && 'justify-end')}>
+        {tabs.length ? (
+          <div className="min-w-0 flex-1 overflow-x-auto">
+            <div
+              className="inline-flex min-w-max items-center gap-0 rounded-[11px] border border-black/10 bg-black/[0.04] p-[2px] shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+              role="tablist"
+              aria-label="Place detail sections"
+            >
+              <AnimatedBackground
+                defaultValue={activeTab}
+                onValueChange={(value) => {
+                  if (value) {
+                    onTabChange(value)
+                  }
+                }}
+                className="rounded-[9px] bg-[#1a1a1a] shadow-[0_10px_18px_-14px_rgba(0,0,0,0.5)]"
+                transition={{
+                  ease: 'easeInOut',
+                  duration: 0.18,
+                }}
+              >
+                {tabs.map(([value, label], index) => (
+                  <button
+                    key={value}
+                    id={`${idPrefix}-tab-${value}`}
+                    data-id={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === value}
+                    aria-controls={`${idPrefix}-panel-${value}`}
+                    tabIndex={activeTab === value ? 0 : -1}
+                    onKeyDown={(event) => {
+                      if (event.key === 'ArrowRight') {
+                        event.preventDefault()
+                        onTabChange(tabs[(index + 1) % tabs.length]?.[0] ?? value)
+                      } else if (event.key === 'ArrowLeft') {
+                        event.preventDefault()
+                        onTabChange(tabs[(index - 1 + tabs.length) % tabs.length]?.[0] ?? value)
+                      } else if (event.key === 'Home') {
+                        event.preventDefault()
+                        onTabChange(tabs[0]?.[0] ?? value)
+                      } else if (event.key === 'End') {
+                        event.preventDefault()
+                        onTabChange(tabs[tabs.length - 1]?.[0] ?? value)
+                      }
+                    }}
+                    className={cn(
+                      'inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-[9px] font-semibold tracking-[-0.02em] text-[#5f6b7e] transition-[transform,color] duration-200 hover:text-[#1a1a1a] active:scale-[0.98] data-[checked=true]:text-white',
+                      compact ? 'h-7 px-2.5 text-[0.72rem]' : 'h-8 px-3 text-[0.78rem]',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </AnimatedBackground>
+            </div>
+          </div>
+        ) : null}
+        {controls ? <div className="flex shrink-0 items-center gap-1">{controls}</div> : null}
+      </div>
+    </div>
   )
 }
 
@@ -753,7 +849,7 @@ function PlannerSidebarSectionTrigger({
 }: {
   icon: ReactNode
   title: string
-  summary: string
+  summary: ReactNode
   actions?: ReactNode
 }) {
   return (
@@ -798,11 +894,25 @@ function PlannerTripHeroCard({
       <div className="relative overflow-hidden rounded-[22px]">
         <div className="relative h-36 bg-[linear-gradient(135deg,#d6e3ee_0%,#9fb5c6_52%,#6d879e_100%)] sm:h-40">
           {coverPhotoUrl ? (
-            <img
-              src={coverPhotoUrl}
-              alt={trip.destination_text}
-              className="h-full w-full object-cover"
-            />
+            <PhotoViewerProvider>
+              <PhotoViewer src={coverPhotoUrl}>
+                <button
+                  type="button"
+                  className="group relative block h-full w-full text-left"
+                  aria-label={`Preview cover photo for ${trip.title}`}
+                >
+                  <img
+                    src={coverPhotoUrl}
+                    alt={trip.destination_text}
+                    className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                  />
+                  <ProgressiveBlur
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-[46%]"
+                    blurIntensity={0.85}
+                  />
+                </button>
+              </PhotoViewer>
+            </PhotoViewerProvider>
           ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,20,32,0.08)_0%,rgba(10,20,32,0.14)_42%,rgba(255,255,255,0.68)_82%,#ffffff_100%)]" />
           <div className="absolute left-3 top-3 flex flex-wrap gap-2">
@@ -862,13 +972,11 @@ function PlannerBudgetOverview({
     trip.budget_amount == null || trip.budget_amount === '' ? '' : String(Number(trip.budget_amount)),
   )
   const [draftCurrency, setDraftCurrency] = useState(trip.budget_currency ?? 'USD')
+  const [isCurrencyMenuOpen, setIsCurrencyMenuOpen] = useState(false)
 
-  const parsedDraftAmount = draftAmount.trim() ? Number(draftAmount) : null
-  const hasValidBudget = parsedDraftAmount == null || (!Number.isNaN(parsedDraftAmount) && parsedDraftAmount >= 0)
-
-  const isDirty =
-    (parsedDraftAmount ?? null) !== (trip.budget_amount == null || trip.budget_amount === '' ? null : Number(trip.budget_amount)) ||
-    draftCurrency !== (trip.budget_currency ?? 'USD')
+  const persistedBudgetAmount =
+    trip.budget_amount == null || trip.budget_amount === '' ? null : Number(trip.budget_amount)
+  const persistedBudgetCurrency = trip.budget_currency ?? 'USD'
 
   useEffect(() => {
     setDraftAmount(
@@ -877,8 +985,18 @@ function PlannerBudgetOverview({
     setDraftCurrency(trip.budget_currency ?? 'USD')
   }, [trip.budget_amount, trip.budget_currency, trip.version])
 
-  async function handleSaveBudget() {
-    if (!hasValidBudget) {
+  async function handleSaveBudget(nextAmount = draftAmount, nextCurrency = draftCurrency) {
+    const nextParsedAmount = nextAmount.trim() ? Number(nextAmount) : null
+    const nextHasValidBudget =
+      nextParsedAmount == null || (!Number.isNaN(nextParsedAmount) && nextParsedAmount >= 0)
+    const nextIsDirty =
+      (nextParsedAmount ?? null) !== persistedBudgetAmount || nextCurrency !== persistedBudgetCurrency
+
+    if (!nextIsDirty || patchTrip.isPending) {
+      return
+    }
+
+    if (!nextHasValidBudget) {
       toast.error('Enter a valid budget amount')
       return
     }
@@ -887,19 +1005,18 @@ function PlannerBudgetOverview({
       await patchTrip.mutateAsync({
         version: trip.version,
         data: {
-          budget_amount: parsedDraftAmount,
-          budget_currency: draftCurrency,
+          budget_amount: nextParsedAmount,
+          budget_currency: nextCurrency,
         },
       })
-      toast.success('Budget updated')
     } catch {
       toast.error('Could not update the budget')
     }
   }
 
-  const initialBudgetLabel = formatMoney(trip.budget_amount, trip.budget_currency) ?? '—'
-  const spentLabel = formatMoney(budgetOverview.comparableSpent, trip.budget_currency) ?? '—'
-  const currentBudgetLabel = formatMoney(budgetOverview.currentBudgetAmount, trip.budget_currency) ?? '—'
+  const initialBudgetAmount = asFiniteNumber(trip.budget_amount)
+  const spentAmount = asFiniteNumber(budgetOverview.comparableSpent)
+  const currentBudgetAmount = asFiniteNumber(budgetOverview.currentBudgetAmount)
 
   return (
     <div className="flex flex-col gap-3" data-testid="planner-budget-summary">
@@ -911,13 +1028,41 @@ function PlannerBudgetOverview({
                 Initial Budget
               </span>
               <span className="text-[1.4rem] font-bold tracking-tight text-[var(--color-text)]">
-                {initialBudgetLabel}
+                {initialBudgetAmount != null ? (
+                  <AnimatedMoney value={initialBudgetAmount} currency={trip.budget_currency} />
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-black/5">
-                <Select value={draftCurrency} onValueChange={setDraftCurrency}>
+            <div className="flex items-center">
+              <div
+                className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-black/5"
+                aria-busy={patchTrip.isPending}
+                onBlur={(event) => {
+                  const nextFocused = event.relatedTarget
+
+                  if (isCurrencyMenuOpen) {
+                    return
+                  }
+
+                  if (nextFocused instanceof Node && event.currentTarget.contains(nextFocused)) {
+                    return
+                  }
+
+                  void handleSaveBudget()
+                }}
+              >
+                <Select
+                  value={draftCurrency}
+                  disabled={patchTrip.isPending}
+                  onOpenChange={setIsCurrencyMenuOpen}
+                  onValueChange={(nextCurrency) => {
+                    setDraftCurrency(nextCurrency)
+                    void handleSaveBudget(draftAmount, nextCurrency)
+                  }}
+                >
                   <SelectTrigger className="h-full border-none bg-transparent px-3 text-[0.8rem] font-bold focus:ring-0 focus:ring-offset-0">
                     <SelectValue />
                   </SelectTrigger>
@@ -935,25 +1080,21 @@ function PlannerBudgetOverview({
                   min="0"
                   step="any"
                   inputMode="decimal"
+                  disabled={patchTrip.isPending}
                   placeholder="0"
                   value={draftAmount}
                   onChange={(event) => setDraftAmount(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== 'Enter') {
+                      return
+                    }
+
+                    event.preventDefault()
+                    void handleSaveBudget()
+                  }}
                   className="h-full w-24 border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0"
                 />
               </div>
-              <Button
-                type="button"
-                size="icon"
-                className="h-11 w-11 shrink-0 rounded-[14px]"
-                onClick={() => void handleSaveBudget()}
-                disabled={!isDirty || !hasValidBudget || patchTrip.isPending}
-              >
-                {patchTrip.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Check className="h-5 w-5" />
-                )}
-              </Button>
             </div>
           </div>
 
@@ -963,7 +1104,11 @@ function PlannerBudgetOverview({
                 Spent
               </span>
               <span className="text-[1.1rem] font-bold text-[var(--color-text)]">
-                {spentLabel}
+                {spentAmount != null ? (
+                  <AnimatedMoney value={spentAmount} currency={trip.budget_currency} />
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
             <div className="flex flex-col gap-1">
@@ -974,15 +1119,24 @@ function PlannerBudgetOverview({
                 "text-[1.1rem] font-bold",
                 budgetOverview.currentBudgetAmount !== null && budgetOverview.currentBudgetAmount < 0 ? "text-red-500" : "text-emerald-600"
               )}>
-                {currentBudgetLabel}
+                {currentBudgetAmount != null ? (
+                  <AnimatedMoney value={currentBudgetAmount} currency={trip.budget_currency} />
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
           </div>
 
           {budgetOverview.pricedActivityCount > 0 && (
             <p className="text-[0.7rem] leading-relaxed text-[var(--color-text-muted)] opacity-80">
-              Tracking costs for {budgetOverview.pricedActivityCount} activities.
-              {budgetOverview.unpricedActivityCount > 0 ? ` ${budgetOverview.unpricedActivityCount} more are still pending.` : ""}
+              Tracking costs for <AnimatedNumber value={budgetOverview.pricedActivityCount} /> activities.
+              {budgetOverview.unpricedActivityCount > 0 ? (
+                <>
+                  {' '}
+                  <AnimatedNumber value={budgetOverview.unpricedActivityCount} /> more are still pending.
+                </>
+              ) : null}
             </p>
           )}
         </div>
@@ -1747,6 +1901,7 @@ function DetailSheetContent({
   preferredTab,
   onTabChange,
   compact = false,
+  isDetailLoading = false,
   onClose,
   dayLabel,
   onEditActivity,
@@ -1766,12 +1921,26 @@ function DetailSheetContent({
   preferredTab: string
   onTabChange: (tab: string) => void
   compact?: boolean
+  isDetailLoading?: boolean
   onClose?: () => void
   dayLabel: string | null
   onEditActivity?: (activity: PlannerActivity) => void
   onDeleteActivity?: (activityId: string) => void
 }) {
   const photos = detail?.photos ?? []
+  const renderablePhotos = photos
+    .map((photo, index) => {
+      const thumbnailUrl = resolveMediaUrl(photo.thumbnail_url) ?? resolveMediaUrl(photo.image_url)
+      const fullUrl = resolveMediaUrl(photo.image_url) ?? resolveMediaUrl(photo.thumbnail_url)
+      if (!thumbnailUrl || !fullUrl) {
+        return null
+      }
+      return { photo, index, thumbnailUrl, fullUrl }
+    })
+    .filter((item): item is { photo: typeof photos[number]; index: number; thumbnailUrl: string; fullUrl: string } => Boolean(item))
+  const reviews = (detail?.reviews ?? []).filter(
+    (review) => review.rating != null || Boolean(review.text || review.title || review.reviewer_name),
+  )
   const tags = detail?.tags ?? []
   const summary =
     detail?.summary ??
@@ -1817,14 +1986,17 @@ function DetailSheetContent({
   })
   const visibleHours = compact ? detail?.hours.slice(0, 4) ?? [] : detail?.hours ?? []
   const hiddenHoursCount = Math.max((detail?.hours.length ?? 0) - visibleHours.length, 0)
+  const hasAboutContent = Boolean(
+    summary ||
+    detailPhotoUrl ||
+    visibleTags.length ||
+    detail?.rating != null ||
+    detailMeta.length ||
+    detailLinks.length ||
+    visibleHours.length,
+  )
 
   const hasActivityTab = Boolean(selectedStop)
-  const activeTab =
-    preferredTab === 'reviews' || preferredTab === 'photos'
-      ? preferredTab
-      : preferredTab === 'activity' && hasActivityTab
-        ? 'activity'
-        : 'about'
 
   const activity = selectedStop?.activity ?? null
   const activityDetails = activity?.category_details as Record<string, unknown> | null ?? null
@@ -1859,34 +2031,65 @@ function DetailSheetContent({
   }
   const ActivityCategoryIcon = activity ? (ACTIVITY_CATEGORY_ICON[activity.category] ?? Landmark) : Landmark
 
-  const showActivityActions = Boolean(activity && (onEditActivity || onDeleteActivity))
+  // Which tabs to show depends on the activity type
+  const visibleTabs: Array<[string, string]> = hasActivityTab
+    ? activity?.category === 'travel'
+      ? activity
+        ? [['activity', 'Activity']]
+        : []
+      : activity?.category === 'hotel'
+        ? [
+            hasAboutContent ? (['about', 'About'] as [string, string]) : null,
+            renderablePhotos.length ? (['photos', 'Photos'] as [string, string]) : null,
+            activity ? (['activity', 'Activity'] as [string, string]) : null,
+          ].filter((tab): tab is [string, string] => Boolean(tab))
+        : [
+            hasAboutContent ? (['about', 'About'] as [string, string]) : null,
+            reviews.length ? (['reviews', 'Reviews'] as [string, string]) : null,
+            renderablePhotos.length ? (['photos', 'Photos'] as [string, string]) : null,
+            activity ? (['activity', 'Activity'] as [string, string]) : null,
+          ].filter((tab): tab is [string, string] => Boolean(tab))
+    : [
+        hasAboutContent ? (['about', 'About'] as [string, string]) : null,
+        reviews.length ? (['reviews', 'Reviews'] as [string, string]) : null,
+        renderablePhotos.length ? (['photos', 'Photos'] as [string, string]) : null,
+      ].filter((tab): tab is [string, string] => Boolean(tab))
+  const validTabIds = visibleTabs.map(([id]) => id)
+  const activeTab = validTabIds.includes(preferredTab) ? preferredTab : (validTabIds[0] ?? 'about')
+  const detailTabsId = useId()
 
-  const actionButtons = (
-    <div className="flex shrink-0 items-center gap-1.5">
+  const showActivityActions = Boolean(activity && (onEditActivity || onDeleteActivity))
+  const hasActionButtons = canToggleVisited || showActivityActions || !isAdded
+  const actionButtonClass =
+    'inline-flex h-7.5 w-7.5 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-black/5 hover:text-[var(--color-text)] disabled:opacity-50'
+  const actionIconClass = 'h-3.5 w-3.5'
+
+  const actionButtons = hasActionButtons ? (
+    <>
       {canToggleVisited ? (
         <button
           type="button"
           onClick={onToggleVisited}
           disabled={isTogglingVisited}
           className={cn(
-            'rounded-full border p-2 shadow-sm transition-colors',
+            actionButtonClass,
             visitedAt
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-              : 'border-black/8 bg-white/90 text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-text)]',
+              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700'
+              : '',
           )}
           aria-label={visitedAt ? 'Mark as not visited' : 'Mark as visited'}
         >
-          <Check className="h-4 w-4" />
+          <Check className={actionIconClass} />
         </button>
       ) : null}
       {showActivityActions && onEditActivity && activity ? (
         <button
           type="button"
           onClick={() => onEditActivity(activity)}
-          className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
+          className={actionButtonClass}
           aria-label="Edit activity"
         >
-          <Pencil className="h-4 w-4" />
+          <Pencil className={actionIconClass} />
         </button>
       ) : null}
       {showActivityActions && onDeleteActivity && activity ? (
@@ -1894,10 +2097,10 @@ function DetailSheetContent({
           <AlertDialogTrigger asChild>
             <button
               type="button"
-              className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-destructive"
+              className={cn(actionButtonClass, 'hover:text-destructive')}
               aria-label="Delete activity"
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className={actionIconClass} />
             </button>
           </AlertDialogTrigger>
           <AlertDialogContent className="rounded-[14px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
@@ -1922,74 +2125,118 @@ function DetailSheetContent({
           </AlertDialogContent>
         </AlertDialog>
       ) : null}
-      {onClose ? (
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
-          aria-label="Close place details"
-        >
-          <X className="h-4 w-4" />
-        </button>
+      {!isAdded ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              disabled={isAdding}
+              className={actionButtonClass}
+              aria-label="Add to trip"
+            >
+              {isAdding ? <VoyagerLoader className={actionIconClass} /> : <Plus className={actionIconClass} />}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-[200px] shrink-0 rounded-[14px] border border-black/8 bg-white/94 p-2 shadow-sm backdrop-blur-xl"
+          >
+            <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
+              Where should this go?
+            </DropdownMenuLabel>
+            {destinations.map((destination) => (
+              <DropdownMenuItem
+                key={destination.id}
+                onClick={() => {
+                  if (detail?.place.id) {
+                    onAddToTrip(destination.id)
+                  } else if (fallbackItem?.id) {
+                    onAddToTrip(destination.id)
+                  }
+                }}
+                className="flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm text-[var(--color-text)] outline-none hover:bg-black/4 focus:bg-black/4"
+              >
+                <span>{destination.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
-    </div>
-  )
+    </>
+  ) : null
+  const closeButton = onClose ? (
+    <button
+      type="button"
+      onClick={onClose}
+      className={cn(
+        'absolute z-10 rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]',
+        compact ? 'right-3.5 top-3.5' : 'right-4 top-4',
+      )}
+      aria-label="Close place details"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  ) : null
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {closeButton}
       <div className={cn(
         'shrink-0 border-b border-black/8 bg-white',
         compact ? 'px-4 py-4' : 'px-5 py-5',
+        onClose && (compact ? 'pr-14' : 'pr-16'),
       )}>
         {compact ? (
-          /* Compact layout (map panel): badges → title → subtitle, buttons on right */
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {selectedStop ? (
-                  <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[0.68rem]">
-                    {selectedStop.isHotel ? 'Stay' : plannerCategoryLabel(selectedStop.activity.category)}
-                  </Badge>
-                ) : null}
-                {detail?.rating != null ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(250,180,56,0.14)] px-2 py-0.5 text-[0.68rem] font-medium text-[var(--color-text)]">
-                    <Star className="h-3 w-3 text-[#F59E0B]" />
-                    {detail.rating.toFixed(1)}
-                    {detail.review_count != null ? ` · ${detail.review_count.toLocaleString()}` : ''}
-                  </span>
-                ) : null}
-                {detailMeta.map((item) => (
-                  <span
-                    key={item}
-                    className="rounded-full bg-[var(--color-secondary-surface)] px-2 py-0.5 text-[0.68rem] font-medium text-[var(--color-text-muted)]"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-              <h2 className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
-                {title}
-              </h2>
-              {subtitle ? (
-                <p className="mt-1 line-clamp-1 text-[0.82rem] leading-5 text-[var(--color-text-muted)]">
-                  {subtitle}
-                </p>
+          /* Compact layout (map panel): badges → title → subtitle */
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedStop ? (
+                <Badge variant="outline" className="rounded-full px-2 py-0.5 text-[0.68rem]">
+                  {selectedStop.isHotel ? 'Stay' : plannerCategoryLabel(selectedStop.activity.category)}
+                </Badge>
               ) : null}
+              {detail?.rating != null ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(250,180,56,0.14)] px-2 py-0.5 text-[0.68rem] font-medium text-[var(--color-text)]">
+                  <Star className="h-3 w-3 text-[#F59E0B]" />
+                  <AnimatedNumber
+                    value={detail.rating}
+                    formatOptions={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                  />
+                  {detail.review_count != null ? (
+                    <span className="inline-flex items-baseline gap-0.5">
+                      <span aria-hidden="true">·</span>
+                      <AnimatedNumber value={detail.review_count} />
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+              {detailMeta.map((item) => (
+                <span
+                  key={item}
+                  className="rounded-full bg-[var(--color-secondary-surface)] px-2 py-0.5 text-[0.68rem] font-medium text-[var(--color-text-muted)]"
+                >
+                  {item}
+                </span>
+              ))}
             </div>
-            {actionButtons}
+            <h2 className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+              {title}
+            </h2>
+            {subtitle ? (
+              <p className="mt-1 line-clamp-1 text-[0.82rem] leading-5 text-[var(--color-text-muted)]">
+                {subtitle}
+              </p>
+            ) : null}
           </div>
         ) : (
           /* Full drawer layout: title prominent at top, meta badges below */
           <>
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                {selectedStop ? (
-                  <Badge variant="outline" className="rounded-full">
-                    {selectedStop.isHotel ? 'Stay' : plannerCategoryLabel(selectedStop.activity.category)}
-                  </Badge>
-                ) : null}
-              </div>
-              {actionButtons}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              {selectedStop ? (
+                <Badge variant="outline" className="rounded-full">
+                  {selectedStop.isHotel ? 'Stay' : plannerCategoryLabel(selectedStop.activity.category)}
+                </Badge>
+              ) : null}
             </div>
             <h2 className="mt-3 text-[1.25rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
               {title}
@@ -2004,8 +2251,16 @@ function DetailSheetContent({
                 {detail?.rating != null ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(250,180,56,0.14)] px-2.5 py-1 text-[0.72rem] font-medium text-[var(--color-text)]">
                     <Star className="h-3.5 w-3.5 text-[#F59E0B]" />
-                    {detail.rating.toFixed(1)}
-                    {detail.review_count != null ? ` · ${detail.review_count.toLocaleString()}` : ''}
+                    <AnimatedNumber
+                      value={detail.rating}
+                      formatOptions={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                    />
+                    {detail.review_count != null ? (
+                      <span className="inline-flex items-baseline gap-0.5">
+                        <span aria-hidden="true">·</span>
+                        <AnimatedNumber value={detail.review_count} />
+                      </span>
+                    ) : null}
                   </span>
                 ) : null}
                 {detailMeta.map((item) => (
@@ -2022,55 +2277,40 @@ function DetailSheetContent({
         )}
       </div>
 
-      <div className="shrink-0 border-b border-black/8 bg-white/94 px-3 py-2.5 backdrop-blur">
-        <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
-          {([
-            ['about', 'About'],
-            ['reviews', 'Reviews'],
-            ['photos', 'Photos'],
-          ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onTabChange(value)}
-              className={cn(
-                DETAIL_TAB_CLASS,
-                'shrink-0 whitespace-nowrap',
-                compact && 'h-9 px-3 text-[0.86rem]',
-                activeTab === value
-                  ? 'border-[var(--color-text)] text-[var(--color-text)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-              )}
-            >
-              {label}
-            </button>
-          ))}
-          {hasActivityTab ? (
-            <button
-              type="button"
-              onClick={() => onTabChange('activity')}
-              className={cn(
-                DETAIL_TAB_CLASS,
-                'shrink-0 whitespace-nowrap',
-                compact && 'h-9 px-3 text-[0.86rem]',
-                activeTab === 'activity'
-                  ? 'border-[var(--color-text)] text-[var(--color-text)]'
-                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-              )}
-            >
-              Activity
-            </button>
-          ) : null}
-        </div>
-      </div>
+      {visibleTabs.length > 0 || actionButtons ? (
+        <DetailSegmentedTabs
+          tabs={visibleTabs}
+          activeTab={activeTab}
+          onTabChange={onTabChange}
+          compact={compact}
+          idPrefix={detailTabsId}
+          controls={actionButtons}
+        />
+      ) : null}
 
       <div className={cn(
         'min-h-0 flex-1 overflow-y-auto',
         compact ? 'px-3 pb-3 pt-3' : 'px-4 pb-4 pt-4',
       )}>
-        <div>
-              {activeTab === 'about' ? (
-                <div className="grid grid-cols-2 gap-3">
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={isDetailLoading && !detail ? '__loading__' : (detail?.place.id ?? activeTab)}
+            id={`${detailTabsId}-panel-${activeTab}`}
+            role="tabpanel"
+            aria-labelledby={`${detailTabsId}-tab-${activeTab}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            {isDetailLoading && !detail ? (
+              <div className="grid grid-cols-2 gap-3">
+                <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
+                <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
+                <Skeleton className={cn('col-span-2 rounded-[18px]', compact ? 'h-9' : 'h-10')} />
+              </div>
+            ) : activeTab === 'about' ? (
+              <div className="grid grid-cols-2 gap-3">
 
                   {/* Row 1 col 1 — Summary (hidden when no content) */}
                   {summary ? (
@@ -2092,17 +2332,25 @@ function DetailSheetContent({
 
                   {/* Row 1 col 2 — Photo (spans both cols when no summary) */}
                   {detailPhotoUrl ? (
-                    <figure className={cn(
-                      'overflow-hidden rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)]',
-                      !summary && 'col-span-2',
-                      compact ? 'min-h-[8rem]' : 'min-h-[10rem]',
-                    )}>
-                      <img
-                        src={detailPhotoUrl}
-                        alt={title}
-                        className="h-full w-full object-cover"
-                      />
-                    </figure>
+                    <PhotoViewerProvider>
+                      <PhotoViewer src={resolveMediaUrl(heroPhoto?.image_url) ?? detailPhotoUrl}>
+                        <button
+                          type="button"
+                          className={cn(
+                            'group relative block w-full overflow-hidden rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] text-left',
+                            !summary && 'col-span-2',
+                            compact ? 'h-[6rem]' : 'h-[8rem]',
+                          )}
+                          aria-label={`Preview ${title}`}
+                        >
+                          <img
+                            src={detailPhotoUrl}
+                            alt={title}
+                            className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+                          />
+                        </button>
+                      </PhotoViewer>
+                    </PhotoViewerProvider>
                   ) : null}
 
                   {/* Row 2 col 1 — Tags */}
@@ -2157,8 +2405,17 @@ function DetailSheetContent({
                         {detail?.rating != null ? (
                           <span className="inline-flex items-center gap-1.5 font-medium text-[var(--color-text)]">
                             <Star className="h-3.5 w-3.5 text-[#F59E0B]" />
-                            {detail.rating.toFixed(1)}
-                            {detail.review_count != null ? ` (${detail.review_count.toLocaleString()})` : ''}
+                            <AnimatedNumber
+                              value={detail.rating}
+                              formatOptions={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                            />
+                            {detail.review_count != null ? (
+                              <span className="inline-flex items-baseline gap-0.5">
+                                <span aria-hidden="true">(</span>
+                                <AnimatedNumber value={detail.review_count} />
+                                <span aria-hidden="true">)</span>
+                              </span>
+                            ) : null}
                           </span>
                         ) : null}
                         {detailMeta.map((item) => (
@@ -2226,9 +2483,9 @@ function DetailSheetContent({
               ) : null}
 
               {activeTab === 'reviews' ? (
-                detail?.reviews.length ? (
+                reviews.length ? (
                   <div className={cn('space-y-2.5', !compact && 'space-y-3')}>
-                    {detail.reviews.slice(0, 6).map((review) => (
+                    {reviews.slice(0, 6).map((review) => (
                       <div
                         key={review.review_id}
                         className={cn(
@@ -2271,42 +2528,42 @@ function DetailSheetContent({
               ) : null}
 
               {activeTab === 'photos' ? (
-                photos.length ? (
-                  <div className={cn('grid gap-3 sm:grid-cols-2', compact && 'gap-2.5 lg:grid-cols-3')}>
-                    {photos.map((photo, index) => {
-                      const photoUrl =
-                        resolveMediaUrl(photo.image_url) ?? resolveMediaUrl(photo.thumbnail_url)
-                      if (!photoUrl) {
-                        return null
-                      }
-
-                      return (
-                        <figure key={`${photo.image_url}-${index}`} className="overflow-hidden rounded-[18px] border border-black/8 bg-white">
-                          <img
-                            src={photoUrl}
-                            alt={photo.caption || title}
-                            className={cn('w-full object-cover', compact ? 'h-28' : 'h-40')}
-                          />
-                          {photo.caption ? (
-                            <figcaption className={cn(
-                              'text-[var(--color-text-muted)]',
-                              compact ? 'px-2.5 py-2 text-[0.68rem]' : 'px-3 py-2 text-xs',
-                            )}>
-                              {photo.caption}
-                            </figcaption>
-                          ) : null}
-                        </figure>
-                      )
-                    })}
-                  </div>
-                ) : (
-                  <p className={cn(
-                    'rounded-[18px] border border-dashed border-black/8 text-[var(--color-text-muted)]',
-                    compact ? 'px-3.5 py-4 text-[0.84rem]' : 'px-4 py-6 text-sm',
-                  )}>
-                    Photos will appear here once Voyager has a place photo or provider snapshot.
-                  </p>
-                )
+                renderablePhotos.length ? (
+                  <PhotoViewerProvider>
+                    <div className={cn('grid gap-3 sm:grid-cols-2', compact && 'gap-2.5 lg:grid-cols-3')}>
+                      {renderablePhotos.map(({ photo, index, thumbnailUrl, fullUrl }) => {
+                        return (
+                          <PhotoViewer key={`${photo.image_url}-${index}`} src={fullUrl}>
+                            <button
+                              type="button"
+                              className="group block overflow-hidden rounded-[18px] border border-black/8 bg-white text-left"
+                              aria-label={`Preview ${photo.caption || title}`}
+                            >
+                              <div className="relative overflow-hidden">
+                                <img
+                                  src={thumbnailUrl}
+                                  alt={photo.caption || title}
+                                  className={cn(
+                                    'w-full object-cover transition-transform group-hover:scale-[1.03]',
+                                    compact ? 'h-28' : 'h-40',
+                                  )}
+                                />
+                              </div>
+                              {photo.caption ? (
+                                <span className={cn(
+                                  'block text-[var(--color-text-muted)]',
+                                  compact ? 'px-2.5 py-2 text-[0.68rem]' : 'px-3 py-2 text-xs',
+                                )}>
+                                  {photo.caption}
+                                </span>
+                              ) : null}
+                            </button>
+                          </PhotoViewer>
+                        )
+                      })}
+                    </div>
+                  </PhotoViewerProvider>
+                ) : null
               ) : null}
 
               {activeTab === 'activity' && activity ? (
@@ -2406,43 +2663,9 @@ function DetailSheetContent({
                   />
                 </div>
               ) : null}
-        </div>
+        </motion.div>
+        </AnimatePresence>
 
-        {!isAdded ? (
-          <div className="mt-4 flex">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="w-full rounded-full shadow-none" disabled={isAdding}>
-                  {isAdding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                  Add to trip
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="center"
-                className="w-[200px] shrink-0 rounded-[14px] border border-black/8 bg-white/94 p-2 shadow-sm backdrop-blur-xl"
-              >
-                <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
-                  Where should this go?
-                </DropdownMenuLabel>
-                {destinations.map((destination) => (
-                  <DropdownMenuItem
-                    key={destination.id}
-                    onClick={() => {
-                      if (detail?.place.id) {
-                        onAddToTrip(destination.id)
-                      } else if (fallbackItem?.id) {
-                        onAddToTrip(destination.id)
-                      }
-                    }}
-                    className="flex cursor-pointer select-none items-center rounded-lg px-2 py-2 text-sm text-[var(--color-text)] outline-none hover:bg-black/4 focus:bg-black/4"
-                  >
-                    <span>{destination.label}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        ) : null}
       </div>
     </div>
   )
@@ -2816,34 +3039,36 @@ export function PlannerMapView({
     [activeRouteSections],
   )
 
+  // On desktop the detail panel overlays the bottom ~60% of the map canvas.
+  // Shift the focus center south so the marker lands in the visible upper area.
+  const PANEL_LAT_OFFSET = isMobile ? 0 : -0.018
+
   const currentMapFocus = useMemo(() => {
+    function withOffset(lat: number, lng: number) {
+      return { lat: lat + PANEL_LAT_OFFSET, lng }
+    }
+
     if (selectedStop?.lat != null && selectedStop.lon != null) {
       return {
-        point: { lat: selectedStop.lat, lng: selectedStop.lon },
+        point: withOffset(selectedStop.lat, selectedStop.lon),
         zoom: 13,
       }
     }
     if (selectedRecommendation?.item.lat != null && selectedRecommendation.item.lon != null) {
       return {
-        point: {
-          lat: selectedRecommendation.item.lat,
-          lng: selectedRecommendation.item.lon,
-        },
+        point: withOffset(selectedRecommendation.item.lat, selectedRecommendation.item.lon),
         zoom: 13,
       }
     }
     if (selectedSearchItem?.lat != null && selectedSearchItem.lon != null) {
       return {
-        point: { lat: selectedSearchItem.lat, lng: selectedSearchItem.lon },
+        point: withOffset(selectedSearchItem.lat, selectedSearchItem.lon),
         zoom: 13,
       }
     }
     if (placeDetailQuery.data?.place.lat != null && placeDetailQuery.data.place.lon != null) {
       return {
-        point: {
-          lat: placeDetailQuery.data.place.lat,
-          lng: placeDetailQuery.data.place.lon,
-        },
+        point: withOffset(placeDetailQuery.data.place.lat, placeDetailQuery.data.place.lon),
         zoom: 13,
       }
     }
@@ -2852,15 +3077,13 @@ export function PlannerMapView({
       googlePlaceDetailQuery.data.place.lon != null
     ) {
       return {
-        point: {
-          lat: googlePlaceDetailQuery.data.place.lat,
-          lng: googlePlaceDetailQuery.data.place.lon,
-        },
+        point: withOffset(googlePlaceDetailQuery.data.place.lat, googlePlaceDetailQuery.data.place.lon),
         zoom: 13,
       }
     }
     return null
   }, [
+    PANEL_LAT_OFFSET,
     googlePlaceDetailQuery.data?.place.lat,
     googlePlaceDetailQuery.data?.place.lon,
     placeDetailQuery.data?.place.lat,
@@ -3276,6 +3499,13 @@ export function PlannerMapView({
       ? 'Inbox'
       : selectedSection.title
     : null
+  const detailSelectionKey =
+    selectedStop?.activity.id ??
+    selectedSearchItem?.id ??
+    selectedDetailPlaceId ??
+    selectedRecommendation?.item.id ??
+    ''
+
   const detailPanelTitle =
     selectedRecommendation?.item.title ??
     activeSelectionTitle(selectedStop, selectedSearchItem, resolvedDetail)
@@ -3308,6 +3538,7 @@ export function PlannerMapView({
       preferredTab={preferredDetailTab}
       onTabChange={setPreferredDetailTab}
       compact={!isMobile}
+      isDetailLoading={placeDetailQuery.isLoading || googlePlaceDetailQuery.isLoading}
       onClose={clearSelection}
       dayLabel={selectedDayLabel}
       onEditActivity={onEditActivity}
@@ -3315,21 +3546,46 @@ export function PlannerMapView({
     />
   ) : null
   const budgetOverview = buildBudgetOverview(trip, allPlannerActivities)
-  const tripBudgetLabel = formatMoney(trip.budget_amount, trip.budget_currency)
-  const plannedSpendLabel =
-    budgetOverview.comparableSpend != null
-      ? formatMoney(budgetOverview.comparableSpend, budgetOverview.comparableCurrency)
-      : null
-  const budgetSummary = tripBudgetLabel
-    ? `${tripBudgetLabel} target${plannedSpendLabel ? ` · ${plannedSpendLabel} planned` : ''}`
-    : plannedSpendLabel
-      ? `${plannedSpendLabel} planned`
-      : 'No trip budget yet'
+  const tripBudgetAmount = asFiniteNumber(trip.budget_amount)
+  const plannedSpendAmount = asFiniteNumber(budgetOverview.comparableSpend)
+  const budgetSummary = tripBudgetAmount != null ? (
+    <>
+      <AnimatedMoney value={tripBudgetAmount} currency={trip.budget_currency} /> target
+      {plannedSpendAmount != null ? (
+        <>
+          {' '}
+          <span aria-hidden="true">·</span>{' '}
+          <AnimatedMoney
+            value={plannedSpendAmount}
+            currency={budgetOverview.comparableCurrency}
+          />{' '}
+          planned
+        </>
+      ) : null}
+    </>
+  ) : plannedSpendAmount != null ? (
+    <>
+      <AnimatedMoney
+        value={plannedSpendAmount}
+        currency={budgetOverview.comparableCurrency}
+      />{' '}
+      planned
+    </>
+  ) : 'No trip budget yet'
   const recommendationSummary = recommendations.enabled
-    ? `${recommendations.discoverEntries.length} suggestion${recommendations.discoverEntries.length === 1 ? '' : 's'}`
+    ? (
+        <>
+          <AnimatedNumber value={recommendations.discoverEntries.length} />{' '}
+          suggestion{recommendations.discoverEntries.length === 1 ? '' : 's'}
+        </>
+      )
     : 'Unavailable'
   const fileSummary = tripAssets.length
-    ? `${tripAssets.length} upload${tripAssets.length === 1 ? '' : 's'}`
+    ? (
+        <>
+          <AnimatedNumber value={tripAssets.length} /> upload{tripAssets.length === 1 ? '' : 's'}
+        </>
+      )
     : 'No uploads yet'
 
   return (
@@ -3924,25 +4180,32 @@ export function PlannerMapView({
           </Tooltip>
         ) : null}
 
-        {!isMobile && detailOpen && hasActiveSelection ? (
-          <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col justify-end px-3 pb-3">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-[rgba(243,245,247,0.55)] via-[rgba(243,245,247,0.14)] to-transparent" />
-            <div
-              role="dialog"
-              aria-modal="false"
-              aria-labelledby="planner-map-detail-title"
-              aria-describedby="planner-map-detail-description"
-              data-testid="planner-map-detail-sheet"
-              className="pointer-events-auto relative flex max-h-[50%] w-full max-w-240 flex-col overflow-hidden rounded-[28px] border border-black/8 bg-[#F3F5F7] shadow-[0_32px_92px_-40px_rgba(15,23,42,0.42)]"
-            >
-              <div className="sr-only">
-                <h2 id="planner-map-detail-title">{detailPanelTitle}</h2>
-                <p id="planner-map-detail-description">{detailPanelDescription}</p>
-              </div>
-              {detailPanelContent}
+        <AnimatePresence>
+          {!isMobile && detailOpen && hasActiveSelection ? (
+            <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col justify-end px-3 pb-3">
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-[rgba(243,245,247,0.55)] via-[rgba(243,245,247,0.14)] to-transparent" />
+              <motion.div
+                key={detailSelectionKey}
+                role="dialog"
+                aria-modal="false"
+                aria-labelledby="planner-map-detail-title"
+                aria-describedby="planner-map-detail-description"
+                data-testid="planner-map-detail-sheet"
+                className="pointer-events-auto relative flex h-[min(60%,34rem)] w-full max-w-240 flex-col overflow-hidden rounded-[28px] border border-black/8 bg-[#F3F5F7] shadow-[0_32px_92px_-40px_rgba(15,23,42,0.42)]"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <div className="sr-only">
+                  <h2 id="planner-map-detail-title">{detailPanelTitle}</h2>
+                  <p id="planner-map-detail-description">{detailPanelDescription}</p>
+                </div>
+                {detailPanelContent}
+              </motion.div>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </AnimatePresence>
       </section>
 
       <Sheet
@@ -4113,6 +4376,7 @@ export function ActivityMapDetailSheet({
             onToggleVisited={handleToggleVisited}
             isTogglingVisited={isTogglingVisited}
             isAdding={false}
+            isDetailLoading={placeDetailQuery.isLoading || googlePlaceDetailQuery.isLoading}
             preferredTab={preferredTab}
             onTabChange={setPreferredTab}
             onClose={onClose}

@@ -7,7 +7,6 @@ import {
   CalendarIcon,
   CalendarRange,
   CheckCircle2,
-  Loader2,
   MapPin,
   Search,
   Settings2,
@@ -24,6 +23,7 @@ import { Controller, useForm, useWatch } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { AnimatedMoney, AnimatedNumber } from '@/components/ui/animated-number'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -60,6 +60,7 @@ import { isApiError } from '@/shared/api/client'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { cn } from '@/shared/lib/cn'
 import { useMap, useMapsLibrary } from '@vis.gl/react-google-maps'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 import {
   VoyagerMap,
   VoyagerMarker,
@@ -108,17 +109,6 @@ function parseFormDate(v: string | undefined) {
   if (!v) return null
   const p = parseISO(v)
   return isValid(p) ? p : null
-}
-
-function formatBudgetSummary(amount: number | undefined, currency: string) {
-  if (amount === undefined || Number.isNaN(amount)) return 'Open budget'
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency', currency, maximumFractionDigits: 0,
-    }).format(amount)
-  } catch {
-    return `${amount.toLocaleString('en-US')} ${currency}`
-  }
 }
 
 // ─── Single date picker ───────────────────────────────────────────────────────
@@ -395,11 +385,7 @@ export default function TripCreatePage() {
     },
     [setValue],
   )
-
-  const budgetSummary = useMemo(
-    () => formatBudgetSummary(budgetAmount, budgetCurrency),
-    [budgetAmount, budgetCurrency],
-  )
+  const hasBudgetAmount = typeof budgetAmount === 'number' && Number.isFinite(budgetAmount)
 
   const dateRangeSummary = useMemo(() => {
     if (parsedStart && parsedEnd)
@@ -494,7 +480,7 @@ export default function TripCreatePage() {
       {/* ── Wizard panel (LEFT on desktop, BOTTOM on mobile) ── */}
       <div className="relative z-10 flex shrink-0 flex-col overflow-hidden
         md:w-[440px] md:border-r md:border-[var(--color-border-strong)]
-        h-[72%] md:h-full">
+       h-[72%] md:h-full">
 
         {/* Panel background */}
         <div className="absolute inset-0 bg-white shadow-[1px_0_0_0_var(--color-border-strong),0_-4px_24px_0_var(--color-shadow)] md:shadow-none" />
@@ -587,7 +573,7 @@ export default function TripCreatePage() {
                               />
                               <div className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center">
                                 {isFetchingDest
-                                  ? <Loader2 className="size-4 animate-spin text-[var(--color-text-muted)]/50" />
+                                  ? <VoyagerLoader className="size-4 text-[var(--color-text-muted)]/50" />
                                   : <Search className="size-4 text-[var(--color-text-muted)]/50" />
                                 }
                               </div>
@@ -696,7 +682,7 @@ export default function TripCreatePage() {
                     <div className="flex-1 rounded-[var(--radius)] border border-[var(--color-border-strong)] bg-[var(--color-bg-soft)] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
                       <p className="text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]/60 mb-1.5">Duration</p>
                       <p className="text-[1.35rem] font-bold tracking-[-0.04em] text-[var(--color-text)] leading-none">
-                        {tripDays}{' '}
+                        <AnimatedNumber value={tripDays} />{' '}
                         <span className="text-[0.88rem] font-medium text-[var(--color-text-muted)]">
                           {tripDays === 1 ? 'day' : 'days'}
                         </span>
@@ -819,7 +805,13 @@ export default function TripCreatePage() {
                 <div className="flex gap-3 rounded-[var(--radius)] border border-[var(--color-border-strong)] bg-[var(--color-bg-soft)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
                   <div className="flex-1">
                     <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]/60 mb-1">Budget</p>
-                    <p className="text-[0.86rem] font-semibold text-[var(--color-text)]">{budgetSummary}</p>
+                    <p className="text-[0.86rem] font-semibold text-[var(--color-text)]">
+                      {hasBudgetAmount ? (
+                        <AnimatedMoney value={budgetAmount} currency={budgetCurrency} />
+                      ) : (
+                        'Open budget'
+                      )}
+                    </p>
                   </div>
                   <div className="flex-1 text-right">
                     <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]/60 mb-1">Style</p>
@@ -867,7 +859,7 @@ export default function TripCreatePage() {
                 )}
               >
                 {isWorking
-                  ? <Loader2 className="size-3.5 animate-spin" />
+                  ? <VoyagerLoader className="size-3.5 " />
                   : <CheckCircle2 className="size-3.5" />
                 }
                 Create trip

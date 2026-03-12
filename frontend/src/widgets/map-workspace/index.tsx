@@ -10,7 +10,6 @@ import {
   ExternalLink,
   Layers3,
   Lock,
-  Loader2,
   MapPin,
   Navigation,
   Pencil,
@@ -26,6 +25,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { config } from '@/app/config'
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
 import { patchActivity } from '@/entities/activity/api'
 import { searchPlaces } from '@/entities/place/api'
 import {
@@ -46,6 +46,7 @@ import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
 import { cn } from '@/shared/lib/cn'
 import { resolvePhotoUrl } from '@/shared/lib/media'
 import { useMapStore } from '@/shared/stores/map.store'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 import {
   ControlPosition,
   GoogleDirectionsRoute,
@@ -1113,7 +1114,7 @@ export default function MapWorkspace({ tripId }: Props) {
                 disabled={createPlaceMutation.isPending}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors disabled:opacity-50"
               >
-                {createPlaceMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {createPlaceMutation.isPending && <VoyagerLoader className="w-4 h-4 " />}
                 Save Place
               </button>
             </div>
@@ -1314,11 +1315,21 @@ export default function MapWorkspace({ tripId }: Props) {
             {selectedResult ? (
               <div className="space-y-4">
                 {resolvePhotoUrl(selectedResult.primary_photo, 'full') ? (
-                  <img
-                    src={resolvePhotoUrl(selectedResult.primary_photo, 'full') || ''}
-                    alt={selectedResult.name}
-                    className="w-full h-44 object-cover rounded-[18px]"
-                  />
+                  <PhotoViewerProvider>
+                    <PhotoViewer src={resolvePhotoUrl(selectedResult.primary_photo, 'full')}>
+                      <button
+                        type="button"
+                        className="group relative block w-full overflow-hidden rounded-[18px] text-left"
+                        aria-label={`Preview ${selectedResult.name}`}
+                      >
+                        <img
+                          src={resolvePhotoUrl(selectedResult.primary_photo, 'full') || ''}
+                          alt={selectedResult.name}
+                          className="h-44 w-full object-cover transition-transform group-hover:scale-[1.02]"
+                        />
+                      </button>
+                    </PhotoViewer>
+                  </PhotoViewerProvider>
                 ) : (
                   <div
                     className="h-44 rounded-[18px] flex items-center justify-center text-sm text-[var(--color-text-muted)]"
@@ -1510,7 +1521,7 @@ export default function MapWorkspace({ tripId }: Props) {
                     disabled={isSavingLayer}
                     className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors disabled:opacity-50"
                   >
-                    {isSavingLayer ? <Loader2 className="h-4 w-4 animate-spin" /> : <Layers3 className="h-4 w-4" />}
+                    {isSavingLayer ? <VoyagerLoader className="h-4 w-4 " /> : <Layers3 className="h-4 w-4" />}
                     {draftLayer.layerId ? 'Update Layer' : 'Save Layer'}
                   </button>
                 </div>

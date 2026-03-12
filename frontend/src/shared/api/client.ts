@@ -2,13 +2,41 @@ import createClient from 'openapi-fetch'
 import { config } from '@/app/config'
 
 let getToken: (() => string | undefined) | null = null
+let unauthorizedHandler: (() => void | Promise<void>) | null = null
+let unauthorizedInFlight: Promise<void> | null = null
 
 export function setTokenGetter(getter: () => string | undefined) {
   getToken = getter
 }
 
+export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
+  unauthorizedHandler = handler
+
+  return () => {
+    if (unauthorizedHandler === handler) {
+      unauthorizedHandler = null
+    }
+  }
+}
+
 export function getAuthToken() {
   return getToken?.()
+}
+
+async function notifyUnauthorizedResponse(response: Response) {
+  if (response.status !== 401 || !unauthorizedHandler) {
+    return
+  }
+
+  if (!unauthorizedInFlight) {
+    unauthorizedInFlight = Promise.resolve(unauthorizedHandler())
+      .catch(() => undefined)
+      .finally(() => {
+        unauthorizedInFlight = null
+      })
+  }
+
+  await unauthorizedInFlight
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,6 +74,8 @@ export class ApiError extends Error {
 }
 
 export async function toApiError(response: Response) {
+  await notifyUnauthorizedResponse(response)
+
   const body = await response.clone().json().catch(() => null)
   const apiError = body?.error
   return new ApiError(

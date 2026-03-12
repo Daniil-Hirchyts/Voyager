@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/shared/lib/cn";
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 export interface ComboboxOption {
   value: string;
@@ -154,7 +155,7 @@ export function Combobox({
           <CommandList>
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-6 text-sm text-[var(--color-text-muted)]">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <VoyagerLoader className="h-4 w-4 " />
                 Searching…
               </div>
             ) : (

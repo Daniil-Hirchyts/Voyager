@@ -13,6 +13,7 @@ const ProductPage = lazy(() => import('@/pages/public/product'))
 const HowItWorksPage = lazy(() => import('@/pages/public/how-it-works'))
 const SignInPage = lazy(() => import('@/pages/public/signin'))
 const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
+const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'))
 
 // App pages
 const SettingsPage = lazy(() => import('@/pages/app/settings'))
@@ -127,6 +128,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<PageLoader />}>
         <AuthCallbackPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/auth/silent',
+    element: (
+      <Suspense fallback={null}>
+        <AuthSilentPage />
       </Suspense>
     ),
   },

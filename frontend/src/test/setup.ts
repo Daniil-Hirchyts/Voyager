@@ -418,6 +418,7 @@ beforeAll(() => {
 afterEach(() => {
   cleanup()
   globalThis.localStorage?.clear?.()
+  globalThis.sessionStorage?.clear?.()
   server.resetHandlers()
   server.use(...defaultServerHandlers)
   useMapStore.setState(initialMapState, true)

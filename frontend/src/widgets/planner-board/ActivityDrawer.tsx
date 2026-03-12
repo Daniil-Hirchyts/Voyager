@@ -9,7 +9,6 @@ import {
   FileText,
   Footprints,
   Landmark,
-  Loader2,
   MapPin,
   Paperclip,
   Plane,
@@ -56,7 +55,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { TimePicker } from "@/components/ui/time-picker";
 import {
   WheelPicker,
   WheelPickerWrapper,
@@ -67,6 +65,7 @@ import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { cn } from "@/shared/lib/cn";
 import { CURRENCY_OPTIONS } from "@/shared/lib/currencies";
 import TripAssetManager from "@/widgets/trip-assets";
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 import type {
   Activity,
   ActivityCategory,
@@ -546,7 +545,7 @@ function PlaceSelector({
             </div>
           ) : isSearching ? (
             <div className="flex items-center gap-2 rounded-[12px] px-3 py-3 text-sm text-[var(--color-text-muted)]">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <VoyagerLoader className="h-4 w-4 " />
               Searching places...
             </div>
           ) : results.length ? (
@@ -1899,13 +1898,13 @@ export function ActivityDrawer({
                                   Start time
                                 </FieldLabel>
                                 <FieldContent>
-                                  <TimePicker
-                                    id="activity-start-time"
-                                    value={field.value ?? ""}
-                                    onChange={field.onChange}
-                                    invalid={Boolean(fieldState.error)}
-                                    triggerClassName="border-black/8"
-                                  />
+                                  <div id="activity-start-time">
+                                    <TravelTimeWheelPicker
+                                      value={field.value || "09:00"}
+                                      onChange={field.onChange}
+                                      inputAriaLabel="Type start time"
+                                    />
+                                  </div>
                                 </FieldContent>
                                 {fieldState.error ? (
                                   <FieldError errors={[fieldState.error]} />
@@ -2102,7 +2101,7 @@ export function ActivityDrawer({
                     disabled={isSaving || createPlaceMutation.isPending}
                   >
                     {isSaving || createPlaceMutation.isPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <VoyagerLoader className="h-4 w-4 " />
                     ) : null}
                     {submitLabel}
                   </Button>

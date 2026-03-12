@@ -1,7 +1,9 @@
 import { AuthProvider as OidcAuthProvider, useAuth } from 'react-oidc-context'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { config } from '@/app/config'
-import { setTokenGetter } from '@/shared/api/client'
+import { setTokenGetter, setUnauthorizedHandler } from '@/shared/api/client'
+import { useAuthStore } from '@/shared/stores/auth.store'
+import { createSessionExpiryHandler, getBrowserPath } from './auth-session'
 
 const oidcConfig = {
   authority: config.keycloak.issuer,
@@ -19,12 +21,46 @@ interface Props {
   children: React.ReactNode
 }
 
-function AuthTokenInjector() {
+function AuthSessionManager() {
   const auth = useAuth()
+  const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
+
+  const handleSessionExpired = useMemo(
+    () =>
+      createSessionExpiryHandler({
+        getCurrentPath: () => getBrowserPath(),
+        getCurrentPathname: () => window.location.pathname,
+        removeUser: () => auth.removeUser(),
+        redirectToSignin: () => window.location.replace('/signin'),
+        setIntendedPath,
+      }),
+    [auth.removeUser, setIntendedPath],
+  )
 
   useEffect(() => {
     setTokenGetter(() => auth.user?.access_token)
+    return () => {
+      setTokenGetter(() => undefined)
+    }
   }, [auth.user?.access_token])
+
+  useEffect(() => {
+    return setUnauthorizedHandler(() => handleSessionExpired())
+  }, [handleSessionExpired])
+
+  useEffect(() => {
+    const removeAccessTokenExpired = auth.events.addAccessTokenExpired(() => {
+      void handleSessionExpired()
+    })
+    const removeSilentRenewError = auth.events.addSilentRenewError(() => {
+      void handleSessionExpired()
+    })
+
+    return () => {
+      removeAccessTokenExpired()
+      removeSilentRenewError()
+    }
+  }, [auth.events, handleSessionExpired])
 
   return null
 }
@@ -37,7 +73,7 @@ export function AuthProvider({ children }: Props) {
         window.history.replaceState({}, document.title, window.location.pathname)
       }}
     >
-      <AuthTokenInjector />
+      <AuthSessionManager />
       {children}
     </OidcAuthProvider>
   )

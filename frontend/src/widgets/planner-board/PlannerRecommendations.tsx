@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
-  Loader2,
   MapPin,
   RefreshCw,
   Sparkles,
@@ -13,7 +12,10 @@ import {
   X,
 } from 'lucide-react'
 import { motion } from 'motion/react'
+import { AiLoadingText } from '@/components/ui/ai-loading-text'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { Button } from '@/components/ui/button'
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
 import {
   CarouselContent,
   CarouselItem,
@@ -40,11 +42,14 @@ import {
 } from '@/entities/activity-discovery/queries'
 import { cn } from '@/shared/lib/cn'
 import type { ActivityDiscoveryDetail } from '@/shared/api/types'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 import type {
   PlannerRecommendationDestination,
   PlannerRecommendationEntry,
   PlannerRecommendationsController,
 } from './usePlannerRecommendations'
+
+const RECOMMENDATION_LOADING_COPY = 'Curating nearby picks...'
 
 function extractTags(detail: ActivityDiscoveryDetail | undefined) {
   const payload = detail?.provider_payload
@@ -112,7 +117,7 @@ function AddDestinationMenu({
           )}
           disabled={isAdding}
         >
-          {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          {isAdding ? <VoyagerLoader className="h-3.5 w-3.5 " /> : null}
           Add
           <ChevronDown className="h-3.5 w-3.5" />
         </Button>
@@ -204,7 +209,7 @@ export function CompactRefreshButton({
       aria-label="Refresh recommendations"
       title="Refresh recommendations"
     >
-      <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && 'animate-spin')} />
+      <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && '')} />
     </Button>
   )
 }
@@ -237,11 +242,21 @@ function RecommendationCard({
     <article className="overflow-hidden rounded-[22px] border border-black/8 bg-white p-3 shadow-[0_18px_48px_-34px_rgba(15,23,42,0.22)]">
       <div className="flex gap-3">
         {entry.item.image_url ? (
-          <img
-            src={entry.item.image_url}
-            alt={entry.item.title}
-            className="h-24 w-24 shrink-0 rounded-[18px] object-cover"
-          />
+          <PhotoViewerProvider>
+            <PhotoViewer src={entry.item.image_url}>
+              <button
+                type="button"
+                className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-[18px] text-left"
+                aria-label={`Preview ${entry.item.title}`}
+              >
+                <img
+                  src={entry.item.image_url}
+                  alt={entry.item.title}
+                  className="h-full w-full object-cover transition-transform group-hover:scale-[1.04]"
+                />
+              </button>
+            </PhotoViewer>
+          </PhotoViewerProvider>
         ) : (
           <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-[18px] bg-[linear-gradient(135deg,rgba(255,140,98,0.14),rgba(114,174,230,0.14))] text-[var(--color-text-muted)]">
             <Sparkles className="h-5 w-5" />
@@ -348,7 +363,6 @@ function CompactRecommendationCard({
           </span>
         ) : null}
       </div>
-
       <Disclosure
         open={isOpen}
         onOpenChange={setIsOpen}
@@ -474,13 +488,18 @@ export function PlannerRecommendationsCompactSection({
           Turn recommendations back on to see nearby places Voyager can add for you.
         </div>
       ) : recommendations.isLoadingDiscover ? (
-        <div className="flex gap-3 overflow-hidden">
-          {Array.from({ length: Math.min(maxItems, 3) }).map((_, index) => (
-            <Skeleton
-              key={index}
-              className="h-[204px] min-w-[68%] rounded-[18px] sm:min-w-[46%]"
-            />
-          ))}
+        <div className="flex flex-col gap-3">
+          <AiLoadingText className="px-1" size="md">
+            {RECOMMENDATION_LOADING_COPY}
+          </AiLoadingText>
+          <div className="flex gap-3 overflow-hidden">
+            {Array.from({ length: Math.min(maxItems, 3) }).map((_, index) => (
+              <Skeleton
+                key={index}
+                className="h-[204px] min-w-[68%] rounded-[18px] sm:min-w-[46%]"
+              />
+            ))}
+          </div>
         </div>
       ) : visibleEntries.length ? (
         <CarouselContent className="mt-0.5 items-stretch">
@@ -541,7 +560,7 @@ export function PlannerRecommendationsPanel({
               aria-label="Refresh recommendations"
               title="Refresh recommendations"
             >
-              <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && 'animate-spin')} />
+              <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && '')} />
             </Button>
             {showCloseButton ? (
               <SheetClose asChild>
@@ -563,7 +582,8 @@ export function PlannerRecommendationsPanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {recommendations.isLoadingDiscover ? (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
+            <AiLoadingText size="md">{RECOMMENDATION_LOADING_COPY}</AiLoadingText>
             {Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-36 w-full rounded-[22px]" />
             ))}
@@ -710,8 +730,16 @@ export function PlannerRecommendationDetailPanel({
               {detail?.rating != null ? (
                 <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(250,180,56,0.14)] px-2.5 py-1 text-[0.72rem] font-medium text-[var(--color-text)]">
                   <Star className="h-3.5 w-3.5 text-[#F59E0B]" />
-                  {detail.rating.toFixed(1)}
-                  {detail.review_count != null ? ` · ${detail.review_count.toLocaleString()}` : ''}
+                  <AnimatedNumber
+                    value={detail.rating}
+                    formatOptions={{ minimumFractionDigits: 1, maximumFractionDigits: 1 }}
+                  />
+                  {detail.review_count != null ? (
+                    <span className="inline-flex items-baseline gap-0.5">
+                      <span aria-hidden="true">·</span>
+                      <AnimatedNumber value={detail.review_count} />
+                    </span>
+                  ) : null}
                 </span>
               ) : null}
               <h2 className="mt-3 text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
@@ -760,11 +788,21 @@ export function PlannerRecommendationDetailPanel({
         <div key={activeTab} className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
           <TabsContent value="about" className="mt-0 space-y-4">
             {detail?.photos[0]?.image_url || entry.item.image_url ? (
-              <img
-                src={detail?.photos[0]?.image_url || entry.item.image_url || undefined}
-                alt={detail?.title ?? entry.item.title}
-                className="h-56 w-full rounded-[22px] object-cover"
-              />
+              <PhotoViewerProvider>
+                <PhotoViewer src={detail?.photos[0]?.image_url || entry.item.image_url}>
+                  <button
+                    type="button"
+                    className="group relative block w-full overflow-hidden rounded-[22px] text-left"
+                    aria-label={`Preview ${detail?.title ?? entry.item.title}`}
+                  >
+                    <img
+                      src={detail?.photos[0]?.image_url || entry.item.image_url || undefined}
+                      alt={detail?.title ?? entry.item.title}
+                      className="h-56 w-full object-cover transition-transform group-hover:scale-[1.02]"
+                    />
+                  </button>
+                </PhotoViewer>
+              </PhotoViewerProvider>
             ) : null}
             <div className="rounded-[22px] border border-black/8 bg-white p-5">
               <p className="text-sm leading-7 text-[var(--color-text)]">
@@ -825,25 +863,32 @@ export function PlannerRecommendationDetailPanel({
 
           <TabsContent value="photos" className="mt-0">
             {detail?.photos.length ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {detail.photos.map((photo, index) => (
-                  <figure
-                    key={`${photo.image_url}-${index}`}
-                    className="overflow-hidden rounded-[18px] border border-black/8 bg-white"
-                  >
-                    <img
-                      src={photo.image_url}
-                      alt={photo.caption || detail.title}
-                      className="h-40 w-full object-cover"
-                    />
-                    {photo.caption ? (
-                      <figcaption className="px-3 py-2 text-xs text-[var(--color-text-muted)]">
-                        {photo.caption}
-                      </figcaption>
-                    ) : null}
-                  </figure>
-                ))}
-              </div>
+              <PhotoViewerProvider>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {detail.photos.map((photo, index) => (
+                    <PhotoViewer key={`${photo.image_url}-${index}`} src={photo.image_url}>
+                      <button
+                        type="button"
+                        className="group block overflow-hidden rounded-[18px] border border-black/8 bg-white text-left"
+                        aria-label={`Preview ${photo.caption || detail.title}`}
+                      >
+                        <div className="relative overflow-hidden">
+                          <img
+                            src={photo.image_url}
+                            alt={photo.caption || detail.title}
+                            className="h-40 w-full object-cover transition-transform group-hover:scale-[1.03]"
+                          />
+                        </div>
+                        {photo.caption ? (
+                          <span className="block px-3 py-2 text-xs text-[var(--color-text-muted)]">
+                            {photo.caption}
+                          </span>
+                        ) : null}
+                      </button>
+                    </PhotoViewer>
+                  ))}
+                </div>
+              </PhotoViewerProvider>
             ) : (
               <p className="rounded-[18px] border border-dashed border-black/8 px-4 py-6 text-sm text-[var(--color-text-muted)]">
                 Photos will appear here when provider imagery is available.

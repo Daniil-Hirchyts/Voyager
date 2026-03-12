@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { Download, FileJson, FileText, Calendar, Loader2, type LucideIcon } from 'lucide-react'
+import { Download, FileJson, FileText, Calendar, type LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   DropdownMenu,
@@ -21,6 +21,7 @@ import { isConflict, isRateLimit } from '@/shared/api/client'
 import { isJobTerminal, isJobSuccessful } from '@/shared/lib/jobs'
 import type { ExportFormat } from '@/shared/api/types'
 import type { ReactNode } from 'react'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 interface Props {
   tripId: string
@@ -147,7 +148,7 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" disabled={isExporting} className="rounded-full shadow-none gap-2">
-          {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+          {isExporting ? <VoyagerLoader className="w-4 h-4 " /> : <Download className="w-4 h-4" />}
           Export
         </Button>
       </DropdownMenuTrigger>

@@ -3,7 +3,9 @@ import { useTrips } from '@/entities/trip/queries'
 import { TRIP_LIST_PAGE_SIZE } from '@/entities/trip/constants'
 import { ArrowUpRight, CalendarDays, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns'
+import { AnimatedNumber } from '@/components/ui/animated-number'
 import { Button } from '@/components/ui/button'
+import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import type { Trip } from '@/shared/api/types'
@@ -40,7 +42,13 @@ function getTripLengthLabel(startDate?: string | null, endDate?: string | null) 
   }
 
   const totalDays = differenceInCalendarDays(parseISO(endDate), parseISO(startDate)) + 1
-  return `${totalDays} ${totalDays === 1 ? 'day' : 'days'}`
+  return (
+    <>
+      <AnimatedNumber value={totalDays} />
+      {' '}
+      {totalDays === 1 ? 'day' : 'days'}
+    </>
+  )
 }
 
 function getTripTimingLabel(startDate?: string | null, endDate?: string | null) {
@@ -55,7 +63,11 @@ function getTripTimingLabel(startDate?: string | null, endDate?: string | null) 
   const daysUntilEnd = differenceInCalendarDays(tripEnd, today)
 
   if (daysUntilStart > 1) {
-    return `In ${daysUntilStart} days`
+    return (
+      <>
+        In <AnimatedNumber value={daysUntilStart} /> days
+      </>
+    )
   }
 
   if (daysUntilStart === 1) {
@@ -96,6 +108,12 @@ function TripCard({
               loading="lazy"
             />
           )}
+          {cover.url ? (
+            <ProgressiveBlur
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[44%]"
+              blurIntensity={0.9}
+            />
+          ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.0)_0%,rgba(7,12,18,0.12)_40%,rgba(7,12,18,0.78)_100%)]" />
 
           <div className="absolute left-3 top-3">
@@ -249,7 +267,7 @@ export default function TripsPage() {
             <ChevronLeft className="size-3.5" />
           </Button>
           <span className="min-w-[3.5rem] text-center text-[0.78rem] font-medium text-[#5f6b7a]">
-            {currentPage} / {totalPages}
+            <AnimatedNumber value={currentPage} /> / <AnimatedNumber value={totalPages} />
           </span>
           <Button
             variant="outline"
