@@ -30,11 +30,12 @@ import {
 } from "@/entities/job/queries";
 import { getPlanner } from "@/entities/planner/api";
 import { plannerKeys, usePlanner } from "@/entities/planner/queries";
+import { tripAssetKeys } from "@/entities/trip-asset/queries";
 import { isConflict, isRateLimit } from "@/shared/api/client";
-import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { isJobSuccessful, isJobTerminal } from "@/shared/lib/jobs";
 import { usePlannerStore } from "@/shared/stores/planner.store";
-import { useSideRailStore } from "@/shared/stores/side-rail.store";
+import { useSideRailStore, type DayAnchor } from "@/shared/stores/side-rail.store";
+import { PLANNER_MAP_DAY_COLORS } from "./planner-map-utils";
 import type {
   ActivityCreateInput,
   PlannerActivity,
@@ -46,6 +47,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ComboboxOption } from "@/components/ui/combobox";
 import { ActivityCardView } from "./ActivityCard";
 import { ActivityDrawer } from "./ActivityDrawer";
+import {
+  filterPlannerActivitiesByBucket,
+  plannerActivityBucket,
+  type PlannerActivityBucket,
+} from "./activity-buckets";
+import { GenerationControls } from "./GenerationControls";
 import { ActivityMapDetailSheet, PlannerMapView } from "./PlannerMapView";
 import type { PlannerRecommendationEntry } from "./usePlannerRecommendations";
 import { usePlannerRecommendations } from "./usePlannerRecommendations";
@@ -54,9 +61,10 @@ import { TripSettingsMenu } from "./TripSettingsMenu";
 interface Props {
   tripId: string;
 }
-type PlannerContainerId = "inbox" | string;
+type PlannerVisualContainerId = string;
 type ActivityLocation = {
-  containerId: PlannerContainerId;
+  bucket: PlannerActivityBucket;
+  containerId: PlannerVisualContainerId;
   dayId: string | null;
   index: number;
 };
@@ -67,6 +75,7 @@ type DragPreviewSize = {
 type EditorState = {
   activityId: string | null;
   defaultTripDayId: string | null;
+  defaultCategory: PlannerActivity["category"] | null;
 } | null;
 
 const INBOX_CONTAINER_ID = "inbox";
@@ -88,7 +97,7 @@ function clonePlanner(planner: PlannerResponse): PlannerResponse {
   };
 }
 
-function getEndZoneId(containerId: PlannerContainerId) {
+function getEndZoneId(containerId: PlannerVisualContainerId) {
   return `${containerId}${END_SUFFIX}`;
 }
 
@@ -129,34 +138,100 @@ function normalizeActivityList(
     ...activity,
     trip_day_id: tripDayId,
     order_index: index,
-    start_time: tripDayId == null ? null : activity.start_time,
+    start_time:
+      tripDayId == null && activity.category !== "travel"
+        ? null
+        : activity.start_time,
   }));
 }
 
-function getContainerActivities(
-  planner: PlannerResponse,
-  containerId: PlannerContainerId,
-) {
-  if (containerId === INBOX_CONTAINER_ID) {
-    return planner.inbox_activities;
-  }
-  return planner.days.find((day) => day.id === containerId)?.activities ?? [];
+function getVisualContainerId(
+  bucket: PlannerActivityBucket,
+  dayId: string | null,
+): PlannerVisualContainerId {
+  return `${bucket}::${dayId ?? INBOX_CONTAINER_ID}`;
 }
 
-function setContainerActivities(
+function parseVisualContainerId(
+  value: string,
+): { bucket: PlannerActivityBucket; dayId: string | null } | null {
+  const [bucketValue, rawDayId] = value.split("::");
+  if (
+    (bucketValue !== "main" &&
+      bucketValue !== "travel" &&
+      bucketValue !== "accommodation") ||
+    !rawDayId
+  ) {
+    return null;
+  }
+
+  return {
+    bucket: bucketValue,
+    dayId: rawDayId === INBOX_CONTAINER_ID ? null : rawDayId,
+  };
+}
+
+function getActivitiesForDay(
   planner: PlannerResponse,
-  containerId: PlannerContainerId,
+  dayId: string | null,
+) {
+  if (dayId == null) {
+    return planner.inbox_activities;
+  }
+  return planner.days.find((day) => day.id === dayId)?.activities ?? [];
+}
+
+function setActivitiesForDay(
+  planner: PlannerResponse,
+  dayId: string | null,
   activities: PlannerActivity[],
 ) {
-  if (containerId === INBOX_CONTAINER_ID) {
+  if (dayId == null) {
     planner.inbox_activities = normalizeActivityList(activities, null);
     return;
   }
-  const day = planner.days.find((item) => item.id === containerId);
+  const day = planner.days.find((item) => item.id === dayId);
   if (!day) {
     return;
   }
   day.activities = normalizeActivityList(activities, day.id);
+}
+
+function getContainerActivities(
+  planner: PlannerResponse,
+  dayId: string | null,
+  bucket: PlannerActivityBucket,
+) {
+  return filterPlannerActivitiesByBucket(getActivitiesForDay(planner, dayId), bucket);
+}
+
+function setContainerActivities(
+  planner: PlannerResponse,
+  dayId: string | null,
+  activities: PlannerActivity[],
+) {
+  setActivitiesForDay(planner, dayId, activities);
+}
+
+function getBucketInsertionIndex(
+  activities: PlannerActivity[],
+  bucket: PlannerActivityBucket,
+  targetIndex: number,
+) {
+  const bucketIndices = activities.reduce<number[]>((accumulator, activity, index) => {
+    if (plannerActivityBucket(activity) === bucket) {
+      accumulator.push(index);
+    }
+    return accumulator;
+  }, []);
+
+  if (bucketIndices.length === 0) {
+    return activities.length;
+  }
+  if (targetIndex >= bucketIndices.length) {
+    return bucketIndices[bucketIndices.length - 1] + 1;
+  }
+  return bucketIndices[targetIndex];
 }
 
 function findActivityLocation(
@@ -171,10 +246,15 @@ function findActivityLocation(
     (activity) => activity.id === activityId,
   );
   if (inboxIndex >= 0) {
+    const activity = planner.inbox_activities[inboxIndex];
+    const bucket = plannerActivityBucket(activity);
     return {
-      containerId: INBOX_CONTAINER_ID,
+      bucket,
+      containerId: getVisualContainerId(bucket, null),
       dayId: null,
-      index: inboxIndex,
+      index: getContainerActivities(planner, null, bucket).findIndex(
+        (candidate) => candidate.id === activity.id,
+      ),
     };
   }
 
@@ -183,10 +263,15 @@ function findActivityLocation(
       (activity) => activity.id === activityId,
     );
     if (index >= 0) {
+      const activity = day.activities[index];
+      const bucket = plannerActivityBucket(activity);
       return {
-        containerId: day.id,
+        bucket,
+        containerId: getVisualContainerId(bucket, day.id),
         dayId: day.id,
-        index,
+        index: getContainerActivities(planner, day.id, bucket).findIndex(
+          (candidate) => candidate.id === activity.id,
+        ),
       };
     }
   }
@@ -228,59 +313,74 @@ function resolveDropTarget(
   }
 
   if (overId.startsWith(CHIP_PREFIX)) {
-    const containerId = overId.slice(CHIP_PREFIX.length);
-    if (containerId === INBOX_CONTAINER_ID) {
+    const rawContainerId = overId.slice(CHIP_PREFIX.length);
+    if (rawContainerId === INBOX_CONTAINER_ID) {
       return {
-        containerId,
+        bucket: "main",
+        containerId: getVisualContainerId("main", null),
         dayId: null,
-        index: planner.inbox_activities.length,
+        index: getContainerActivities(planner, null, "main").length,
       };
     }
-    const day = planner.days.find((item) => item.id === containerId);
+    const day = planner.days.find((item) => item.id === rawContainerId);
     return day
       ? {
-          containerId: day.id,
+          bucket: "main",
+          containerId: getVisualContainerId("main", day.id),
           dayId: day.id,
-          index: day.activities.length,
+          index: getContainerActivities(planner, day.id, "main").length,
         }
       : null;
   }
 
-  if (
-    overId === INBOX_CONTAINER_ID ||
-    overId === getEndZoneId(INBOX_CONTAINER_ID)
-  ) {
+  const normalizedOverId = overId.endsWith(END_SUFFIX)
+    ? overId.slice(0, -END_SUFFIX.length)
+    : overId;
+  const parsedContainer = parseVisualContainerId(normalizedOverId);
+  if (parsedContainer) {
     return {
-      containerId: INBOX_CONTAINER_ID,
-      dayId: null,
-      index: planner.inbox_activities.length,
+      bucket: parsedContainer.bucket,
+      containerId: getVisualContainerId(
+        parsedContainer.bucket,
+        parsedContainer.dayId,
+      ),
+      dayId: parsedContainer.dayId,
+      index: getContainerActivities(
+        planner,
+        parsedContainer.dayId,
+        parsedContainer.bucket,
+      ).length,
     };
   }
 
-  if (overId.endsWith(END_SUFFIX)) {
-    const containerId = overId.slice(0, -END_SUFFIX.length);
-    const day = planner.days.find((item) => item.id === containerId);
+  if (planner.days.some((day) => day.id === normalizedOverId)) {
+    const day = planner.days.find((item) => item.id === normalizedOverId);
     return day
       ? {
-          containerId: day.id,
+          bucket: "main",
+          containerId: getVisualContainerId("main", day.id),
           dayId: day.id,
-          index: day.activities.length,
-        }
-      : null;
-  }
-
-  if (planner.days.some((day) => day.id === overId)) {
-    const day = planner.days.find((item) => item.id === overId);
-    return day
-      ? {
-          containerId: day.id,
-          dayId: day.id,
-          index: day.activities.length,
+          index: getContainerActivities(planner, day.id, "main").length,
         }
       : null;
   }
 
   return findActivityLocation(planner, overId);
+}
+
+function canMoveBetweenLocations(
+  source: ActivityLocation,
+  target: ActivityLocation,
+) {
+  if (source.bucket !== target.bucket) {
+    return false;
+  }
+
+  if (source.bucket !== "main" && source.dayId !== target.dayId) {
+    return false;
+  }
+
+  return true;
 }
 
 function updatePlannerActivityLists(
@@ -292,15 +392,16 @@ function updatePlannerActivityLists(
   if (!source) {
     return null;
   }
+  if (!canMoveBetweenLocations(source, target)) {
+    return null;
+  }
 
   const nextPlanner = clonePlanner(planner);
-  const sourceActivities = [
-    ...getContainerActivities(nextPlanner, source.containerId),
-  ];
+  const sourceActivities = [...getActivitiesForDay(nextPlanner, source.dayId)];
   const targetActivities =
-    source.containerId === target.containerId
+    source.dayId === target.dayId
       ? sourceActivities
-      : [...getContainerActivities(nextPlanner, target.containerId)];
+      : [...getActivitiesForDay(nextPlanner, target.dayId)];
 
   const sourceIndex = sourceActivities.findIndex(
     (activity) => activity.id === activityId,
@@ -314,22 +415,30 @@ function updatePlannerActivityLists(
     source.containerId === target.containerId && target.index > source.index
       ? target.index - 1
       : target.index;
-  const safeIndex = Math.max(
-    0,
-    Math.min(insertionIndex, targetActivities.length),
+  const safeIndex = getBucketInsertionIndex(
+    targetActivities,
+    target.bucket,
+    Math.max(0, insertionIndex),
   );
   const nextActivity: PlannerActivity = {
     ...activity,
     trip_day_id: target.dayId,
-    start_time: target.dayId == null ? null : activity.start_time,
+    start_time:
+      target.dayId == null && activity.category !== "travel"
+        ? null
+        : activity.start_time,
     legacy_source_day_id:
       target.dayId ?? activity.legacy_source_day_id ?? source.dayId,
     legacy_inbox_item: target.dayId == null,
   };
   targetActivities.splice(safeIndex, 0, nextActivity);
 
-  setContainerActivities(nextPlanner, source.containerId, sourceActivities);
-  setContainerActivities(nextPlanner, target.containerId, targetActivities);
+  setContainerActivities(nextPlanner, source.dayId, sourceActivities);
+  if (source.dayId === target.dayId) {
+    setContainerActivities(nextPlanner, target.dayId, targetActivities);
+  } else {
+    setContainerActivities(nextPlanner, target.dayId, targetActivities);
+  }
   return nextPlanner;
 }
 
@@ -369,7 +478,6 @@ function findDayLabel(
 
 export default function PlannerBoard({ tripId }: Props) {
   const qc = useQueryClient();
-  const isMobile = useIsMobile();
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [detailsActivityId, setDetailsActivityId] = useState<string | null>(
     null,
@@ -377,13 +485,10 @@ export default function PlannerBoard({ tripId }: Props) {
   const [selectedRecommendation, setSelectedRecommendation] =
     useState<PlannerRecommendationEntry | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const setPlannerInstruments = useSideRailStore((s) => s.setPlannerInstruments);
-  useEffect(() => {
-    setPlannerInstruments({ onOpenSettings: () => setSettingsMenuOpen(true) });
-    return () => { setPlannerInstruments(null); };
-  }, [setPlannerInstruments]);
   const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(
     null,
   );
@@ -392,8 +497,57 @@ export default function PlannerBoard({ tripId }: Props) {
   const prevJobStatus = useRef<string | null>(null);
   const lastOverIdRef = useRef<UniqueIdentifier | null>(null);
   const dragOriginPlannerRef = useRef<PlannerResponse | null>(null);
+  const openRailSectionRef = useRef<((sectionKey: string) => void) | null>(null);
 
   const { data: planner, isLoading, isError } = usePlanner(tripId);
+  const plannerDays = planner?.days ?? null;
+  useEffect(() => {
+    const days: DayAnchor[] = [
+      { dayId: 'inbox', label: '+', date: '', color: '#94a3b8', isInbox: true },
+      ...(plannerDays ?? []).map((day, i) => ({
+        dayId: day.id,
+        label: String(i + 1),
+        date: day.date,
+        color: PLANNER_MAP_DAY_COLORS[i % PLANNER_MAP_DAY_COLORS.length],
+        isInbox: false,
+      })),
+    ]
+    function scrollIntoView(target: Element | null) {
+      const scrollEl = document.querySelector('[data-planner-scroll]')
+      if (scrollEl && target) {
+        const offset = target.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top
+        scrollEl.scrollTo({ top: scrollEl.scrollTop + offset - 8, behavior: 'smooth' })
+      }
+    }
+    function onScrollToDay(dayId: string) {
+      const { mapDayAccordionStateByTrip, setMapDayAccordionState } = usePlannerStore.getState()
+      const current = mapDayAccordionStateByTrip[tripId] ?? {}
+      if (!current[dayId]) {
+        setMapDayAccordionState(tripId, { ...current, [dayId]: true })
+        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), 200)
+      } else {
+        scrollIntoView(document.getElementById(`planner-day-${dayId}`))
+      }
+    }
+    const sectionKeyMap: Record<string, string> = { hotel: 'accommodation', travel: 'travel' }
+    function onScrollToSection(section: 'itinerary' | 'hotel' | 'travel') {
+      const sectionKey = sectionKeyMap[section]
+      if (sectionKey) {
+        openRailSectionRef.current?.(sectionKey)
+        setTimeout(() => scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`)), 200)
+      } else {
+        scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`))
+      }
+    }
+    setPlannerInstruments({
+      onOpenSettings: () => setSettingsMenuOpen(true),
+      onGenerate: () => setGenerateDialogOpen(true),
+      days,
+      onScrollToDay,
+      onScrollToSection,
+    })
+    return () => { setPlannerInstruments(null) }
+  }, [setPlannerInstruments, plannerDays]);
 
   const {
     pendingJobIds,
@@ -461,7 +615,8 @@ export default function PlannerBoard({ tripId }: Props) {
         if (resolved && !isChip) {
           const containerItems = getContainerActivities(
             planner,
-            resolved.containerId,
+            resolved.dayId,
+            resolved.bucket,
           );
           if (containerItems.length > 0) {
             const itemIds = new Set(
@@ -541,14 +696,12 @@ export default function PlannerBoard({ tripId }: Props) {
     setSelectedPlaceId(activityId ? (activity?.place_id ?? selectedPlaceId) : null);
   };
 
-  const openDetails = (activity: PlannerActivity) => {
-    setEditorState(null);
-    setDetailsActivityId(activity.id);
-  };
-
-  const openCreateDrawer = (defaultTripDayId: string | null) => {
+  const openCreateDrawer = (
+    defaultTripDayId: string | null,
+    defaultCategory: PlannerActivity["category"] | null = null,
+  ) => {
     setDetailsActivityId(null);
-    setEditorState({ activityId: null, defaultTripDayId });
+    setEditorState({ activityId: null, defaultTripDayId, defaultCategory });
   };
 
   const openEditDrawer = (activity: PlannerActivity) => {
@@ -556,18 +709,25 @@ export default function PlannerBoard({ tripId }: Props) {
     setEditorState({
       activityId: activity.id,
       defaultTripDayId: activity.trip_day_id ?? null,
+      defaultCategory: activity.category,
     });
   };
 
   const closeEditor = () => setEditorState(null);
 
-  const handleDrawerSave = async (data: ActivityCreateInput) => {
+  const handleDrawerSave = async (
+    data: ActivityCreateInput,
+    attachmentFiles: File[] = [],
+  ) => {
     if (!planner) {
       return;
     }
     setIsSaving(true);
 
     try {
+      let savedActivityId: string | null = null;
+      const successMessage = editorActivity ? "Activity updated" : "Activity added";
+
       if (editorActivity) {
         const { moveActivity, patchActivity } =
           await import("@/entities/activity/api");
@@ -601,21 +761,58 @@ export default function PlannerBoard({ tripId }: Props) {
         }
 
         const { trip_day_id: _tripDayId, ...patchPayload } = data;
-        await patchActivity(editorActivity.id, {
+        const updatedActivity = await patchActivity(editorActivity.id, {
           ...patchPayload,
           start_time:
-            nextTripDayId == null ? null : (patchPayload.start_time ?? null),
+            nextTripDayId == null && editorActivity.category !== "travel"
+              ? null
+              : (patchPayload.start_time ?? null),
         });
-        toast.success("Activity updated");
+        savedActivityId = updatedActivity.id;
       } else if (editorState) {
         const idempotencyKey = crypto.randomUUID();
         const { createPlannerActivity } =
           await import("@/entities/activity/api");
-        await createPlannerActivity(tripId, data, idempotencyKey);
-        toast.success("Activity added");
+        const createdActivity = await createPlannerActivity(
+          tripId,
+          data,
+          idempotencyKey,
+        );
+        savedActivityId = createdActivity.id;
       }
 
-      await invalidatePlanner();
+      if (savedActivityId && attachmentFiles.length > 0) {
+        const { uploadTripAsset } = await import("@/entities/trip-asset/api");
+        const results = await Promise.allSettled(
+          attachmentFiles.map((file) =>
+            uploadTripAsset(tripId, file, savedActivityId),
+          ),
+        );
+        const uploadedCount = results.filter(
+          (result) => result.status === "fulfilled",
+        ).length;
+        const failedCount = results.length - uploadedCount;
+
+        if (uploadedCount > 0) {
+          toast.success(
+            `${successMessage} · ${uploadedCount} file${uploadedCount === 1 ? "" : "s"} attached`,
+          );
+        } else {
+          toast.success(successMessage);
+        }
+        if (failedCount > 0) {
+          toast.error(
+            `${failedCount} attachment${failedCount === 1 ? "" : "s"} failed to upload`,
+          );
+        }
+      } else {
+        toast.success(successMessage);
+      }
+
+      await Promise.all([
+        invalidatePlanner(),
+        qc.invalidateQueries({ queryKey: tripAssetKeys.all(tripId) }),
+      ]);
       closeEditor();
     } catch (error) {
       if (isRateLimit(error)) {
@@ -848,7 +1045,6 @@ export default function PlannerBoard({ tripId }: Props) {
 
       const shouldUseDayReorder =
         startLocation.containerId === finalLocation.containerId &&
-        finalLocation.containerId !== INBOX_CONTAINER_ID &&
         finalLocation.dayId != null;
 
       if (shouldUseDayReorder) {
@@ -875,7 +1071,12 @@ export default function PlannerBoard({ tripId }: Props) {
         capturedActivity.id,
         {
           target_day_id: finalLocation.dayId,
-          target_index: Math.max(finalLocation.index, 0),
+          target_index: Math.max(
+            getActivitiesForDay(currentPlanner, finalLocation.dayId).findIndex(
+              (activity) => activity.id === capturedActivity.id,
+            ),
+            0,
+          ),
         },
         tripVersion,
       );
@@ -962,6 +1163,7 @@ export default function PlannerBoard({ tripId }: Props) {
         >
           <div className="min-h-0 flex-1">
             <PlannerMapView
+              trip={planner.trip}
               tripId={tripId}
               tripVersion={planner.trip.version}
               travelMode={planner.trip.route_travel_mode}
@@ -972,7 +1174,6 @@ export default function PlannerBoard({ tripId }: Props) {
               selectedPlaceId={selectedPlaceId}
               recommendations={recommendations}
               selectedRecommendation={selectedRecommendation}
-              trip={planner.trip}
               onAddActivity={openCreateDrawer}
               onSelectActivityId={handleMapSelectActivityId}
               onSelectPlaceId={setSelectedPlaceId}
@@ -980,17 +1181,7 @@ export default function PlannerBoard({ tripId }: Props) {
               onClearMapSelection={() => { setSelectedActivityId(null); setSelectedPlaceId(null); }}
               onEditActivity={openEditDrawer}
               onDeleteActivity={handleDeleteActivity}
-              onOpenSettings={() => setSettingsMenuOpen(true)}
-              hasActivities={hasActivities}
-              onGenerate={handleGenerate}
-              onRegenerate={handleRegenerate}
-              onReset={handleReset}
-              isGenerating={
-                generateMutation.isPending ||
-                regenerateMutation.isPending ||
-                resetMutation.isPending
-              }
-              jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
+              onRegisterSectionOpener={(opener) => { openRailSectionRef.current = opener }}
             />
           </div>
 
@@ -1025,9 +1216,11 @@ export default function PlannerBoard({ tripId }: Props) {
       />
 
       <ActivityDrawer
+        tripId={tripId}
         open={Boolean(editorState)}
         activity={editorActivity}
         defaultTripDayId={editorState?.defaultTripDayId ?? null}
+        defaultCategory={editorState?.defaultCategory ?? null}
         defaultDayLabel={editorDayLabel}
         dayOptions={activityDayOptions}
         onClose={closeEditor}
@@ -1035,10 +1228,28 @@ export default function PlannerBoard({ tripId }: Props) {
         isSaving={isSaving}
       />
 
-      <TripSettingsMenu 
-        tripId={tripId} 
-        open={settingsMenuOpen} 
-        onOpenChange={setSettingsMenuOpen} 
+      <TripSettingsMenu
+        tripId={tripId}
+        open={settingsMenuOpen}
+        onOpenChange={setSettingsMenuOpen}
+        hasActivities={hasActivities}
+        onReset={handleReset}
+      />
+
+      <GenerationControls
+        days={planner?.days ?? []}
+        hasActivities={hasActivities ?? false}
+        onGenerate={handleGenerate}
+        onRegenerate={handleRegenerate}
+        onReset={handleReset}
+        isGenerating={
+          generateMutation.isPending ||
+          regenerateMutation.isPending ||
+          resetMutation.isPending
+        }
+        jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
+        controlledOpen={generateDialogOpen}
+        onControlledOpenChange={setGenerateDialogOpen}
       />
     </div>
   );

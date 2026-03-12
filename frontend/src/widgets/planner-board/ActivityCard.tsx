@@ -4,6 +4,7 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   BedDouble,
   Check,
+  CircleCheck,
   Clock3,
   GripVertical,
   Landmark,
@@ -20,6 +21,7 @@ import { plannerCategoryDescription, plannerCategoryLabel } from './categories'
 interface BaseProps {
   activity: PlannerActivity
   onOpen?: (activity: PlannerActivity) => void
+  onToggleVisited?: () => void
   isDragging?: boolean
   isSelected?: boolean
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
@@ -55,6 +57,7 @@ function scheduleLabel(activity: PlannerActivity) {
 export function ActivityCardView({
   activity,
   onOpen,
+  onToggleVisited,
   isDragging = false,
   isSelected = false,
   dragHandleProps,
@@ -106,6 +109,26 @@ export function ActivityCardView({
         </div>
 
         <div className="flex items-center gap-1">
+          {onToggleVisited ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'size-7 shrink-0 rounded-[8px] hover:bg-[var(--color-secondary-surface)]',
+                activity.visited_at
+                  ? 'text-emerald-600 hover:text-emerald-700'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+              )}
+              aria-label={activity.visited_at ? 'Mark as not visited' : 'Mark as visited'}
+              onClick={(e) => {
+                e.stopPropagation()
+                onToggleVisited()
+              }}
+            >
+              <CircleCheck className="h-4 w-4" />
+            </Button>
+          ) : null}
           {dragHandleProps ? (
             <Button
               type="button"
@@ -160,6 +183,7 @@ interface SortableProps extends Omit<BaseProps, 'dragHandleProps'> {}
 export function ActivityCard({
   activity,
   onOpen,
+  onToggleVisited,
   isDragging = false,
   isSelected = false,
 }: SortableProps) {
@@ -191,6 +215,7 @@ export function ActivityCard({
       <ActivityCardView
         activity={activity}
         onOpen={onOpen}
+        onToggleVisited={onToggleVisited}
         isDragging={isDragging || isSortableDragging}
         isSelected={isSelected}
         dragHandleProps={{ ...attributes, ...listeners }}

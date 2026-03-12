@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowLeft,
+  ChevronLeft,
   ChevronDown,
   ChevronRight,
   ExternalLink,
@@ -11,7 +12,18 @@ import {
   Star,
   X,
 } from 'lucide-react'
+import { motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
+import {
+  CarouselContent,
+  CarouselItem,
+  useCarousel,
+} from '@/components/ui/carousel'
+import {
+  Disclosure,
+  DisclosureContent,
+  DisclosureTrigger,
+} from '@/components/ui/disclosure'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -94,7 +106,10 @@ function AddDestinationMenu({
           type="button"
           size="sm"
           variant="outline"
-          className={cn('rounded-full', className)}
+          className={cn(
+            'h-8 rounded-[10px] border-black/8 bg-white px-3 text-[0.78rem] shadow-none hover:bg-[var(--color-secondary-surface)]',
+            className,
+          )}
           disabled={isAdding}
         >
           {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
@@ -115,6 +130,82 @@ function AddDestinationMenu({
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+const ITINERARY_ACTION_BUTTON_CLASS =
+  'h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]'
+
+export function CompactCarouselActions() {
+  const { index, itemsCount, setIndex } = useCarousel()
+
+  if (itemsCount <= 1) {
+    return null
+  }
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={ITINERARY_ACTION_BUTTON_CLASS}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (index > 0) {
+            setIndex(index - 1)
+          }
+        }}
+        disabled={index === 0}
+        aria-label="Previous recommendation"
+        title="Previous recommendation"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={ITINERARY_ACTION_BUTTON_CLASS}
+        onClick={(e) => {
+          e.stopPropagation()
+          if (index < itemsCount - 1) {
+            setIndex(index + 1)
+          }
+        }}
+        disabled={index + 1 >= itemsCount}
+        aria-label="Next recommendation"
+        title="Next recommendation"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  )
+}
+
+export function CompactRefreshButton({
+  recommendations,
+  disabled = false,
+}: {
+  recommendations: PlannerRecommendationsController
+  disabled?: boolean
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className={ITINERARY_ACTION_BUTTON_CLASS}
+      onClick={(e) => {
+        e.stopPropagation()
+        void recommendations.refresh()
+      }}
+      disabled={disabled || recommendations.isRefreshing}
+      aria-label="Refresh recommendations"
+      title="Refresh recommendations"
+    >
+      <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && 'animate-spin')} />
+    </Button>
   )
 }
 
@@ -196,6 +287,133 @@ function RecommendationCard({
   )
 }
 
+function CompactRecommendationCard({
+  entry,
+  recommendations,
+}: {
+  entry: PlannerRecommendationEntry
+  recommendations: PlannerRecommendationsController
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const entityLabel = entry.item.entity_type
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+
+  const imageVariants = {
+    collapsed: { scale: 1, filter: 'blur(0px)' },
+    expanded: { scale: 1.03, filter: 'blur(1.5px)' },
+  }
+  const contentVariants = {
+    collapsed: { opacity: 0, y: -6 },
+    expanded: { opacity: 1, y: 0 },
+  }
+  const transition = {
+    type: 'spring',
+    stiffness: 150,
+    damping: 20,
+    mass: 0.65,
+  } as const
+
+  return (
+    <article className="relative h-[204px] overflow-hidden rounded-[18px] border border-black/8 bg-white shadow-[0_14px_30px_-26px_rgba(15,23,42,0.18)]">
+      <motion.div
+        className="absolute inset-0"
+        animate={isOpen ? 'expanded' : 'collapsed'}
+        variants={imageVariants}
+        transition={transition}
+      >
+        {entry.item.image_url ? (
+          <img
+            src={entry.item.image_url}
+            alt={entry.item.title}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(145deg,rgba(255,140,98,0.18),rgba(114,174,230,0.14),rgba(255,255,255,0.82))] text-[var(--color-text-muted)]">
+            <Sparkles className="h-6 w-6" />
+          </div>
+        )}
+      </motion.div>
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_10%,rgba(255,255,255,0.12)_34%,rgba(255,255,255,0.72)_62%,#ffffff_100%)]" />
+
+      <div className="absolute left-2 top-2 flex flex-wrap items-center gap-1">
+        <span className="rounded-full border border-white/70 bg-white/88 px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] backdrop-blur">
+          {entry.source === 'discover' ? 'Nearby pick' : 'Recommendation'}
+        </span>
+        {entry.item.rating != null ? (
+          <span className="inline-flex items-center gap-1 rounded-full border border-white/70 bg-white/84 px-2 py-1 text-[0.64rem] font-medium text-[var(--color-text)] backdrop-blur">
+            <Star className="h-3 w-3 text-[#F59E0B]" />
+            {entry.item.rating.toFixed(1)}
+          </span>
+        ) : null}
+      </div>
+
+      <Disclosure
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        className="absolute inset-x-0 bottom-0 m-2 overflow-hidden rounded-[15px] border border-white/80 bg-white/90 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.2)] backdrop-blur"
+        variants={contentVariants}
+        transition={transition}
+      >
+        <DisclosureTrigger>
+          <button
+            type="button"
+            className={cn(
+              'w-full px-2.5 py-2 text-left transition-colors',
+              isOpen && 'bg-white/32',
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <h3
+                className={cn(
+                  'min-w-0 text-[0.82rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]',
+                  isOpen ? 'line-clamp-2' : 'line-clamp-1',
+                )}
+              >
+                {entry.item.title}
+              </h3>
+              <ChevronDown
+                className={cn(
+                  'mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)] transition-transform',
+                  isOpen && 'rotate-180',
+                )}
+              />
+            </div>
+
+            {entry.item.address_text ? (
+              <p className="mt-1 line-clamp-1 flex items-center gap-1 text-[0.68rem] text-[var(--color-text-muted)]">
+                <MapPin className="h-3 w-3 shrink-0" />
+                <span className="truncate">{entry.item.address_text}</span>
+              </p>
+            ) : null}
+          </button>
+        </DisclosureTrigger>
+
+        <DisclosureContent>
+          <div className="px-2.5 pb-2.5 pt-1">
+            <p className="line-clamp-2 text-[0.7rem] leading-[1.15rem] text-[var(--color-text-muted)]">
+              {entry.item.summary || 'Open this card to add the place to a day or keep it in your inbox.'}
+            </p>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-[0.62rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                {entityLabel}
+              </span>
+              <AddDestinationMenu
+                entry={entry}
+                recommendations={recommendations}
+                align="start"
+                className="min-w-[5.6rem] justify-between"
+              />
+            </div>
+          </div>
+        </DisclosureContent>
+      </Disclosure>
+    </article>
+  )
+}
+
 function RecommendationSection({
   title,
   description,
@@ -234,6 +452,56 @@ function RecommendationSection({
         </div>
       )}
     </section>
+  )
+}
+
+export function PlannerRecommendationsCompactSection({
+  recommendations,
+  maxItems = 4,
+}: {
+  recommendations: PlannerRecommendationsController
+  maxItems?: number
+}) {
+  const visibleEntries = recommendations.discoverEntries.slice(0, maxItems)
+
+  return (
+    <div
+      className="flex flex-col gap-3"
+      data-testid="planner-compact-recommendations"
+    >
+      {!recommendations.enabled ? (
+        <div className="rounded-[18px] border border-dashed border-black/8 px-4 py-5 text-sm text-[var(--color-text-muted)]">
+          Turn recommendations back on to see nearby places Voyager can add for you.
+        </div>
+      ) : recommendations.isLoadingDiscover ? (
+        <div className="flex gap-3 overflow-hidden">
+          {Array.from({ length: Math.min(maxItems, 3) }).map((_, index) => (
+            <Skeleton
+              key={index}
+              className="h-[204px] min-w-[68%] rounded-[18px] sm:min-w-[46%]"
+            />
+          ))}
+        </div>
+      ) : visibleEntries.length ? (
+        <CarouselContent className="mt-0.5 items-stretch">
+          {visibleEntries.map((entry) => (
+            <CarouselItem
+              key={entry.key}
+              className="basis-[68%] px-1 sm:basis-[44%] xl:basis-[52%]"
+            >
+              <CompactRecommendationCard
+                entry={entry}
+                recommendations={recommendations}
+              />
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+      ) : (
+        <div className="rounded-[18px] border border-dashed border-black/8 px-4 py-5 text-sm text-[var(--color-text-muted)]">
+          No recommendations are available right now.
+        </div>
+      )}
+    </div>
   )
 }
 

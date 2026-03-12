@@ -10,23 +10,22 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Link } from 'react-router-dom'
+import { format, parseISO } from 'date-fns'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import type { MapMouseEvent } from '@vis.gl/react-google-maps'
 import {
-  ArrowLeft,
   BedDouble,
+  CarFront,
   CalendarDays,
   Check,
+  ChevronDown,
   Clock3,
   Compass,
   Download,
-  Eye,
-  EyeOff,
   ExternalLink,
+  FileText,
   Landmark,
   Layers3,
   Loader2,
@@ -37,14 +36,16 @@ import {
   Receipt,
   Route,
   Search,
-  Settings2,
   Share2,
+  ShipWheel,
   Sparkles,
   Star,
   Ticket,
+  TrainFront,
   Trash2,
   Utensils,
   X,
+  Footprints,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -60,6 +61,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Carousel } from '@/components/ui/carousel'
 import { Checkbox } from '@/components/ui/checkbox'
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -70,10 +72,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-
-
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Sheet,
   SheetContent,
@@ -97,7 +105,10 @@ import { plannerKeys } from '@/entities/planner/queries'
 import { usePlannerMapPlaceDetail } from '@/entities/planner-map/queries'
 import { estimateRouteLegs } from '@/entities/routes/api'
 import { useRouteLegEstimates } from '@/entities/routes/queries'
+import { useTripAssets } from '@/entities/trip-asset/queries'
 import { useTripMapLayers } from '@/entities/trip-map-layer/queries'
+import { usePatchTrip } from '@/entities/trip/queries'
+import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
 import type {
   GooglePlaceCandidate,
   PlannerActivity,
@@ -106,18 +117,20 @@ import type {
   PlannerResponse,
   RouteTravelMode,
   Trip,
-  TripGenerateInput,
+  TripAssetResponse,
 } from '@/shared/api/types'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { cn } from '@/shared/lib/cn'
+import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { formatMoney } from '@/shared/lib/format'
-import { resolveMediaUrl } from '@/shared/lib/media'
+import { resolveMediaUrl, resolvePhotoUrl } from '@/shared/lib/media'
 import { usePlannerStore } from '@/shared/stores/planner.store'
 import {
   ControlPosition,
   GoogleDirectionsRoute,
   GoogleMapCanvas,
   GooglePolyline,
+  MapFitBounds,
   MapPanTo,
   TripMapLayerRenderer,
   VoyagerMapControl,
@@ -125,10 +138,12 @@ import {
 } from '@/shared/layouts/google-maps'
 import { ActivityCard } from './ActivityCard'
 import { ExportMenu } from './ExportMenu'
-import { GenerationControls } from './GenerationControls'
 import { TravelConnector } from './TravelConnector'
 import TripAssetManager from '@/widgets/trip-assets'
 import {
+  CompactCarouselActions,
+  CompactRefreshButton,
+  PlannerRecommendationsCompactSection,
   PlannerRecommendationDetailPanel,
   PlannerRecommendationsPanel,
 } from './PlannerRecommendations'
@@ -137,7 +152,16 @@ import {
   plannerCategoryLabel,
   plannerPrimaryPlace,
   plannerTravelRoute,
+  plannerTravelMode,
+  plannerTravelModeLabel,
+  type PlannerTravelDisplayMode,
 } from './categories'
+import {
+  filterPlannerActivitiesByBucket,
+  filterPlannerDaysByBucket,
+  mergeBucketActivityOrder,
+  type PlannerActivityBucket,
+} from './activity-buckets'
 import {
   buildPlannerMapDayMetrics,
   buildPlannerMapMetricsForActivities,
@@ -154,9 +178,10 @@ import type {
   PlannerRecommendationEntry,
   PlannerRecommendationsController,
 } from './usePlannerRecommendations'
-import { routeTravelModeDescriptor } from './travel-modes'
+import { routeTravelModeDescriptor, routeTravelModeLabel } from './travel-modes'
 
 interface Props {
+  trip: Trip
   tripId: string
   tripVersion: number
   travelMode?: RouteTravelMode
@@ -167,21 +192,17 @@ interface Props {
   selectedPlaceId: string | null
   recommendations: PlannerRecommendationsController
   selectedRecommendation: PlannerRecommendationEntry | null
-  trip?: Trip
-  onAddActivity: (dayId: string | null) => void
+  onAddActivity: (
+    dayId: string | null,
+    defaultCategory?: PlannerActivity['category'],
+  ) => void
   onSelectActivityId: (activityId: string | null) => void
   onSelectPlaceId: (placeId: string | null) => void
   onSelectRecommendation: (entry: PlannerRecommendationEntry | null) => void
   onClearMapSelection: () => void
   onEditActivity?: (activity: PlannerActivity) => void
   onDeleteActivity?: (activityId: string) => void
-  onOpenSettings?: () => void
-  hasActivities?: boolean
-  onGenerate?: (data: { mode: 'replace' | 'merge' | 'append'; day_ids?: string[]; seed?: number }, idempotencyKey: string) => void
-  onRegenerate?: (data: { mode: 'replace' | 'merge' | 'append'; day_ids?: string[]; seed?: number }, idempotencyKey: string) => void
-  onReset?: (dayIds: string[] | undefined, idempotencyKey: string) => void
-  isGenerating?: boolean
-  jobStatus?: string | null
+  onRegisterSectionOpener?: (opener: (sectionKey: string) => void) => void
 }
 
 type SearchResultItem = {
@@ -277,6 +298,232 @@ function expandedDayIdsToAccordionState(
   return Object.fromEntries(
     sectionDayIds.map((dayId) => [dayId, expandedDayIdSet.has(dayId)]),
   ) as Record<string, boolean>
+}
+
+type BudgetGroup = {
+  currency: string | null
+  total: number
+  activityCount: number
+}
+
+type PlannerStandaloneActivityGroup = {
+  id: string
+  dayId: string | null
+  title: string
+  subtitle: string
+  activities: PlannerActivity[]
+}
+
+function getPlannerVisualContainerId(
+  bucket: PlannerActivityBucket,
+  dayId: string | null,
+) {
+  return `${bucket}::${dayId ?? 'inbox'}`
+}
+
+function buildStandaloneActivityGroups(
+  days: PlannerDay[],
+  inboxActivities: PlannerActivity[],
+  bucket: PlannerActivityBucket,
+) {
+  const groups: PlannerStandaloneActivityGroup[] = []
+  const unassignedActivities = [...filterPlannerActivitiesByBucket(inboxActivities, bucket)].sort(
+    (left, right) => left.order_index - right.order_index,
+  )
+
+  if (unassignedActivities.length > 0) {
+    groups.push({
+      id: `${bucket}::inbox`,
+      dayId: null,
+      title: 'Unassigned',
+      subtitle: 'Keep flexible until you assign a day',
+      activities: unassignedActivities,
+    })
+  }
+
+  for (const day of days) {
+    const dayActivities = [...filterPlannerActivitiesByBucket(day.activities, bucket)].sort(
+      (left, right) => left.order_index - right.order_index,
+    )
+
+    if (!dayActivities.length) {
+      continue
+    }
+
+    groups.push({
+      id: `${bucket}::${day.id}`,
+      dayId: day.id,
+      title: `Day ${day.day_index + 1}`,
+      subtitle: format(parseISO(day.date), 'MMM d, yyyy'),
+      activities: dayActivities,
+    })
+  }
+
+  return groups
+}
+
+function standaloneSectionTitle(bucket: 'travel' | 'accommodation') {
+  return bucket === 'accommodation' ? 'Accommodation' : 'Travel'
+}
+
+function standaloneSectionSummary(
+  bucket: 'travel' | 'accommodation',
+  groups: PlannerStandaloneActivityGroup[],
+) {
+  const activityCount = groups.reduce((total, group) => total + group.activities.length, 0)
+  if (activityCount === 0) {
+    return bucket === 'accommodation' ? 'No stays yet' : 'No travel yet'
+  }
+
+  const activityLabel =
+    bucket === 'accommodation'
+      ? activityCount === 1
+        ? 'stay'
+        : 'stays'
+      : activityCount === 1
+        ? 'segment'
+        : 'segments'
+
+  return `${activityCount} ${activityLabel} · ${groups.length} ${groups.length === 1 ? 'group' : 'groups'}`
+}
+
+function standaloneSectionEmptyCopy(bucket: 'travel' | 'accommodation') {
+  return bucket === 'accommodation'
+    ? 'Add hotels and stays here, then assign them to the right day when needed.'
+    : 'Add flights, trains, and transfers here, then assign them to the right day when needed.'
+}
+
+function formatTripDateRangeLabel(
+  startDate: string | null | undefined,
+  endDate: string | null | undefined,
+) {
+  if (!startDate && !endDate) {
+    return 'Dates flexible'
+  }
+
+  if (startDate && endDate) {
+    const start = parseISO(startDate)
+    const end = parseISO(endDate)
+
+    if (format(start, 'yyyy') === format(end, 'yyyy')) {
+      if (format(start, 'MMM') === format(end, 'MMM')) {
+        return `${format(start, 'MMM d')} - ${format(end, 'd, yyyy')}`
+      }
+
+      return `${format(start, 'MMM d')} - ${format(end, 'MMM d, yyyy')}`
+    }
+
+    return `${format(start, 'MMM d, yyyy')} - ${format(end, 'MMM d, yyyy')}`
+  }
+
+  return format(parseISO(startDate ?? endDate!), 'MMM d, yyyy')
+}
+
+function formatTripTypeLabel(tripType: string | null | undefined) {
+  if (!tripType) {
+    return null
+  }
+
+  return tripType
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+function buildBudgetGroups(
+  activities: PlannerActivity[],
+  fallbackCurrency: string | null | undefined,
+) {
+  const groups = new Map<string, BudgetGroup>()
+  const spentGroups = new Map<string, BudgetGroup>()
+  let pricedActivityCount = 0
+
+  for (const activity of activities) {
+    if (activity.estimated_cost_amount == null || activity.estimated_cost_amount === '') {
+      continue
+    }
+
+    const numericAmount = Number(activity.estimated_cost_amount)
+    if (Number.isNaN(numericAmount)) {
+      continue
+    }
+
+    pricedActivityCount += 1
+    const currency = activity.estimated_cost_currency ?? fallbackCurrency ?? null
+    const key = currency ?? '__none__'
+    const current = groups.get(key) ?? {
+      currency,
+      total: 0,
+      activityCount: 0,
+    }
+
+    current.total += numericAmount
+    current.activityCount += 1
+    groups.set(key, current)
+
+    if (activity.visited_at != null) {
+      const currentSpent = spentGroups.get(key) ?? {
+        currency,
+        total: 0,
+        activityCount: 0,
+      }
+      currentSpent.total += numericAmount
+      currentSpent.activityCount += 1
+      spentGroups.set(key, currentSpent)
+    }
+  }
+
+  return {
+    groups: Array.from(groups.values()),
+    spentGroups: Array.from(spentGroups.values()),
+    pricedActivityCount,
+    unpricedActivityCount: Math.max(activities.length - pricedActivityCount, 0),
+  }
+}
+
+function buildBudgetOverview(trip: Trip, activities: PlannerActivity[]) {
+  const { groups, spentGroups, pricedActivityCount, unpricedActivityCount } = buildBudgetGroups(
+    activities,
+    trip.budget_currency,
+  )
+  const budgetAmount =
+    trip.budget_amount == null || trip.budget_amount === ''
+      ? null
+      : Number(trip.budget_amount)
+  const hasBudgetAmount = budgetAmount != null && !Number.isNaN(budgetAmount)
+
+  const comparableGroup = trip.budget_currency
+    ? groups.find((group) => group.currency === trip.budget_currency) ??
+      (groups.length === 1 ? groups[0] : null)
+    : groups.length === 1
+      ? groups[0]
+      : null
+
+  const comparableSpentGroup = trip.budget_currency
+    ? spentGroups.find((group) => group.currency === trip.budget_currency) ??
+      (spentGroups.length === 1 ? spentGroups[0] : null)
+    : spentGroups.length === 1
+      ? spentGroups[0]
+      : null
+
+  const comparableCurrency = comparableGroup?.currency ?? trip.budget_currency ?? null
+  const comparableSpend = comparableGroup?.total ?? 0
+  const comparableSpent = comparableSpentGroup?.total ?? 0
+
+  const currentBudgetAmount = hasBudgetAmount ? budgetAmount - comparableSpent : null
+  const remainingAmount = hasBudgetAmount ? budgetAmount - comparableSpend : null
+
+  return {
+    groups,
+    spentGroups,
+    pricedActivityCount,
+    unpricedActivityCount,
+    comparableSpend,
+    comparableSpent,
+    comparableCurrency,
+    currentBudgetAmount,
+    remainingAmount,
+  }
 }
 
 function toSavedSearchItem(place: {
@@ -498,6 +745,252 @@ function activeSelectionSubtitle(
   )
 }
 
+function PlannerSidebarSectionTrigger({
+  icon,
+  title,
+  summary,
+  actions,
+}: {
+  icon: ReactNode
+  title: string
+  summary: string
+  actions?: ReactNode
+}) {
+  return (
+    <div className="flex w-full items-center justify-between gap-3 pr-4">
+      <div className="flex min-w-0 items-center gap-2.5 text-left">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-secondary-surface)] text-[var(--color-text)]">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="text-[0.85rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+            {title}
+          </p>
+          <p className="mt-0.5 truncate text-[0.74rem] text-[var(--color-text-muted)]">
+            {summary}
+          </p>
+        </div>
+      </div>
+      {actions && (
+        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          {actions}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlannerTripHeroCard({
+  trip,
+  coverPhotoUrl,
+}: {
+  trip: Trip
+  coverPhotoUrl: string | null
+}) {
+  const tripTypeLabel = formatTripTypeLabel(trip.trip_type)
+  const dateLabel = formatTripDateRangeLabel(trip.start_date, trip.end_date)
+
+  return (
+    <section
+      className="overflow-hidden rounded-[26px] border border-black/8 bg-white shadow-[0_22px_58px_-42px_rgba(15,23,42,0.24)]"
+      data-testid="planner-trip-hero"
+    >
+      <div className="relative overflow-hidden rounded-[22px]">
+        <div className="relative h-36 bg-[linear-gradient(135deg,#d6e3ee_0%,#9fb5c6_52%,#6d879e_100%)] sm:h-40">
+          {coverPhotoUrl ? (
+            <img
+              src={coverPhotoUrl}
+              alt={trip.destination_text}
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,20,32,0.08)_0%,rgba(10,20,32,0.14)_42%,rgba(255,255,255,0.68)_82%,#ffffff_100%)]" />
+          <div className="absolute left-3 top-3 flex flex-wrap gap-2">
+
+            {tripTypeLabel ? (
+              <span className="rounded-full border border-white/45 bg-white/16 px-2.5 py-1 text-[0.64rem] font-medium text-white/92 backdrop-blur">
+                {tripTypeLabel}
+              </span>
+            ) : null}
+          </div>
+          {!coverPhotoUrl ? (
+            <div className="absolute inset-x-4 bottom-5">
+              <p className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-white/80">
+                Destination
+              </p>
+              <p className="mt-1.5 text-[1rem] font-semibold tracking-[-0.03em] text-white">
+                {trip.destination_text}
+              </p>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="-mt-6 relative mx-3 mb-3 rounded-[20px] border border-white/80 bg-white/94 px-4 py-3.5 shadow-[0_18px_46px_-34px_rgba(15,23,42,0.28)] backdrop-blur">
+          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
+            Trip overview
+          </p>
+          <h1 className="mt-1.5 text-[1.55rem] font-semibold leading-none tracking-[-0.05em] text-[var(--color-text)]">
+            {trip.title}
+          </h1>
+
+          <div className="mt-3 flex flex-col gap-1.5">
+            <span className="inline-flex min-w-0 items-center gap-2 text-[0.8rem] text-[var(--color-text-muted)]">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{dateLabel}</span>
+            </span>
+            <span className="inline-flex min-w-0 items-center gap-2 text-[0.8rem] text-[var(--color-text-muted)]">
+              <MapPin className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{trip.destination_text}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PlannerBudgetOverview({
+  trip,
+  activities,
+}: {
+  trip: Trip
+  activities: PlannerActivity[]
+}) {
+  const patchTrip = usePatchTrip(trip.id)
+  const budgetOverview = useMemo(() => buildBudgetOverview(trip, activities), [activities, trip])
+  const [draftAmount, setDraftAmount] = useState(
+    trip.budget_amount == null || trip.budget_amount === '' ? '' : String(Number(trip.budget_amount)),
+  )
+  const [draftCurrency, setDraftCurrency] = useState(trip.budget_currency ?? 'USD')
+
+  const parsedDraftAmount = draftAmount.trim() ? Number(draftAmount) : null
+  const hasValidBudget = parsedDraftAmount == null || (!Number.isNaN(parsedDraftAmount) && parsedDraftAmount >= 0)
+
+  const isDirty =
+    (parsedDraftAmount ?? null) !== (trip.budget_amount == null || trip.budget_amount === '' ? null : Number(trip.budget_amount)) ||
+    draftCurrency !== (trip.budget_currency ?? 'USD')
+
+  useEffect(() => {
+    setDraftAmount(
+      trip.budget_amount == null || trip.budget_amount === '' ? '' : String(Number(trip.budget_amount)),
+    )
+    setDraftCurrency(trip.budget_currency ?? 'USD')
+  }, [trip.budget_amount, trip.budget_currency, trip.version])
+
+  async function handleSaveBudget() {
+    if (!hasValidBudget) {
+      toast.error('Enter a valid budget amount')
+      return
+    }
+
+    try {
+      await patchTrip.mutateAsync({
+        version: trip.version,
+        data: {
+          budget_amount: parsedDraftAmount,
+          budget_currency: draftCurrency,
+        },
+      })
+      toast.success('Budget updated')
+    } catch {
+      toast.error('Could not update the budget')
+    }
+  }
+
+  const initialBudgetLabel = formatMoney(trip.budget_amount, trip.budget_currency) ?? '—'
+  const spentLabel = formatMoney(budgetOverview.comparableSpent, trip.budget_currency) ?? '—'
+  const currentBudgetLabel = formatMoney(budgetOverview.currentBudgetAmount, trip.budget_currency) ?? '—'
+
+  return (
+    <div className="flex flex-col gap-3" data-testid="planner-budget-summary">
+      <div className="rounded-[22px] border border-black/8 bg-white px-5 py-5 shadow-sm">
+        <div className="flex flex-col gap-5">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1">
+              <span className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                Initial Budget
+              </span>
+              <span className="text-[1.4rem] font-bold tracking-tight text-[var(--color-text)]">
+                {initialBudgetLabel}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <div className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-black/5">
+                <Select value={draftCurrency} onValueChange={setDraftCurrency}>
+                  <SelectTrigger className="h-full border-none bg-transparent px-3 text-[0.8rem] font-bold focus:ring-0 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56 overflow-y-auto">
+                    {CURRENCY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value} className="text-sm">
+                        {option.label}{option.description ? ` ${option.description}` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="h-5 w-px bg-black/8" />
+                <Input
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={draftAmount}
+                  onChange={(event) => setDraftAmount(event.target.value)}
+                  className="h-full w-24 border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0"
+                />
+              </div>
+              <Button
+                type="button"
+                size="icon"
+                className="h-11 w-11 shrink-0 rounded-[14px]"
+                onClick={() => void handleSaveBudget()}
+                disabled={!isDirty || !hasValidBudget || patchTrip.isPending}
+              >
+                {patchTrip.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 border-t border-black/5 pt-5">
+            <div className="flex flex-col gap-1">
+              <span className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                Spent
+              </span>
+              <span className="text-[1.1rem] font-bold text-[var(--color-text)]">
+                {spentLabel}
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-[0.65rem] font-bold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                Current Budget
+              </span>
+              <span className={cn(
+                "text-[1.1rem] font-bold",
+                budgetOverview.currentBudgetAmount !== null && budgetOverview.currentBudgetAmount < 0 ? "text-red-500" : "text-emerald-600"
+              )}>
+                {currentBudgetLabel}
+              </span>
+            </div>
+          </div>
+
+          {budgetOverview.pricedActivityCount > 0 && (
+            <p className="text-[0.7rem] leading-relaxed text-[var(--color-text-muted)] opacity-80">
+              Tracking costs for {budgetOverview.pricedActivityCount} activities.
+              {budgetOverview.unpricedActivityCount > 0 ? ` ${budgetOverview.unpricedActivityCount} more are still pending.` : ""}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function dayProgressLabel(section: PlannerMapSection, selectedStop: PlannerMapStop | null) {
   if (!selectedStop || selectedStop.dayId !== section.dayId || selectedStop.markerNumber == null) {
     return null
@@ -655,56 +1148,230 @@ function PlannerMapPin({
   )
 }
 
+type PlannerTravelOverlay = {
+  activity: PlannerActivity
+  dayId: string
+  mode: PlannerTravelDisplayMode
+  points: ReturnType<typeof plannerTravelRoute>
+  routePath: PlannerTravelRoutePoint[]
+  badgePoint: PlannerTravelRoutePoint | null
+}
+
+type PlannerTravelRoutePoint = {
+  lat: number
+  lng: number
+}
+
+function travelOverlayColor(mode: PlannerTravelDisplayMode) {
+  switch (mode) {
+    case 'train':
+      return '#0F766E'
+    case 'car':
+      return '#7C3AED'
+    case 'ferry':
+      return '#0891B2'
+    case 'walk':
+      return '#475569'
+    case 'flight':
+    default:
+      return '#2563EB'
+  }
+}
+
+function travelOverlayIcon(mode: PlannerTravelDisplayMode) {
+  switch (mode) {
+    case 'train':
+      return TrainFront
+    case 'car':
+      return CarFront
+    case 'ferry':
+      return ShipWheel
+    case 'walk':
+      return Footprints
+    case 'flight':
+    default:
+      return Plane
+  }
+}
+
+function buildPlannerTravelOverlays(
+  days: PlannerDay[],
+  inboxActivities: PlannerActivity[],
+): PlannerTravelOverlay[] {
+  const overlays: PlannerTravelOverlay[] = []
+
+  const buildOverlay = (
+    activity: PlannerActivity,
+    dayId: string,
+  ): PlannerTravelOverlay | null => {
+    if (activity.category !== 'travel') {
+      return null
+    }
+
+    const points = plannerTravelRoute(activity)
+    if (points.length < 2) {
+      return null
+    }
+
+    const mode = plannerTravelMode(activity)
+    const routePath = travelOverlayRoutePath(mode, points)
+
+    return {
+      activity,
+      dayId,
+      mode,
+      points,
+      routePath,
+      badgePoint: midpointForTravelPath(routePath),
+    }
+  }
+
+  for (const activity of inboxActivities) {
+    const overlay = buildOverlay(activity, 'inbox')
+    if (overlay) {
+      overlays.push(overlay)
+    }
+  }
+
+  for (const day of days) {
+    for (const activity of day.activities) {
+      const overlay = buildOverlay(activity, day.id)
+      if (overlay) {
+        overlays.push(overlay)
+      }
+    }
+  }
+
+  return overlays
+}
+
+function travelOverlayRoutePath(
+  mode: PlannerTravelDisplayMode,
+  points: ReturnType<typeof plannerTravelRoute>,
+): PlannerTravelRoutePoint[] {
+  const [origin, destination] = points
+  if (!origin || !destination) {
+    return []
+  }
+
+  const start = { lat: origin.lat, lng: origin.lon }
+  const end = { lat: destination.lat, lng: destination.lon }
+  const deltaLat = end.lat - start.lat
+  const deltaLng = end.lng - start.lng
+  const baseDistance = Math.hypot(deltaLat, deltaLng)
+
+  if (
+    baseDistance < 0.3 ||
+    mode === 'car' ||
+    mode === 'walk'
+  ) {
+    return [start, end]
+  }
+
+  const midpoint = {
+    lat: (start.lat + end.lat) / 2,
+    lng: (start.lng + end.lng) / 2,
+  }
+  let perpendicular = { lat: deltaLng, lng: -deltaLat }
+  if ((midpoint.lat >= 0 && perpendicular.lat < 0) || (midpoint.lat < 0 && perpendicular.lat > 0)) {
+    perpendicular = {
+      lat: -perpendicular.lat,
+      lng: -perpendicular.lng,
+    }
+  }
+
+  const perpendicularMagnitude = Math.hypot(perpendicular.lat, perpendicular.lng) || 1
+  const normalizedPerpendicular = {
+    lat: perpendicular.lat / perpendicularMagnitude,
+    lng: perpendicular.lng / perpendicularMagnitude,
+  }
+
+  const curveFactor =
+    mode === 'flight' ? 0.16 : mode === 'ferry' ? 0.11 : 0.075
+  const curveOffset = Math.min(Math.max(baseDistance * curveFactor, 0.16), 2.8)
+  const controlPoint = {
+    lat: midpoint.lat + normalizedPerpendicular.lat * curveOffset,
+    lng: midpoint.lng + normalizedPerpendicular.lng * curveOffset,
+  }
+  const segments = mode === 'flight' ? 22 : mode === 'ferry' ? 18 : 14
+
+  return Array.from({ length: segments + 1 }, (_, index) => {
+    const t = index / segments
+    const inverseT = 1 - t
+    return {
+      lat:
+        inverseT * inverseT * start.lat +
+        2 * inverseT * t * controlPoint.lat +
+        t * t * end.lat,
+      lng:
+        inverseT * inverseT * start.lng +
+        2 * inverseT * t * controlPoint.lng +
+        t * t * end.lng,
+    }
+  })
+}
+
+function midpointForTravelPath(path: PlannerTravelRoutePoint[]) {
+  if (path.length === 0) {
+    return null
+  }
+
+  return path[Math.floor(path.length / 2)] ?? null
+}
+
 
 function PlannerMapDayAccordion({
   section,
   metrics,
   preview,
   travelMode,
-  isVisible,
   isSelected,
   isDragActive,
   selectedStop,
   optimizing,
-  onToggleVisible,
   onSelectStop,
   onAddActivity,
   onPreviewOptimize,
   onApplyPreview,
   onCancelPreview,
+  onToggleVisited,
 }: {
   section: PlannerMapSection
   metrics: ReturnType<typeof buildPlannerMapDayMetrics>[string] | undefined
   preview: PreviewPlan | null | undefined
   travelMode: RouteTravelMode
-  isVisible: boolean
   isSelected: boolean
   isDragActive: boolean
   selectedStop: PlannerMapStop | null
   optimizing: boolean
-  onToggleVisible: () => void
   onSelectStop: (stop: PlannerMapStop) => void
-  onAddActivity: (dayId: string | null) => void
+  onAddActivity: (
+    dayId: string | null,
+    defaultCategory?: PlannerActivity['category'],
+  ) => void
   onPreviewOptimize: () => void
   onApplyPreview: () => void
   onCancelPreview: () => void
+  onToggleVisited: (activityId: string, currentVisitedAt: string | null) => void
 }) {
   const orderedActivities = orderedSectionActivities(section, preview?.order)
   const displayMetrics = preview?.metrics ?? metrics
   const stopByActivityId = new Map(section.stops.map((stop) => [stop.activity.id, stop]))
   const isInbox = section.dayId === 'inbox'
   const dropDayId = isInbox ? null : section.dayId
+  const containerId = getPlannerVisualContainerId('main', dropDayId)
   const { setNodeRef, isOver } = useDroppable({
-    id: section.dayId,
-    data: { type: 'container', containerId: section.dayId, dayId: dropDayId },
+    id: containerId,
+    data: { type: 'container', containerId, dayId: dropDayId, bucket: 'main' },
   })
   const { setNodeRef: setEndZoneRef, isOver: isOverEnd } = useDroppable({
-    id: `${section.dayId}::end`,
-    data: { type: 'container-end', containerId: section.dayId, dayId: dropDayId },
+    id: `${containerId}::end`,
+    data: { type: 'container-end', containerId, dayId: dropDayId, bucket: 'main' },
   })
 
   return (
     <AccordionItem
+      id={`planner-day-${section.dayId}`}
       value={section.dayId}
       ref={setNodeRef}
       className={cn(
@@ -717,66 +1384,57 @@ function PlannerMapDayAccordion({
         <AccordionPrimitive.Trigger asChild>
           <div
             data-testid={`planner-map-day-trigger-${section.dayId}`}
-            className="w-full cursor-pointer px-4 py-3 text-left"
+            className="group w-full cursor-pointer px-4 py-2.5 text-left"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-start gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <span
-                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[0.8rem] font-semibold text-white"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.72rem] font-bold text-white shadow-sm"
                   style={{ backgroundColor: section.color }}
                 >
                   {section.dayIndex >= 0 ? section.dayIndex + 1 : '+'}
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[0.98rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                  <p className="text-[0.92rem] font-semibold tracking-[-0.01em] text-[var(--color-text)]">
                     {section.title}
                   </p>
-                  <p className="mt-0.5 text-[0.82rem] text-[var(--color-text-muted)]">
+                  <p className="text-[0.76rem] text-[var(--color-text-muted)]">
                     {section.subtitle}
                     {!isInbox ? ` · ${section.dateLabel}` : ''}
                   </p>
                 </div>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                {!isInbox ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full border border-black/8 bg-white"
-                        onClick={onPreviewOptimize}
-                        disabled={optimizing}
-                        aria-label="Optimise itinerary"
-                      >
-                        <Sparkles className={cn('h-4 w-4', optimizing && 'animate-pulse')} />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{optimizing ? 'Optimizing…' : 'Optimise itinerary'}</TooltipContent>
-                  </Tooltip>
-                ) : null}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-black/8 bg-white"
-                  onClick={onToggleVisible}
-                  aria-label={isVisible ? `Hide ${section.title}` : `Show ${section.title}`}
-                >
-                  {isVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full border border-black/8 bg-white"
-                  onClick={() => onAddActivity(dropDayId)}
-                  aria-label={`Add activity to ${section.title}`}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                  {!isInbox ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                          onClick={onPreviewOptimize}
+                          disabled={optimizing}
+                          aria-label="Optimise itinerary"
+                        >
+                          <Sparkles className={cn('h-3.5 w-3.5', optimizing && 'animate-pulse')} />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{optimizing ? 'Optimizing…' : 'Optimise itinerary'}</TooltipContent>
+                    </Tooltip>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                    onClick={() => onAddActivity(dropDayId)}
+                    aria-label={`Add activity to ${section.title}`}
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-text-muted)] transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>
             </div>
           </div>
@@ -837,6 +1495,7 @@ function PlannerMapDayAccordion({
                           }
                         }}
                         isSelected={selectedStop?.activity.id === activity.id}
+                        onToggleVisited={() => onToggleVisited(activity.id, activity.visited_at)}
                       />
                       {leg ? (
                         <TravelConnector
@@ -867,6 +1526,207 @@ function PlannerMapDayAccordion({
             </div>
           )}
         </div>
+      </AccordionContent>
+    </AccordionItem>
+  )
+}
+
+function PlannerStandaloneActivityGroupCard({
+  bucket,
+  group,
+  stopByActivityId,
+  selectedStop,
+  isDragActive,
+  onSelectStop,
+  onToggleVisited,
+}: {
+  bucket: 'travel' | 'accommodation'
+  group: PlannerStandaloneActivityGroup
+  stopByActivityId: Map<string, PlannerMapStop>
+  selectedStop: PlannerMapStop | null
+  isDragActive: boolean
+  onSelectStop: (stop: PlannerMapStop) => void
+  onToggleVisited: (activityId: string, currentVisitedAt: string | null) => void
+}) {
+  const containerId = getPlannerVisualContainerId(bucket, group.dayId)
+  const { setNodeRef, isOver } = useDroppable({
+    id: containerId,
+    data: { type: 'container', containerId, dayId: group.dayId, bucket },
+  })
+  const { setNodeRef: setEndZoneRef, isOver: isOverEnd } = useDroppable({
+    id: `${containerId}::end`,
+    data: { type: 'container-end', containerId, dayId: group.dayId, bucket },
+  })
+  const isUnassignedGroup = group.dayId == null
+
+  const cards = (
+    <SortableContext
+      items={group.activities.map((activity) => activity.id)}
+      strategy={verticalListSortingStrategy}
+    >
+      <div className="flex flex-col gap-2">
+        {group.activities.map((activity) => {
+          const stop = stopByActivityId.get(activity.id) ?? null
+          return (
+            <ActivityCard
+              key={activity.id}
+              activity={activity}
+              onOpen={() => {
+                if (stop) {
+                  onSelectStop(stop)
+                }
+              }}
+              isSelected={selectedStop?.activity.id === activity.id}
+              onToggleVisited={() => onToggleVisited(activity.id, activity.visited_at)}
+            />
+          )
+        })}
+      </div>
+    </SortableContext>
+  )
+
+  if (isUnassignedGroup) {
+    return (
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'transition-all',
+          isOver && 'rounded-[18px] bg-[var(--color-secondary-surface)]/55 p-1.5',
+        )}
+        data-testid={`planner-${bucket}-group-${group.dayId ?? 'inbox'}`}
+      >
+        {cards}
+        <div
+          ref={setEndZoneRef}
+          className={cn(
+            'mt-2 overflow-hidden rounded-[10px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+            isDragActive ? 'min-h-8 opacity-100' : 'min-h-0 opacity-0',
+            isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
+          )}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <section
+      ref={setNodeRef}
+      className={cn(
+        'overflow-hidden rounded-[18px] border border-black/8 bg-white/96 px-3.5 py-3 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)] transition-all',
+        isOver && 'ring-2 ring-black/6',
+      )}
+      data-testid={`planner-${bucket}-group-${group.dayId ?? 'inbox'}`}
+    >
+      <div className="flex items-start justify-between gap-3 border-b border-black/6 pb-2.5">
+        <div className="min-w-0">
+          <p className="text-[0.8rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+            {group.title}
+          </p>
+          <p className="mt-0.5 text-[0.72rem] text-[var(--color-text-muted)]">
+            {group.subtitle}
+          </p>
+        </div>
+        <Badge
+          variant="outline"
+          className="rounded-full border-black/8 bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.64rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]"
+        >
+          {group.activities.length} {group.activities.length === 1 ? 'item' : 'items'}
+        </Badge>
+      </div>
+
+      <div className="mt-3">
+        {cards}
+
+        <div
+          ref={setEndZoneRef}
+          className={cn(
+            'mt-2 overflow-hidden rounded-[10px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+            isDragActive ? 'min-h-8 opacity-100' : 'min-h-0 opacity-0',
+            isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
+          )}
+        />
+      </div>
+    </section>
+  )
+}
+
+function PlannerStandaloneActivitySection({
+  bucket,
+  groups,
+  isDragActive,
+  stopByActivityId,
+  selectedStop,
+  onSelectStop,
+  onAddActivity,
+  onToggleVisited,
+}: {
+  bucket: 'travel' | 'accommodation'
+  groups: PlannerStandaloneActivityGroup[]
+  isDragActive: boolean
+  stopByActivityId: Map<string, PlannerMapStop>
+  selectedStop: PlannerMapStop | null
+  onSelectStop: (stop: PlannerMapStop) => void
+  onAddActivity: (
+    dayId: string | null,
+    defaultCategory?: PlannerActivity['category'],
+  ) => void
+  onToggleVisited: (activityId: string, currentVisitedAt: string | null) => void
+}) {
+  const title = standaloneSectionTitle(bucket)
+  const sectionCategory = bucket === 'accommodation' ? 'hotel' : 'travel'
+  const Icon = bucket === 'accommodation' ? BedDouble : Plane
+
+  return (
+    <AccordionItem
+      value={bucket}
+      className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)]"
+      data-planner-section={sectionCategory}
+      data-testid={`planner-${bucket}-section`}
+    >
+      <AccordionTrigger className="py-3 hover:no-underline">
+        <PlannerSidebarSectionTrigger
+          icon={<Icon className="h-4 w-4" />}
+          title={title}
+          summary={standaloneSectionSummary(bucket, groups)}
+          actions={
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+              onClick={(event) => {
+                event.stopPropagation()
+                onAddActivity(null, sectionCategory)
+              }}
+              aria-label={`Add ${title.toLowerCase()}`}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          }
+        />
+      </AccordionTrigger>
+      <AccordionContent className="pb-3.5 pt-0">
+        {groups.length > 0 ? (
+          <div className="flex flex-col gap-2.5">
+            {groups.map((group) => (
+              <PlannerStandaloneActivityGroupCard
+                key={group.id}
+                bucket={bucket}
+                group={group}
+                stopByActivityId={stopByActivityId}
+                selectedStop={selectedStop}
+                isDragActive={isDragActive}
+                onSelectStop={onSelectStop}
+                onToggleVisited={onToggleVisited}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-5 text-center">
+            <p className="text-sm text-[var(--color-text-muted)]">
+              {standaloneSectionEmptyCopy(bucket)}
+            </p>
+          </div>
+        )}
       </AccordionContent>
     </AccordionItem>
   )
@@ -1589,6 +2449,7 @@ function DetailSheetContent({
 }
 
 export function PlannerMapView({
+  trip,
   tripId,
   tripVersion,
   travelMode = 'WALK',
@@ -1599,7 +2460,6 @@ export function PlannerMapView({
   selectedPlaceId,
   recommendations,
   selectedRecommendation,
-  trip,
   onAddActivity,
   onSelectActivityId,
   onSelectPlaceId,
@@ -1607,21 +2467,65 @@ export function PlannerMapView({
   onClearMapSelection,
   onEditActivity,
   onDeleteActivity,
-  onOpenSettings,
-  hasActivities,
-  onGenerate,
-  onRegenerate,
-  onReset,
-  isGenerating,
-  jobStatus,
+  onRegisterSectionOpener,
 }: Props) {
   const isMobile = useIsMobile()
+  const dragActive = Boolean(isDragActive)
   const queryClient = useQueryClient()
   const createPlaceMutation = useCreatePlace()
+  const [railSections, setRailSections] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem(`planner-rail-sections:${tripId}`)
+      if (stored) return JSON.parse(stored) as string[]
+    } catch {}
+    return ['recommendations', 'travel', 'accommodation']
+  })
+  const handleRailSectionsChange = (next: string[]) => {
+    setRailSections(next)
+    try {
+      localStorage.setItem(`planner-rail-sections:${tripId}`, JSON.stringify(next))
+    } catch {}
+  }
+  useEffect(() => {
+    onRegisterSectionOpener?.((sectionKey) => {
+      setRailSections((prev) => {
+        if (prev.includes(sectionKey)) return prev
+        const next = [...prev, sectionKey]
+        try {
+          localStorage.setItem(`planner-rail-sections:${tripId}`, JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const sections = useMemo(
     () => buildPlannerMapSections(days, inboxActivities),
     [days, inboxActivities],
   )
+  const itinerarySections = useMemo(
+    () =>
+      buildPlannerMapSections(
+        filterPlannerDaysByBucket(days, 'main'),
+        filterPlannerActivitiesByBucket(inboxActivities, 'main'),
+      ),
+    [days, inboxActivities],
+  )
+  const accommodationGroups = useMemo(
+    () => buildStandaloneActivityGroups(days, inboxActivities, 'accommodation'),
+    [days, inboxActivities],
+  )
+  const travelGroups = useMemo(
+    () => buildStandaloneActivityGroups(days, inboxActivities, 'travel'),
+    [days, inboxActivities],
+  )
+  const allPlannerActivities = useMemo(
+    () => [...inboxActivities, ...days.flatMap((day) => day.activities)],
+    [days, inboxActivities],
+  )
+  const { data: tripAssetsData } = useTripAssets(tripId, null)
+  const tripAssets = tripAssetsData?.items ?? []
+  const { coverPhotoUrl: heroPhotoUrl } = useTripCoverPhotoManager(tripId, trip)
   const stopByActivityId = useMemo(
     () =>
       new Map(
@@ -1675,15 +2579,23 @@ export function PlannerMapView({
 
   const { data: tripLayersData } = useTripMapLayers(tripId)
   const routeLegPayload = useMemo(
-    () => buildPlannerMapLegPayload(sections, travelMode),
-    [sections, travelMode],
+    () => buildPlannerMapLegPayload(itinerarySections, travelMode),
+    [itinerarySections, travelMode],
   )
   const routeLegEstimates = useRouteLegEstimates(routeLegPayload)
   const dayMetrics = useMemo(
-    () => buildPlannerMapDayMetrics(sections, routeLegEstimates.data?.items ?? [], travelMode),
-    [routeLegEstimates.data?.items, sections, travelMode],
+    () =>
+      buildPlannerMapDayMetrics(
+        itinerarySections,
+        routeLegEstimates.data?.items ?? [],
+        travelMode,
+      ),
+    [itinerarySections, routeLegEstimates.data?.items, travelMode],
   )
-  const sectionDayIds = useMemo(() => sections.map((section) => section.dayId), [sections])
+  const sectionDayIds = useMemo(
+    () => itinerarySections.map((section) => section.dayId),
+    [itinerarySections],
+  )
   const dayAccordionState = useMemo(
     () => reconcileDayAccordionState(storedDayAccordionState, sectionDayIds),
     [sectionDayIds, storedDayAccordionState],
@@ -1730,9 +2642,28 @@ export function PlannerMapView({
     () => (showCustomLayers ? (tripLayersData?.items ?? []).filter((layer) => layer.is_visible) : []),
     [showCustomLayers, tripLayersData?.items],
   )
+  const allTravelOverlays = useMemo(
+    () => buildPlannerTravelOverlays(days, inboxActivities),
+    [days, inboxActivities],
+  )
+  const selectedTravelOverlay = useMemo(
+    () =>
+      selectedActivityId
+        ? allTravelOverlays.find((overlay) => overlay.activity.id === selectedActivityId) ?? null
+        : null,
+    [allTravelOverlays, selectedActivityId],
+  )
+  const selectedTravelOverlayPath = selectedTravelOverlay?.routePath ?? []
   const visibleStops = useMemo(
     () => filterVisibleStops(sections, visibleDayIds, visibleGroups),
     [sections, visibleDayIds, visibleGroups],
+  )
+  const visibleTravelOverlays = useMemo(
+    () =>
+      visibleGroups.has('travel')
+        ? allTravelOverlays.filter((overlay) => visibleDayIds.has(overlay.dayId))
+        : [],
+    [allTravelOverlays, visibleDayIds, visibleGroups],
   )
   const mapRecommendationEntries = useMemo(() => {
     const seen = new Set<string>()
@@ -1855,13 +2786,13 @@ export function PlannerMapView({
 
   const activeRouteSections = useMemo(
     () =>
-      sections.filter((section) => {
+      itinerarySections.filter((section) => {
         if (!visibleDayIds.has(section.dayId) || !showRoutes) {
           return false
         }
         return section.stops.filter((stop) => stop.markerNumber != null).length >= 2
       }),
-    [sections, showRoutes, visibleDayIds],
+    [itinerarySections, showRoutes, visibleDayIds],
   )
   const primaryRouteSection = useMemo(() => {
     if (selectedStop) {
@@ -1968,6 +2899,20 @@ export function PlannerMapView({
     setSelectedSearchItem(null)
     onSelectActivityId(stop.activity.id)
     onSelectPlaceId(stop.activity.place_id)
+    setPreferredDetailTab('about')
+    setDetailOpen(true)
+  }
+
+  const handleTravelOverlaySelection = (activity: PlannerActivity) => {
+    if (selectedActivityId === activity.id) {
+      clearSelection()
+      return
+    }
+
+    onSelectRecommendation(null)
+    setSelectedSearchItem(null)
+    onSelectActivityId(activity.id)
+    onSelectPlaceId(activity.place_id)
     setPreferredDetailTab('about')
     setDetailOpen(true)
   }
@@ -2158,6 +3103,24 @@ export function PlannerMapView({
     }
   }
 
+  const handleToggleActivityVisited = async (activityId: string, currentVisitedAt: string | null) => {
+    const newVisitedAt = currentVisitedAt ? null : new Date().toISOString()
+    const prevData = queryClient.getQueryData<PlannerResponse>(plannerKeys.detail(tripId))
+    if (prevData) {
+      queryClient.setQueryData(
+        plannerKeys.detail(tripId),
+        applyOptimisticVisited(prevData, activityId, newVisitedAt),
+      )
+    }
+    try {
+      await patchActivity(activityId, { visited_at: newVisitedAt })
+      void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+      void queryClient.invalidateQueries({ queryKey: ['planner-map', tripId] })
+    } catch {
+      if (prevData) queryClient.setQueryData(plannerKeys.detail(tripId), prevData)
+    }
+  }
+
   const handleToggleVisited = async () => {
     const targetActivityId =
       selectedStop?.activity.id ??
@@ -2258,12 +3221,23 @@ export function PlannerMapView({
       return
     }
 
+    const fullDay = days.find((day) => day.id === section.dayId)
+    if (!fullDay) {
+      return
+    }
+
+    const mergedActivities = mergeBucketActivityOrder(
+      fullDay.activities,
+      'main',
+      preview.order,
+    )
+
     try {
       await reorderActivities(
         section.dayId,
         {
-          items: preview.order.map((activityId, index) => ({
-            activity_id: activityId,
+          items: mergedActivities.map((activity, index) => ({
+            activity_id: activity.id,
             order_index: index,
           })),
         },
@@ -2340,123 +3314,202 @@ export function PlannerMapView({
       onDeleteActivity={onDeleteActivity}
     />
   ) : null
+  const budgetOverview = buildBudgetOverview(trip, allPlannerActivities)
+  const tripBudgetLabel = formatMoney(trip.budget_amount, trip.budget_currency)
+  const plannedSpendLabel =
+    budgetOverview.comparableSpend != null
+      ? formatMoney(budgetOverview.comparableSpend, budgetOverview.comparableCurrency)
+      : null
+  const budgetSummary = tripBudgetLabel
+    ? `${tripBudgetLabel} target${plannedSpendLabel ? ` · ${plannedSpendLabel} planned` : ''}`
+    : plannedSpendLabel
+      ? `${plannedSpendLabel} planned`
+      : 'No trip budget yet'
+  const recommendationSummary = recommendations.enabled
+    ? `${recommendations.discoverEntries.length} suggestion${recommendations.discoverEntries.length === 1 ? '' : 's'}`
+    : 'Unavailable'
+  const fileSummary = tripAssets.length
+    ? `${tripAssets.length} upload${tripAssets.length === 1 ? '' : 's'}`
+    : 'No uploads yet'
 
   return (
     <TooltipProvider delayDuration={120}>
       <div className="grid h-full min-h-0 gap-0 xl:grid-cols-[minmax(420px,0.47fr)_minmax(0,0.53fr)]">
         <div className="min-h-0 flex flex-col">
-          {/* Toolbar */}
-          <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/8 bg-white px-4 py-2.5">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 rounded-[8px] p-0"
-                asChild
-              >
-                <Link to="/app/trips">
-                  <ArrowLeft className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="flex items-center gap-2">
-              {onOpenSettings && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-8 rounded-[8px] px-2.5 min-w-8"
-                  onClick={onOpenSettings}
-                >
-                  <Settings2 className="h-4 w-4 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Settings</span>
-                </Button>
-              )}
+          <div data-planner-scroll className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex flex-col gap-3 p-2">
+              <PlannerTripHeroCard trip={trip} coverPhotoUrl={heroPhotoUrl} />
 
-              <ExportMenu tripId={tripId} tripVersion={tripVersion} />
-
-              {onGenerate && onRegenerate && onReset && (
-                <GenerationControls
-                  compact
-                  days={days}
-                  hasActivities={hasActivities ?? false}
-                  onGenerate={onGenerate}
-                  onRegenerate={onRegenerate}
-                  onReset={onReset}
-                  isGenerating={isGenerating ?? false}
-                  jobStatus={jobStatus ?? null}
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Trip info + days scrollable area */}
-          <div className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            {/* Trip info */}
-            {trip && (
-              <div className="border-b border-black/8 bg-white px-4 py-4">
-                <h1 className="text-[1.15rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                  {trip.title}
-                </h1>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.82rem] text-[var(--color-text-muted)]">
-                  <span>{trip.destination_text}</span>
-                  <span className="text-black/20">•</span>
-                  <span>{`${format(new Date(trip.start_date), "MMM d")} – ${format(new Date(trip.end_date), "MMM d, yyyy")}`}</span>
-                  {trip.budget_amount && trip.budget_currency ? (
-                    <>
-                      <span className="text-black/20">•</span>
-                      <span>{`Budget ${formatMoney(trip.budget_amount, trip.budget_currency)}`}</span>
-                    </>
-                  ) : null}
-                </div>
+              <div className="px-1 pt-1">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Logistics
+                </p>
               </div>
-            )}
 
-            {/* Day accordions */}
-            <div className="p-2">
-            <Accordion
-              type="multiple"
-              value={expandedDayIds}
-              onValueChange={(nextExpandedDayIds) =>
-                setMapDayAccordionState(
-                  tripId,
-                  expandedDayIdsToAccordionState(nextExpandedDayIds, sectionDayIds),
-                )
-              }
-              className="space-y-2"
-            >
-              {sections.map((section) => {
-                const metrics = dayMetrics[section.dayId]
-                const preview = previewByDayId[section.dayId]
-                const isVisible = visibleDayIds.has(section.dayId)
+              <Accordion
+                type="multiple"
+                value={railSections}
+                onValueChange={handleRailSectionsChange}
+                className="flex flex-col gap-2"
+              >
+                <PlannerStandaloneActivitySection
+                  bucket="travel"
+                  groups={travelGroups}
+                  isDragActive={dragActive}
+                  stopByActivityId={stopByActivityId}
+                  selectedStop={selectedStop}
+                  onSelectStop={handleStopSelection}
+                  onAddActivity={onAddActivity}
+                  onToggleVisited={handleToggleActivityVisited}
+                />
 
-                return (
-                  <PlannerMapDayAccordion
-                    key={section.id}
-                    section={section}
-                    metrics={metrics}
-                    preview={preview}
-                    travelMode={travelMode}
-                    isVisible={isVisible}
-                    isSelected={selectedSection?.dayId === section.dayId}
-                    isDragActive={isDragActive}
-                    selectedStop={selectedStop}
-                    optimizing={optimizingDayId === section.dayId}
-                    onToggleVisible={() => toggleVisibleDay(section.dayId)}
-                    onSelectStop={handleStopSelection}
-                    onAddActivity={onAddActivity}
-                    onPreviewOptimize={() => void handlePreviewOptimize(section)}
-                    onApplyPreview={() => void handleApplyPreview(section)}
-                    onCancelPreview={() => handleCancelPreview(section.dayId)}
-                  />
-                )
-              })}
-            </Accordion>
+                <PlannerStandaloneActivitySection
+                  bucket="accommodation"
+                  groups={accommodationGroups}
+                  isDragActive={dragActive}
+                  stopByActivityId={stopByActivityId}
+                  selectedStop={selectedStop}
+                  onSelectStop={handleStopSelection}
+                  onAddActivity={onAddActivity}
+                  onToggleVisited={handleToggleActivityVisited}
+                />
+              </Accordion>
+
+              <div className="px-1 pt-1" data-planner-section="itinerary">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Itinerary
+                </p>
+              </div>
+
+              <Accordion
+                type="multiple"
+                value={railSections}
+                onValueChange={handleRailSectionsChange}
+                className="flex flex-col gap-2"
+              >
+                <AccordionItem
+                  value="recommendations"
+                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)]"
+                  data-testid="planner-recommendations-section"
+                >
+                  <Carousel className="w-full">
+                    <AccordionTrigger className="py-3 hover:no-underline">
+                      <PlannerSidebarSectionTrigger
+                        icon={<Compass className="h-4 w-4" />}
+                        title="Recommendations"
+                        summary={recommendationSummary}
+                        actions={
+                          recommendations.enabled &&
+                          railSections.includes('recommendations') && (
+                            <div className="flex items-center gap-1">
+                              <CompactRefreshButton recommendations={recommendations} />
+                              <CompactCarouselActions />
+                            </div>
+                          )
+                        }
+                      />
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-3.5 pt-0">
+                      <PlannerRecommendationsCompactSection recommendations={recommendations} />
+                    </AccordionContent>
+                  </Carousel>
+                </AccordionItem>
+              </Accordion>
+
+              <Accordion
+                type="multiple"
+                value={expandedDayIds}
+                onValueChange={(nextExpandedDayIds) =>
+                  setMapDayAccordionState(
+                    tripId,
+                    expandedDayIdsToAccordionState(nextExpandedDayIds, sectionDayIds),
+                  )
+                }
+                className="flex flex-col gap-2"
+              >
+                {itinerarySections.map((section) => {
+                  const metrics = dayMetrics[section.dayId]
+                  const preview = previewByDayId[section.dayId]
+
+                  return (
+                    <PlannerMapDayAccordion
+                      key={section.id}
+                      section={section}
+                      metrics={metrics}
+                      preview={preview}
+                      travelMode={travelMode}
+                      isSelected={selectedSection?.dayId === section.dayId}
+                      isDragActive={dragActive}
+                      selectedStop={selectedStop}
+                      optimizing={optimizingDayId === section.dayId}
+                      onSelectStop={handleStopSelection}
+                      onAddActivity={onAddActivity}
+                      onPreviewOptimize={() => void handlePreviewOptimize(section)}
+                      onApplyPreview={() => void handleApplyPreview(section)}
+                      onCancelPreview={() => handleCancelPreview(section.dayId)}
+                      onToggleVisited={handleToggleActivityVisited}
+                    />
+                  )
+                })}
+              </Accordion>
+
+              <div className="px-1 pt-1">
+                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                  Overview
+                </p>
+              </div>
+
+              <Accordion
+                type="multiple"
+                value={railSections}
+                onValueChange={handleRailSectionsChange}
+                className="flex flex-col gap-2"
+              >
+                <AccordionItem
+                  value="budget"
+                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)]"
+                  data-testid="planner-budget-section"
+                >
+                  <AccordionTrigger className="py-3 hover:no-underline">
+                    <PlannerSidebarSectionTrigger
+                      icon={<Receipt className="h-4 w-4" />}
+                      title="Budget"
+                      summary={budgetSummary}
+                    />
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-3.5 pt-0">
+                    <PlannerBudgetOverview trip={trip} activities={allPlannerActivities} />
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem
+                  value="files"
+                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.18)]"
+                  data-testid="planner-files-section"
+                >
+                  <AccordionTrigger className="py-3 hover:no-underline">
+                    <PlannerSidebarSectionTrigger
+                      icon={<FileText className="h-4 w-4" />}
+                      title="Files"
+                      summary={fileSummary}
+                    />
+                  </AccordionTrigger>
+                  <AccordionContent className="pb-3.5 pt-0">
+                    <TripAssetManager
+                      tripId={tripId}
+                      title="Files"
+                      description="Tickets, confirmations, scans, and quick references."
+                      className="border-0 bg-transparent p-0 shadow-none"
+                    />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
         </div>
 
         <section
-          className="relative min-h-[32rem] overflow-hidden rounded-[28px] border border-black/8 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]"
+          className="relative min-h-[32rem] overflow-hidden rounded-[28px] border border-black/8 md:my-2 md:mr-2 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]"
           data-testid="planner-map-container"
         >
         {!config.map.apiKey ? (
@@ -2512,7 +3565,89 @@ export function PlannerMapView({
               )
             })}
 
-            <MapPanTo point={currentMapFocus?.point ?? null} zoom={currentMapFocus?.zoom} />
+            {selectedTravelOverlayPath.length > 0 ? (
+              <MapFitBounds
+                points={selectedTravelOverlayPath}
+                padding={{ top: 120, right: 84, bottom: 84, left: 84 }}
+                maxZoom={selectedTravelOverlay?.mode === 'flight' ? 7 : 10}
+                singlePointZoom={11}
+              />
+            ) : (
+              <MapPanTo point={currentMapFocus?.point ?? null} zoom={currentMapFocus?.zoom} />
+            )}
+
+            {visibleTravelOverlays.map((overlay) => {
+              const [origin, destination] = overlay.points
+              const overlayStop = stopByActivityId.get(overlay.activity.id) ?? null
+              const modeLabel = plannerTravelModeLabel(overlay.mode)
+              const color = travelOverlayColor(overlay.mode)
+              const isSelected = selectedActivityId === overlay.activity.id
+              const overlayClick = overlayStop
+                ? () => handleStopSelection(overlayStop)
+                : () => handleTravelOverlaySelection(overlay.activity)
+              const ModeIcon = travelOverlayIcon(overlay.mode)
+
+              if (!origin || !destination) {
+                return null
+              }
+
+              return (
+                <Fragment key={`travel-overlay-${overlay.activity.id}`}>
+                  <GooglePolyline
+                    path={overlay.routePath}
+                    strokeColor="#FFFFFF"
+                    strokeOpacity={isSelected ? 0.92 : 0.8}
+                    strokeWeight={isSelected ? 7 : 5}
+                    zIndex={isSelected ? 4 : 2}
+                  />
+                  <GooglePolyline
+                    path={overlay.routePath}
+                    strokeColor={color}
+                    strokeOpacity={isSelected ? 0.94 : 0.72}
+                    strokeWeight={isSelected ? 3.2 : 2.35}
+                    zIndex={isSelected ? 5 : 3}
+                  />
+                  <VoyagerMarker
+                    position={{ lat: origin.lat, lng: origin.lon }}
+                    title={`${modeLabel} origin · ${overlay.activity.title}`}
+                    color={color}
+                    selected={isSelected}
+                    zIndex={isSelected ? 6 : 4}
+                    onClick={overlayClick}
+                  >
+                    <PlannerMapPin
+                      label={
+                        <div className="flex items-center gap-[1px]">
+                          <ModeIcon className="size-2.5 opacity-90" fill="currentColor" fillOpacity={0.5} />
+                          <span>A</span>
+                        </div>
+                      }
+                      color={color}
+                      selected={isSelected}
+                    />
+                  </VoyagerMarker>
+                  <VoyagerMarker
+                    position={{ lat: destination.lat, lng: destination.lon }}
+                    title={`${modeLabel} destination · ${overlay.activity.title}`}
+                    color={color}
+                    selected={isSelected}
+                    zIndex={isSelected ? 6 : 4}
+                    onClick={overlayClick}
+                  >
+                    <PlannerMapPin
+                      label={
+                        <div className="flex items-center gap-[1px]">
+                          <ModeIcon className="size-2.5 opacity-90" fill="currentColor" fillOpacity={0.5} />
+                          <span>B</span>
+                        </div>
+                      }
+                      color={color}
+                      selected={isSelected}
+                    />
+                  </VoyagerMarker>
+                </Fragment>
+              )
+            })}
 
             {visibleStops.map((stop) => (
               <VoyagerMarker
@@ -2525,7 +3660,7 @@ export function PlannerMapView({
                 onClick={() => handleStopSelection(stop)}
               >
                 <PlannerMapPin
-                  label={stop.isHotel ? 'H' : String(stop.markerNumber ?? '•')}
+                  label={stop.isHotel ? <BedDouble className="h-4 w-4" fill="currentColor" fillOpacity={0.5} /> : String(stop.markerNumber ?? '•')}
                   color={stop.color}
                   selected={selectedStop?.activity.id === stop.activity.id}
                   visited={Boolean(stop.activity.visited_at)}
@@ -2666,12 +3801,12 @@ export function PlannerMapView({
                     sideOffset={10}
                     className="w-[290px] rounded-[20px] border-black/8 p-3 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.3)]"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-4 py-1">
                       <div>
-                        <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                        <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
                           Categories
                         </p>
-                        <div className="mt-2 space-y-1.5">
+                        <div className="mt-1 space-y-0.5">
                           {([
                             ['visit', 'Visits', Landmark],
                             ['eat', 'Eat', Utensils],
@@ -2679,9 +3814,9 @@ export function PlannerMapView({
                             ['hotel', 'Hotels', BedDouble],
                             ['travel', 'Travel', Route],
                           ] as const).map(([key, label, Icon]) => (
-                            <label key={key} className="flex items-center justify-between rounded-[14px] bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                              <span className="flex items-center gap-2 text-[0.82rem] text-[var(--color-text)]">
-                                <Icon className="h-3.5 w-3.5 text-[var(--color-text-muted)]" />
+                            <label key={key} className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
+                              <span className="flex items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                <Icon className="h-[18px] w-[18px] text-[var(--color-text-muted)]" />
                                 {label}
                               </span>
                               <Checkbox
@@ -2694,12 +3829,12 @@ export function PlannerMapView({
                       </div>
 
                       <div>
-                        <p className="px-1 text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                        <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
                           Routes
                         </p>
-                        <div className="mt-2 space-y-1.5">
-                          <label className="flex items-center justify-between rounded-[14px] bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                            <span className="text-[0.82rem] text-[var(--color-text)]">Route lines</span>
+                        <div className="mt-1 space-y-0.5">
+                          <label className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
+                            <span className="text-[0.9rem] font-medium text-[var(--color-text)]">Route lines</span>
                             <Checkbox
                               checked={showRoutes}
                               onCheckedChange={(checked) => {
@@ -2708,8 +3843,8 @@ export function PlannerMapView({
                               }}
                             />
                           </label>
-                          <label className="flex items-center justify-between rounded-[14px] bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                            <span className="text-[0.82rem] text-[var(--color-text)]">Custom layers</span>
+                          <label className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
+                            <span className="text-[0.9rem] font-medium text-[var(--color-text)]">Custom layers</span>
                             <Checkbox
                               checked={showCustomLayers}
                               onCheckedChange={(checked) => {
@@ -2719,12 +3854,14 @@ export function PlannerMapView({
                             />
                           </label>
                           {sections.map((section) => (
-                            <label key={section.dayId} className="flex items-center justify-between rounded-[14px] bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                              <span className="flex items-center gap-2 text-[0.82rem] text-[var(--color-text)]">
-                                <span
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: section.color }}
-                                />
+                            <label key={section.dayId} className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
+                              <span className="flex items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                <div className="flex h-[18px] w-[18px] items-center justify-center">
+                                  <span
+                                    className="h-3 w-3 rounded-full"
+                                    style={{ backgroundColor: section.color }}
+                                  />
+                                </div>
                                 {section.title}
                               </span>
                               <Checkbox
@@ -2742,7 +3879,8 @@ export function PlannerMapView({
                 {recommendations.enabled &&
                 recommendationsDismissed &&
                 !hasPlaceSelection &&
-                !selectedRecommendation ? (
+                !selectedRecommendation &&
+                isMobile ? (
                   <FloatingIconButton
                     icon={<Compass className="h-4 w-4" />}
                     label="Recommendations"

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -27,6 +27,9 @@ interface Props {
   isGenerating?: boolean
   jobStatus?: string | null
   compact?: boolean
+  /** When provided, controls the dialog open state externally (bypasses the DropdownMenu trigger) */
+  controlledOpen?: boolean
+  onControlledOpenChange?: (open: boolean) => void
 }
 
 const MODE_LABELS: Record<string, { label: string; desc: string }> = {
@@ -44,7 +47,10 @@ export function GenerationControls({
   isGenerating,
   jobStatus,
   compact = false,
+  controlledOpen,
+  onControlledOpenChange,
 }: Props) {
+  const isControlled = controlledOpen !== undefined
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState<'generate' | 'regenerate' | 'reset'>('generate')
   const genKeyRef = useRef(crypto.randomUUID())
@@ -57,6 +63,24 @@ export function GenerationControls({
 
   const mode = watch('mode')
   const dayIds = watch('day_ids') ?? []
+
+  const dialogOpen = isControlled ? (controlledOpen ?? false) : open
+  const setDialogOpen = (v: boolean) => {
+    if (isControlled) {
+      onControlledOpenChange?.(v)
+    } else {
+      setOpen(v)
+    }
+  }
+
+  // When controlled, always use 'generate' action
+  useEffect(() => {
+    if (isControlled && controlledOpen) {
+      setAction('generate')
+      genKeyRef.current = crypto.randomUUID()
+      resetKeyRef.current = crypto.randomUUID()
+    }
+  }, [isControlled, controlledOpen])
 
   const openDialog = (act: typeof action) => {
     setAction(act)
@@ -73,7 +97,7 @@ export function GenerationControls({
     } else {
       await onReset(values.day_ids, resetKeyRef.current)
     }
-    setOpen(false)
+    setDialogOpen(false)
   }
 
   const isRunning = isGenerating || jobStatus === 'PENDING' || jobStatus === 'RUNNING'
@@ -84,7 +108,7 @@ export function GenerationControls({
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2">
+      {!isControlled && <div className="flex flex-wrap items-center gap-2">
         {isRunning ? (
           <div
             className={statusClassName}
@@ -130,9 +154,9 @@ export function GenerationControls({
             Failed
           </span>
         )}
-      </div>
+      </div>}
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-[34rem] rounded-[12px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-none">
           <DialogHeader>
             <DialogTitle className="font-medium tracking-normal">

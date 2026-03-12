@@ -15,8 +15,18 @@ import {
   buildPlannerDay,
   buildPlannerResponse,
   buildTrip,
+  buildTripAsset,
   listResponse,
 } from '@/test/fixtures/api'
+
+async function selectDateFromPicker(
+  user: ReturnType<typeof userEvent.setup>,
+  label: string,
+  dateLabel: RegExp,
+) {
+  await user.click(screen.getByLabelText(label))
+  await user.click(await screen.findByRole('button', { name: dateLabel }))
+}
 
 describe('PlannerBoard', () => {
   it('captures the dragged card rect for the overlay preview size', () => {
@@ -96,6 +106,7 @@ describe('PlannerBoard', () => {
   })
 
   it('renders inbox activities separately from untimed day activities in kanban view', async () => {
+    const user = userEvent.setup()
     const trip = buildTrip()
     const inboxActivity = buildPlannerActivity({
       id: 'planner-activity-inbox',
@@ -128,6 +139,15 @@ describe('PlannerBoard', () => {
       </MemoryRouter>,
     )
 
+    await screen.findByTestId('planner-trip-hero')
+
+    if (!screen.queryByText(inboxActivity.title)) {
+      await user.click(screen.getByTestId('planner-map-day-trigger-inbox'))
+    }
+    if (!screen.queryByText(untimedDayActivity.title)) {
+      await user.click(screen.getByTestId('planner-map-day-trigger-day-1'))
+    }
+
     expect(await screen.findByText(inboxActivity.title)).toBeInTheDocument()
     expect(screen.getByText(untimedDayActivity.title)).toBeInTheDocument()
     expect(screen.queryByText('Untimed')).not.toBeInTheDocument()
@@ -136,6 +156,7 @@ describe('PlannerBoard', () => {
   })
 
   it('renders travel estimates between consecutive day activities', async () => {
+    const user = userEvent.setup()
     const trip = buildTrip()
     const firstActivity = buildPlannerActivity({
       id: 'activity-a',
@@ -184,10 +205,15 @@ describe('PlannerBoard', () => {
       </MemoryRouter>,
     )
 
+    await screen.findByTestId('planner-trip-hero')
+
+    if (!screen.queryByText(firstActivity.title)) {
+      await user.click(screen.getByTestId('planner-map-day-trigger-day-1'))
+    }
+
     expect(await screen.findByText(firstActivity.title)).toBeInTheDocument()
-    expect(screen.getByTestId('planner-travel-leg-activity-b')).toHaveTextContent(/min/i)
-    expect(screen.getByTestId('planner-travel-leg-activity-b')).toHaveTextContent(/km/i)
-    expect(screen.getByTestId('planner-day-travel-summary-day-1')).toHaveTextContent(/km/i)
+    expect(screen.getByTestId('planner-map-travel-leg-activity-b')).toHaveTextContent(/min/i)
+    expect(screen.getByTestId('planner-map-travel-leg-activity-b')).toHaveTextContent(/km/i)
   })
 
   it('opens the activity details drawer when a card is clicked', async () => {
@@ -217,20 +243,95 @@ describe('PlannerBoard', () => {
     expect(screen.getByRole('button', { name: 'Delete activity' })).toBeInTheDocument()
   })
 
-  it('creates a manual travel activity from the planner drawer', async () => {
+  it('opens the standalone travel section add flow with travel preselected', async () => {
     const user = userEvent.setup()
-    const trip = buildTrip({ id: 'trip-manual-travel' })
+    const trip = buildTrip({ id: 'trip-section-travel' })
     const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [] })
     const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
     let createPayload: Record<string, unknown> | null = null
 
     server.use(
       http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+      http.get('http://localhost:8000/places/google-search', ({ request }) => {
+        const query = new URL(request.url).searchParams.get('q')?.toLowerCase() ?? ''
+
+        if (query.includes('paris')) {
+          return HttpResponse.json({
+            total: 1,
+            limit: 6,
+            offset: 0,
+            items: [
+              {
+                place_id: 'google-paris-airport',
+                label: 'Paris Airport',
+                name: 'Paris Airport',
+                address_text: 'Paris Airport',
+                category: 'airport',
+                country: 'France',
+                region: 'Paris',
+                lat: 48.969,
+                lon: 2.441,
+                timezone: 'Europe/Paris',
+                metadata: {},
+              },
+            ],
+          })
+        }
+
+        if (query.includes('lisbon')) {
+          return HttpResponse.json({
+            total: 1,
+            limit: 6,
+            offset: 0,
+            items: [
+              {
+                place_id: 'google-lisbon-airport',
+                label: 'Lisbon Airport',
+                name: 'Lisbon Airport',
+                address_text: 'Lisbon Airport',
+                category: 'airport',
+                country: 'Portugal',
+                region: 'Lisbon',
+                lat: 38.7756,
+                lon: -9.1354,
+                timezone: 'Europe/Lisbon',
+                metadata: {},
+              },
+            ],
+          })
+        }
+
+        return HttpResponse.json({
+          total: 0,
+          limit: 6,
+          offset: 0,
+          items: [],
+        })
+      }),
+      http.post('http://localhost:8000/places', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        const externalId = String(body.external_id ?? 'manual-place')
+
+        return HttpResponse.json(
+          buildPlace({
+            id: `place-${externalId}`,
+            source: String(body.source ?? 'google_places'),
+            external_id: externalId,
+            name: String(body.name ?? 'Place'),
+            address_text:
+              typeof body.address_text === 'string' ? body.address_text : null,
+            category: typeof body.category === 'string' ? body.category : null,
+            lat: typeof body.lat === 'number' ? body.lat : null,
+            lon: typeof body.lon === 'number' ? body.lon : null,
+          }),
+          { status: 201 },
+        )
+      }),
       http.post('http://localhost:8000/trips/:tripId/planner/activities', async ({ request }) => {
         createPayload = (await request.json()) as Record<string, unknown>
         const created = buildPlannerActivity({
-          id: 'travel-activity-1',
-          trip_day_id: day.id,
+          id: 'travel-section-activity-1',
+          trip_day_id: null,
           category: 'travel',
           title: String(createPayload.title ?? 'Travel'),
           category_details: (createPayload.category_details as Record<string, unknown>) ?? {},
@@ -238,7 +339,7 @@ describe('PlannerBoard', () => {
           place: null,
           source: 'manual',
         })
-        planner.days[0] = { ...planner.days[0], activities: [created] }
+        planner.inbox_activities = [created]
         return HttpResponse.json(created, { status: 201 })
       }),
     )
@@ -249,38 +350,43 @@ describe('PlannerBoard', () => {
       </MemoryRouter>,
     )
 
-    await user.click((await screen.findAllByRole('button', { name: 'Add activity' }))[0])
-    await user.click(screen.getByText('Travel').closest('button')!)
-    await user.click(screen.getByRole('button', { name: 'Continue to activity details' }))
-    await user.type(screen.getByLabelText('Origin'), 'Paris')
-    await user.type(screen.getByLabelText('Destination'), 'Lisbon')
-    await user.type(screen.getByLabelText('Travel mode'), 'Flight')
+    await user.click(await screen.findByRole('button', { name: 'Add travel' }))
+
+    expect(screen.getByText('Create travel')).toBeInTheDocument()
+    expect(screen.queryByText('Choose the itinerary activity type.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue to activity details' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Not assigned')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Origin address'), 'Paris Airport')
+    await user.click(await screen.findByRole('button', { name: /Paris Airport/i }))
+    await user.type(screen.getByLabelText('Destination address'), 'Lisbon Airport')
+    await user.click(await screen.findByRole('button', { name: /Lisbon Airport/i }))
 
     await expect
       .poll(() => (screen.getByLabelText('Title') as HTMLInputElement).value)
-      .toBe('Paris to Lisbon')
+      .toBe('Paris Airport to Lisbon Airport')
 
-    await user.click(screen.getByRole('button', { name: 'Create activity' }))
+    await user.click(screen.getByRole('button', { name: 'Create travel' }))
 
     await expect.poll(() => createPayload).not.toBeNull()
     expect(createPayload).toMatchObject({
       category: 'travel',
-      title: 'Paris to Lisbon',
+      title: 'Paris Airport to Lisbon Airport',
+      trip_day_id: null,
+      start_time: '09:00',
       category_details: {
-        origin_text: 'Paris',
-        destination_text: 'Lisbon',
-        travel_mode: 'Flight',
-        origin_place_id: null,
-        destination_place_id: null,
+        origin_text: 'Paris Airport',
+        destination_text: 'Lisbon Airport',
+        travel_mode: 'flight',
+        origin_place_id: 'place-google-paris-airport',
+        destination_place_id: 'place-google-lisbon-airport',
       },
-      place_id: null,
     })
-    expect(await screen.findByText('Paris to Lisbon')).toBeInTheDocument()
   })
 
-  it('creates a manual hotel activity from the planner drawer', async () => {
+  it('opens the standalone accommodation section add flow with hotel preselected', async () => {
     const user = userEvent.setup()
-    const trip = buildTrip({ id: 'trip-manual-hotel' })
+    const trip = buildTrip({ id: 'trip-section-hotel' })
     const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [] })
     const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
     let createPayload: Record<string, unknown> | null = null
@@ -290,13 +396,110 @@ describe('PlannerBoard', () => {
       http.post('http://localhost:8000/trips/:tripId/planner/activities', async ({ request }) => {
         createPayload = (await request.json()) as Record<string, unknown>
         const created = buildPlannerActivity({
-          id: 'hotel-activity-1',
-          trip_day_id: day.id,
+          id: 'hotel-section-activity-1',
+          trip_day_id: null,
           category: 'hotel',
           title: String(createPayload.title ?? 'Hotel'),
           category_details: (createPayload.category_details as Record<string, unknown>) ?? {},
           place_id: null,
           place: null,
+          source: 'manual',
+        })
+        planner.inbox_activities = [created]
+        return HttpResponse.json(created, { status: 201 })
+      }),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerBoard tripId={trip.id} />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Add accommodation' }))
+
+    expect(screen.getByText('Create accommodation')).toBeInTheDocument()
+    expect(screen.queryByText('Choose the itinerary activity type.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Continue to activity details' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Assigned day')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Hotel name')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Room type')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Duration (min)')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('Title'), 'Hotel Atlas')
+    await user.type(screen.getByLabelText('Address'), '12 Rue de Rivoli, Paris')
+    await selectDateFromPicker(user, 'Check-in date', /April 10.*2026/i)
+    await selectDateFromPicker(user, 'Checkout date', /April 12.*2026/i)
+    await user.click(screen.getByRole('button', { name: 'Create accommodation' }))
+
+    await expect.poll(() => createPayload).not.toBeNull()
+    expect(createPayload).toMatchObject({
+      category: 'hotel',
+      title: 'Hotel Atlas',
+      trip_day_id: null,
+    })
+  })
+
+  it('creates a manual itinerary activity from the planner drawer without hotel or travel options', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({ id: 'trip-manual-itinerary' })
+    const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [] })
+    const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
+    let createPayload: Record<string, unknown> | null = null
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+      http.get('http://localhost:8000/places/google-search', () =>
+        HttpResponse.json({
+          total: 1,
+          limit: 6,
+          offset: 0,
+          items: [
+            {
+              place_id: 'google-louvre-1',
+              label: 'Louvre Museum, Paris',
+              name: 'Louvre Museum',
+              address_text: 'Rue de Rivoli, Paris',
+              category: 'museum',
+              country: 'France',
+              region: 'Ile-de-France',
+              lat: 48.8606,
+              lon: 2.3376,
+              timezone: 'Europe/Paris',
+              metadata: {},
+            },
+          ],
+        }),
+      ),
+      http.post('http://localhost:8000/places', () =>
+        HttpResponse.json(
+          buildPlace({
+            id: 'place-louvre-1',
+            name: 'Louvre Museum',
+            address_text: 'Rue de Rivoli, Paris',
+            category: 'museum',
+            lat: 48.8606,
+            lon: 2.3376,
+          }),
+          { status: 201 },
+        ),
+      ),
+      http.post('http://localhost:8000/trips/:tripId/planner/activities', async ({ request }) => {
+        createPayload = (await request.json()) as Record<string, unknown>
+        const created = buildPlannerActivity({
+          id: 'visit-activity-1',
+          trip_day_id: day.id,
+          category: 'visit',
+          title: String(createPayload.title ?? 'Visit'),
+          category_details: (createPayload.category_details as Record<string, unknown>) ?? {},
+          place_id: 'place-louvre-1',
+          place: buildPlace({
+            id: 'place-louvre-1',
+            name: 'Louvre Museum',
+            address_text: 'Rue de Rivoli, Paris',
+            category: 'museum',
+            lat: 48.8606,
+            lon: 2.3376,
+          }),
           source: 'manual',
         })
         planner.days[0] = { ...planner.days[0], activities: [created] }
@@ -310,34 +513,127 @@ describe('PlannerBoard', () => {
       </MemoryRouter>,
     )
 
-    await user.click((await screen.findAllByRole('button', { name: 'Add activity' }))[0])
-    await user.click(screen.getByText('Hotel').closest('button')!)
-    await user.click(screen.getByRole('button', { name: 'Continue to activity details' }))
-    await user.type(screen.getByLabelText('Hotel name'), 'Hotel Atlas')
+    await user.click(await screen.findByRole('button', { name: 'Add activity to Day 1' }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getByText('Create itinerary activity')).toBeInTheDocument()
+    expect(within(dialog).queryByText('Hotel')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText('Travel')).not.toBeInTheDocument()
+
+    await user.click(within(dialog).getByText('Visit').closest('button')!)
+    await user.type(
+      within(dialog).getByPlaceholderText('Search Google visit places'),
+      'Louvre',
+    )
+    await user.click(await screen.findByText('Louvre Museum'))
+    await user.type(screen.getByLabelText('Description'), 'Morning museum visit')
+    await user.click(screen.getByRole('button', { name: 'Create itinerary activity' }))
+
+    await expect.poll(() => createPayload).not.toBeNull()
+    expect(createPayload).toMatchObject({
+      category: 'visit',
+      title: 'Louvre Museum',
+      description: 'Morning museum visit',
+      trip_day_id: 'day-1',
+      place_id: 'place-louvre-1',
+    })
+    expect(await screen.findByText('Louvre Museum')).toBeInTheDocument()
+  })
+
+  it('creates a manual hotel activity from the accommodation drawer', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({ id: 'trip-manual-hotel' })
+    const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [] })
+    const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
+    let createPayload: Record<string, unknown> | null = null
+    const uploadedAssets: Array<{ activityId: string | null; filename: string }> = []
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+      http.post('http://localhost:8000/trips/:tripId/planner/activities', async ({ request }) => {
+        createPayload = (await request.json()) as Record<string, unknown>
+        const created = buildPlannerActivity({
+          id: 'hotel-activity-1',
+          trip_day_id: null,
+          category: 'hotel',
+          title: String(createPayload.title ?? 'Hotel'),
+          category_details: (createPayload.category_details as Record<string, unknown>) ?? {},
+          place_id: null,
+          place: null,
+          source: 'manual',
+        })
+        planner.inbox_activities = [created]
+        return HttpResponse.json(created, { status: 201 })
+      }),
+      http.post('http://localhost:8000/trips/:tripId/assets', async ({ request }) => {
+        const formData = await request.formData()
+        const file = formData.get('file')
+        const activityId = formData.get('activity_id')
+        const filename =
+          file && typeof file === 'object' && 'name' in file
+            ? String(file.name)
+            : 'uploaded.pdf'
+        const normalizedActivityId =
+          typeof activityId === 'string' ? activityId : null
+
+        uploadedAssets.push({
+          activityId: normalizedActivityId,
+          filename,
+        })
+
+        return HttpResponse.json(
+          buildTripAsset({
+            id: `asset-${uploadedAssets.length}`,
+            trip_id: trip.id,
+            activity_id: normalizedActivityId,
+            original_filename: filename,
+          }),
+          { status: 201 },
+        )
+      }),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerBoard tripId={trip.id} />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Add accommodation' }))
+    await user.type(screen.getByLabelText('Title'), 'Hotel Atlas')
     await user.type(screen.getByLabelText('Address'), '12 Rue de Rivoli, Paris')
-    await user.type(screen.getByLabelText('Check-in date'), '2026-04-10')
-    await user.type(screen.getByLabelText('Checkout date'), '2026-04-12')
-    await user.type(screen.getByLabelText('Room type'), 'Deluxe suite')
+    await selectDateFromPicker(user, 'Check-in date', /April 10.*2026/i)
+    await selectDateFromPicker(user, 'Checkout date', /April 12.*2026/i)
+    await user.upload(
+      screen.getByLabelText('Attach files to activity'),
+      new File(['voucher'], 'hotel-voucher.pdf', { type: 'application/pdf' }),
+    )
 
     await expect
       .poll(() => (screen.getByLabelText('Title') as HTMLInputElement).value)
       .toBe('Hotel Atlas')
 
-    await user.click(screen.getByRole('button', { name: 'Create activity' }))
+    await user.click(screen.getByRole('button', { name: 'Create accommodation' }))
 
     await expect.poll(() => createPayload).not.toBeNull()
     expect(createPayload).toMatchObject({
       category: 'hotel',
       title: 'Hotel Atlas',
+      trip_day_id: null,
       category_details: {
         hotel_name: 'Hotel Atlas',
         address_text: '12 Rue de Rivoli, Paris',
         checkin_date: '2026-04-10',
         checkout_date: '2026-04-12',
-        room_type: 'Deluxe suite',
+        room_type: null,
         place_id: null,
       },
     })
+    await expect.poll(() => uploadedAssets).toEqual([
+      {
+        activityId: 'hotel-activity-1',
+        filename: 'hotel-voucher.pdf',
+      },
+    ])
     expect(await screen.findByText('Hotel Atlas')).toBeInTheDocument()
   })
 
@@ -393,8 +689,8 @@ describe('PlannerBoard', () => {
 
     await user.click((await screen.findAllByRole('button', { name: activity.title }))[0])
     await user.click(await screen.findByRole('button', { name: 'Edit activity' }))
-    await user.clear(screen.getByLabelText('Travel mode'))
-    await user.type(screen.getByLabelText('Travel mode'), 'Train')
+    await user.click(screen.getByRole('combobox', { name: 'Travel mode' }))
+    await user.click(await screen.findByText('Train'))
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await expect.poll(() => patchPayload).not.toBeNull()
@@ -403,7 +699,7 @@ describe('PlannerBoard', () => {
       category_details: {
         origin_text: 'Paris',
         destination_text: 'Lisbon',
-        travel_mode: 'Train',
+        travel_mode: 'train',
       },
       place_id: null,
     })
@@ -463,19 +759,20 @@ describe('PlannerBoard', () => {
 
     await user.click((await screen.findAllByRole('button', { name: activity.title }))[0])
     await user.click(await screen.findByRole('button', { name: 'Edit activity' }))
-    await user.clear(screen.getByLabelText('Room type'))
-    await user.type(screen.getByLabelText('Room type'), 'Deluxe suite')
+    await user.clear(screen.getByLabelText('Title'))
+    await user.type(screen.getByLabelText('Title'), 'Hotel Atlas Riverside')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await expect.poll(() => patchPayload).not.toBeNull()
     expect(patchPayload).toMatchObject({
       category: 'hotel',
+      title: 'Hotel Atlas Riverside',
       category_details: {
-        hotel_name: 'Hotel Atlas',
+        hotel_name: 'Hotel Atlas Riverside',
         address_text: '12 Rue de Rivoli, Paris',
         checkin_date: '2026-04-10',
         checkout_date: '2026-04-12',
-        room_type: 'Deluxe suite',
+        room_type: null,
         place_id: null,
       },
     })
@@ -534,25 +831,15 @@ describe('PlannerBoard', () => {
     )
 
     expect(screen.queryByTestId('planner-recommendations-sheet')).not.toBeInTheDocument()
-    await user.click(await screen.findByRole('button', { name: 'Options' }))
-    await user.click(await screen.findByRole('menuitem', { name: 'Recommendations' }))
+    const recommendationsSection = await screen.findByTestId('planner-recommendations-section')
+    expect(recommendationsSection).toBeInTheDocument()
+    expect(await within(recommendationsSection).findByText('Musee Carnavalet')).toBeInTheDocument()
+    expect(within(recommendationsSection).getByRole('button', { name: 'Refresh recommendations' })).toBeInTheDocument()
 
-    expect(await screen.findByTestId('planner-recommendations-sheet')).toBeInTheDocument()
-    expect(await screen.findByRole('heading', { name: 'Discover' })).toBeInTheDocument()
-    expect(screen.getByText('Musee Carnavalet')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Saved fits' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('link', { name: /settings/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-    expect(screen.queryByText(/tripadvisor/i)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Open' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Refresh')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Refresh recommendations' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Close recommendations' })).toBeInTheDocument()
-
-    const discoverCard = screen.getByText('Musee Carnavalet').closest('article')
+    const discoverCard = within(recommendationsSection).getByText('Musee Carnavalet').closest('article')
     expect(discoverCard).not.toBeNull()
     await user.click(within(discoverCard!).getByRole('button', { name: /add/i }))
-    await user.click(await screen.findByText('Friday, Apr 10'))
+    await user.click(await screen.findByRole('menuitem', { name: /Day 1/i }))
 
     await expect.poll(() => saveCalls).toBe(1)
     await expect.poll(() => attachCalls).toBe(1)

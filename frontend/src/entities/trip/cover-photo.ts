@@ -43,7 +43,15 @@ export function writeTripCoverPhotoPreference(
     return
   }
 
-  window.localStorage.setItem(getTripCoverPhotoKey(tripId), JSON.stringify(value))
+  const key = getTripCoverPhotoKey(tripId)
+  window.localStorage.setItem(key, JSON.stringify(value))
+  
+  // Dispatch a storage event manually so other hook instances in the same tab can react
+  window.dispatchEvent(new StorageEvent('storage', {
+    key,
+    newValue: JSON.stringify(value),
+    storageArea: window.localStorage,
+  }))
 }
 
 export function mergeTripCoverPhotoPreference(

@@ -7,6 +7,7 @@ import { server } from './msw/server'
 import { useMapStore } from '@/shared/stores/map.store'
 import { usePlannerStore } from '@/shared/stores/planner.store'
 import { useSideRailStore } from '@/shared/stores/side-rail.store'
+import { buildPlace, buildTrip } from '@/test/fixtures/api'
 
 vi.mock('react-oidc-context', () => ({
   useAuth: () => ({
@@ -226,12 +227,43 @@ const defaultServerHandlers = [
       created_at: '2026-03-06T09:00:00.000Z',
     }),
   ),
+  http.get('http://localhost:8000/trips/:tripId', ({ params }) =>
+    HttpResponse.json(buildTrip({ id: String(params.tripId) })),
+  ),
   http.get('http://localhost:8000/trips/:tripId/map-layers', () =>
     HttpResponse.json({
       items: [],
       total: 0,
       limit: 200,
       offset: 0,
+    }),
+  ),
+  http.get('http://localhost:8000/places/autocomplete', () =>
+    HttpResponse.json({
+      total: 0,
+      limit: 4,
+      offset: 0,
+      items: [],
+    }),
+  ),
+  http.get('http://localhost:8000/places/:placeId', ({ params }) =>
+    HttpResponse.json(buildPlace({ id: String(params.placeId) })),
+  ),
+  http.get('http://localhost:8000/trips/:tripId/planner-map/places/:placeId/detail', ({ params }) =>
+    HttpResponse.json({
+      place: buildPlace({ id: String(params.placeId) }),
+      summary: null,
+      rating: null,
+      review_count: null,
+      status_text: null,
+      price_label: null,
+      photos: [],
+      reviews: [],
+      hours: [],
+      booking_links: [],
+      tags: [],
+      mentions: [],
+      related_activities: [],
     }),
   ),
   http.get('http://localhost:8000/trips/:tripId/activities/discover', ({ params }) =>

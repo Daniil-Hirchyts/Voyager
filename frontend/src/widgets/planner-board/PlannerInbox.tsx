@@ -18,6 +18,7 @@ interface PlannerInboxProps {
   onToggleDetached?: () => void
   onSelectActivity?: (activity: PlannerActivity) => void
   onAddActivity?: () => void
+  onToggleVisited?: (activityId: string, currentVisitedAt: string | null) => void
 }
 
 export function PlannerInbox({
@@ -32,6 +33,7 @@ export function PlannerInbox({
   onToggleDetached,
   onSelectActivity,
   onAddActivity,
+  onToggleVisited,
 }: PlannerInboxProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'inbox',
@@ -93,6 +95,7 @@ export function PlannerInbox({
                     activity={activity}
                     onOpen={onSelectActivity}
                     isSelected={selectedActivityId === activity.id}
+                    onToggleVisited={onToggleVisited ? () => onToggleVisited(activity.id, activity.visited_at) : undefined}
                   />
                 ))}
               </div>

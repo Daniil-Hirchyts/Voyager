@@ -23,6 +23,7 @@ interface Props {
   travelMode?: RouteTravelMode
   onAddActivity: (dayId: string) => void
   onOpenActivity: (activity: PlannerActivity) => void
+  onToggleVisited?: (activityId: string, currentVisitedAt: string | null) => void
   className?: string
 }
 
@@ -34,6 +35,7 @@ export function DayColumn({
   travelMode = 'WALK',
   onAddActivity,
   onOpenActivity,
+  onToggleVisited,
   className,
 }: Props) {
   const { setNodeRef, isOver } = useDroppable({
@@ -157,6 +159,7 @@ export function DayColumn({
                   activity={activity}
                   onOpen={onOpenActivity}
                   isSelected={selectedActivityId === activity.id}
+                  onToggleVisited={onToggleVisited ? () => onToggleVisited(activity.id, activity.visited_at) : undefined}
                 />
               </Fragment>
             )

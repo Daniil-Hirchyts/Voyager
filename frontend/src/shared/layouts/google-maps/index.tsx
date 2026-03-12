@@ -7,7 +7,6 @@ import {
   Map,
   MapControl,
   Marker,
-  Pin,
   StaticMap,
   useMap,
   useMapsLibrary,

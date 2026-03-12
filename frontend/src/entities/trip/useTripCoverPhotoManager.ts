@@ -143,6 +143,15 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
 
   useEffect(() => {
     setCoverPreference(readTripCoverPhotoPreference(tripId))
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (tripId && event.key === `voyager.trip-cover:${tripId}`) {
+        setCoverPreference(readTripCoverPhotoPreference(tripId))
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
   }, [tripId])
 
   useEffect(() => {
@@ -415,8 +424,15 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
         ? { assetId: candidateId, photoId: null }
         : { assetId: null, photoId: candidateId }
 
-    mergeTripCoverPhotoPreference(tripId, patch)
     setCoverPreference((current) => ({ ...(current ?? {}), ...patch }))
+  }
+
+  function commitPhotoSelection() {
+    if (!tripId || !coverPreference) return
+    mergeTripCoverPhotoPreference(tripId, {
+      assetId: coverPreference.assetId,
+      photoId: coverPreference.photoId,
+    })
   }
 
   async function handleCoverPhotoRefresh() {
@@ -452,6 +468,7 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     coverPhotosLoading,
     coverPhotoRefreshError,
     handlePhotoSelection,
+    commitPhotoSelection,
     handleCoverPhotoRefresh,
   }
 }

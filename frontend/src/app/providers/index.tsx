@@ -15,8 +15,15 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
             duration={1500}
             toastOptions={{
               unstyled: true,
+              style: {
+                left: 0,
+                right: 0,
+                width: 'fit-content',
+                maxWidth: 'min(400px, calc(100vw - 32px))',
+                marginInline: 'auto',
+              },
               classNames: {
-                toast: 'group flex items-center gap-3 px-4 py-3 mx-auto rounded-full border border-white/10 backdrop-blur-xl shadow-lg transition-all w-auto max-w-[400px]',
+                toast: 'group flex items-center gap-3 px-4 py-3 rounded-full border border-white/10 backdrop-blur-xl shadow-lg transition-all',
                 default: 'bg-zinc-900/90 dark:bg-black/80 text-white',
                 success: 'bg-emerald-950/90 dark:bg-emerald-950/50 text-emerald-50 border-emerald-800/50 dark:border-emerald-500/20',
                 error: 'bg-red-950/90 dark:bg-red-950/50 text-red-50 border-red-800/50 dark:border-red-500/20',

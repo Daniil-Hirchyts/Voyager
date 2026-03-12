@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  Calendar as CalendarIcon,
   Copy,
+  Globe,
   Image as ImageIcon,
   Loader2,
+  MapPin,
+  RefreshCw,
   Settings2,
   Trash2,
   Upload,
@@ -36,8 +40,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Combobox } from '@/components/ui/combobox'
 import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
 import { useUploadTripAsset } from '@/entities/trip-asset/queries'
+import { useDestinationAutocomplete } from '@/entities/place/queries'
 import {
   useDeleteTrip,
   useDuplicateTrip,
@@ -49,10 +56,9 @@ import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { resolvePhotoUrl } from '@/shared/lib/media'
 import TripAssetManager from '@/widgets/trip-assets'
 import { ROUTE_TRAVEL_MODE_OPTIONS } from './travel-modes'
+import { cn } from '@/shared/lib/cn'
 
-
-const sectionClassName = 'rounded-[20px] border border-black/8 bg-white p-5 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.22)]'
-const fieldLabelClassName = 'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]'
+const fieldLabelClassName = 'text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]'
 
 const TRIP_TYPES = [
   'leisure',
@@ -93,9 +99,11 @@ interface TripSettingsMenuProps {
   tripId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  hasActivities?: boolean
+  onReset?: (dayIds: string[] | undefined, idempotencyKey: string) => Promise<void>
 }
 
-export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMenuProps) {
+export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, onReset }: TripSettingsMenuProps) {
   const navigate = useNavigate()
   const { data: trip } = useTrip(tripId)
   const patchTrip = usePatchTrip(tripId)
@@ -103,8 +111,10 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
   const duplicateTrip = useDuplicateTrip()
   const deleteTrip = useDeleteTrip()
   const coverUploadInputRef = useRef<HTMLInputElement | null>(null)
-  
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
   const [isUploadingCoverPhoto, setIsUploadingCoverPhoto] = useState(false)
   const [form, setForm] = useState<TripSettingsForm>({
     title: '',
@@ -116,6 +126,30 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     trip_type: 'leisure',
     route_travel_mode: 'WALK',
   })
+
+  const [destinationSearchQuery, setDestinationSearchQuery] = useState('')
+  const deferredDestinationQuery = useDeferredValue(destinationSearchQuery.trim())
+  const destinationSearch = useDestinationAutocomplete(
+    { q: deferredDestinationQuery, limit: 8, offset: 0 },
+    deferredDestinationQuery.length >= 2,
+  )
+  const destinationOptions = useMemo(() => {
+    const items = (destinationSearch.data?.items ?? []).map((item) => ({
+      value: item.label,
+      label: item.label,
+      description: item.secondary_text,
+    }))
+
+    // Ensure the current value is always in the options so it shows up as selected
+    if (form.destination_text && !items.find((i) => i.value === form.destination_text)) {
+      items.unshift({
+        value: form.destination_text,
+        label: form.destination_text,
+      })
+    }
+
+    return items
+  }, [destinationSearch.data?.items, form.destination_text])
   
   const dupKey = useMemo(() => crypto.randomUUID(), [])
   
@@ -124,7 +158,6 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     coverPhotoCandidates,
     selectedCoverPhoto,
     photoAttributionLabel,
-    photoAttributionText,
     coverPhotoUrl,
     isCoverPhotoBusy,
     coverPhotoEmptyMessage,
@@ -132,6 +165,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     coverPhotoRefreshError,
     resolvedPlaceId,
     handlePhotoSelection,
+    commitPhotoSelection,
     handleCoverPhotoRefresh,
   } = useTripCoverPhotoManager(tripId, trip)
 
@@ -148,6 +182,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     }
 
     try {
+      commitPhotoSelection()
       await patchTrip.mutateAsync({
         version: trip.version,
         data: {
@@ -195,6 +230,20 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
     }
   }
 
+  async function handleReset() {
+    if (!onReset) return
+    setIsResetting(true)
+    try {
+      await onReset(undefined, crypto.randomUUID())
+      toast.success('Itinerary reset')
+      setShowResetConfirm(false)
+    } catch {
+      toast.error('Could not reset itinerary')
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
   async function handleCoverUpload(fileList: FileList | null) {
     const file = fileList?.[0]
     if (!file) {
@@ -218,132 +267,129 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="flex h-[100dvh] w-full flex-col gap-0 overflow-hidden bg-[#F3F5F7] p-0 sm:max-w-2xl border-l border-black/8">
-          <SheetHeader className="shrink-0 border-b border-black/8 bg-white px-6 py-4">
-            <SheetTitle className="text-xl">Trip Settings</SheetTitle>
-            <SheetDescription>
-              Edit trip details, cover photo, and parameters
-            </SheetDescription>
+        <SheetContent className="flex h-[100dvh] w-full flex-col gap-0 overflow-hidden bg-white p-0 sm:max-w-xl border-l border-black/8">
+          <SheetHeader className="shrink-0 border-b border-black/5 bg-white px-6 py-5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-xl bg-black text-white">
+                <Settings2 className="size-5" />
+              </div>
+              <div>
+                <SheetTitle className="text-lg font-bold tracking-tight">Trip Settings</SheetTitle>
+                <SheetDescription className="text-xs font-medium text-black/40">
+                  Manage your journey parameters and assets
+                </SheetDescription>
+              </div>
+            </div>
           </SheetHeader>
           
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <div className="flex flex-col gap-6 max-w-xl mx-auto px-6 py-6 pb-8">
-              <section className={sectionClassName}>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(114,174,230,0.14)] text-[var(--color-text)]">
-                    <Settings2 className="size-4" />
-                  </span>
-                  <div>
-                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                      Trip details
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2 sm:col-span-2">
-                    <span className={fieldLabelClassName}>Title</span>
+            <div className="flex flex-col gap-8 px-6 py-8 pb-12">
+              {/* General Details */}
+              <div className="space-y-6">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className={fieldLabelClassName}>Trip Title</label>
                     <Input
                       value={form.title}
+                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"
                       onChange={(event) =>
                         setForm((current) => ({ ...current, title: event.target.value }))
                       }
                     />
-                  </label>
+                  </div>
 
-                  <label className="space-y-2 sm:col-span-2">
-                    <span className={fieldLabelClassName}>Destination</span>
-                    <Input
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className={fieldLabelClassName}>Destination</label>
+                    <Combobox
                       value={form.destination_text}
-                      onChange={(event) =>
-                        setForm((current) => ({
-                          ...current,
-                          destination_text: event.target.value,
-                        }))
-                      }
+                      onValueChange={(value) => setForm(f => ({ ...f, destination_text: value }))}
+                      onSearchChange={setDestinationSearchQuery}
+                      options={destinationOptions}
+                      placeholder="Search for a city..."
+                      searchPlaceholder="Type to search..."
+                      emptyText={destinationSearch.isFetching ? "Searching..." : "No destinations found"}
+                      isLoading={destinationSearch.isFetching}
+                      triggerClassName="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
                     />
-                  </label>
+                  </div>
 
-                  <label className="space-y-2">
-                    <span className={fieldLabelClassName}>Start date</span>
-                    <Input
-                      type="date"
+                  <div className="space-y-2">
+                    <label className={fieldLabelClassName}>Start Date</label>
+                    <DatePicker
                       value={form.start_date}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, start_date: event.target.value }))
-                      }
+                      onChange={(value) => setForm(f => ({ ...f, start_date: value }))}
+                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
                     />
-                  </label>
+                  </div>
 
-                  <label className="space-y-2">
-                    <span className={fieldLabelClassName}>End date</span>
-                    <Input
-                      type="date"
+                  <div className="space-y-2">
+                    <label className={fieldLabelClassName}>End Date</label>
+                    <DatePicker
                       value={form.end_date}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, end_date: event.target.value }))
-                      }
+                      onChange={(value) => setForm(f => ({ ...f, end_date: value }))}
+                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
                     />
-                  </label>
+                  </div>
 
-                  <label className="space-y-2">
-                    <span className={fieldLabelClassName}>Budget</span>
+                  <div className="space-y-2">
+                    <label className={fieldLabelClassName}>Budget Amount</label>
                     <Input
                       type="number"
                       min={0}
                       step="0.01"
                       value={form.budget_amount}
+                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"
                       onChange={(event) =>
                         setForm((current) => ({ ...current, budget_amount: event.target.value }))
                       }
                       placeholder="Optional"
                     />
-                  </label>
+                  </div>
 
-                  <label className="space-y-2">
-                    <span className={fieldLabelClassName}>Currency</span>
+                  <div className="space-y-2">
+                    <label className={fieldLabelClassName}>Currency</label>
                     <Select
                       value={form.budget_currency}
                       onValueChange={(value) =>
                         setForm((current) => ({ ...current, budget_currency: value }))
                       }
                     >
-                      <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                      <SelectTrigger className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] shadow-none focus:ring-black/5">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="max-h-64 rounded-[16px] border-black/8">
-                        {CURRENCY_OPTIONS.map((currency) => (
-                          <SelectItem key={currency.value} value={currency.value}>
-                            {currency.label}
+                      <SelectContent className="max-h-64 rounded-[18px] border-black/8 shadow-xl">
+                        {CURRENCY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="rounded-[10px]">
+                            {option.label}{option.description ? ` ${option.description}` : ''}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </label>
+                  </div>
 
-                  <label className="space-y-2 sm:col-span-2">
-                    <span className={fieldLabelClassName}>Trip type</span>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className={fieldLabelClassName}>Trip Type</label>
                     <Select
                       value={form.trip_type}
                       onValueChange={(value) =>
                         setForm((current) => ({ ...current, trip_type: value }))
                       }
                     >
-                      <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                      <SelectTrigger className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] shadow-none focus:ring-black/5">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[16px] border-black/8">
+                      <SelectContent className="rounded-[18px] border-black/8 shadow-xl">
                         {TRIP_TYPES.map((tripType) => (
-                          <SelectItem key={tripType} value={tripType}>
+                          <SelectItem key={tripType} value={tripType} className="rounded-[10px] capitalize">
                             {tripType.replace(/_/g, ' ')}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </label>
+                  </div>
 
-                  <label className="space-y-2 sm:col-span-2">
-                    <span className={fieldLabelClassName}>Travel time mode</span>
+                  <div className="space-y-2 sm:col-span-2">
+                    <label className={fieldLabelClassName}>Travel Mode</label>
                     <Select
                       value={form.route_travel_mode}
                       onValueChange={(value) =>
@@ -355,83 +401,55 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                     >
                       <SelectTrigger
                         aria-label="Travel time mode"
-                        className="rounded-[14px] border-black/8 bg-white shadow-none"
+                        className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] shadow-none focus:ring-black/5"
                       >
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[16px] border-black/8">
+                      <SelectContent className="rounded-[18px] border-black/8 shadow-xl">
                         {ROUTE_TRAVEL_MODE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
+                          <SelectItem key={option.value} value={option.value} className="rounded-[10px]">
                             {option.label}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[0.78rem] text-[var(--color-text-muted)]">
-                      Used for day travel estimates, map routes, and itinerary optimization.
+                    <p className="text-[0.7rem] font-medium text-black/40 px-1">
+                      Determines travel estimates and route optimization.
                     </p>
-                  </label>
-                </div>
-              </section>
-
-              <section className={sectionClassName}>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(255,140,98,0.14)] text-[var(--color-text)]">
-                    <ImageIcon className="size-4" />
-                  </span>
-                  <div>
-                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                      Cover photo
-                    </h2>
                   </div>
                 </div>
+              </div>
 
-                <div className="mt-5 overflow-hidden rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)]">
-                  {coverPhotoUrl ? (
-                    <img
-                      src={coverPhotoUrl}
-                      alt={photoAttributionLabel ?? trip.destination_text}
-                      className="aspect-[16/10] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 text-center text-[var(--color-text-muted)]">
-                      {isCoverPhotoBusy ? (
-                        <Loader2 className="size-8 animate-spin" />
+              {/* Cover Photo */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className={fieldLabelClassName}>Cover Photo</label>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full px-3 text-[0.7rem] font-bold"
+                      onClick={() => void handleCoverPhotoRefresh()}
+                      disabled={!resolvedPlaceId || isCoverPhotoBusy}
+                    >
+                      <RefreshCw className={cn("mr-1.5 size-3.5", isCoverPhotoBusy && "animate-spin")} />
+                      Refresh
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full px-3 text-[0.7rem] font-bold"
+                      onClick={() => coverUploadInputRef.current?.click()}
+                      disabled={isUploadingCoverPhoto}
+                    >
+                      {isUploadingCoverPhoto ? (
+                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
                       ) : (
-                        <ImageIcon className="size-8" />
+                        <Upload className="mr-1.5 size-3.5" />
                       )}
-                      <p className="text-sm">
-                        {isCoverPhotoBusy ? 'Loading city photo…' : coverPhotoEmptyMessage}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <p className="mt-3 text-sm text-[var(--color-text-muted)]">
-                  {photoAttributionText || 'Destination-based cover photo'}
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => void handleCoverPhotoRefresh()}
-                    disabled={!resolvedPlaceId || isCoverPhotoBusy}
-                  >
-                    Refresh city photos
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => coverUploadInputRef.current?.click()}
-                    disabled={isUploadingCoverPhoto}
-                  >
-                    {isUploadingCoverPhoto ? (
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <Upload className="mr-2 size-4" />
-                    )}
-                    Upload cover photo
-                  </Button>
+                      Upload
+                    </Button>
+                  </div>
                 </div>
 
                 <input
@@ -445,142 +463,170 @@ export function TripSettingsMenu({ tripId, open, onOpenChange }: TripSettingsMen
                   }}
                 />
 
-                <div className="mt-4">
+                <div className="grid grid-cols-3 gap-2">
                   {coverPhotosLoading && coverPhotoCandidates.length === 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {Array.from({ length: 4 }).map((_, index) => (
-                        <div
-                          key={index}
-                          className="aspect-[4/3] animate-pulse rounded-[14px] bg-[var(--color-secondary-surface)]"
-                        />
-                      ))}
-                    </div>
+                    Array.from({ length: 3 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="aspect-square animate-pulse rounded-[16px] bg-[var(--color-secondary-surface)]"
+                      />
+                    ))
                   ) : coverPhotoCandidates.length > 0 ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {coverPhotoCandidates.map((photo) => {
-                        const thumbUrl = resolvePhotoUrl(photo, 'thumb')
-                        const isActive =
-                          coverPreference?.assetId === photo.id ||
-                          coverPreference?.photoId === photo.id ||
-                          (!coverPreference?.assetId &&
-                            !coverPreference?.photoId &&
-                            selectedCoverPhoto?.id === photo.id)
+                    coverPhotoCandidates.slice(0, 6).map((photo) => {
+                      const thumbUrl = resolvePhotoUrl(photo, 'thumb')
+                      const isActive =
+                        coverPreference?.assetId === photo.id ||
+                        coverPreference?.photoId === photo.id ||
+                        (!coverPreference?.assetId &&
+                          !coverPreference?.photoId &&
+                          selectedCoverPhoto?.id === photo.id)
 
-                        return (
-                          <button
-                            key={photo.id}
-                            type="button"
-                            onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
-                            className={`relative overflow-hidden rounded-[14px] border ${
-                              isActive
-                                ? 'border-[rgba(0,0,0,0.18)]'
-                                : 'border-black/8 hover:border-black/16'
-                            }`}
-                          >
-                            {thumbUrl ? (
-                              <img
-                                src={thumbUrl}
-                                alt={photoAttributionLabel ?? trip.destination_text}
-                                className="aspect-[4/3] w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex aspect-[4/3] items-center justify-center bg-[var(--color-secondary-surface)] text-[var(--color-text-muted)]">
-                                <ImageIcon className="size-5" />
-                              </div>
-                            )}
-                            <span className="absolute left-2 top-2 rounded-full bg-white/88 px-2 py-0.5 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                              {photo.candidateSource === 'uploaded' ? 'Uploaded' : 'City'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
+                      return (
+                        <button
+                          key={photo.id}
+                          type="button"
+                          onClick={() => handlePhotoSelection(photo.id, photo.candidateSource)}
+                          className={cn(
+                            "relative aspect-square overflow-hidden rounded-[16px] border-2 transition-all",
+                            isActive 
+                              ? "border-black shadow-md scale-[0.98]" 
+                              : "border-transparent opacity-60 hover:opacity-100 hover:scale-[1.02]"
+                          )}
+                        >
+                          {thumbUrl ? (
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-[var(--color-secondary-surface)] text-black/20">
+                              <ImageIcon className="size-5" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })
                   ) : (
-                    <div className="rounded-[16px] border border-dashed border-black/8 px-4 py-6 text-sm text-[var(--color-text-muted)]">
-                      {coverPhotoRefreshError || 'No alternative city photos are available yet.'}
+                    <div className="col-span-3 rounded-[18px] border border-dashed border-black/8 py-8 text-center text-[0.8rem] text-black/40">
+                      {coverPhotoRefreshError || 'No city photos available.'}
                     </div>
                   )}
                 </div>
-              </section>
+              </div>
 
-              <section className={sectionClassName}>
-                <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(15,23,42,0.08)] text-[var(--color-text)]">
-                    <Trash2 className="size-4" />
-                  </span>
-                  <div>
-                    <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                      Trip management
-                    </h2>
-                  </div>
-                </div>
+              {/* Asset Manager */}
+              <div className="space-y-4">
+                <TripAssetManager
+                  tripId={tripId}
+                  className="border-none bg-transparent shadow-none p-0"
+                />
+              </div>
 
-                <div className="mt-5 flex flex-wrap gap-2">
+              {/* Management Actions */}
+              <div className="space-y-4 pt-4">
+                <label className={fieldLabelClassName}>Management</label>
+                <div className="flex flex-col gap-3">
                   <Button
                     type="button"
                     variant="outline"
+                    className="h-11 justify-start rounded-[14px] border-black/8 px-4 font-semibold text-[0.82rem] text-[var(--color-text)] shadow-none hover:bg-black/5"
                     onClick={() => void handleDuplicate()}
                     disabled={duplicateTrip.isPending}
                   >
                     {duplicateTrip.isPending ? (
-                      <Loader2 className="size-4 animate-spin" />
+                      <Loader2 className="mr-3 size-4 animate-spin text-[var(--color-text-muted)]" />
                     ) : (
-                      <Copy className="size-4" />
+                      <Copy className="mr-3 size-4 text-[var(--color-text-muted)]" />
                     )}
-                    Duplicate trip
+                    Duplicate Trip
                   </Button>
+                  {onReset && hasActivities && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 justify-start rounded-[14px] border-black/8 px-4 font-semibold text-[0.82rem] text-orange-600 shadow-none hover:bg-black/5 hover:text-orange-700"
+                      onClick={() => setShowResetConfirm(true)}
+                      disabled={isResetting}
+                    >
+                      {isResetting ? (
+                        <Loader2 className="mr-3 size-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-3 size-4" />
+                      )}
+                      Reset Itinerary
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="h-11 justify-start rounded-[14px] border-black/8 px-4 font-semibold text-[0.82rem] text-red-600 shadow-none hover:bg-black/5 hover:text-red-700"
                     onClick={() => setShowDeleteConfirm(true)}
                   >
-                    <Trash2 className="size-4" />
-                    Delete trip
+                    <Trash2 className="mr-3 size-4" />
+                    Delete Trip Permanently
                   </Button>
                 </div>
-              </section>
-
-              <TripAssetManager
-                tripId={tripId}
-                title="Trip uploads"
-                description="Keep tickets, PDFs, hotel confirmations, scanned notes, and extra photo references on the trip itself."
-              />
+              </div>
             </div>
           </div>
           
-          <div className="shrink-0 border-t border-black/8 bg-white px-6 py-4 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="shrink-0 border-t border-black/5 bg-white px-6 py-5 flex items-center justify-between">
+            <Button variant="ghost" className="rounded-full px-6 font-bold text-black/40 hover:text-black" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={patchTrip.isPending}>
+            <Button className="rounded-full px-8 h-11 font-bold shadow-lg shadow-black/10 transition-transform active:scale-[0.98]" onClick={handleSave} disabled={patchTrip.isPending}>
               {patchTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-              Save changes
+              Save Changes
             </Button>
           </div>
         </SheetContent>
       </Sheet>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[28px] border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this trip?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action is irreversible. All planning data for &quot;{trip.title}&quot; will be
-              permanently deleted.
+            <AlertDialogTitle className="text-xl font-bold">Delete this trip?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-black/60">
+              This action is irreversible. All planning data for <span className="text-black font-bold">"{trip.title}"</span> will be
+              permanently removed.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel className="rounded-full px-6 font-bold border-none bg-[var(--color-secondary-surface)]">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="rounded-full px-6 font-bold bg-red-600 hover:bg-red-700 text-white"
               onClick={(event) => {
                 event.preventDefault()
                 void handleDelete()
               }}
             >
               {deleteTrip.isPending ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
-              Delete trip
+              Delete Permanently
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showResetConfirm} onOpenChange={setShowResetConfirm}>
+        <AlertDialogContent className="rounded-[28px] border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold">Reset itinerary?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-black/60">
+              All activities will be permanently removed from this trip. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel className="rounded-full px-6 font-bold border-none bg-[var(--color-secondary-surface)]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full px-6 font-bold bg-orange-600 hover:bg-orange-700 text-white"
+              onClick={(event) => {
+                event.preventDefault()
+                void handleReset()
+              }}
+            >
+              {isResetting ? <Loader2 className="size-4 animate-spin mr-2" /> : null}
+              Confirm Reset
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

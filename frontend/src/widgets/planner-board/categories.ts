@@ -1,5 +1,39 @@
 import type { ActivityCategory, PlannerActivity, PlannerPlaceSummary } from '@/shared/api/types'
 
+export type PlannerTravelDisplayMode = 'flight' | 'train' | 'car' | 'ferry' | 'walk'
+
+export const PLANNER_TRAVEL_MODE_OPTIONS: Array<{
+  value: PlannerTravelDisplayMode
+  label: string
+  description: string
+}> = [
+  {
+    value: 'flight',
+    label: 'Flight',
+    description: 'Air travel with the clearest route overlay.',
+  },
+  {
+    value: 'train',
+    label: 'Train',
+    description: 'Rail segments and station-to-station hops.',
+  },
+  {
+    value: 'car',
+    label: 'Car',
+    description: 'Road transfers, taxis, and car rentals.',
+  },
+  {
+    value: 'ferry',
+    label: 'Ferry',
+    description: 'Boat crossings and water transfers.',
+  },
+  {
+    value: 'walk',
+    label: 'Walk',
+    description: 'On-foot transfers between nearby points.',
+  },
+]
+
 export const PLANNER_CATEGORY_META: Record<
   ActivityCategory,
   {
@@ -46,8 +80,45 @@ function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : {}
 }
 
+function normalizePlannerTravelMode(value: unknown): PlannerTravelDisplayMode {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : ''
+  switch (normalized) {
+    case 'train':
+    case 'car':
+    case 'ferry':
+    case 'walk':
+    case 'flight':
+      return normalized
+    case 'driving':
+    case 'drive':
+    case 'taxi':
+      return 'car'
+    case 'transit':
+    case 'rail':
+      return 'train'
+    case 'walking':
+      return 'walk'
+    default:
+      return 'flight'
+  }
+}
+
 export function plannerCategoryLabel(category: ActivityCategory) {
   return PLANNER_CATEGORY_META[category]?.label ?? 'Activity'
+}
+
+export function plannerTravelMode(
+  activity: PlannerActivity | null | undefined,
+): PlannerTravelDisplayMode {
+  if (!activity) {
+    return 'flight'
+  }
+  const details = asRecord(activity.category_details)
+  return normalizePlannerTravelMode(details.travel_mode)
+}
+
+export function plannerTravelModeLabel(mode: PlannerTravelDisplayMode | null | undefined) {
+  return PLANNER_TRAVEL_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Flight'
 }
 
 export function plannerPrimaryPlace(
@@ -125,8 +196,9 @@ export function plannerCategoryDescription(activity: PlannerActivity | null | un
     const origin = typeof details.origin_text === 'string' ? details.origin_text : null
     const destination =
       typeof details.destination_text === 'string' ? details.destination_text : null
+    const modeLabel = plannerTravelModeLabel(normalizePlannerTravelMode(details.travel_mode))
     if (origin && destination) {
-      return `${origin} to ${destination}`
+      return `${modeLabel} · ${origin} to ${destination}`
     }
   }
   if (activity.category === 'hotel') {

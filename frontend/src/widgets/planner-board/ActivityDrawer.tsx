@@ -4,14 +4,20 @@ import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import {
   BedDouble,
+  CarFront,
   Check,
-  ChevronLeft,
+  FileText,
+  Footprints,
   Landmark,
   Loader2,
   MapPin,
+  Paperclip,
   Plane,
   Search,
+  ShipWheel,
   Ticket,
+  Trash2,
+  TrainFront,
   Utensils,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,8 +36,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -42,10 +57,16 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { TimePicker } from "@/components/ui/time-picker";
+import {
+  WheelPicker,
+  WheelPickerWrapper,
+  type WheelPickerOption,
+} from "@/components/wheel-picker/wheel-picker";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { useDebouncedValue } from "@/shared/hooks/useDebouncedValue";
 import { cn } from "@/shared/lib/cn";
 import { CURRENCY_OPTIONS } from "@/shared/lib/currencies";
+import TripAssetManager from "@/widgets/trip-assets";
 import type {
   Activity,
   ActivityCategory,
@@ -55,7 +76,11 @@ import type {
   GooglePlaceCandidate,
   PlannerActivity,
 } from "@/shared/api/types";
-import { PLANNER_CATEGORY_META, plannerCategoryLabel } from "./categories";
+import {
+  PLANNER_CATEGORY_META,
+  PLANNER_TRAVEL_MODE_OPTIONS,
+  plannerCategoryLabel,
+} from "./categories";
 
 const activitySchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(300),
@@ -87,6 +112,7 @@ const activitySchema = z.object({
 
 type ActivityFormValues = z.infer<typeof activitySchema>;
 type Step = 0 | 1 | 2;
+type CreateFlow = "itinerary" | "hotel" | "travel";
 const INBOX_DAY_VALUE = "__inbox__";
 
 type PlaceCandidate = {
@@ -103,13 +129,15 @@ type PlaceCandidate = {
 };
 
 interface Props {
+  tripId: string;
   open: boolean;
   activity?: Activity | PlannerActivity | null;
   defaultTripDayId?: string | null;
+  defaultCategory?: ActivityCategory | null;
   defaultDayLabel?: string | null;
   dayOptions?: ComboboxOption[];
   onClose: () => void;
-  onSave: (data: ActivityCreateInput) => Promise<void>;
+  onSave: (data: ActivityCreateInput, attachmentFiles?: File[]) => Promise<void>;
   isSaving?: boolean;
 }
 
@@ -121,27 +149,105 @@ const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
   travel: Plane,
 };
 
+const TRAVEL_MODE_ICON = {
+  flight: Plane,
+  train: TrainFront,
+  car: CarFront,
+  ferry: ShipWheel,
+  walk: Footprints,
+} as const;
+
+const TRAVEL_HOUR_OPTIONS: WheelPickerOption[] = Array.from(
+  { length: 24 },
+  (_, index) => {
+    const value = String(index).padStart(2, "0");
+    return { value, label: value };
+  },
+);
+
+const TRAVEL_MINUTE_OPTIONS: WheelPickerOption[] = Array.from(
+  { length: 60 },
+  (_, index) => {
+    const value = String(index).padStart(2, "0");
+    return { value, label: value };
+  },
+);
+
+function normalizeTravelMode(value: unknown) {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (
+    normalized === "flight" ||
+    normalized === "train" ||
+    normalized === "car" ||
+    normalized === "ferry" ||
+    normalized === "walk"
+  ) {
+    return normalized;
+  }
+  if (normalized === "drive" || normalized === "driving" || normalized === "taxi") {
+    return "car";
+  }
+  if (normalized === "rail" || normalized === "transit") {
+    return "train";
+  }
+  if (normalized === "walking") {
+    return "walk";
+  }
+  return "flight";
+}
+
+function splitTimeParts(value: string | null | undefined) {
+  const [rawHour = "09", rawMinute = "00"] = (value ?? "").slice(0, 5).split(":");
+  const hour = /^\d{2}$/.test(rawHour) ? rawHour : "09";
+  const minute = /^\d{2}$/.test(rawMinute) ? rawMinute : "00";
+  return { hour, minute };
+}
+
+function formatAttachmentBytes(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function pendingAttachmentKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
+
+function mergePendingAttachments(currentFiles: File[], nextFiles: File[]) {
+  const seen = new Set(currentFiles.map(pendingAttachmentKey));
+  const additions = nextFiles.filter((file) => {
+    const key = pendingAttachmentKey(file);
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+  return [...currentFiles, ...additions];
+}
+
 function currentStepDescription(
   step: Step,
   category: ActivityCategory,
   isCreate: boolean,
+  createFlow: CreateFlow,
 ) {
   if (!isCreate) {
-    return "Edit the activity details and any manual hotel or travel fields.";
+    return "Edit the saved details for this planner item.";
+  }
+  if (createFlow === "travel") {
+    return "Add the route details for this travel segment.";
+  }
+  if (createFlow === "hotel") {
+    return "Add the stay details for this accommodation item.";
   }
   if (step === 0) {
-    return "Pick the type of activity you want to add.";
+    return "Choose the itinerary activity type.";
   }
   if (step === 1) {
-    if (category === "travel") {
-      return "Optionally search route endpoints, then confirm the route details manually.";
-    }
-    if (category === "hotel") {
-      return "Optionally search a hotel or address, then confirm the stay details manually.";
-    }
-    return "Search and link a place.";
+    return `Search and link a ${plannerCategoryLabel(category).toLowerCase()} place.`;
   }
-  return "Review the details and save the activity.";
+  return "Review the itinerary details and save the activity.";
 }
 
 function detailsRecord(value: unknown): Record<string, unknown> {
@@ -174,9 +280,7 @@ function activityToForm(
         ? details.destination_text
         : undefined,
     travel_mode:
-      typeof details.travel_mode === "string"
-        ? details.travel_mode
-        : undefined,
+      normalizeTravelMode(details.travel_mode),
     hotel_name:
       typeof details.hotel_name === "string" ? details.hotel_name : undefined,
     address_text:
@@ -207,7 +311,7 @@ function emptyActivityForm(): ActivityFormValues {
     notes: "",
     origin_text: "",
     destination_text: "",
-    travel_mode: "",
+    travel_mode: "flight",
     hotel_name: "",
     address_text: "",
     checkin_date: "",
@@ -261,6 +365,35 @@ function candidateFromTravelDetails(
     name: text ?? (prefix === "origin" ? "Origin" : "Destination"),
     category: prefix,
     address_text: text,
+    lat: Number.isFinite(lat) ? lat : null,
+    lon: Number.isFinite(lon) ? lon : null,
+    metadata: {},
+  };
+}
+
+function candidateFromHotelDetails(
+  details: Record<string, unknown>,
+): PlaceCandidate | null {
+  const hotelName =
+    typeof details.hotel_name === "string" ? String(details.hotel_name) : null;
+  const addressText =
+    typeof details.address_text === "string"
+      ? String(details.address_text)
+      : null;
+  const lat = Number(details.latitude);
+  const lon = Number(details.longitude);
+
+  if (!hotelName && !addressText && (!Number.isFinite(lat) || !Number.isFinite(lon))) {
+    return null;
+  }
+
+  return {
+    source: "manual_stay",
+    saved_place_id:
+      typeof details.place_id === "string" ? String(details.place_id) : null,
+    name: hotelName ?? addressText ?? "Accommodation",
+    category: "hotel",
+    address_text: addressText,
     lat: Number.isFinite(lat) ? lat : null,
     lon: Number.isFinite(lon) ? lon : null,
     metadata: {},
@@ -348,6 +481,7 @@ function autoResolveCandidate(candidates: PlaceCandidate[], query: string) {
 }
 
 function PlaceSelector({
+  inputId,
   query,
   selectedCandidate,
   onQueryChange,
@@ -358,6 +492,7 @@ function PlaceSelector({
   results = [],
   isSearching = false,
 }: {
+  inputId?: string;
   query: string;
   selectedCandidate?: PlaceCandidate | null;
   onQueryChange: (value: string) => void;
@@ -377,6 +512,7 @@ function PlaceSelector({
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
         <Input
+          id={inputId}
           autoFocus={autoFocus}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
@@ -459,10 +595,188 @@ function PlaceSelector({
   );
 }
 
+function TravelTimeWheelPicker({
+  value,
+  onChange,
+  inputAriaLabel = "Type start time",
+}: {
+  value: string | null | undefined;
+  onChange: (value: string) => void;
+  inputAriaLabel?: string;
+}) {
+  const { hour, minute } = splitTimeParts(value);
+  const normalizedValue = `${hour}:${minute}`;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-[14px] bg-[var(--color-secondary-surface)] px-2.5 py-2.5">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <div className="min-w-0">
+          <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            Type time
+          </p>
+          <p className="text-[0.72rem] text-[var(--color-text-muted)]">
+            Faster than scrolling
+          </p>
+        </div>
+        <Input
+          type="time"
+          step={60}
+          aria-label={inputAriaLabel}
+          value={normalizedValue}
+          onChange={(event) => onChange(event.target.value || normalizedValue)}
+          className="h-10 w-[8.25rem] rounded-[10px] border-black/8 bg-white px-3 text-sm font-semibold tracking-[-0.02em] shadow-none"
+        />
+      </div>
+
+      <div className="flex items-center justify-center gap-2 rounded-[14px] bg-white px-2 py-3 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+        <WheelPickerWrapper className="w-[6rem] rounded-[12px] border-0 bg-transparent px-1 shadow-none">
+          <WheelPicker
+            value={hour}
+            options={TRAVEL_HOUR_OPTIONS}
+            onValueChange={(nextHour) => onChange(`${String(nextHour)}:${minute}`)}
+            infinite
+            optionItemHeight={30}
+            visibleCount={7}
+            classNames={{
+              optionItem:
+                "text-[0.78rem] font-medium text-[var(--color-text-muted)]",
+              highlightWrapper:
+                "rounded-[10px] bg-[var(--color-secondary-surface)] text-[var(--color-text)] ring-0",
+              highlightItem:
+                "text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]",
+            }}
+          />
+        </WheelPickerWrapper>
+        <span className="text-[0.95rem] font-semibold text-[var(--color-text-muted)]">:</span>
+        <WheelPickerWrapper className="w-[6rem] rounded-[12px] border-0 bg-transparent px-1 shadow-none">
+          <WheelPicker
+            value={minute}
+            options={TRAVEL_MINUTE_OPTIONS}
+            onValueChange={(nextMinute) => onChange(`${hour}:${String(nextMinute)}`)}
+            infinite
+            optionItemHeight={30}
+            visibleCount={7}
+            classNames={{
+              optionItem:
+                "text-[0.78rem] font-medium text-[var(--color-text-muted)]",
+              highlightWrapper:
+                "rounded-[10px] bg-[var(--color-secondary-surface)] text-[var(--color-text)] ring-0",
+              highlightItem:
+                "text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]",
+            }}
+          />
+        </WheelPickerWrapper>
+      </div>
+    </div>
+  );
+}
+
+function PendingActivityAttachments({
+  files,
+  onAddFiles,
+  onRemoveFile,
+}: {
+  files: File[];
+  onAddFiles: (files: File[]) => void;
+  onRemoveFile: (fileKey: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  return (
+    <section className="rounded-[18px] border border-black/8 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(26,22,21,0.4)]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+            Attachments
+          </p>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+            Add files now and they will be linked to this activity right after save.
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-9 rounded-full border-black/8 px-3 text-[0.76rem] font-semibold"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Paperclip className="mr-1.5 h-3.5 w-3.5" />
+          Join file
+        </Button>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        aria-label="Attach files to activity"
+        className="sr-only"
+        onChange={(event) => {
+          const selectedFiles = event.target.files
+            ? Array.from(event.target.files)
+            : [];
+          if (selectedFiles.length > 0) {
+            onAddFiles(selectedFiles);
+          }
+          event.target.value = "";
+        }}
+      />
+
+      {files.length > 0 ? (
+        <div className="mt-4 flex flex-col gap-2">
+          {files.map((file) => {
+            const fileKey = pendingAttachmentKey(file);
+            return (
+              <div
+                key={fileKey}
+                className="flex items-center gap-3 rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5"
+              >
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white shadow-[inset_0_0_0_1px_rgba(0,0,0,0.06)]">
+                  <FileText className="h-4 w-4 text-[var(--color-text-muted)]" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">
+                    {file.name}
+                  </p>
+                  <p className="mt-0.5 text-[0.72rem] text-[var(--color-text-muted)]">
+                    {formatAttachmentBytes(file.size)}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-full text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                  onClick={() => onRemoveFile(fileKey)}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 flex items-center justify-center rounded-[16px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 py-6 text-center">
+          <div>
+            <p className="text-sm font-medium text-[var(--color-text-muted)]">
+              No files linked yet
+            </p>
+            <p className="mt-1 text-[0.72rem] text-[var(--color-text-muted)]">
+              Add tickets, PDFs, screenshots, or booking confirmations.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function ActivityDrawer({
+  tripId,
   open,
   activity,
   defaultTripDayId = null,
+  defaultCategory = null,
   defaultDayLabel = null,
   dayOptions = [],
   onClose,
@@ -471,16 +785,36 @@ export function ActivityDrawer({
 }: Props) {
   const isMobile = useIsMobile();
   const isCreate = !activity;
+  const createFlow: CreateFlow = !isCreate
+    ? "itinerary"
+    : defaultCategory === "hotel"
+      ? "hotel"
+      : defaultCategory === "travel"
+        ? "travel"
+        : "itinerary";
+  const minimumStep: Step =
+    !isCreate || createFlow !== "itinerary" ? 2 : 0;
+  const initialCreateCategory: ActivityCategory =
+    defaultCategory ??
+    (createFlow === "hotel"
+      ? "hotel"
+      : createFlow === "travel"
+        ? "travel"
+        : "visit");
   const existingDetails = useMemo(
     () => detailsRecord(activity?.category_details),
     [activity?.category_details],
   );
+  const hotelDetailsCandidate = useMemo(
+    () => candidateFromHotelDetails(existingDetails),
+    [existingDetails],
+  );
   const titleAutofillLockedRef = useRef(false);
   const isAutofillingTitleRef = useRef(false);
   const lastAutoTitleRef = useRef("");
-  const [step, setStep] = useState<Step>(isCreate ? 0 : 2);
+  const [step, setStep] = useState<Step>(minimumStep);
   const [category, setCategory] = useState<ActivityCategory>(
-    activity?.category ?? "visit",
+    activity?.category ?? initialCreateCategory,
   );
   const [primaryQuery, setPrimaryQuery] = useState("");
   const [primaryCandidate, setPrimaryCandidate] =
@@ -488,13 +822,17 @@ export function ActivityDrawer({
   const [originQuery, setOriginQuery] = useState("");
   const [destinationQuery, setDestinationQuery] = useState("");
   const [assignedTripDayId, setAssignedTripDayId] = useState<string | null>(
-    activity?.trip_day_id ?? defaultTripDayId,
+    activity?.trip_day_id ??
+      (createFlow === "travel" || createFlow === "hotel"
+        ? null
+        : defaultTripDayId),
   );
   const [originCandidate, setOriginCandidate] = useState<PlaceCandidate | null>(
     null,
   );
   const [destinationCandidate, setDestinationCandidate] =
     useState<PlaceCandidate | null>(null);
+  const [pendingAttachmentFiles, setPendingAttachmentFiles] = useState<File[]>([]);
   const debouncedPrimaryQuery = useDebouncedValue(
     normalizePlaceSearchQuery(primaryQuery),
     320,
@@ -512,15 +850,26 @@ export function ActivityDrawer({
   const assignmentOptions = useMemo(
     () =>
       dayOptions.length
-        ? dayOptions
+        ? dayOptions.map((option) =>
+            option.value !== INBOX_DAY_VALUE || createFlow !== "travel"
+              ? option
+              : {
+                  ...option,
+                  label: "Not assigned",
+                  description: "Keep this travel segment separate until scheduled",
+                },
+          )
         : [
             {
               value: INBOX_DAY_VALUE,
-              label: "Inbox",
-              description: "Unassigned activity",
+              label: createFlow === "travel" ? "Not assigned" : "Inbox",
+              description:
+                createFlow === "travel"
+                  ? "Keep this travel segment separate until scheduled"
+                  : "Unassigned activity",
             },
           ],
-    [dayOptions],
+    [createFlow, dayOptions],
   );
   const selectedAssignmentValue = assignedTripDayId ?? INBOX_DAY_VALUE;
   const assignedDayOption =
@@ -533,6 +882,8 @@ export function ActivityDrawer({
       ? assignedDayOption.label
       : `${assignedDayOption.label} · ${assignedDayOption.description}`
     : (defaultDayLabel ?? "Inbox");
+  const visibleDayLabel =
+    selectedAssignmentValue === INBOX_DAY_VALUE ? null : currentDayLabel;
   const { data: selectedPlace } = usePlace(selectedPlaceId);
   const selectedPlaceCandidate = useMemo(
     () => plannerActivityCandidate(selectedPlace),
@@ -541,21 +892,19 @@ export function ActivityDrawer({
   const primaryGoogleSearch = useGooglePlaceSearch(
     { q: debouncedPrimaryQuery, limit: 6, offset: 0 },
     open &&
-      step === 1 &&
       category !== "travel" &&
+      (step === 1 || category === "hotel") &&
       debouncedPrimaryQuery.length >= 3,
   );
   const originGoogleSearch = useGooglePlaceSearch(
     { q: debouncedOriginQuery, limit: 6, offset: 0 },
     open &&
-      step === 1 &&
       category === "travel" &&
       debouncedOriginQuery.length >= 3,
   );
   const destinationGoogleSearch = useGooglePlaceSearch(
     { q: debouncedDestinationQuery, limit: 6, offset: 0 },
     open &&
-      step === 1 &&
       category === "travel" &&
       debouncedDestinationQuery.length >= 3,
   );
@@ -576,8 +925,8 @@ export function ActivityDrawer({
     resolver: zodResolver(activitySchema),
     defaultValues: activity ? activityToForm(activity) : emptyActivityForm(),
   });
-  const watchedHotelName = watch("hotel_name");
   const watchedAddressText = watch("address_text");
+  const watchedTitle = watch("title");
   const watchedOriginText = watch("origin_text");
   const watchedDestinationText = watch("destination_text");
 
@@ -600,12 +949,20 @@ export function ActivityDrawer({
     setPrimaryQuery("");
     setOriginQuery("");
     setDestinationQuery("");
-    setAssignedTripDayId(activity?.trip_day_id ?? defaultTripDayId ?? null);
+    setPendingAttachmentFiles([]);
+    setAssignedTripDayId(
+      activity?.trip_day_id ??
+        (createFlow === "travel" || createFlow === "hotel"
+          ? null
+          : defaultTripDayId ?? null),
+    );
 
     if (activity) {
       setCategory(activity.category);
       setStep(2);
-      setPrimaryCandidate(null);
+      setPrimaryCandidate(
+        activity.category === "hotel" ? hotelDetailsCandidate : null,
+      );
       setOriginCandidate(candidateFromTravelDetails(existingDetails, "origin"));
       setDestinationCandidate(
         candidateFromTravelDetails(existingDetails, "destination"),
@@ -613,12 +970,43 @@ export function ActivityDrawer({
       return;
     }
 
-    setCategory("visit");
-    setStep(0);
+    setCategory(initialCreateCategory);
+    setStep(minimumStep);
     setPrimaryCandidate(null);
     setOriginCandidate(null);
     setDestinationCandidate(null);
-  }, [activity, existingDetails, open, reset]);
+    setValue(
+      "start_time",
+      createFlow === "travel"
+        ? "09:00"
+        : createFlow === "hotel"
+          ? "15:00"
+          : "",
+    );
+    setValue(
+      "travel_mode",
+      activity?.category === "travel"
+        ? normalizeTravelMode(activity.category_details?.travel_mode)
+        : createFlow === "travel"
+          ? "flight"
+          : "",
+    );
+  }, [
+    activity,
+    createFlow,
+    defaultTripDayId,
+    existingDetails,
+    hotelDetailsCandidate,
+    initialCreateCategory,
+    minimumStep,
+    open,
+    reset,
+  ]);
+
+  const allowedCreateCategories = useMemo<ActivityCategory[]>(
+    () => ["visit", "eat", "activity"],
+    [],
+  );
 
   const setTitleIfPristine = (nextTitle: string) => {
     const normalizedTitle = nextTitle.trim();
@@ -640,16 +1028,12 @@ export function ActivityDrawer({
   };
 
   useEffect(() => {
-    if (assignedTripDayId == null) {
+    if (assignedTripDayId == null && category !== "travel" && category !== "hotel") {
       setValue("start_time", "");
     }
-  }, [assignedTripDayId, setValue]);
+  }, [assignedTripDayId, category, setValue]);
 
   useEffect(() => {
-    if (category === "hotel") {
-      setTitleIfPristine(watchedHotelName ?? "");
-      return;
-    }
     if (category === "travel") {
       const origin = (watchedOriginText ?? "").trim();
       const destination = (watchedDestinationText ?? "").trim();
@@ -661,14 +1045,13 @@ export function ActivityDrawer({
     category,
     isCreate,
     watchedDestinationText,
-    watchedHotelName,
     watchedOriginText,
   ]);
 
   useEffect(() => {
     if (!open || !activity) return;
-    setPrimaryCandidate(selectedPlaceCandidate);
-  }, [activity, open, selectedPlaceCandidate]);
+    setPrimaryCandidate(selectedPlaceCandidate ?? hotelDetailsCandidate);
+  }, [activity, hotelDetailsCandidate, open, selectedPlaceCandidate]);
 
   useEffect(() => {
     if (!open || activity || !selectedPlace) return;
@@ -681,7 +1064,7 @@ export function ActivityDrawer({
       return candidate.saved_place_id;
     }
     if (
-      candidate.source === "manual_route" &&
+      (candidate.source === "manual_route" || candidate.source === "manual_stay") &&
       !candidate.external_id &&
       candidate.lat == null &&
       candidate.lon == null
@@ -717,7 +1100,7 @@ export function ActivityDrawer({
 
   const onPrimaryCandidateSelect = (candidate: PlaceCandidate) => {
     setPrimaryCandidate(candidate);
-    setPrimaryQuery(candidate.name);
+    setPrimaryQuery(candidate.address_text ?? candidate.name);
     if (category === "hotel") {
       setValue("hotel_name", candidate.name);
       setValue("address_text", candidate.address_text ?? "");
@@ -726,6 +1109,21 @@ export function ActivityDrawer({
       applyCandidateAutofill(candidate);
     }
     setStep(2);
+  };
+
+  const handleOriginCandidateSelect = (candidate: PlaceCandidate) => {
+    setOriginCandidate(candidate);
+    setOriginQuery(candidate.address_text ?? candidate.name);
+    setValue("origin_text", candidate.address_text ?? candidate.name ?? "");
+  };
+
+  const handleDestinationCandidateSelect = (candidate: PlaceCandidate) => {
+    setDestinationCandidate(candidate);
+    setDestinationQuery(candidate.address_text ?? candidate.name);
+    setValue(
+      "destination_text",
+      candidate.address_text ?? candidate.name ?? "",
+    );
   };
 
   const primaryGoogleCandidates = useMemo(
@@ -754,6 +1152,9 @@ export function ActivityDrawer({
     autoResolveCandidate(destinationSearchResults, destinationQuery);
   const resolvedPrimaryCandidate =
     resolvedPrimarySearchCandidate ?? selectedPlaceCandidate;
+  const finalOriginCandidate = originCandidate ?? resolvedOriginCandidate;
+  const finalDestinationCandidate =
+    destinationCandidate ?? resolvedDestinationCandidate;
   const isSearchingPrimary =
     debouncedPrimaryQuery !== normalizePlaceSearchQuery(primaryQuery) ||
     primaryGoogleSearch.isFetching;
@@ -764,10 +1165,7 @@ export function ActivityDrawer({
     debouncedDestinationQuery !== normalizePlaceSearchQuery(destinationQuery) ||
     destinationGoogleSearch.isFetching;
 
-  const canProceedFromSearch =
-    category === "travel" || category === "hotel"
-      ? true
-      : Boolean(resolvedPrimaryCandidate);
+  const canProceedFromSearch = Boolean(resolvedPrimaryCandidate);
 
   const handleNextStep = () => {
     if (step === 0) {
@@ -788,32 +1186,6 @@ export function ActivityDrawer({
       ) {
         setPrimaryCandidate(resolvedPrimarySearchCandidate);
         setPrimaryQuery(resolvedPrimarySearchCandidate.name);
-      }
-      if (category === "travel") {
-        if (resolvedOriginCandidate && !originCandidate) {
-          setOriginCandidate(resolvedOriginCandidate);
-          setOriginQuery(resolvedOriginCandidate.name);
-          if (!(getValues("origin_text") ?? "").trim()) {
-            setValue(
-              "origin_text",
-              resolvedOriginCandidate.name ??
-                resolvedOriginCandidate.address_text ??
-                "",
-            );
-          }
-        }
-        if (resolvedDestinationCandidate && !destinationCandidate) {
-          setDestinationCandidate(resolvedDestinationCandidate);
-          setDestinationQuery(resolvedDestinationCandidate.name);
-          if (!(getValues("destination_text") ?? "").trim()) {
-            setValue(
-              "destination_text",
-              resolvedDestinationCandidate.name ??
-                resolvedDestinationCandidate.address_text ??
-                "",
-            );
-          }
-        }
       }
       if (
         (category === "visit" ||
@@ -840,7 +1212,9 @@ export function ActivityDrawer({
   };
 
   const handleBack = () => {
-    setStep((current) => (current === 0 ? 0 : ((current - 1) as Step)));
+    setStep((current) =>
+      current <= minimumStep ? current : ((current - 1) as Step),
+    );
   };
 
   const handleCategorySelect = (value: ActivityCategory) => {
@@ -858,7 +1232,7 @@ export function ActivityDrawer({
     setValue("description", "");
     setValue("origin_text", "");
     setValue("destination_text", "");
-    setValue("travel_mode", "");
+    setValue("travel_mode", value === "travel" ? "flight" : "");
     setValue("hotel_name", "");
     setValue("address_text", "");
     setValue("checkin_date", "");
@@ -867,49 +1241,52 @@ export function ActivityDrawer({
     setStep(1);
   };
 
-  const submitActivity = async (values: ActivityFormValues) => {
+  const submitActivity = async (
+    values: ActivityFormValues,
+    attachmentFiles: File[] = [],
+  ) => {
     clearErrors([
       "origin_text",
       "destination_text",
-      "hotel_name",
       "checkin_date",
       "checkout_date",
     ]);
 
-    const normalizedOriginText = (values.origin_text ?? "").trim();
-    const normalizedDestinationText = (values.destination_text ?? "").trim();
-    const normalizedHotelName = (values.hotel_name ?? "").trim();
+    const normalizedOriginText = (
+      finalOriginCandidate?.address_text ??
+      finalOriginCandidate?.name ??
+      values.origin_text ??
+      ""
+    ).trim();
+    const normalizedDestinationText = (
+      finalDestinationCandidate?.address_text ??
+      finalDestinationCandidate?.name ??
+      values.destination_text ??
+      ""
+    ).trim();
     const normalizedAddressText = (values.address_text ?? "").trim();
     const normalizedTravelMode = (values.travel_mode ?? "").trim();
     const normalizedCheckinDate = (values.checkin_date ?? "").trim();
     const normalizedCheckoutDate = (values.checkout_date ?? "").trim();
-    const normalizedRoomType = (values.room_type ?? "").trim();
+    const normalizedTitle = (values.title ?? "").trim();
 
     let hasValidationError = false;
 
     if (category === "travel") {
-      if (!normalizedOriginText) {
+      if (!finalOriginCandidate || !normalizedOriginText) {
         setError("origin_text", {
           type: "manual",
-          message: "Origin is required",
+          message: "Select an origin address",
         });
         hasValidationError = true;
       }
-      if (!normalizedDestinationText) {
+      if (!finalDestinationCandidate || !normalizedDestinationText) {
         setError("destination_text", {
           type: "manual",
-          message: "Destination is required",
+          message: "Select a destination address",
         });
         hasValidationError = true;
       }
-    }
-
-    if (category === "hotel" && !normalizedHotelName) {
-      setError("hotel_name", {
-        type: "manual",
-        message: "Hotel name is required",
-      });
-      hasValidationError = true;
     }
 
     if (
@@ -936,10 +1313,10 @@ export function ActivityDrawer({
           ? null
           : await persistPlaceCandidate(resolvedPrimaryCandidate);
       const originPlaceId = await persistPlaceCandidate(
-        resolvedOriginCandidate,
+        finalOriginCandidate,
       );
       const destinationPlaceId = await persistPlaceCandidate(
-        resolvedDestinationCandidate,
+        finalDestinationCandidate,
       );
 
       const categoryDetails: Record<string, unknown> =
@@ -947,21 +1324,21 @@ export function ActivityDrawer({
           ? {
               origin_text: normalizedOriginText || null,
               destination_text: normalizedDestinationText || null,
-              travel_mode: normalizedTravelMode || null,
+              travel_mode: normalizeTravelMode(normalizedTravelMode),
               origin_geo:
-                resolvedOriginCandidate?.lat != null &&
-                resolvedOriginCandidate.lon != null
+                finalOriginCandidate?.lat != null &&
+                finalOriginCandidate.lon != null
                   ? {
-                      lat: resolvedOriginCandidate.lat,
-                      lon: resolvedOriginCandidate.lon,
+                      lat: finalOriginCandidate.lat,
+                      lon: finalOriginCandidate.lon,
                     }
                   : null,
               destination_geo:
-                resolvedDestinationCandidate?.lat != null &&
-                resolvedDestinationCandidate.lon != null
+                finalDestinationCandidate?.lat != null &&
+                finalDestinationCandidate.lon != null
                   ? {
-                      lat: resolvedDestinationCandidate.lat,
-                      lon: resolvedDestinationCandidate.lon,
+                      lat: finalDestinationCandidate.lat,
+                      lon: finalDestinationCandidate.lon,
                     }
                   : null,
               origin_place_id: originPlaceId,
@@ -969,7 +1346,7 @@ export function ActivityDrawer({
             }
           : category === "hotel"
             ? {
-                hotel_name: normalizedHotelName || values.title,
+                hotel_name: normalizedTitle || values.title,
                 address_text:
                   normalizedAddressText ||
                   resolvedPrimaryCandidate?.address_text ||
@@ -979,7 +1356,7 @@ export function ActivityDrawer({
                 place_id: placeId,
                 checkin_date: normalizedCheckinDate || null,
                 checkout_date: normalizedCheckoutDate || null,
-                room_type: normalizedRoomType || null,
+                room_type: null,
               }
             : {
                 address_text: resolvedPrimaryCandidate?.address_text ?? null,
@@ -995,15 +1372,19 @@ export function ActivityDrawer({
         title: values.title,
         description: values.description || null,
         start_time:
-          assignedTripDayId == null ? null : values.start_time || null,
-        duration_min: values.duration_min ?? null,
+          category === "travel" || category === "hotel"
+            ? values.start_time || null
+            : assignedTripDayId == null
+              ? null
+              : values.start_time || null,
+        duration_min: category === "hotel" ? null : values.duration_min ?? null,
         estimated_cost_amount: values.estimated_cost_amount ?? null,
         estimated_cost_currency: values.estimated_cost_currency || null,
         place_id: placeId,
         notes: values.notes || null,
         is_favorite: activity?.is_favorite ?? false,
         source: activity?.source ?? "manual",
-      });
+      }, attachmentFiles);
     } catch {
       toast.error("Failed to prepare the selected place");
     }
@@ -1013,22 +1394,38 @@ export function ActivityDrawer({
     step,
     category,
     isCreate,
+    createFlow,
   );
   const CurrentCategoryIcon = CATEGORY_ICON[category] ?? Landmark;
+  const createTitle =
+    createFlow === "hotel"
+      ? "Create accommodation"
+      : createFlow === "travel"
+        ? "Create travel"
+        : "Create itinerary activity";
+  const submitLabel = activity
+    ? "Save changes"
+    : createFlow === "hotel"
+      ? "Create accommodation"
+      : createFlow === "travel"
+        ? "Create travel"
+        : "Create itinerary activity";
   const selectedLocationTitle =
     category === "travel"
       ? `${watchedOriginText?.trim() || resolvedOriginCandidate?.name || "Origin"} to ${watchedDestinationText?.trim() || resolvedDestinationCandidate?.name || "Destination"}`
       : category === "hotel"
-        ? (watchedHotelName?.trim() || resolvedPrimaryCandidate?.name || "No stay named yet")
+        ? (watchedTitle?.trim() || resolvedPrimaryCandidate?.name || hotelDetailsCandidate?.name || "No stay named yet")
         : (resolvedPrimaryCandidate?.name ?? "No place selected");
   const selectedLocationDescription =
     category === "travel"
-      ? "Coordinates are stored when a searched place helper is selected."
+      ? "Fill in the route details for this segment."
       : category === "hotel"
         ? (watchedAddressText?.trim() ||
             (resolvedPrimaryCandidate
               ? formatPlaceCaption(resolvedPrimaryCandidate)
-              : "No address linked yet."))
+              : hotelDetailsCandidate
+                ? formatPlaceCaption(hotelDetailsCandidate)
+              : "Add the stay details and save it when you are ready."))
         : resolvedPrimaryCandidate
           ? formatPlaceCaption(resolvedPrimaryCandidate)
           : "No place linked yet.";
@@ -1048,25 +1445,14 @@ export function ActivityDrawer({
       >
         <SheetHeader className="gap-2 border-b border-black/8 bg-[#f6f7f8] px-5 py-5">
           <div className="flex items-start gap-3">
-            {step > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="mt-0.5 size-8 rounded-[10px]"
-                onClick={handleBack}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            ) : null}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                {currentDayLabel ? (
+                {visibleDayLabel ? (
                   <Badge variant="outline" className="tracking-[0.08em]">
-                    {currentDayLabel}
+                    {visibleDayLabel}
                   </Badge>
                 ) : null}
-                {step > 0 ? (
+                {step > minimumStep ? (
                   <Badge
                     variant="outline"
                     className="inline-flex items-center gap-1.5 tracking-[0.08em]"
@@ -1079,7 +1465,7 @@ export function ActivityDrawer({
               <SheetTitle className="mt-2 text-[1.32rem] font-semibold tracking-[-0.04em]">
                 {activity
                   ? `Edit ${plannerCategoryLabel(category)} activity`
-                  : "Create activity"}
+                  : createTitle}
               </SheetTitle>
               <SheetDescription className="mt-1 max-w-[31rem] text-sm leading-5">
                 {activeStepDescription}
@@ -1089,16 +1475,16 @@ export function ActivityDrawer({
         </SheetHeader>
 
         <form
-          onSubmit={handleSubmit(submitActivity)}
+          onSubmit={handleSubmit((values) =>
+            submitActivity(values, pendingAttachmentFiles),
+          )}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
             <div className="mx-auto flex w-full max-w-[32rem] flex-col gap-4">
-              {step === 0 ? (
+              {step === 0 && isCreate && createFlow === "itinerary" ? (
                 <section className="grid gap-2.5 md:grid-cols-2">
-                  {(
-                    Object.keys(PLANNER_CATEGORY_META) as ActivityCategory[]
-                  ).map((value) => {
+                  {allowedCreateCategories.map((value) => {
                     const meta = PLANNER_CATEGORY_META[value];
                     const Icon = CATEGORY_ICON[value];
                     return (
@@ -1138,23 +1524,17 @@ export function ActivityDrawer({
                 </section>
               ) : null}
 
-              {step === 1 && category !== "travel" ? (
+              {step === 1 && createFlow === "itinerary" ? (
                 <section className="rounded-[18px] border border-black/8 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(26,22,21,0.4)]">
                   <div className="flex items-start justify-between gap-4">
                     <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                      {category === "hotel" ? "Stay helper" : "Place"}
+                      Place
                     </p>
                   </div>
 
-                  {category === "hotel" ? (
-                    <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                      Search is optional here. Use it to prefill the hotel name and
-                      address, then review everything manually in the next step.
-                    </p>
-                  ) : null}
-
                   <div className="mt-3">
                     <PlaceSelector
+                      inputId="activity-place-search"
                       query={primaryQuery}
                       selectedCandidate={resolvedPrimaryCandidate}
                       onQueryChange={(value) => {
@@ -1165,91 +1545,11 @@ export function ActivityDrawer({
                       }}
                       onSelect={onPrimaryCandidateSelect}
                       autoFocus
-                      searchPlaceholder={
-                        category === "hotel"
-                          ? "Search Google hotels or address"
-                          : `Search Google ${plannerCategoryLabel(category).toLowerCase()} places`
-                      }
+                      searchPlaceholder={`Search Google ${plannerCategoryLabel(category).toLowerCase()} places`}
                       helperText="Type at least 3 characters to search Google places by name or address."
                       results={primarySearchResults}
                       isSearching={isSearchingPrimary}
                     />
-                  </div>
-                </section>
-              ) : null}
-
-              {step === 1 && category === "travel" ? (
-                <section className="rounded-[18px] border border-black/8 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(26,22,21,0.4)]">
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                      Route helper
-                    </p>
-                  </div>
-
-                  <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                    Search is optional here. Use Google place results to prefill
-                    route endpoints and capture coordinates where available.
-                  </p>
-
-                  <div className="mt-3 grid gap-3">
-                    <div>
-                      <p className="mb-2 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        Origin
-                      </p>
-                      <PlaceSelector
-                        query={originQuery}
-                        selectedCandidate={originCandidate}
-                        onQueryChange={(value) => {
-                          setOriginQuery(value);
-                          if (!candidateMatchesQuery(originCandidate, value)) {
-                            setOriginCandidate(null);
-                          }
-                        }}
-                        onSelect={(candidate) => {
-                          setOriginCandidate(candidate);
-                          setOriginQuery(candidate.name);
-                          setValue(
-                            "origin_text",
-                            candidate.name ?? candidate.address_text ?? "",
-                          );
-                        }}
-                        autoFocus
-                        searchPlaceholder="Search departure point"
-                        helperText="Type at least 3 characters to search Google places."
-                        results={originSearchResults}
-                        isSearching={isSearchingOrigin}
-                      />
-                    </div>
-
-                    <div>
-                      <p className="mb-2 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        Destination
-                      </p>
-                      <PlaceSelector
-                        query={destinationQuery}
-                        selectedCandidate={destinationCandidate}
-                        onQueryChange={(value) => {
-                          setDestinationQuery(value);
-                          if (
-                            !candidateMatchesQuery(destinationCandidate, value)
-                          ) {
-                            setDestinationCandidate(null);
-                          }
-                        }}
-                        onSelect={(candidate) => {
-                          setDestinationCandidate(candidate);
-                          setDestinationQuery(candidate.name);
-                          setValue(
-                            "destination_text",
-                            candidate.name ?? candidate.address_text ?? "",
-                          );
-                        }}
-                        searchPlaceholder="Search arrival point"
-                        helperText="Type at least 3 characters to search Google places."
-                        results={destinationSearchResults}
-                        isSearching={isSearchingDestination}
-                      />
-                    </div>
                   </div>
                 </section>
               ) : null}
@@ -1261,9 +1561,9 @@ export function ActivityDrawer({
                       <div>
                         <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
                           {category === "travel"
-                            ? "Route helper"
+                            ? "Travel"
                             : category === "hotel"
-                              ? "Stay helper"
+                              ? "Accommodation"
                               : "Linked place"}
                         </p>
                         <p className="mt-2 text-base font-semibold text-[var(--color-text)]">
@@ -1277,9 +1577,11 @@ export function ActivityDrawer({
                         {plannerCategoryLabel(category)}
                       </Badge>
                     </div>
-                    <p className="mt-3 text-sm text-[var(--color-text-muted)]">
-                      {currentDayLabel}
-                    </p>
+                    {visibleDayLabel ? (
+                      <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+                        {visibleDayLabel}
+                      </p>
+                    ) : null}
                   </section>
 
                   {category === "travel" ? (
@@ -1288,17 +1590,70 @@ export function ActivityDrawer({
                         Travel details
                       </p>
                       <FieldGroup className="mt-3 gap-3">
-                        <Field data-invalid={Boolean(errors.origin_text)}>
-                          <FieldLabel htmlFor="travel-origin">
-                            Origin
+                        <Field>
+                          <FieldLabel htmlFor="travel-mode">
+                            Travel mode
                           </FieldLabel>
                           <FieldContent>
-                            <Input
-                              id="travel-origin"
-                              placeholder="Enter the departure point"
-                              aria-invalid={Boolean(errors.origin_text)}
-                              className="h-11 rounded-[10px] border-black/8 bg-white"
-                              {...register("origin_text")}
+                            <Controller
+                              name="travel_mode"
+                              control={control}
+                              render={({ field }) => (
+                                <Select
+                                  value={normalizeTravelMode(field.value)}
+                                  onValueChange={(value) =>
+                                    field.onChange(normalizeTravelMode(value))
+                                  }
+                                >
+                                  <SelectTrigger
+                                    id="travel-mode"
+                                    className="h-11 rounded-[10px] border-black/8"
+                                  >
+                                    <SelectValue placeholder="Select travel mode" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      {PLANNER_TRAVEL_MODE_OPTIONS.map((option) => {
+                                        const Icon = TRAVEL_MODE_ICON[option.value];
+                                        return (
+                                          <SelectItem key={option.value} value={option.value}>
+                                            <span className="inline-flex items-center gap-2">
+                                              <Icon className="h-4 w-4" />
+                                              <span>{option.label}</span>
+                                            </span>
+                                          </SelectItem>
+                                        );
+                                      })}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </FieldContent>
+                        </Field>
+
+                        <Field data-invalid={Boolean(errors.origin_text)}>
+                          <FieldLabel htmlFor="travel-origin-search">
+                            Origin address
+                          </FieldLabel>
+                          <FieldContent>
+                            <PlaceSelector
+                              inputId="travel-origin-search"
+                              query={originQuery}
+                              selectedCandidate={finalOriginCandidate}
+                              onQueryChange={(value) => {
+                                setOriginQuery(value);
+                                setValue("origin_text", value);
+                                if (!candidateMatchesQuery(originCandidate, value)) {
+                                  setOriginCandidate(null);
+                                }
+                              }}
+                              onSelect={handleOriginCandidateSelect}
+                              autoFocus
+                              searchPlaceholder="Search departure address"
+                              helperText="Search for a real departure address or station."
+                              results={originSearchResults}
+                              isSearching={isSearchingOrigin}
                             />
                           </FieldContent>
                           {errors.origin_text ? (
@@ -1307,16 +1662,28 @@ export function ActivityDrawer({
                         </Field>
 
                         <Field data-invalid={Boolean(errors.destination_text)}>
-                          <FieldLabel htmlFor="travel-destination">
-                            Destination
+                          <FieldLabel htmlFor="travel-destination-search">
+                            Destination address
                           </FieldLabel>
                           <FieldContent>
-                            <Input
-                              id="travel-destination"
-                              placeholder="Enter the arrival point"
-                              aria-invalid={Boolean(errors.destination_text)}
-                              className="h-11 rounded-[10px] border-black/8 bg-white"
-                              {...register("destination_text")}
+                            <PlaceSelector
+                              inputId="travel-destination-search"
+                              query={destinationQuery}
+                              selectedCandidate={finalDestinationCandidate}
+                              onQueryChange={(value) => {
+                                setDestinationQuery(value);
+                                setValue("destination_text", value);
+                                if (
+                                  !candidateMatchesQuery(destinationCandidate, value)
+                                ) {
+                                  setDestinationCandidate(null);
+                                }
+                              }}
+                              onSelect={handleDestinationCandidateSelect}
+                              searchPlaceholder="Search arrival address"
+                              helperText="Search for a real arrival address or station."
+                              results={destinationSearchResults}
+                              isSearching={isSearchingDestination}
                             />
                           </FieldContent>
                           {errors.destination_text ? (
@@ -1324,19 +1691,28 @@ export function ActivityDrawer({
                           ) : null}
                         </Field>
 
-                        <Field>
-                          <FieldLabel htmlFor="travel-mode">
-                            Travel mode
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              id="travel-mode"
-                              placeholder="Flight, train, ferry, taxi..."
-                              className="h-11 rounded-[10px] border-black/8 bg-white"
-                              {...register("travel_mode")}
-                            />
-                          </FieldContent>
-                        </Field>
+                        <Controller
+                          name="start_time"
+                          control={control}
+                          render={({ field, fieldState }) => (
+                            <Field data-invalid={Boolean(fieldState.error)}>
+                              <FieldLabel htmlFor="travel-start-time">
+                                Start time
+                              </FieldLabel>
+                              <FieldContent>
+                                <div id="travel-start-time">
+                                  <TravelTimeWheelPicker
+                                    value={field.value || "09:00"}
+                                    onChange={field.onChange}
+                                  />
+                                </div>
+                              </FieldContent>
+                              {fieldState.error ? (
+                                <FieldError errors={[fieldState.error]} />
+                              ) : null}
+                            </Field>
+                          )}
+                        />
                       </FieldGroup>
                     </section>
                   ) : null}
@@ -1344,93 +1720,110 @@ export function ActivityDrawer({
                   {category === "hotel" ? (
                     <section className="rounded-[18px] border border-black/8 bg-white p-4 shadow-[0_16px_40px_-34px_rgba(26,22,21,0.4)]">
                       <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        Stay details
+                        Accommodation details
                       </p>
                       <FieldGroup className="mt-3 gap-3">
-                        <Field data-invalid={Boolean(errors.hotel_name)}>
-                          <FieldLabel htmlFor="hotel-name">
-                            Hotel name
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              id="hotel-name"
-                              placeholder="Enter the hotel or stay name"
-                              aria-invalid={Boolean(errors.hotel_name)}
-                              className="h-11 rounded-[10px] border-black/8 bg-white"
-                              {...register("hotel_name")}
-                            />
-                          </FieldContent>
-                          {errors.hotel_name ? (
-                            <FieldError errors={[errors.hotel_name]} />
-                          ) : null}
-                        </Field>
-
                         <Field>
                           <FieldLabel htmlFor="hotel-address">
                             Address
                           </FieldLabel>
                           <FieldContent>
-                            <Textarea
-                              id="hotel-address"
-                              rows={3}
-                              placeholder="Street address, area, or meeting point"
-                              className="rounded-[10px] border-black/8 bg-white"
-                              {...register("address_text")}
+                            <PlaceSelector
+                              inputId="hotel-address"
+                              query={primaryQuery}
+                              selectedCandidate={resolvedPrimaryCandidate}
+                              onQueryChange={(value) => {
+                                setPrimaryQuery(value);
+                                setValue("address_text", value);
+                                if (!candidateMatchesQuery(primaryCandidate, value)) {
+                                  setPrimaryCandidate(null);
+                                }
+                              }}
+                              onSelect={onPrimaryCandidateSelect}
+                              searchPlaceholder="Search hotel or stay address"
+                              helperText="Search for a real hotel, apartment, or accommodation address."
+                              results={primarySearchResults}
+                              isSearching={isSearchingPrimary}
                             />
                           </FieldContent>
                         </Field>
 
                         <div className="grid gap-3 sm:grid-cols-2">
-                          <Field data-invalid={Boolean(errors.checkin_date)}>
-                            <FieldLabel htmlFor="hotel-checkin">
-                              Check-in date
-                            </FieldLabel>
-                            <FieldContent>
-                              <Input
-                                id="hotel-checkin"
-                                type="date"
-                                aria-invalid={Boolean(errors.checkin_date)}
-                                className="h-11 rounded-[10px] border-black/8 bg-white"
-                                {...register("checkin_date")}
-                              />
-                            </FieldContent>
-                            {errors.checkin_date ? (
-                              <FieldError errors={[errors.checkin_date]} />
-                            ) : null}
-                          </Field>
+                          <Controller
+                            name="checkin_date"
+                            control={control}
+                            render={({ field, fieldState }) => (
+                              <Field data-invalid={Boolean(fieldState.error)}>
+                                <FieldLabel htmlFor="hotel-checkin">
+                                  Check-in date
+                                </FieldLabel>
+                                <FieldContent>
+                                  <DatePicker
+                                    id="hotel-checkin"
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    invalid={Boolean(fieldState.error)}
+                                    placeholder="Choose check-in date"
+                                    className="h-11 rounded-[10px] border-black/8 bg-white shadow-none"
+                                  />
+                                </FieldContent>
+                                {fieldState.error ? (
+                                  <FieldError errors={[fieldState.error]} />
+                                ) : null}
+                              </Field>
+                            )}
+                          />
 
-                          <Field data-invalid={Boolean(errors.checkout_date)}>
-                            <FieldLabel htmlFor="hotel-checkout">
-                              Checkout date
-                            </FieldLabel>
-                            <FieldContent>
-                              <Input
-                                id="hotel-checkout"
-                                type="date"
-                                aria-invalid={Boolean(errors.checkout_date)}
-                                className="h-11 rounded-[10px] border-black/8 bg-white"
-                                {...register("checkout_date")}
-                              />
-                            </FieldContent>
-                            {errors.checkout_date ? (
-                              <FieldError errors={[errors.checkout_date]} />
-                            ) : null}
-                          </Field>
+                          <Controller
+                            name="checkout_date"
+                            control={control}
+                            render={({ field, fieldState }) => (
+                              <Field data-invalid={Boolean(fieldState.error)}>
+                                <FieldLabel htmlFor="hotel-checkout">
+                                  Checkout date
+                                </FieldLabel>
+                                <FieldContent>
+                                  <DatePicker
+                                    id="hotel-checkout"
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    invalid={Boolean(fieldState.error)}
+                                    placeholder="Choose checkout date"
+                                    className="h-11 rounded-[10px] border-black/8 bg-white shadow-none"
+                                  />
+                                </FieldContent>
+                                {fieldState.error ? (
+                                  <FieldError errors={[fieldState.error]} />
+                                ) : null}
+                              </Field>
+                            )}
+                          />
                         </div>
 
-                        <Field>
-                          <FieldLabel htmlFor="hotel-room-type">
-                            Room type
-                          </FieldLabel>
-                          <FieldContent>
-                            <Input
-                              id="hotel-room-type"
-                              placeholder="Standard room, suite, apartment..."
-                              className="h-11 rounded-[10px] border-black/8 bg-white"
-                              {...register("room_type")}
-                            />
-                          </FieldContent>
-                        </Field>
+                        <Controller
+                          name="start_time"
+                          control={control}
+                          render={({ field, fieldState }) => (
+                            <Field data-invalid={Boolean(fieldState.error)}>
+                              <FieldLabel htmlFor="hotel-start-time">
+                                Check-in time
+                              </FieldLabel>
+                              <FieldContent>
+                                <div id="hotel-start-time">
+                                  <TravelTimeWheelPicker
+                                    value={field.value || "15:00"}
+                                    onChange={field.onChange}
+                                    inputAriaLabel="Type check-in time"
+                                  />
+                                </div>
+                              </FieldContent>
+                              {fieldState.error ? (
+                                <FieldError errors={[fieldState.error]} />
+                              ) : null}
+                            </Field>
+                          )}
+                        />
+
                       </FieldGroup>
                     </section>
                   ) : null}
@@ -1440,27 +1833,29 @@ export function ActivityDrawer({
                       Activity details
                     </p>
                     <FieldGroup className="mt-3 gap-3">
-                      <Field>
-                        <FieldLabel htmlFor="activity-day">
-                          Assigned day
-                        </FieldLabel>
-                        <FieldContent>
-                          <Combobox
-                            id="activity-day"
-                            value={selectedAssignmentValue}
-                            onValueChange={(value) =>
-                              setAssignedTripDayId(
-                                value === INBOX_DAY_VALUE ? null : value,
-                              )
-                            }
-                            options={assignmentOptions}
-                            placeholder="Select day"
-                            searchPlaceholder="Search day"
-                            emptyText="No days found"
-                            triggerClassName="border-black/8"
-                          />
-                        </FieldContent>
-                      </Field>
+                      {category !== "travel" && category !== "hotel" ? (
+                        <Field>
+                          <FieldLabel htmlFor="activity-day">
+                            Assigned day
+                          </FieldLabel>
+                          <FieldContent>
+                            <Combobox
+                              id="activity-day"
+                              value={selectedAssignmentValue}
+                              onValueChange={(value) =>
+                                setAssignedTripDayId(
+                                  value === INBOX_DAY_VALUE ? null : value,
+                                )
+                              }
+                              options={assignmentOptions}
+                              placeholder="Select day"
+                              searchPlaceholder="Search day"
+                              emptyText="No days found"
+                              triggerClassName="border-black/8"
+                            />
+                          </FieldContent>
+                        </Field>
+                      ) : null}
 
                       <Field data-invalid={Boolean(errors.title)}>
                         <FieldLabel htmlFor="activity-title">Title</FieldLabel>
@@ -1494,60 +1889,63 @@ export function ActivityDrawer({
                       </Field>
 
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <Controller
-                          name="start_time"
-                          control={control}
-                          render={({ field, fieldState }) => (
-                            <Field data-invalid={Boolean(fieldState.error)}>
-                              <FieldLabel htmlFor="activity-start-time">
-                                Start time
-                              </FieldLabel>
-                              <FieldContent>
-                                <TimePicker
-                                  id="activity-start-time"
-                                  value={field.value ?? ""}
-                                  onChange={field.onChange}
-                                  invalid={Boolean(fieldState.error)}
-                                  triggerClassName="border-black/8"
-                                />
-                              </FieldContent>
-                              {fieldState.error ? (
-                                <FieldError errors={[fieldState.error]} />
-                              ) : null}
-                            </Field>
-                          )}
-                        />
-
-                        <Field data-invalid={Boolean(errors.duration_min)}>
-                          <FieldLabel htmlFor="activity-duration">
-                            Duration (min)
-                          </FieldLabel>
-                          <FieldContent>
-                            <Controller
-                              name="duration_min"
-                              control={control}
-                              render={({ field }) => (
-                                <Input
-                                  id="activity-duration"
-                                  type="number"
-                                  min={0}
-                                  className="h-11 rounded-[10px] border-black/8 bg-white"
-                                  value={field.value ?? ""}
-                                  onChange={(event) =>
-                                    field.onChange(
-                                      event.target.value
-                                        ? Number(event.target.value)
-                                        : Number.NaN,
-                                    )
-                                  }
-                                />
-                              )}
-                            />
-                          </FieldContent>
-                          {errors.duration_min ? (
-                            <FieldError errors={[errors.duration_min]} />
-                          ) : null}
-                        </Field>
+                        {category !== "travel" && category !== "hotel" ? (
+                          <Controller
+                            name="start_time"
+                            control={control}
+                            render={({ field, fieldState }) => (
+                              <Field data-invalid={Boolean(fieldState.error)}>
+                                <FieldLabel htmlFor="activity-start-time">
+                                  Start time
+                                </FieldLabel>
+                                <FieldContent>
+                                  <TimePicker
+                                    id="activity-start-time"
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    invalid={Boolean(fieldState.error)}
+                                    triggerClassName="border-black/8"
+                                  />
+                                </FieldContent>
+                                {fieldState.error ? (
+                                  <FieldError errors={[fieldState.error]} />
+                                ) : null}
+                              </Field>
+                            )}
+                          />
+                        ) : null}
+                        {category !== "hotel" ? (
+                          <Field data-invalid={Boolean(errors.duration_min)}>
+                            <FieldLabel htmlFor="activity-duration">
+                              Duration (min)
+                            </FieldLabel>
+                            <FieldContent>
+                              <Controller
+                                name="duration_min"
+                                control={control}
+                                render={({ field }) => (
+                                  <Input
+                                    id="activity-duration"
+                                    type="number"
+                                    min={0}
+                                    className="h-11 rounded-[10px] border-black/8 bg-white"
+                                    value={field.value ?? ""}
+                                    onChange={(event) =>
+                                      field.onChange(
+                                        event.target.value
+                                          ? Number(event.target.value)
+                                          : Number.NaN,
+                                      )
+                                    }
+                                  />
+                                )}
+                              />
+                            </FieldContent>
+                            {errors.duration_min ? (
+                              <FieldError errors={[errors.duration_min]} />
+                            ) : null}
+                          </Field>
+                        ) : null}
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_9.5rem]">
@@ -1630,6 +2028,32 @@ export function ActivityDrawer({
                       </Field>
                     </FieldGroup>
                   </section>
+
+                  {isCreate ? (
+                    <PendingActivityAttachments
+                      files={pendingAttachmentFiles}
+                      onAddFiles={(nextFiles) =>
+                        setPendingAttachmentFiles((currentFiles) =>
+                          mergePendingAttachments(currentFiles, nextFiles),
+                        )
+                      }
+                      onRemoveFile={(fileKey) =>
+                        setPendingAttachmentFiles((currentFiles) =>
+                          currentFiles.filter(
+                            (file) => pendingAttachmentKey(file) !== fileKey,
+                          ),
+                        )
+                      }
+                    />
+                  ) : activity ? (
+                    <TripAssetManager
+                      tripId={tripId}
+                      activityId={activity.id}
+                      title="Attachments"
+                      description="Add receipts, reservation PDFs, screenshots, and extra photos that belong to this activity."
+                      className="shadow-[0_16px_40px_-34px_rgba(26,22,21,0.4)]"
+                    />
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1637,7 +2061,7 @@ export function ActivityDrawer({
 
           <SheetFooter className="border-t border-black/8 bg-white px-4 py-3">
             <div className="flex w-full items-center justify-end gap-2">
-              {step === 0 ? (
+              {step === minimumStep ? (
                 <Button
                   type="button"
                   variant="outline"
@@ -1680,7 +2104,7 @@ export function ActivityDrawer({
                     {isSaving || createPlaceMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : null}
-                    {activity ? "Save changes" : "Create activity"}
+                    {submitLabel}
                   </Button>
                 )
               ) : null}
