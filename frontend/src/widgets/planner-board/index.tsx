@@ -19,6 +19,7 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useSearchParams } from "react-router-dom";
 
 import { toast } from "sonner";
 import { config } from "@/app/config";
@@ -30,6 +31,7 @@ import {
 } from "@/entities/job/queries";
 import { getPlanner } from "@/entities/planner/api";
 import { plannerKeys, usePlanner } from "@/entities/planner/queries";
+import { readTripCoverPhotoPreference } from "@/entities/trip/cover-photo";
 import { tripAssetKeys } from "@/entities/trip-asset/queries";
 import { isConflict, isRateLimit } from "@/shared/api/client";
 import { isJobSuccessful, isJobTerminal } from "@/shared/lib/jobs";
@@ -53,6 +55,10 @@ import {
   type PlannerActivityBucket,
 } from "./activity-buckets";
 import { GenerationControls } from "./GenerationControls";
+import {
+  mirrorPlannerJobToAssistant,
+  PlannerAssistantPanel,
+} from "@/widgets/planner-assistant";
 import { ActivityMapDetailSheet, PlannerMapView } from "./PlannerMapView";
 import type { PlannerRecommendationEntry } from "./usePlannerRecommendations";
 import { usePlannerRecommendations } from "./usePlannerRecommendations";
@@ -77,6 +83,11 @@ type EditorState = {
   defaultTripDayId: string | null;
   defaultCategory: PlannerActivity["category"] | null;
 } | null;
+type PlannerMapSeed = {
+  activityId: string | null;
+  placeId: string | null;
+  center: { lat: number; lng: number } | null;
+};
 
 const INBOX_CONTAINER_ID = "inbox";
 const INBOX_DAY_VALUE = "__inbox__";
@@ -476,8 +487,39 @@ function findDayLabel(
   return `Day ${day.day_index + 1} · ${format(new Date(day.date), "EEE, MMM d")}`;
 }
 
+function parsePlannerMapSeed(
+  searchParams: URLSearchParams,
+  tripId: string,
+): PlannerMapSeed {
+  const coverPreference = readTripCoverPhotoPreference(tripId);
+  const activityId = searchParams.get("activityId")?.trim() || null;
+  const placeId = searchParams.get("placeId")?.trim() || null;
+  const lat = Number(searchParams.get("lat"));
+  const lng = Number(searchParams.get("lng"));
+  const center =
+    Number.isFinite(lat) && Number.isFinite(lng)
+      ? { lat, lng }
+      : typeof coverPreference?.placeLat === "number" &&
+          Number.isFinite(coverPreference.placeLat) &&
+          typeof coverPreference?.placeLng === "number" &&
+          Number.isFinite(coverPreference.placeLng)
+        ? { lat: coverPreference.placeLat, lng: coverPreference.placeLng }
+        : null;
+
+  return {
+    activityId,
+    placeId,
+    center,
+  };
+}
+
 export default function PlannerBoard({ tripId }: Props) {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const plannerMapSeed = useMemo(
+    () => parsePlannerMapSeed(searchParams, tripId),
+    [searchParams, tripId],
+  );
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [detailsActivityId, setDetailsActivityId] = useState<string | null>(
     null,
@@ -547,6 +589,7 @@ export default function PlannerBoard({ tripId }: Props) {
       }
     }
     setPlannerInstruments({
+      onOpenAssistant: () => setAssistantPanelOpen(tripId, true),
       onOpenSettings: () => setSettingsMenuOpen(true),
       onShare: () => setCollaborationMenuOpen(true),
       onGenerate: () => setGenerateDialogOpen(true),
@@ -555,7 +598,7 @@ export default function PlannerBoard({ tripId }: Props) {
       onScrollToSection,
     })
     return () => { setPlannerInstruments(null) }
-  }, [setPlannerInstruments, plannerDays]);
+  }, [plannerDays, setAssistantPanelOpen, setPlannerInstruments, tripId]);
 
   const {
     pendingJobIds,
@@ -564,13 +607,20 @@ export default function PlannerBoard({ tripId }: Props) {
     generationReports,
     setGenerationReport,
     clearGenerationReport,
+    assistantPanelOpenByTrip,
+    setAssistantPanelOpen,
   } = usePlannerStore();
 
   const pendingJobId = pendingJobIds[tripId] ?? null;
   const latestReport = generationReports[tripId];
+  const assistantPanelOpen = assistantPanelOpenByTrip[tripId] ?? false;
   const currentJob = useJob(pendingJobId);
-  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
+    plannerMapSeed.activityId,
+  );
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
+    plannerMapSeed.placeId,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -864,7 +914,7 @@ export default function PlannerBoard({ tripId }: Props) {
     idempotencyKey: string,
   ) => {
     if (!planner) {
-      return;
+      return null;
     }
 
     const payload: TripGenerateInput = {
@@ -884,6 +934,7 @@ export default function PlannerBoard({ tripId }: Props) {
     });
     prevJobStatus.current = null;
     setPendingJobId(tripId, accepted.job_id);
+    return accepted.job_id;
   };
 
   const handleGenerate = async (
@@ -894,8 +945,24 @@ export default function PlannerBoard({ tripId }: Props) {
     },
     idempotencyKey: string,
   ) => {
+    const scopeDays = data.day_ids?.length ? data.day_ids.length : (planner?.days.length ?? 0);
+    const requestText = `Generate · ${data.mode} · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
     try {
-      await submitGeneration("generate", data, idempotencyKey);
+      const jobId = await submitGeneration("generate", data, idempotencyKey);
+      if (!jobId) {
+        return;
+      }
+      try {
+        await mirrorPlannerJobToAssistant(qc, {
+          tripId,
+          jobId,
+          requestText,
+          action: "generate",
+        });
+        setAssistantPanelOpen(tripId, true);
+      } catch {
+        toast.error("Planner generation queued, but assistant progress could not be opened");
+      }
       toast.success("Planner generation queued");
     } catch (error) {
       if (isConflict(error)) {
@@ -914,8 +981,24 @@ export default function PlannerBoard({ tripId }: Props) {
     },
     idempotencyKey: string,
   ) => {
+    const scopeDays = data.day_ids?.length ? data.day_ids.length : (planner?.days.length ?? 0);
+    const requestText = `Regenerate · ${data.mode} · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
     try {
-      await submitGeneration("regenerate", data, idempotencyKey);
+      const jobId = await submitGeneration("regenerate", data, idempotencyKey);
+      if (!jobId) {
+        return;
+      }
+      try {
+        await mirrorPlannerJobToAssistant(qc, {
+          tripId,
+          jobId,
+          requestText,
+          action: "regenerate",
+        });
+        setAssistantPanelOpen(tripId, true);
+      } catch {
+        toast.error("Planner regeneration queued, but assistant progress could not be opened");
+      }
       toast.success("Planner regeneration queued");
     } catch (error) {
       if (isConflict(error)) {
@@ -933,6 +1016,8 @@ export default function PlannerBoard({ tripId }: Props) {
     if (!planner) {
       return;
     }
+    const scopeDays = dayIds?.length ? dayIds.length : planner.days.length;
+    const requestText = `Reset · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
     try {
       clearGenerationReport(tripId);
       const accepted = await resetMutation.mutateAsync({
@@ -947,6 +1032,17 @@ export default function PlannerBoard({ tripId }: Props) {
       });
       prevJobStatus.current = null;
       setPendingJobId(tripId, accepted.job_id);
+      try {
+        await mirrorPlannerJobToAssistant(qc, {
+          tripId,
+          jobId: accepted.job_id,
+          requestText,
+          action: "reset",
+        });
+        setAssistantPanelOpen(tripId, true);
+      } catch {
+        toast.error("Reset queued, but assistant progress could not be opened");
+      }
       toast.success("Generated activities reset queued");
     } catch (error) {
       if (isConflict(error)) {
@@ -1177,6 +1273,7 @@ export default function PlannerBoard({ tripId }: Props) {
               travelMode={planner.trip.route_travel_mode}
               days={planner.days}
               inboxActivities={planner.inbox_activities}
+              initialMapCenter={plannerMapSeed.center}
               isDragActive={Boolean(activeActivity)}
               selectedActivityId={selectedActivityId}
               selectedPlaceId={selectedPlaceId}
@@ -1261,6 +1358,18 @@ export default function PlannerBoard({ tripId }: Props) {
         jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
         controlledOpen={generateDialogOpen}
         onControlledOpenChange={setGenerateDialogOpen}
+      />
+
+      <PlannerAssistantPanel
+        tripId={tripId}
+        destination={planner.trip.destination_text ?? ""}
+        isOpen={assistantPanelOpen}
+        onOpenChange={(open) => {
+          setAssistantPanelOpen(tripId, open);
+          if (!open) {
+            clearGenerationReport(tripId);
+          }
+        }}
       />
     </div>
   );

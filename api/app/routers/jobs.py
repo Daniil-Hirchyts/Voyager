@@ -1,6 +1,10 @@
+import asyncio
+import json
 import uuid
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +14,7 @@ from app.db.repositories import JobRepository, job_to_response
 from app.db.session import get_db_session, get_redis
 from app.models.jobs import JobListResponse, JobResponse
 from app.security.dependencies import AuthContext, get_auth_context
+from app.services.job_progress import PROGRESS_KEY_PREFIX
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -27,6 +32,58 @@ async def list_jobs(
         limit=limit,
         offset=offset,
         items=[job_to_response(item) for item in jobs],
+    )
+
+
+@router.get("/{job_id}/stream")
+async def stream_job_progress(
+    job_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> StreamingResponse:
+    """SSE endpoint that streams job progress events from Redis."""
+    # Verify ownership — raises 404 if job not found or not owned
+    await JobRepository.get_job(db, auth.user_id, job_id)
+
+    key = f"{PROGRESS_KEY_PREFIX}{job_id}"
+
+    async def generate() -> AsyncIterator[str]:
+        cursor = 0
+        idle_ticks = 0
+        max_idle_ticks = 1200  # 10 min at 0.5 s/tick
+
+        while idle_ticks < max_idle_ticks:
+            events: list[str] = await redis.lrange(key, cursor, -1)
+
+            if not events:
+                idle_ticks += 1
+                # heartbeat every 15 s to keep connection alive
+                if idle_ticks % 30 == 0:
+                    yield ": heartbeat\n\n"
+                await asyncio.sleep(0.5)
+                continue
+
+            idle_ticks = 0
+            for event_json in events:
+                cursor += 1
+                yield f"data: {event_json}\n\n"
+                try:
+                    event = json.loads(event_json)
+                    if event.get("type") == "done":
+                        return
+                except json.JSONDecodeError:
+                    pass
+
+            await asyncio.sleep(0.2)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

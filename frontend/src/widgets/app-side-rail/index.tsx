@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Settings2,
+  Bot,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { AnimatedBackground, type AnimatedBackgroundProps } from '@/components/ui/animated-background'
@@ -260,6 +261,16 @@ function AppSideRail() {
         <>
           <Divider />
           <RailAnimatedColumn>
+            <RailActionButton
+              data-id="planner-assistant"
+              tooltip="Open assistant"
+              type="button"
+              aria-label="Open planner assistant"
+              onClick={plannerInstruments.onOpenAssistant}
+              className={BTN_RAIL}
+            >
+              <Bot className="size-[1rem]" />
+            </RailActionButton>
             <RailActionButton
               data-id="generate-itinerary"
               tooltip="Generate itinerary"

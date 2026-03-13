@@ -450,6 +450,63 @@ class Job(Base, UUIDPrimaryKeyMixin):
     __table_args__ = (Index("ix_job_status_available_at", "status", "available_at"),)
 
 
+class AssistantThread(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "assistant_thread"
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    trip: Mapped["Trip"] = relationship("Trip")
+    user: Mapped["UserProfile"] = relationship("UserProfile")
+    messages: Mapped[list["AssistantMessage"]] = relationship(
+        "AssistantMessage",
+        back_populates="thread",
+        cascade="all,delete",
+        order_by="AssistantMessage.created_at.asc()",
+    )
+
+    __table_args__ = (
+        UniqueConstraint("trip_id", "user_id", name="uq_assistant_thread_trip_user"),
+        Index("ix_assistant_thread_trip_created", "trip_id", "created_at"),
+    )
+
+
+class AssistantMessage(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "assistant_message"
+
+    thread_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assistant_thread.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="complete")
+    parts_json: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    source_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("job.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    thread: Mapped["AssistantThread"] = relationship("AssistantThread", back_populates="messages")
+    source_job: Mapped["Job | None"] = relationship("Job")
+
+    __table_args__ = (
+        Index("ix_assistant_message_thread_created", "thread_id", "created_at"),
+        UniqueConstraint("source_job_id", name="uq_assistant_message_source_job_id"),
+    )
+
+
 class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "event_snapshot"
 

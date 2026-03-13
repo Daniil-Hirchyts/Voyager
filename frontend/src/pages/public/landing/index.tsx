@@ -166,12 +166,6 @@ export default function LandingPage() {
             Voyager
           </Link>
           <div className="flex items-center gap-8">
-            <Link to="/product" className="hidden md:block text-sm font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
-              Product
-            </Link>
-            <Link to="/how-it-works" className="hidden md:block text-sm font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
-              How It Works
-            </Link>
             {auth.isAuthenticated ? (
               <Link to="/app/trips" className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1615] text-white text-sm font-medium rounded-full hover:scale-95 transition-transform duration-300 shadow-[0_8px_16px_rgba(26,22,21,0.2)]">
                 Open Planner <ArrowRight className="w-4 h-4" />
@@ -317,14 +311,6 @@ export default function LandingPage() {
              <span className="text-3xl font-semibold tracking-tight text-[#1A1615]">Voyager</span>
           </div>
           
-          <div className="flex items-center gap-12">
-            <Link to="/product" className="text-lg font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
-              Product
-            </Link>
-            <Link to="/how-it-works" className="text-lg font-medium text-[#453F3D] hover:text-[#1A1615] transition-colors">
-              How It Works
-            </Link>
-          </div>
           <p className="text-base text-[#453F3D] font-medium">
             © 2026 Voyager. Built for the deliberate traveler.
           </p>

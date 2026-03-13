@@ -5,10 +5,7 @@ import { PUBLIC_CLOUD_PRIMARY_SRC, PUBLIC_CLOUD_SECONDARY_SRC } from '@/shared/l
 import { cn } from '@/shared/lib/cn'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
 
-type PublicRoute = 'landing' | 'product' | 'how-it-works'
-
 type PublicSiteShellProps = {
-  current: PublicRoute
   children: React.ReactNode
   className?: string
   footerNote?: string
@@ -25,15 +22,7 @@ const cloudAssets = [
   },
 ]
 
-function navItemClass(active: boolean) {
-  return cn(
-    'rounded-full px-3 py-2 text-sm font-medium transition-colors',
-    active ? 'bg-white/60 text-[var(--color-text)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-  )
-}
-
 export function PublicSiteShell({
-  current,
   children,
   className,
   footerNote = 'Built for the deliberate traveler.',
@@ -70,15 +59,6 @@ export function PublicSiteShell({
             <span className="text-lg">Voyager</span>
           </Link>
 
-          <div className="hidden items-center gap-2 md:flex">
-            <Link to="/product" className={navItemClass(current === 'product')}>
-              Product
-            </Link>
-            <Link to="/how-it-works" className={navItemClass(current === 'how-it-works')}>
-              How It Works
-            </Link>
-          </div>
-
           <Link to={ctaHref} className="inline-flex">
             <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cta)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_18px_32px_-22px_rgba(26,22,21,0.8)] transition-transform duration-200 hover:scale-[0.98]">
               {ctaLabel}
@@ -95,14 +75,6 @@ export function PublicSiteShell({
           <div className="flex items-center gap-3 text-[var(--color-text)]">
             <VoyagerLogo className="size-5" />
             <span className="font-medium tracking-tight">Voyager</span>
-          </div>
-          <div className="flex items-center gap-6">
-            <Link to="/product" className="transition-colors hover:text-[var(--color-text)]">
-              Product
-            </Link>
-            <Link to="/how-it-works" className="transition-colors hover:text-[var(--color-text)]">
-              How It Works
-            </Link>
           </div>
           <p>{footerNote}</p>
         </div>

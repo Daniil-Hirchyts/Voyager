@@ -468,13 +468,12 @@ def test_create_trip_with_editorial_route_seeds_generated_activities(api_client,
 
     assert len(body["days"]) == 7
     assert body["inbox_activities"] == []
-    assert [activity["title"] for activity in body["days"][0]["activities"]] == [
-        "Nishiki Market breakfast crawl",
-        "Higashiyama lanes and temple approach",
-        "Gion kaiseki dinner",
-    ]
+    assert all(len(day["activities"]) == 3 for day in body["days"])
+    assert all(activity["source"] == "generated" for day in body["days"] for activity in day["activities"])
+    assert all(activity["place_id"] is not None for day in body["days"] for activity in day["activities"])
+    assert all(activity["place"] is not None for day in body["days"] for activity in day["activities"])
     assert all(
-        activity["source"] == "generated"
+        activity["place"]["address_text"]
         for day in body["days"]
         for activity in day["activities"]
     )

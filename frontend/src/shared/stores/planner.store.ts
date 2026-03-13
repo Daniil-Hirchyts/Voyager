@@ -11,6 +11,9 @@ interface PlannerStore {
   setGenerationReport: (tripId: string, report: PlannerGenerationReport) => void
   clearGenerationReport: (tripId: string) => void
 
+  assistantPanelOpenByTrip: Record<string, boolean>
+  setAssistantPanelOpen: (tripId: string, isOpen: boolean) => void
+
   expandedActivityId: string | null
   setExpandedActivityId: (id: string | null) => void
 
@@ -26,6 +29,7 @@ interface PlannerStore {
 const plannerStoreInitialState = {
   pendingJobIds: {},
   generationReports: {},
+  assistantPanelOpenByTrip: {},
   expandedActivityId: null,
   activityDrafts: {},
   mapDayAccordionStateByTrip: {},
@@ -33,6 +37,7 @@ const plannerStoreInitialState = {
   PlannerStore,
   | 'pendingJobIds'
   | 'generationReports'
+  | 'assistantPanelOpenByTrip'
   | 'expandedActivityId'
   | 'activityDrafts'
   | 'mapDayAccordionStateByTrip'
@@ -117,6 +122,11 @@ export const usePlannerStore = create<PlannerStore>()(
           delete next[tripId]
           return { generationReports: next }
         }),
+
+      setAssistantPanelOpen: (tripId, isOpen) =>
+        set((s) => ({
+          assistantPanelOpenByTrip: { ...s.assistantPanelOpenByTrip, [tripId]: isOpen },
+        })),
 
       setExpandedActivityId: (id) => set({ expandedActivityId: id }),
 

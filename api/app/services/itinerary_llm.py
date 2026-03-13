@@ -16,6 +16,7 @@ from app.errors import TooManyRequestsError
 from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
 from app.services.google_maps import GoogleMapsError, lookup_google_place, search_google_places
+from app.services.job_progress import ProgressTracker
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,11 @@ def _strip_code_fence(text: str) -> str:
 def _extract_message_text(content: Any) -> str:
     if isinstance(content, str):
         return content
+    if isinstance(content, dict):
+        if content.get("type") in {"text", "output_text"} and isinstance(content.get("text"), str):
+            return content["text"]
+        if isinstance(content.get("content"), str):
+            return content["content"]
     if isinstance(content, list):
         parts: list[str] = []
         for entry in content:
@@ -443,12 +449,41 @@ def _tool_result_content(payload: dict[str, Any]) -> str:
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=True)
 
 
-async def _execute_tool_call(name: str, arguments: Any) -> dict[str, Any]:
+async def _execute_tool_call(
+    name: str,
+    arguments: Any,
+    *,
+    progress: ProgressTracker | None = None,
+    call_id: str | None = None,
+) -> dict[str, Any]:
     payload = _decode_tool_arguments(arguments)
+    progress_call_id = call_id
+    if progress is not None:
+        progress_call_id = await progress.tool_call(
+            name,
+            payload,
+            call_id=call_id,
+            phase="orchestration",
+        )
+
+    async def _emit_and_return(result: dict[str, Any], *, is_error: bool = False) -> dict[str, Any]:
+        if progress is not None:
+            await progress.tool_result(
+                name,
+                result,
+                is_error=is_error,
+                call_id=progress_call_id,
+                phase="orchestration",
+            )
+        return result
+
     if name == "google_places_search":
         query = str(payload.get("query", "")).strip()
         if not query:
-            return {"error": {"code": "INVALID_ARGUMENT", "message": "query is required"}}
+            return await _emit_and_return(
+                {"error": {"code": "INVALID_ARGUMENT", "message": "query is required"}},
+                is_error=True,
+            )
         raw_limit = payload.get("limit")
         try:
             limit = int(raw_limit) if raw_limit is not None else 3
@@ -458,32 +493,48 @@ async def _execute_tool_call(name: str, arguments: Any) -> dict[str, Any]:
         try:
             items = await search_google_places(query, limit)
         except GoogleMapsError as exc:
-            return {
-                "error": {
-                    "code": "GOOGLE_MAPS_ERROR",
-                    "message": "Google place search failed",
-                    "details": {"error": str(exc)},
-                }
-            }
-        return {"items": [_serialize_google_search_item(item) for item in items]}
+            return await _emit_and_return(
+                {
+                    "error": {
+                        "code": "GOOGLE_MAPS_ERROR",
+                        "message": "Google place search failed",
+                        "details": {"error": str(exc)},
+                    }
+                },
+                is_error=True,
+            )
+        return await _emit_and_return(
+            {"items": [_serialize_google_search_item(item) for item in items]}
+        )
 
     if name == "google_place_details":
         place_id = str(payload.get("place_id", "")).strip()
         if not place_id:
-            return {"error": {"code": "INVALID_ARGUMENT", "message": "place_id is required"}}
+            return await _emit_and_return(
+                {"error": {"code": "INVALID_ARGUMENT", "message": "place_id is required"}},
+                is_error=True,
+            )
         try:
             details = await lookup_google_place(place_id)
         except GoogleMapsError as exc:
-            return {
-                "error": {
-                    "code": "GOOGLE_MAPS_ERROR",
-                    "message": "Google place details lookup failed",
-                    "details": {"error": str(exc)},
-                }
-            }
-        return {"item": _serialize_google_details(details) if details is not None else None}
+            return await _emit_and_return(
+                {
+                    "error": {
+                        "code": "GOOGLE_MAPS_ERROR",
+                        "message": "Google place details lookup failed",
+                        "details": {"error": str(exc)},
+                    }
+                },
+                is_error=True,
+            )
+        return await _emit_and_return(
+            {"item": _serialize_google_details(details) if details is not None else None}
+        )
 
-    return {"error": {"code": "UNKNOWN_TOOL", "message": f"Unsupported tool {name}"}}
+    return await _emit_and_return(
+        {"error": {"code": "UNKNOWN_TOOL", "message": f"Unsupported tool {name}"}},
+        is_error=True,
+    )
 
 
 def _get_redis_client():
@@ -500,6 +551,7 @@ async def _call_openrouter(
     trip: Trip,
     days: list[TripDay],
     seed: int | None,
+    progress: ProgressTracker | None = None,
 ) -> dict[uuid.UUID, list[dict[str, Any]]]:
     settings = get_settings()
     endpoint = f"{settings.llm_openrouter_base_url.rstrip('/')}/chat/completions"
@@ -514,7 +566,13 @@ async def _call_openrouter(
     async with httpx.AsyncClient(timeout=settings.llm_openrouter_timeout_sec) as client:
         max_tool_turns = max(MIN_TOOL_TURNS, len(days) * MAX_TOOL_TURNS_PER_DAY)
         final_output_repairs = 0
-        for _ in range(max_tool_turns):
+        for turn_index in range(max_tool_turns):
+            if progress is not None:
+                await progress.step(
+                    "Model turn",
+                    f"Turn {turn_index + 1}",
+                    phase="orchestration",
+                )
             body = {
                 "model": model,
                 "temperature": 0.2,
@@ -544,6 +602,12 @@ async def _call_openrouter(
 
             tool_calls = message.get("tool_calls")
             if isinstance(tool_calls, list) and tool_calls:
+                if progress is not None:
+                    await progress.step(
+                        "Model emitted tool calls",
+                        f"{len(tool_calls)} call(s)",
+                        phase="orchestration",
+                    )
                 messages.append(_tool_message_payload(message))
                 for tool_call in tool_calls:
                     if not isinstance(tool_call, dict):
@@ -553,7 +617,12 @@ async def _call_openrouter(
                     if not tool_call_id or not isinstance(function, dict):
                         continue
                     tool_name = str(function.get("name") or "").strip()
-                    tool_result = await _execute_tool_call(tool_name, function.get("arguments"))
+                    tool_result = await _execute_tool_call(
+                        tool_name,
+                        function.get("arguments"),
+                        progress=progress,
+                        call_id=tool_call_id,
+                    )
                     messages.append(
                         {
                             "role": "tool",
@@ -571,6 +640,12 @@ async def _call_openrouter(
                 if final_output_repairs >= MAX_FINAL_OUTPUT_REPAIRS:
                     raise
                 final_output_repairs += 1
+                if progress is not None:
+                    await progress.step(
+                        "Repairing final output",
+                        str(exc),
+                        phase="orchestration",
+                    )
                 messages.append({"role": "assistant", "content": content})
                 messages.append(
                     {
@@ -595,6 +670,7 @@ async def generate_with_openrouter(
     days: list[TripDay],
     seed: int | None,
     constraints: dict[str, Any],
+    progress: ProgressTracker | None = None,
 ) -> OpenRouterGenerationResult:
     settings = get_settings()
     if not settings.itinerary_llm_enabled:
@@ -674,7 +750,13 @@ async def generate_with_openrouter(
                     trip=trip, days=days, model=model, seed=seed
                 )
             else:
-                candidates = await _call_openrouter(model=model, trip=trip, days=days, seed=seed)
+                candidates = await _call_openrouter(
+                    model=model,
+                    trip=trip,
+                    days=days,
+                    seed=seed,
+                    progress=progress,
+                )
         except httpx.TimeoutException:
             errors.append(
                 _sanitize_error(

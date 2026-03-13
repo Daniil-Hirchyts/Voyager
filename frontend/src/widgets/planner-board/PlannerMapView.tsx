@@ -140,6 +140,7 @@ import {
   GoogleDirectionsRoute,
   GoogleMapCanvas,
   GooglePolyline,
+  type LatLngPoint,
   MapFitBounds,
   MapPanTo,
   TripMapLayerRenderer,
@@ -198,6 +199,7 @@ interface Props {
   travelMode?: RouteTravelMode
   days: PlannerDay[]
   inboxActivities: PlannerActivity[]
+  initialMapCenter?: LatLngPoint | null
   isDragActive?: boolean
   selectedActivityId: string | null
   selectedPlaceId: string | null
@@ -2733,6 +2735,7 @@ export function PlannerMapView({
   travelMode = 'WALK',
   days,
   inboxActivities,
+  initialMapCenter = null,
   isDragActive = false,
   selectedActivityId,
   selectedPlaceId,
@@ -2805,7 +2808,10 @@ export function PlannerMapView({
   )
   const { data: tripAssetsData } = useTripAssets(tripId, null)
   const tripAssets = tripAssetsData?.items ?? []
-  const { coverPhotoUrl: heroPhotoUrl } = useTripCoverPhotoManager(tripId, trip)
+  const {
+    coverPhotoUrl: heroPhotoUrl,
+    coverPlace: destinationCoverPlace,
+  } = useTripCoverPhotoManager(tripId, trip)
   const stopByActivityId = useMemo(
     () =>
       new Map(
@@ -2853,10 +2859,15 @@ export function PlannerMapView({
   const deferredSearchText = useDeferredValue(searchText)
   const [viewport, setViewport] = useState(() => {
     const firstStop = sections.flatMap((section) => section.stops).find((stop) => stop.lat != null && stop.lon != null)
+    const defaultCenter = initialMapCenter ?? (
+      firstStop?.lat != null && firstStop.lon != null
+        ? { lat: firstStop.lat, lng: firstStop.lon }
+        : null
+    )
     return {
-      latitude: firstStop?.lat ?? 48.8566,
-      longitude: firstStop?.lon ?? 2.3522,
-      zoom: 12,
+      latitude: defaultCenter?.lat ?? 48.8566,
+      longitude: defaultCenter?.lng ?? 2.3522,
+      zoom: initialMapCenter ? 13 : 12,
     }
   })
 
@@ -2887,23 +2898,6 @@ export function PlannerMapView({
     () => accordionStateToExpandedDayIds(dayAccordionState, sectionDayIds),
     [dayAccordionState, sectionDayIds],
   )
-  const localSearchQuery = usePlaceSearch(
-    { q: deferredSearchText.trim(), limit: 6, offset: 0 },
-    deferredSearchText.trim().length >= 2,
-  )
-  const googleSearchQuery = useGooglePlaceSearch(
-    {
-      q: deferredSearchText.trim() || activeQuickCategory?.query,
-      limit: 6,
-      offset: 0,
-      lat: viewport.latitude,
-      lon: viewport.longitude,
-      radius_m: 6000,
-      category: activeQuickCategory?.category,
-    },
-    Boolean((deferredSearchText.trim().length >= 2 || activeQuickCategory) && config.map.apiKey),
-  )
-
   const selectedStop = selectedActivityId ? stopByActivityId.get(selectedActivityId) ?? null : null
   const selectedDetailPlaceId =
     selectedStop?.activity.place_id ??
@@ -2917,6 +2911,97 @@ export function PlannerMapView({
       ? selectedSearchItem.id
       : resolveGooglePlaceId(savedPlaceQuery.data)
   const googlePlaceDetailQuery = useGooglePlaceDetail(selectedGooglePlaceId)
+  const searchOrigin = useMemo(() => {
+    if (selectedStop?.lat != null && selectedStop.lon != null) {
+      return {
+        lat: selectedStop.lat,
+        lon: selectedStop.lon,
+      }
+    }
+    if (selectedRecommendation?.item.lat != null && selectedRecommendation.item.lon != null) {
+      return {
+        lat: selectedRecommendation.item.lat,
+        lon: selectedRecommendation.item.lon,
+      }
+    }
+    if (selectedSearchItem?.lat != null && selectedSearchItem.lon != null) {
+      return {
+        lat: selectedSearchItem.lat,
+        lon: selectedSearchItem.lon,
+      }
+    }
+    if (savedPlaceQuery.data?.lat != null && savedPlaceQuery.data.lon != null) {
+      return {
+        lat: savedPlaceQuery.data.lat,
+        lon: savedPlaceQuery.data.lon,
+      }
+    }
+    if (placeDetailQuery.data?.place.lat != null && placeDetailQuery.data.place.lon != null) {
+      return {
+        lat: placeDetailQuery.data.place.lat,
+        lon: placeDetailQuery.data.place.lon,
+      }
+    }
+    if (
+      googlePlaceDetailQuery.data?.place.lat != null &&
+      googlePlaceDetailQuery.data.place.lon != null
+    ) {
+      return {
+        lat: googlePlaceDetailQuery.data.place.lat,
+        lon: googlePlaceDetailQuery.data.place.lon,
+      }
+    }
+    if (destinationCoverPlace?.lat != null && destinationCoverPlace.lon != null) {
+      return {
+        lat: destinationCoverPlace.lat,
+        lon: destinationCoverPlace.lon,
+      }
+    }
+    if (initialMapCenter) {
+      return {
+        lat: initialMapCenter.lat,
+        lon: initialMapCenter.lng,
+      }
+    }
+    return {
+      lat: viewport.latitude,
+      lon: viewport.longitude,
+    }
+  }, [
+    googlePlaceDetailQuery.data?.place.lat,
+    googlePlaceDetailQuery.data?.place.lon,
+    destinationCoverPlace?.lat,
+    destinationCoverPlace?.lon,
+    initialMapCenter,
+    placeDetailQuery.data?.place.lat,
+    placeDetailQuery.data?.place.lon,
+    savedPlaceQuery.data?.lat,
+    savedPlaceQuery.data?.lon,
+    selectedRecommendation?.item.lat,
+    selectedRecommendation?.item.lon,
+    selectedSearchItem?.lat,
+    selectedSearchItem?.lon,
+    selectedStop?.lat,
+    selectedStop?.lon,
+    viewport.latitude,
+    viewport.longitude,
+  ])
+  const localSearchQuery = usePlaceSearch(
+    { q: deferredSearchText.trim(), limit: 6, offset: 0 },
+    deferredSearchText.trim().length >= 2,
+  )
+  const googleSearchQuery = useGooglePlaceSearch(
+    {
+      q: deferredSearchText.trim() || activeQuickCategory?.query,
+      limit: 6,
+      offset: 0,
+      lat: searchOrigin.lat,
+      lon: searchOrigin.lon,
+      radius_m: 6000,
+      category: activeQuickCategory?.category,
+    },
+    Boolean((deferredSearchText.trim().length >= 2 || activeQuickCategory) && config.map.apiKey),
+  )
   const resolvedDetail = useMemo(
     () => mergePlaceDetail(placeDetailQuery.data, googlePlaceDetailQuery.data),
     [googlePlaceDetailQuery.data, placeDetailQuery.data],
@@ -2965,10 +3050,10 @@ export function PlannerMapView({
   const allSearchResults = useMemo(() => {
     const localItems = (localSearchQuery.data?.items ?? []).map(toSavedSearchItem)
     const googleItems = (googleSearchQuery.data?.items ?? []).map(toGoogleSearchItem)
-    const seen = new Set(localItems.map((item) => `${item.name.toLowerCase()}:${item.addressText ?? ''}`))
+    const seen = new Set(googleItems.map((item) => `${item.name.toLowerCase()}:${item.addressText ?? ''}`))
     return [
-      ...localItems,
-      ...googleItems.filter((item) => !seen.has(`${item.name.toLowerCase()}:${item.addressText ?? ''}`)),
+      ...googleItems,
+      ...localItems.filter((item) => !seen.has(`${item.name.toLowerCase()}:${item.addressText ?? ''}`)),
     ]
   }, [googleSearchQuery.data?.items, localSearchQuery.data?.items])
 
@@ -3126,6 +3211,24 @@ export function PlannerMapView({
         zoom: 13,
       }
     }
+    if (savedPlaceQuery.data?.lat != null && savedPlaceQuery.data.lon != null) {
+      return {
+        point: withOffset(savedPlaceQuery.data.lat, savedPlaceQuery.data.lon),
+        zoom: 13,
+      }
+    }
+    if (destinationCoverPlace?.lat != null && destinationCoverPlace.lon != null) {
+      return {
+        point: withOffset(destinationCoverPlace.lat, destinationCoverPlace.lon),
+        zoom: 13,
+      }
+    }
+    if (initialMapCenter) {
+      return {
+        point: withOffset(initialMapCenter.lat, initialMapCenter.lng),
+        zoom: 13,
+      }
+    }
     if (placeDetailQuery.data?.place.lat != null && placeDetailQuery.data.place.lon != null) {
       return {
         point: withOffset(placeDetailQuery.data.place.lat, placeDetailQuery.data.place.lon),
@@ -3144,8 +3247,13 @@ export function PlannerMapView({
     return null
   }, [
     PANEL_LAT_OFFSET,
+    destinationCoverPlace?.lat,
+    destinationCoverPlace?.lon,
+    initialMapCenter,
     googlePlaceDetailQuery.data?.place.lat,
     googlePlaceDetailQuery.data?.place.lon,
+    savedPlaceQuery.data?.lat,
+    savedPlaceQuery.data?.lon,
     placeDetailQuery.data?.place.lat,
     placeDetailQuery.data?.place.lon,
     selectedRecommendation?.item.lat,

@@ -174,6 +174,8 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     const nextPreference = {
       placeId: inferredDestination.id,
       placeLabel: coverPreference?.placeLabel ?? inferredDestination.label,
+      placeLat: inferredDestination.lat ?? null,
+      placeLng: inferredDestination.lon ?? null,
     }
 
     mergeTripCoverPhotoPreference(tripId, nextPreference)
@@ -208,6 +210,8 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
         const nextPreference = {
           placeId: place.id,
           placeLabel: inferredDestination.label,
+          placeLat: place.lat ?? inferredDestination.lat ?? null,
+          placeLng: place.lon ?? inferredDestination.lon ?? null,
           photoId: null,
         }
 
@@ -354,6 +358,24 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   }, [coverPhotosQuery, coverPlaceQuery, coverRefreshJob, coverRefreshJobId, isCoverRefreshSuccessful])
 
   useEffect(() => {
+    if (
+      !tripId ||
+      !coverPlace ||
+      (coverPreference?.placeLat != null && coverPreference?.placeLng != null)
+    ) {
+      return
+    }
+
+    const nextPreference = {
+      placeLat: coverPlace.lat ?? null,
+      placeLng: coverPlace.lon ?? null,
+    }
+
+    mergeTripCoverPhotoPreference(tripId, nextPreference)
+    setCoverPreference((current) => ({ ...(current ?? {}), ...nextPreference }))
+  }, [coverPlace, coverPreference?.placeLat, coverPreference?.placeLng, tripId])
+
+  useEffect(() => {
     if (!tripId || !selectedCoverPhoto) {
       return
     }
@@ -458,6 +480,7 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   return {
     coverPreference,
     resolvedPlaceId,
+    coverPlace,
     coverPhotoCandidates,
     selectedCoverPhoto,
     photoAttributionLabel,

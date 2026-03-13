@@ -3,8 +3,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { tripKeys, useTrips } from '@/entities/trip/queries'
 import { createTrip } from '@/entities/trip/api'
-import { createPlannerActivity } from '@/entities/activity/api'
-import { getPlanner } from '@/entities/planner/api'
 import { createPlace } from '@/entities/place/api'
 import { mergeTripCoverPhotoPreference } from '@/entities/trip/cover-photo'
 import {
@@ -38,7 +36,6 @@ import {
   CURATED_DESTINATIONS,
   type CuratedDestination,
 } from './curated-destinations'
-import { buildEditorialTemplate } from './editorial-templates'
 
 function formatTripDates(startDate?: string | null, endDate?: string | null) {
   if (!startDate && !endDate) {
@@ -313,6 +310,10 @@ function WorldExplorerMap({
         defaultZoom={2}
         minZoom={2}
         maxZoom={6}
+        restriction={{
+          latLngBounds: { north: 85, south: -85, west: -179.99, east: 179.99 },
+          strictBounds: true,
+        }}
         reuseMaps={false}
         disableDefaultUI
         zoomControl
@@ -367,15 +368,6 @@ function WorldExplorerMap({
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.02)_24%,rgba(14,29,44,0.08)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-[linear-gradient(180deg,rgba(220,234,242,0.0),rgba(220,234,242,0.82))]" />
 
-      <div className="absolute left-4 top-4 z-20 max-w-[18rem] rounded-[18px] border border-white/70 bg-white/80 px-3.5 py-3 text-[#17344c] shadow-[0_16px_34px_-26px_rgba(24,42,62,0.34)] backdrop-blur-md">
-        <p className="text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-[#7a8a9b]">
-          Live Google map
-        </p>
-        <p className="mt-1.5 text-[0.82rem] leading-5 text-[#4d5c6c]">
-          Click a marker to switch the destination rail.
-        </p>
-      </div>
-
       <div className="absolute right-4 top-4 z-20 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[0.72rem] font-medium text-[#4d5c6c] shadow-[0_16px_34px_-26px_rgba(24,42,62,0.3)] backdrop-blur-md">
         {destinations.length}
         {' '}
@@ -403,10 +395,10 @@ function DestinationListCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-[14px] border px-3 py-2.5 text-left transition-colors',
+        'group flex w-full items-center gap-3 rounded-[12px] border border-transparent px-3 py-2.5 text-left transition-colors lg:rounded-[14px] lg:px-3 lg:py-2.5',
         selected
-          ? 'border-[#cfdbe6] bg-white shadow-[0_8px_24px_-16px_rgba(24,42,62,0.22)]'
-          : 'border-transparent hover:border-[#dbe4ec] hover:bg-white',
+          ? 'bg-[#f8fafc] shadow-[0_8px_24px_-16px_rgba(24,42,62,0.22)] lg:border-[#cfdbe6] lg:bg-white'
+          : 'border-transparent bg-white hover:bg-[#f9fbfd] lg:border-transparent lg:bg-transparent lg:hover:border-[#dbe4ec] lg:hover:bg-white',
       )}
     >
       <div className="relative size-10 shrink-0 overflow-hidden rounded-[10px]">
@@ -463,39 +455,6 @@ export default function TripsPage() {
     CURATED_DESTINATIONS.find((destination) => destination.id === activeDestinationId) ??
     CURATED_DESTINATIONS[0]
 
-  async function seedEditorialActionsIfNeeded(tripId: string, destination: CuratedDestination) {
-    const planner = await getPlanner(tripId)
-    const hasActivities =
-      planner.inbox_activities.length > 0 ||
-      planner.days.some((day) => day.activities.length > 0)
-
-    if (hasActivities) {
-      return false
-    }
-
-    const template = buildEditorialTemplate(destination)
-    for (const [dayIndex, day] of planner.days.entries()) {
-      const dayTemplate = template[dayIndex] ?? []
-      for (const action of dayTemplate) {
-        await createPlannerActivity(
-          tripId,
-          {
-            trip_day_id: day.id,
-            category: action.category,
-            title: action.title,
-            description: action.description ?? null,
-            start_time: action.start_time ?? null,
-            duration_min: action.duration_min ?? null,
-            source: action.source,
-          },
-          crypto.randomUUID(),
-        )
-      }
-    }
-
-    return true
-  }
-
   async function handleAddDestination(destination: CuratedDestination) {
     if (addingDestinationId) {
       return
@@ -518,14 +477,6 @@ export default function TripsPage() {
         },
         crypto.randomUUID(),
       )
-
-      let editorialSeedFailed = false
-
-      try {
-        await seedEditorialActionsIfNeeded(trip.id, destination)
-      } catch {
-        editorialSeedFailed = true
-      }
 
       let placeId: string | null = null
 
@@ -557,6 +508,8 @@ export default function TripsPage() {
       mergeTripCoverPhotoPreference(trip.id, {
         placeId,
         placeLabel: destination.destinationText,
+        placeLat: destination.lat,
+        placeLng: destination.lon,
         photoId: null,
         googlePhotoUrl: destination.imageUrl,
       })
@@ -566,9 +519,6 @@ export default function TripsPage() {
       setSearchParams(next, { replace: true })
       await queryClient.invalidateQueries({ queryKey: tripKeys.all })
       toast.success(`${destination.name} added to your trips`)
-      if (editorialSeedFailed) {
-        toast.error('Trip created, but its editorial actions could not be prefilled.')
-      }
     } catch (mutationError) {
       if (isApiError(mutationError) && mutationError.status === 429) {
         toast.error('Too many requests. Wait a moment and try again.')
@@ -583,8 +533,8 @@ export default function TripsPage() {
   }
 
   return (
-    <WorkspacePage className="gap-6 pb-12 md:gap-8 md:pb-14 lg:gap-10">
-      <header className="relative overflow-hidden rounded-xl border border-white/75 px-5 py-5 shadow-sm md:px-6 md:py-6">
+    <WorkspacePage className="!p-0 lg:!p-6 gap-6 md:gap-8 pb-10 md:pb-14 lg:gap-10">
+      <header className="relative overflow-hidden lg:rounded-2xl lg:border border-white/75 px-4 py-8 md:px-6 md:py-6">
         <img
           src="/images/trips/trips-hero.jpg"
           alt=""
@@ -596,10 +546,10 @@ export default function TripsPage() {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.65)_0%,rgba(243,247,251,0.95)_100%)]" />
         <div className="relative">
           <div className="flex flex-col items-center justify-center text-center py-6 md:py-10">
-            <h1 className="text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.06em] text-[var(--color-text)] md:text-[3.2rem] max-w-[25ch]">
+            <h1 className="text-[2rem] sm:text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.06em] text-[var(--color-text)] md:text-[3.2rem] max-w-[25ch]">
               Your trips, curated routes, and the world map.
             </h1>
-            <p className="mt-4 max-w-[55ch] text-[1rem] leading-7 text-[var(--color-text-muted)] mx-auto">
+            <p className="mt-4 max-w-[55ch] text-[0.95rem] md:text-[1rem] leading-7 text-[var(--color-text-muted)] mx-auto">
               Keep recent trips close, instantly drop proposed destinations into your collection, and explore the map to find your next great itinerary.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -609,7 +559,7 @@ export default function TripsPage() {
                   New trip
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="h-11 rounded-full px-6 text-[0.95rem]">
+              <Button asChild variant="outline" className="hidden h-11 rounded-full px-6 text-[0.95rem] sm:inline-flex">
                 <a href="#destinations">
                   Browse destinations
                   <ChevronRight className="ml-1 size-4" />
@@ -621,19 +571,22 @@ export default function TripsPage() {
       </header>
 
       {(isLoading || error || trips.length > 0) && (
-      <section id="board" className="mt-8 scroll-mt-6 px-1 md:px-2">
+      <section id="board" className="mt-8 scroll-mt-6 md:mt-10 px-0">
         <Carousel className="animate-in fade-in slide-in-from-bottom-4 duration-300 group/board">
-          <SectionIntro
-            eyebrow="Recently planned and upcoming"
-            title="Trips worth opening again"
-            action={
-              <CarouselNavigation 
+          <div className="px-4">
+            <SectionIntro
+              eyebrow="Recently planned and upcoming"
+              title="Trips worth opening again"
+            />
+
+            <div className="mt-3 hidden md:flex md:justify-center lg:justify-end">
+              <CarouselNavigation
                 alwaysShow={true}
-                className="relative left-auto top-auto w-auto translate-y-0 gap-2 px-0" 
-                classNameButton="bg-white shadow-sm border border-[#dce6ef] text-[#17344c]" 
+                className="relative left-auto top-auto inline-flex w-fit translate-y-0 justify-start gap-2 px-0"
+                classNameButton="h-9 w-9 p-0 flex items-center justify-center bg-white shadow-sm border border-[#dce6ef]"
               />
-            }
-          />
+            </div>
+          </div>
 
           {error && (
             <Alert variant="destructive" className="mt-6">
@@ -642,9 +595,9 @@ export default function TripsPage() {
           )}
 
           {!isLoading && trips.length > 0 && (
-            <CarouselContent className="mt-6 -ml-4 py-2">
+            <CarouselContent className="mt-4 ml-0 py-2 sm:mt-6 sm:-ml-4">
               {trips.map((trip) => (
-                <CarouselItem key={trip.id} className="pl-4 sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                <CarouselItem key={trip.id} className="pl-3 basis-[84%] sm:pl-4 sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
                   <TripCard
                     trip={trip}
                     cover={tripCovers.get(trip.id) ?? { url: null, isFallback: true }}
@@ -660,9 +613,9 @@ export default function TripsPage() {
       {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section
         id="destinations"
-        className="mt-10 scroll-mt-6 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-5 shadow-sm md:px-6 md:py-6"
+        className="mt-8 md:mt-10 scroll-mt-6 lg:overflow-hidden lg:rounded-xl lg:border border-white/75 lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-0 lg:px-6 lg:py-6 lg:shadow-sm"
       >
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-4 lg:px-0">
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8b97a7]">
@@ -674,7 +627,7 @@ export default function TripsPage() {
             </h2>
           </div>
 
-          <div className="flex rounded-[14px] border border-black/5 bg-black/5 p-1">
+          <div className="hidden w-full rounded-[14px] border border-black/5 bg-black/5 p-1 md:w-auto lg:flex">
             <AnimatedBackground
               defaultValue={activeTab}
               className="rounded-[10px] bg-black shadow-sm"
@@ -694,7 +647,7 @@ export default function TripsPage() {
                   data-id={id}
                   type="button"
                   className={cn(
-                    'flex items-center justify-center rounded-[10px] px-4 py-1.5 transition-colors',
+                    'flex flex-1 items-center justify-center rounded-[10px] px-4 py-2 transition-colors md:flex-none md:py-1.5',
                     activeTab === id ? 'text-white' : 'text-[#6f7d8d] hover:text-black',
                   )}
                   aria-pressed={activeTab === id}
@@ -709,10 +662,10 @@ export default function TripsPage() {
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl border border-[#d8e0e8] bg-white shadow-sm">
+        <div className="mt-4 border-y-0 border-[#dce5ed] bg-transparent md:mt-8 lg:overflow-hidden lg:rounded-xl lg:border lg:border-[#d8e0e8] lg:bg-white lg:shadow-sm">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
             {/* Map or Info Area */}
-            <div className="h-[30rem] lg:h-[34rem] overflow-y-auto bg-white relative">
+            <div className="relative hidden h-[17rem] overflow-y-auto bg-white md:h-[30rem] lg:block lg:h-[34rem]">
 
               {activeTab === 'map' ? (
                 <div className="h-full w-full">
@@ -723,53 +676,53 @@ export default function TripsPage() {
                   />
                 </div>
               ) : (
-                <div className="p-6 md:p-10 pt-20">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d]">
+                <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
+                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
+                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.region}
                     </span>
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d]">
+                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.bestFor}
                     </span>
                   </div>
-                  <h3 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
+                  <h3 className="text-[1.28rem] font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
                     {activeDestination.name}
                   </h3>
-                  <p className="mt-3 text-[1rem] leading-7 text-[#556171]">
+                  <p className="mt-1.5 text-[0.82rem] leading-5 text-[#556171] md:mt-2 md:text-[1rem] md:leading-7">
                     {activeDestination.teaser}
                   </p>
                   
-                  <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-[16px] bg-[#f8fafc] p-4 border border-[#e8eef4]">
-                      <CalendarDays className="size-4 text-[#8b97a7] mb-2" />
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
+                    <div className="rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 md:rounded-[16px] md:p-4">
+                      <CalendarDays className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Dates</p>
-                      <p className="mt-1 text-[0.85rem] font-medium text-[var(--color-text)]">{formatTripDates(activeDestination.startDate, activeDestination.endDate)}</p>
+                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTripDates(activeDestination.startDate, activeDestination.endDate)}</p>
                     </div>
-                    <div className="rounded-[16px] bg-[#f8fafc] p-4 border border-[#e8eef4]">
-                      <Compass className="size-4 text-[#8b97a7] mb-2" />
+                    <div className="rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 md:rounded-[16px] md:p-4">
+                      <Compass className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Budget</p>
-                      <p className="mt-1 text-[0.85rem] font-medium text-[var(--color-text)]">{formatBudget(activeDestination.budgetAmount, activeDestination.budgetCurrency)}</p>
+                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatBudget(activeDestination.budgetAmount, activeDestination.budgetCurrency)}</p>
                     </div>
-                    <div className="rounded-[16px] bg-[#f8fafc] p-4 border border-[#e8eef4]">
-                      <Route className="size-4 text-[#8b97a7] mb-2" />
+                    <div className="col-span-2 rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
+                      <Route className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Travel</p>
-                      <p className="mt-1 text-[0.85rem] font-medium text-[var(--color-text)]">{formatTravelModeLabel(activeDestination.routeTravelMode)}</p>
+                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTravelModeLabel(activeDestination.routeTravelMode)}</p>
                     </div>
                   </div>
 
-                  <div className="mt-8">
-                    <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[#8b97a7] mb-3">Highlights</p>
-                    <ul className="flex flex-wrap gap-2">
+                  <div className="mt-5 md:mt-8">
+                    <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8b97a7] md:mb-3">Highlights</p>
+                    <ul className="flex flex-wrap gap-1.5 md:gap-2">
                       {activeDestination.highlights.map((highlight) => (
-                        <li key={highlight} className="rounded-full border border-[#dce5ed] bg-white px-3 py-1.5 text-[0.78rem] text-[#4d5c6c] shadow-sm">
+                        <li key={highlight} className="rounded-full border border-[#dce5ed] bg-white px-2.5 py-1 text-[0.72rem] text-[#4d5c6c] shadow-sm md:px-3 md:py-1.5 md:text-[0.78rem]">
                           {highlight}
                         </li>
                       ))}
                     </ul>
                   </div>
                   
-                  <div className="mt-8 pt-8 border-t border-[#e8eef4]">
-                    <p className="text-[0.92rem] leading-7 text-[#556171] pb-10">
+                  <div className="mt-4 border-t border-[#e8eef4] pt-4 md:mt-8 md:pt-8">
+                    <p className="pb-2 text-[0.8rem] leading-5 text-[#556171] overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:pb-10 md:text-[0.92rem] md:leading-7 md:[display:block] md:[-webkit-line-clamp:unset]">
                       {activeDestination.summary}
                     </p>
                   </div>
@@ -778,21 +731,17 @@ export default function TripsPage() {
             </div>
 
             {/* Destination list sidebar */}
-            <aside className="flex flex-col border-t border-[#d8e0e8] lg:h-[34rem] lg:border-l lg:border-t-0">
+            <aside className="flex flex-col lg:h-[34rem] lg:border-l lg:border-t-0 lg:border-[#d8e0e8] lg:bg-[#f8fafc]">
               {/* Sidebar header */}
-              <div className="flex shrink-0 items-center justify-between border-b border-[#e8eef4] bg-[#f8fafc] px-4 py-3">
+              <div className="flex shrink-0 items-center justify-between border-b-0 border-[#e8eef4] bg-transparent px-4 py-3 lg:border-b lg:bg-[#f8fafc]">
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8b97a7]">
                   {CURATED_DESTINATIONS.length} editorial routes
                 </p>
-                <span className="flex items-center gap-1.5 text-[0.72rem] text-[#8b97a7]">
-                  <Sparkles className="size-3" />
-                  Handpicked
-                </span>
               </div>
 
               {/* Scrollable card list */}
-              <div className="relative flex-1 overflow-y-auto bg-[#f8fafc]">
-                <div className="flex flex-col gap-2 p-3">
+              <div className="relative flex-1 overflow-y-visible bg-transparent lg:overflow-y-auto lg:bg-[#f8fafc]">
+                <div className="flex flex-col gap-2 px-4 py-3 lg:gap-2 lg:p-3">
                   {CURATED_DESTINATIONS.map((destination) => (
                     <DestinationListCard
                       key={destination.id}
@@ -808,14 +757,14 @@ export default function TripsPage() {
                 </div>
 
                 {/* Bottom fade */}
-                <div className="pointer-events-none sticky bottom-0 h-6 bg-[linear-gradient(to_top,#f8fafc,transparent)]" />
+                <div className="pointer-events-none sticky bottom-0 hidden h-6 bg-[linear-gradient(to_top,#f8fafc,transparent)] lg:block" />
               </div>
             </aside>
           </div>
         </div>
       </section>
 
-      <footer className="mt-6 overflow-hidden rounded-[24px] border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-8 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)] md:mt-8 md:px-8 md:py-10">
+      <footer className="mt-8 md:mt-12 overflow-hidden lg:rounded-[24px] border-t lg:border border-[#e2e8f0] lg:border-white/75 bg-white lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-6 py-10 lg:px-8 lg:py-10 lg:shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)]">
         {/* Brand + link columns */}
         <div className="grid gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2.7fr)] lg:gap-16">
           {/* Brand column */}

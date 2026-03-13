@@ -11,6 +11,7 @@ export type DayAnchor = {
 export type PlannerSectionAnchor = 'itinerary' | 'hotel' | 'travel'
 
 type PlannerInstruments = {
+  onOpenAssistant: () => void
   onOpenSettings: () => void
   onShare: () => void
   onGenerate: () => void

@@ -195,6 +195,85 @@ export type PlannerGenerationReport = {
   error: Record<string, unknown> | null
 }
 
+export type AssistantTextPart = {
+  type: 'text'
+  text: string
+}
+
+export type AssistantToolCallPart = {
+  type: 'tool-call'
+  toolCallId: string
+  toolName: string
+  args?: Record<string, unknown>
+  argsText?: string
+  result?: Record<string, unknown>
+  isError?: boolean
+  interrupt?: {
+    type: 'human'
+    payload: Record<string, unknown>
+  }
+}
+
+export type AssistantDataPart = {
+  type: 'data'
+  name: string
+  data: Record<string, unknown>
+}
+
+export type AssistantMessagePart =
+  | AssistantTextPart
+  | AssistantToolCallPart
+  | AssistantDataPart
+  | Record<string, unknown>
+
+export type AssistantMessage = {
+  id: string
+  thread_id: string
+  role: 'assistant' | 'user' | 'system'
+  status: 'running' | 'requires_action' | 'complete' | 'incomplete'
+  parts: AssistantMessagePart[]
+  metadata: Record<string, unknown>
+  source_job_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type AssistantThread = {
+  id: string
+  trip_id: string
+  user_id: string
+  messages: AssistantMessage[]
+}
+
+export type AssistantConfirmationInput = {
+  message_id: string
+  tool_call_id: string
+  confirmed: boolean
+}
+
+export type AssistantMessageStreamInput = {
+  client_message_id?: string | null
+  text?: string | null
+  confirmation?: AssistantConfirmationInput | null
+}
+
+export type AssistantMirrorJobInput = {
+  job_id: string
+  request_text: string
+  action: string
+}
+
+export type AssistantStreamEvent =
+  | { type: 'message_upsert'; message: AssistantMessage }
+  | { type: 'done' }
+  | {
+      type: 'error'
+      error: {
+        message: string
+        code?: string
+      }
+    }
+
 export type MapLayerRenderer = 'native' | 'deckgl' | 'dds-boundary' | 'dds-dataset'
 export type MapLayerSource = 'manual_draw' | 'routes' | 'places' | 'analytics'
 export type TripMapFeatureCollection = FeatureCollection<Geometry, GeoJsonProperties>

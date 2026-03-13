@@ -17,6 +17,7 @@ from app.services.itinerary_generation import (
     execute_itinerary_job,
 )
 from app.services.itinerary_optimizer import execute_itinerary_optimization_job
+from app.services.job_progress import ProgressTracker
 from app.services.place_dedup import execute_places_dedup_job
 from app.services.place_photos import execute_place_photo_refresh_job
 
@@ -115,6 +116,8 @@ async def _process_job(job_id: uuid.UUID) -> None:
     attempts = 0
     max_attempts = 0
     final_status: str | None = None
+    tracker: ProgressTracker | None = None
+    terminal_summary: dict[str, Any] | None = None
 
     try:
         async with AsyncSessionLocal() as db:
@@ -146,7 +149,8 @@ async def _process_job(job_id: uuid.UUID) -> None:
                         "based_on_trip_version": result.based_on_trip_version,
                     }
                 elif job.job_type.startswith("itinerary."):
-                    result = await execute_itinerary_job(db, job)
+                    tracker = ProgressTracker(redis_client, str(job_id), db)
+                    result = await execute_itinerary_job(db, job, progress=tracker)
                     result_payload = {
                         "summary": result.summary,
                         "day_deltas": result.day_deltas,
@@ -159,6 +163,7 @@ async def _process_job(job_id: uuid.UUID) -> None:
                         "photo_enriched_place_count": result.photo_enriched_place_count,
                         "unresolved_activity_count": result.unresolved_activity_count,
                     }
+                    terminal_summary = result_payload
                 elif job.job_type == "places.dedup.run":
                     result = await execute_places_dedup_job(db, job)
                     result_payload = {
@@ -231,6 +236,10 @@ async def _process_job(job_id: uuid.UUID) -> None:
 
     if job_user_id is None or job_type is None or final_status is None:
         return
+
+    # Emit terminal progress event for itinerary jobs
+    if tracker and final_status in ("SUCCEEDED", "FAILED"):
+        await tracker.done(final_status, summary=terminal_summary, phase="terminal")
 
     await _invalidate_job_cache(user_id=job_user_id, job_id=job_id)
     if job_type.startswith("itinerary."):

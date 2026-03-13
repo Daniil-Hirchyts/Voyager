@@ -426,10 +426,26 @@ export default function TripCreatePage() {
       mergeTripCoverPhotoPreference(trip.id, {
         placeId: destinationPlaceId,
         placeLabel: selectedDestinationSuggestion?.label ?? form.getValues('destination_text') ?? null,
+        placeLat: selectedDestinationSuggestion?.lat ?? null,
+        placeLng: selectedDestinationSuggestion?.lon ?? null,
         photoId: null,
       })
       queryClient.invalidateQueries({ queryKey: tripKeys.all })
-      navigate(`/app/trips/${trip.id}`)
+      const plannerSearchParams = new URLSearchParams()
+      if (destinationPlaceId) {
+        plannerSearchParams.set('placeId', destinationPlaceId)
+      }
+      if (
+        selectedDestinationSuggestion?.lat != null &&
+        selectedDestinationSuggestion?.lon != null
+      ) {
+        plannerSearchParams.set('lat', String(selectedDestinationSuggestion.lat))
+        plannerSearchParams.set('lng', String(selectedDestinationSuggestion.lon))
+      }
+      const plannerPath = plannerSearchParams.size
+        ? `/app/trips/${trip.id}/plan?${plannerSearchParams.toString()}`
+        : `/app/trips/${trip.id}/plan`
+      navigate(plannerPath)
       toast.success('Trip created successfully')
     },
     onError: (error) => {
@@ -885,7 +901,7 @@ export default function TripCreatePage() {
             defaultZoom={3}
             minZoom={3}
             restriction={{
-              latLngBounds: { north: 85, south: -85, west: -180, east: 180 },
+              latLngBounds: { north: 85, south: -85, west: -179.99, east: 179.99 },
               strictBounds: true,
             }}
             style={{ width: '100%', height: '100%' }}

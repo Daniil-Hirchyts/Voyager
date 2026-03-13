@@ -1258,6 +1258,106 @@ describe('PlannerBoard', () => {
     }
   })
 
+  it('seeds the map focus and search origin from the destination query params', async () => {
+    const user = userEvent.setup()
+    const originalMapApiKey = config.map.apiKey
+    const googleMapStub = (
+      globalThis as unknown as {
+        __voyagerGoogleMapStub: {
+          panTo: {
+            mockClear: () => void
+            mock: { calls: Array<[point: { lat: number; lng: number }]> }
+          }
+        }
+      }
+    ).__voyagerGoogleMapStub
+    config.map.apiKey = 'test-key'
+    googleMapStub.panTo.mockClear()
+
+    try {
+      const trip = buildTrip({ id: 'trip-seeded-map-search' })
+      const day = buildPlannerDay({ id: 'day-1', trip_id: trip.id, activities: [] })
+      const planner = buildPlannerResponse({ trip, days: [day], inbox_activities: [] })
+      const destinationPlace = buildPlace({
+        id: 'place-reykjavik',
+        name: 'Reykjavik',
+        address_text: 'Reykjavik, Iceland',
+        lat: 64.1466,
+        lon: -21.9426,
+      })
+      const searchRequestCoords: Array<{ lat: number; lon: number }> = []
+
+      server.use(
+        http.get('http://localhost:8000/trips/:tripId/planner', () => HttpResponse.json(planner)),
+        http.get('http://localhost:8000/places/:placeId', () => HttpResponse.json(destinationPlace)),
+        http.get('http://localhost:8000/trips/:tripId/planner-map/places/:placeId/detail', () =>
+          HttpResponse.json({
+            place: destinationPlace,
+            summary: null,
+            rating: null,
+            review_count: null,
+            status_text: null,
+            price_label: null,
+            photos: [],
+            reviews: [],
+            hours: [],
+            booking_links: [],
+            tags: [],
+            mentions: [],
+            related_activities: [],
+          }),
+        ),
+        http.get('http://localhost:8000/places/search', () =>
+          HttpResponse.json(listResponse([])),
+        ),
+        http.get('http://localhost:8000/places/google-search', ({ request }) => {
+          const url = new URL(request.url)
+          searchRequestCoords.push({
+            lat: Number(url.searchParams.get('lat')),
+            lon: Number(url.searchParams.get('lon')),
+          })
+
+          return HttpResponse.json({
+            total: 0,
+            limit: 6,
+            offset: 0,
+            items: [],
+          })
+        }),
+      )
+
+      renderWithQueryClient(
+        <MemoryRouter
+          initialEntries={[
+            `/app/trips/${trip.id}/plan?placeId=${destinationPlace.id}&lat=${destinationPlace.lat}&lng=${destinationPlace.lon}`,
+          ]}
+        >
+          <PlannerBoard tripId={trip.id} />
+        </MemoryRouter>,
+      )
+
+      expect(await screen.findByText('Day 1')).toBeInTheDocument()
+
+      await waitFor(() => expect(googleMapStub.panTo.mock.calls.length).toBeGreaterThan(0))
+      const panCalls = googleMapStub.panTo.mock.calls
+      const panPoint = panCalls[panCalls.length - 1]?.[0]
+      expect(panPoint).toBeDefined()
+      expect(panPoint!.lat).toBeCloseTo(destinationPlace.lat! - 0.018, 4)
+      expect(panPoint!.lng).toBeCloseTo(destinationPlace.lon!, 4)
+
+      await user.click(screen.getByTestId('planner-map-search-trigger'))
+      const searchInput = await screen.findByPlaceholderText('Search a place')
+      await user.type(searchInput, 'coffee')
+
+      await waitFor(() => expect(searchRequestCoords.length).toBeGreaterThan(0))
+      const lastSearchRequest = searchRequestCoords[searchRequestCoords.length - 1]
+      expect(lastSearchRequest?.lat).toBeCloseTo(destinationPlace.lat!, 4)
+      expect(lastSearchRequest?.lon).toBeCloseTo(destinationPlace.lon!, 4)
+    } finally {
+      config.map.apiKey = originalMapApiKey
+    }
+  })
+
   it('opens the map bottom sheet with live Google detail for search results', async () => {
     const user = userEvent.setup()
     const originalMapApiKey = config.map.apiKey

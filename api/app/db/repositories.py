@@ -11,6 +11,8 @@ from sqlalchemy.orm import selectinload
 from app.db.models import (
     Activity,
     ActivityCategory,
+    AssistantMessage,
+    AssistantThread,
     AuditLog,
     EventSnapshot,
     ItineraryProposal,
@@ -45,8 +47,9 @@ from app.models.trips import (
     TripPatchRequest,
 )
 from app.services.editorial_trip_templates import (
+    editorial_route_template_day_count,
+    get_editorial_route_template,
     has_editorial_route_template,
-    seed_editorial_route_template,
 )
 from app.services.place_photo_assets import build_place_photo_asset_url
 
@@ -318,6 +321,18 @@ class TripRepository:
                 "Unknown editorial route",
                 {"editorial_route_id": payload.editorial_route_id},
             )
+        if payload.editorial_route_id:
+            expected_day_count = editorial_route_template_day_count(payload.editorial_route_id)
+            actual_day_count = (payload.end_date - payload.start_date).days + 1
+            if expected_day_count is not None and actual_day_count != expected_day_count:
+                raise ValidationApiError(
+                    "Editorial route date range does not match the saved template",
+                    {
+                        "editorial_route_id": payload.editorial_route_id,
+                        "expected_day_count": expected_day_count,
+                        "actual_day_count": actual_day_count,
+                    },
+                )
 
         trip = Trip(
             user_id=user_id,
@@ -346,13 +361,87 @@ class TripRepository:
 
         await db.flush()
         if payload.editorial_route_id:
-            await seed_editorial_route_template(
+            await TripRepository._seed_editorial_route_template(
                 db,
                 trip=trip,
                 route_id=payload.editorial_route_id,
             )
         await db.refresh(trip)
         return trip
+
+    @staticmethod
+    async def _seed_editorial_route_template(
+        db: AsyncSession,
+        *,
+        trip: Trip,
+        route_id: str,
+    ) -> None:
+        template = get_editorial_route_template(route_id)
+        if template is None:
+            raise ValidationApiError("Unknown editorial route", {"editorial_route_id": route_id})
+
+        day_rows = await db.execute(
+            select(TripDay).where(TripDay.trip_id == trip.id).order_by(TripDay.day_index.asc())
+        )
+        days = list(day_rows.scalars().all())
+        if len(days) != len(template):
+            raise ValidationApiError(
+                "Editorial route date range does not match the saved template",
+                {
+                    "editorial_route_id": route_id,
+                    "expected_day_count": len(template),
+                    "actual_day_count": len(days),
+                },
+            )
+
+        for day, day_template in zip(days, template, strict=True):
+            for order_index, item in enumerate(day_template):
+                place_metadata = {
+                    key: value
+                    for key, value in item.place.metadata.items()
+                    if key != "editorial_route_id"
+                }
+                place = await PlaceRepository.get_or_create_external_place(
+                    db,
+                    source="google_places",
+                    external_id=item.place.google_place_id,
+                    name=item.place.name,
+                    category=item.place.category,
+                    address_text=item.place.address_text,
+                    lat=item.place.lat,
+                    lon=item.place.lon,
+                    metadata={
+                        **place_metadata,
+                        "country": item.place.country,
+                        "region": item.place.region,
+                        "google_place_id": item.place.google_place_id,
+                        "time_zone_id": item.place.time_zone_id,
+                        "editorial_template": True,
+                    },
+                )
+                db.add(
+                    Activity(
+                        trip_id=trip.id,
+                        trip_day_id=day.id,
+                        order_index=order_index,
+                        category=item.category,
+                        category_details_json={},
+                        title=item.title,
+                        description=item.description,
+                        start_time=item.start_time,
+                        duration_min=item.duration_min,
+                        estimated_cost_amount=None,
+                        estimated_cost_currency=None,
+                        place_id=place.id,
+                        event_snapshot_id=None,
+                        notes=None,
+                        is_favorite=False,
+                        visited_at=None,
+                        source="generated",
+                    )
+                )
+
+        await db.flush()
 
     @staticmethod
     async def list_trips(
@@ -3135,6 +3224,253 @@ class JobRepository:
             .scalar_one()
         )
         return pending, running
+
+
+class AssistantRepository:
+    @staticmethod
+    async def get_or_create_thread(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> AssistantThread:
+        await TripRepository.get_trip(db, user_id, trip_id)
+        result = await db.execute(
+            select(AssistantThread)
+            .where(AssistantThread.trip_id == trip_id)
+            .where(AssistantThread.user_id == user_id)
+        )
+        thread = result.scalar_one_or_none()
+        if thread is not None:
+            return thread
+
+        thread = AssistantThread(trip_id=trip_id, user_id=user_id)
+        db.add(thread)
+        await db.flush()
+        await db.refresh(thread)
+        return thread
+
+    @staticmethod
+    async def get_thread_with_messages(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> tuple[AssistantThread, list[AssistantMessage]]:
+        thread = await AssistantRepository.get_or_create_thread(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+        )
+        rows = await db.execute(
+            select(AssistantMessage)
+            .where(AssistantMessage.thread_id == thread.id)
+            .order_by(AssistantMessage.created_at.asc(), AssistantMessage.id.asc())
+        )
+        return thread, list(rows.scalars().all())
+
+    @staticmethod
+    async def create_message(
+        db: AsyncSession,
+        *,
+        thread_id: uuid.UUID,
+        role: str,
+        parts: list[dict] | None = None,
+        metadata: dict | None = None,
+        status: str = "complete",
+        source_job_id: uuid.UUID | None = None,
+        message_id: uuid.UUID | None = None,
+    ) -> AssistantMessage:
+        message = AssistantMessage(
+            id=message_id or uuid.uuid4(),
+            thread_id=thread_id,
+            role=role,
+            status=status,
+            parts_json=parts or [],
+            metadata_json=metadata or {},
+            source_job_id=source_job_id,
+        )
+        db.add(message)
+        await db.flush()
+        await db.refresh(message)
+        return message
+
+    @staticmethod
+    async def get_message_for_trip(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        message_id: uuid.UUID,
+    ) -> AssistantMessage:
+        thread = await AssistantRepository.get_or_create_thread(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+        )
+        result = await db.execute(
+            select(AssistantMessage)
+            .where(AssistantMessage.thread_id == thread.id)
+            .where(AssistantMessage.id == message_id)
+        )
+        message = result.scalar_one_or_none()
+        if message is None:
+            raise NotFoundError("Assistant message not found")
+        return message
+
+    @staticmethod
+    async def update_message(
+        db: AsyncSession,
+        message: AssistantMessage,
+        *,
+        status: str | object = _UNSET,
+        parts: list[dict] | object = _UNSET,
+        metadata: dict | object = _UNSET,
+        source_job_id: uuid.UUID | None | object = _UNSET,
+    ) -> AssistantMessage:
+        if status is not _UNSET:
+            message.status = str(status)
+        if parts is not _UNSET:
+            message.parts_json = list(parts) if isinstance(parts, list) else []
+        if metadata is not _UNSET:
+            message.metadata_json = metadata if isinstance(metadata, dict) else {}
+        if source_job_id is not _UNSET:
+            message.source_job_id = source_job_id
+        await db.flush()
+        await db.refresh(message)
+        return message
+
+    @staticmethod
+    async def get_message_by_source_job_id(
+        db: AsyncSession,
+        *,
+        job_id: uuid.UUID,
+    ) -> AssistantMessage | None:
+        result = await db.execute(
+            select(AssistantMessage).where(AssistantMessage.source_job_id == job_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def upsert_mirrored_job_messages(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        job_id: uuid.UUID,
+        request_text: str,
+        action: str,
+    ) -> tuple[AssistantThread, AssistantMessage | None, AssistantMessage]:
+        thread = await AssistantRepository.get_or_create_thread(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+        )
+        existing = await AssistantRepository.get_message_by_source_job_id(db, job_id=job_id)
+        if existing is not None:
+            return thread, None, existing
+
+        user_message = await AssistantRepository.create_message(
+            db,
+            thread_id=thread.id,
+            role="user",
+            parts=[{"type": "text", "text": request_text}],
+            metadata={"kind": "mirrored-job-request", "action": action},
+            status="complete",
+        )
+        assistant_message = await AssistantRepository.create_message(
+            db,
+            thread_id=thread.id,
+            role="assistant",
+            parts=[
+                {
+                    "type": "data",
+                    "name": "job-progress",
+                    "data": {
+                        "job_id": str(job_id),
+                        "action": action,
+                        "request_text": request_text,
+                        "job_status": "PENDING",
+                        "events": [],
+                        "summary": None,
+                    },
+                }
+            ],
+            metadata={"kind": "job-progress", "action": action},
+            status="running",
+            source_job_id=job_id,
+        )
+        return thread, user_message, assistant_message
+
+    @staticmethod
+    async def append_job_progress_event(
+        db: AsyncSession,
+        *,
+        job_id: uuid.UUID,
+        event: dict[str, Any],
+    ) -> AssistantMessage | None:
+        message = await AssistantRepository.get_message_by_source_job_id(db, job_id=job_id)
+        if message is None:
+            return None
+
+        parts = list(message.parts_json or [])
+        part_index = next(
+            (
+                idx
+                for idx, part in enumerate(parts)
+                if isinstance(part, dict)
+                and part.get("type") == "data"
+                and part.get("name") == "job-progress"
+            ),
+            -1,
+        )
+        progress_part = parts[part_index] if part_index >= 0 else None
+        progress_data = (
+            dict(progress_part.get("data") or {})
+            if isinstance(progress_part, dict)
+            else {
+                "job_id": str(job_id),
+                "job_status": "PENDING",
+                "events": [],
+                "summary": None,
+            }
+        )
+
+        existing_events = [
+            item for item in progress_data.get("events", []) if isinstance(item, dict)
+        ]
+        event_id = str(event.get("event_id") or "")
+        if event_id and not any(str(item.get("event_id")) == event_id for item in existing_events):
+            existing_events.append(event)
+        progress_data["events"] = existing_events
+
+        if event.get("type") == "done":
+            progress_data["job_status"] = str(event.get("status") or "FAILED")
+            progress_data["summary"] = event.get("summary")
+            message.status = (
+                "complete"
+                if str(event.get("status") or "").upper() == "SUCCEEDED"
+                else "incomplete"
+            )
+        else:
+            progress_data["job_status"] = "RUNNING"
+            if message.status == "complete":
+                message.status = "running"
+
+        progress_payload = {"type": "data", "name": "job-progress", "data": progress_data}
+        if part_index >= 0:
+            parts[part_index] = progress_payload
+        else:
+            parts.append(progress_payload)
+
+        message.parts_json = parts
+        metadata = dict(message.metadata_json or {})
+        metadata["kind"] = "job-progress"
+        metadata["last_event_id"] = event_id or metadata.get("last_event_id")
+        message.metadata_json = metadata
+        await db.flush()
+        await db.refresh(message)
+        return message
 
 
 def job_to_response(job: Job) -> JobResponse:

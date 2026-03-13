@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { server } from '@/test/msw/server'
-import { buildActivity, buildPlace, buildPlannerDay, buildPlannerResponse, buildTrip } from '@/test/fixtures/api'
+import { buildPlace, buildTrip } from '@/test/fixtures/api'
 
 const { toastSuccess, toastError, toastInfo } = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
@@ -39,7 +39,7 @@ type CreatedTripRequest = {
   budget_currency: string
   trip_type: string
   route_travel_mode: 'WALK' | 'DRIVE' | 'BICYCLE' | 'TRANSIT'
-  editorial_route_id?: string
+  editorial_route_id?: string | null
 }
 
 type CreatedPlaceRequest = {
@@ -47,16 +47,6 @@ type CreatedPlaceRequest = {
   address_text: string
   lat: number
   lon: number
-}
-
-type CreatedPlannerActivityRequest = {
-  trip_day_id?: string | null
-  category: 'visit' | 'eat' | 'activity' | 'hotel' | 'travel'
-  title: string
-  description?: string | null
-  start_time?: string | null
-  duration_min?: number | null
-  source?: string
 }
 
 function renderPage() {
@@ -132,16 +122,6 @@ describe('TripsPage', () => {
     ]
     let createdTripId = 'trip-created-kyoto'
     let capturedTripBody: Record<string, unknown> | null = null
-    const capturedPlannerActivityBodies: CreatedPlannerActivityRequest[] = []
-    const plannerDays = Array.from({ length: 7 }, (_, index) =>
-      buildPlannerDay({
-        id: `day-seeded-${index + 1}`,
-        trip_id: createdTripId,
-        day_index: index,
-        date: `2026-04-${String(18 + index).padStart(2, '0')}`,
-        activities: [],
-      }),
-    )
 
     server.use(
       http.get('http://localhost:8000/trips', ({ request }) => {
@@ -177,38 +157,6 @@ describe('TripsPage', () => {
 
         trips.unshift(createdTrip)
         return HttpResponse.json(createdTrip, { status: 201 })
-      }),
-      http.get('http://localhost:8000/trips/:tripId/planner', ({ params }) =>
-        HttpResponse.json(
-          buildPlannerResponse({
-            trip: buildTrip({
-              id: String(params.tripId),
-              destination_text: 'Kyoto, Japan',
-              start_date: '2026-04-18',
-              end_date: '2026-04-24',
-            }),
-            inbox_activities: [],
-            days: plannerDays,
-          }),
-        ),
-      ),
-      http.post('http://localhost:8000/trips/:tripId/planner/activities', async ({ request }) => {
-        const body = await request.json() as CreatedPlannerActivityRequest
-        capturedPlannerActivityBodies.push(body)
-
-        return HttpResponse.json(
-          buildActivity({
-            id: `activity-seeded-${capturedPlannerActivityBodies.length}`,
-            trip_day_id: body.trip_day_id ?? null,
-            category: body.category,
-            title: body.title,
-            description: body.description ?? null,
-            start_time: body.start_time ?? null,
-            duration_min: body.duration_min ?? null,
-            source: body.source ?? 'generated',
-          }),
-          { status: 201 },
-        )
       }),
       http.post('http://localhost:8000/places', async ({ request }) => {
         const body = await request.json() as CreatedPlaceRequest
@@ -249,32 +197,6 @@ describe('TripsPage', () => {
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalledWith('Kyoto added to your trips')
     })
-
-    await waitFor(() => {
-      expect(capturedPlannerActivityBodies).toHaveLength(21)
-    })
-
-    expect(capturedPlannerActivityBodies.slice(0, 4)).toMatchObject([
-      {
-        trip_day_id: 'day-seeded-1',
-        category: 'eat',
-        title: 'Kyoto arrival breakfast and orientation',
-      },
-      {
-        trip_day_id: 'day-seeded-1',
-        category: 'visit',
-        title: 'Kyoto orientation route',
-      },
-      {
-        trip_day_id: 'day-seeded-1',
-        category: 'eat',
-        title: 'Signature dinner in Kyoto',
-      },
-      {
-        trip_day_id: 'day-seeded-2',
-        title: 'Fushimi dawn walk',
-      },
-    ])
 
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: /trip to kyoto/i })).toBeInTheDocument()

@@ -246,8 +246,15 @@ describe('TripCreatePage', () => {
     expect(mockMergeTripCoverPhotoPreference).toHaveBeenCalledWith('trip-created', {
       placeId: 'place-created',
       placeLabel: 'Paris, France',
+      placeLat: 48.8566,
+      placeLng: 2.3522,
       photoId: null,
     })
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/app/trips/trip-created/plan?placeId=place-created&lat=48.8566&lng=2.3522',
+      ),
+    )
   })
 
   it('submits the shaped payload for trip creation', async () => {
@@ -287,10 +294,12 @@ describe('TripCreatePage', () => {
     expect(mockMergeTripCoverPhotoPreference).toHaveBeenCalledWith('trip-created', {
       placeId: null,
       placeLabel: 'Tokyo, Japan',
+      placeLat: null,
+      placeLng: null,
       photoId: null,
     })
 
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/app/trips/trip-created'))
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/app/trips/trip-created/plan'))
     expect(toastSuccess).toHaveBeenCalledWith('Trip created successfully')
   })
 })

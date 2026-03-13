@@ -1,6 +1,8 @@
 export type TripCoverPhotoPreference = {
   placeId?: string | null
   placeLabel?: string | null
+  placeLat?: number | null
+  placeLng?: number | null
   photoId?: string | null
   assetId?: string | null
   /** Raw relative URL from Google Place Detail (e.g. /places/google-photo-asset?name=...).

@@ -14,6 +14,7 @@
     "api:types": "bunx openapi-typescript http://localhost:8000/openapi.json -o src/shared/api/generated/schema.d.ts"
   },
   "dependencies": {
+    "@assistant-ui/react": "^0.12.17",
     "@date-fns/tz": "^1.2.0",
     "@deck.gl/aggregation-layers": "^9.2.11",
     "@deck.gl/core": "^9.2.11",

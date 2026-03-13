@@ -24,6 +24,7 @@ from app.services.google_maps import (
 )
 from app.services.itinerary_catalog import CatalogPlaceSeed, build_catalog_candidates
 from app.services.itinerary_llm import generate_with_openrouter
+from app.services.job_progress import ProgressTracker
 
 PHOTO_ENRICHMENT_LIMIT = 6
 RETRYABLE_GROUNDING_ERROR_CODES = {
@@ -469,6 +470,7 @@ async def _resolve_catalog_candidates_for_scope(
     days: list[TripDay],
     seed: int | None,
     constraints: dict[str, Any],
+    progress: ProgressTracker | None = None,
 ) -> CandidateResolutionResult:
     raw_candidates = build_catalog_candidates(trip=trip, days=days, seed=seed)
     place_cache: dict[str, Place] = {}
@@ -550,6 +552,12 @@ async def _resolve_catalog_candidates_for_scope(
         if isinstance(photo_limit_raw, int):
             photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
 
+        if progress and resolved_place_ids:
+            await progress.step(
+                "Fetching photos",
+                f"{len(resolved_place_ids)} places",
+                phase="photo_enrichment",
+            )
         photo_enriched_place_count, photo_errors = await _enrich_places_with_photos(
             db,
             place_ids=resolved_place_ids,
@@ -577,6 +585,7 @@ async def _resolve_llm_candidates_for_scope(
     candidates_by_day: dict[uuid.UUID, list[dict[str, Any]]],
     llm_model: str | None,
     constraints: dict[str, Any],
+    progress: ProgressTracker | None = None,
 ) -> CandidateResolutionResult:
     place_cache: dict[str, Place] = {}
     resolved_place_ids: set[uuid.UUID] = set()
@@ -666,6 +675,12 @@ async def _resolve_llm_candidates_for_scope(
         if isinstance(photo_limit_raw, int):
             photo_limit = max(0, min(photo_limit_raw, PHOTO_ENRICHMENT_LIMIT))
 
+        if progress and resolved_place_ids:
+            await progress.step(
+                "Fetching photos",
+                f"{len(resolved_place_ids)} places",
+                phase="photo_enrichment",
+            )
         photo_enriched_place_count, photo_errors = await _enrich_places_with_photos(
             db,
             place_ids=resolved_place_ids,
@@ -692,17 +707,59 @@ async def _resolve_candidates_for_scope(
     days: list[TripDay],
     seed: int | None,
     constraints: dict[str, Any],
+    progress: ProgressTracker | None = None,
 ) -> CandidateResolutionResult:
+    llm_call_id: str | None = None
+    if progress:
+        llm_call_id = await progress.tool_call(
+            "generate_with_llm",
+            {
+                "destination": str(trip.destination_text or ""),
+                "num_days": len(days),
+            },
+            phase="llm",
+        )
+
     llm_result = await generate_with_openrouter(
         trip=trip,
         days=days,
         seed=seed,
         constraints=constraints,
+        progress=progress,
     )
     llm_errors = list(llm_result.errors)
     accumulated_errors = list(llm_errors)
 
+    if progress:
+        if llm_result.success:
+            candidates_count = sum(len(v) for v in llm_result.candidates_by_day.values())
+            await progress.tool_result(
+                "generate_with_llm",
+                {
+                    "success": True,
+                    "model": llm_result.model,
+                    "candidates": candidates_count,
+                },
+                call_id=llm_call_id,
+                phase="llm",
+            )
+        else:
+            await progress.tool_result(
+                "generate_with_llm",
+                {"success": False, "model": llm_result.model},
+                is_error=True,
+                call_id=llm_call_id,
+                phase="llm",
+            )
+
     if llm_result.success:
+        if progress:
+            await progress.step(
+                "Grounding activities",
+                f"Resolving places via Google Maps",
+                phase="grounding",
+            )
+
         llm_resolution = await _resolve_llm_candidates_for_scope(
             db,
             trip=trip,
@@ -710,6 +767,7 @@ async def _resolve_candidates_for_scope(
             candidates_by_day=llm_result.candidates_by_day,
             llm_model=llm_result.model,
             constraints=constraints,
+            progress=progress,
         )
         llm_resolution.provider_errors = llm_errors + llm_resolution.provider_errors
         if llm_resolution.unresolved_activity_count == 0:
@@ -961,12 +1019,20 @@ async def _apply_reset(
     return summary, deltas
 
 
-async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutionResult:
+async def execute_itinerary_job(
+    db: AsyncSession,
+    job: Job,
+    progress: ProgressTracker | None = None,
+) -> ItineraryExecutionResult:
     payload = job.payload_json
     if not isinstance(payload, dict):
         raise NonRetryableJobError("JOB_PAYLOAD_INVALID", "Job payload must be an object")
 
     trip = await _load_trip_for_job(db, payload)
+
+    if progress:
+        await progress.step("Loaded trip", str(trip.destination_text or ""), phase="setup")
+
     expected_version = payload.get("expected_trip_version")
     if expected_version is None:
         raise NonRetryableJobError(
@@ -988,6 +1054,12 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
 
     if job.job_type == "itinerary.reset":
         scope_days = await _resolve_scope_days(db, trip, payload, require_non_empty=True)
+        if progress:
+            await progress.step(
+                "Resetting activities",
+                f"{len(scope_days)} days",
+                phase="apply",
+            )
         summary, deltas = await _apply_reset(db, days=scope_days)
         trip.generation_state = "RESET"
         generator_engine = None
@@ -1002,13 +1074,31 @@ async def execute_itinerary_job(db: AsyncSession, job: Job) -> ItineraryExecutio
         constraints = (
             payload.get("constraints") if isinstance(payload.get("constraints"), dict) else {}
         )
+        if progress:
+            await progress.step(
+                "Planning itinerary",
+                f"{len(scope_days)} day{'s' if len(scope_days) != 1 else ''} · {str(mode)} mode",
+                phase="planning",
+            )
         candidate_resolution = await _resolve_candidates_for_scope(
             db,
             trip=trip,
             days=scope_days,
             seed=seed,
             constraints=constraints,
+            progress=progress,
         )
+        if progress:
+            await progress.step(
+                "Applying to itinerary",
+                f"{candidate_resolution.resolved_place_count} places resolved"
+                + (
+                    f" · {candidate_resolution.photo_enriched_place_count} photos enriched"
+                    if candidate_resolution.photo_enriched_place_count
+                    else ""
+                ),
+                phase="apply",
+            )
         if mode == "replace":
             summary, deltas = await _apply_replace(
                 db,

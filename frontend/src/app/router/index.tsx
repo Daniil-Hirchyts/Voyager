@@ -10,8 +10,6 @@ import { RouteTransition } from '@/shared/layouts/route-transition'
 
 // Public pages
 const LandingPage = lazy(() => import('@/pages/public/landing'))
-const ProductPage = lazy(() => import('@/pages/public/product'))
-const HowItWorksPage = lazy(() => import('@/pages/public/how-it-works'))
 const SignInPage = lazy(() => import('@/pages/public/signin'))
 const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
 const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'))
@@ -116,22 +114,6 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <LandingPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'product',
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ProductPage />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'how-it-works',
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <HowItWorksPage />
           </Suspense>
         ),
       },

@@ -5,11 +5,13 @@ import { useAuth } from 'react-oidc-context'
 import { useAuthStore } from '@/shared/stores/auth.store'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
 import gsap from 'gsap'
+import { toast } from 'sonner'
 
 export default function SignInPage() {
   const auth = useAuth()
   const intendedPath = useAuthStore((s) => s.intendedPath)
   const containerRef = useRef<HTMLDivElement>(null)
+  const loadingToastIdRef = useRef<string | number | null>(null)
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -35,6 +37,28 @@ export default function SignInPage() {
     }, containerRef)
 
     return () => ctx.revert()
+  }, [])
+
+  useEffect(() => {
+    if (auth.isLoading) {
+      if (loadingToastIdRef.current == null) {
+        loadingToastIdRef.current = toast.loading('Connecting to authentication…')
+      }
+      return
+    }
+
+    if (loadingToastIdRef.current != null) {
+      toast.dismiss(loadingToastIdRef.current)
+      loadingToastIdRef.current = null
+    }
+  }, [auth.isLoading])
+
+  useEffect(() => {
+    return () => {
+      if (loadingToastIdRef.current != null) {
+        toast.dismiss(loadingToastIdRef.current)
+      }
+    }
   }, [])
 
   if (auth.isAuthenticated) {
@@ -69,12 +93,6 @@ export default function SignInPage() {
               Sign in to continue planning and mapping your journeys.
             </p>
           </div>
-
-          {auth.isLoading ? (
-            <div className="animate-item mt-4 w-full rounded-[20px] border border-[var(--color-border-strong)] bg-white/72 px-4 py-4 text-sm text-[var(--color-text-muted)]">
-              Connecting to authentication…
-            </div>
-          ) : null}
 
           {auth.error ? (
             <div className="animate-item mt-4 w-full rounded-[20px] border border-[rgba(196,95,79,0.22)] bg-[rgba(255,240,238,0.92)] px-4 py-4 text-sm text-[var(--color-danger)]">
