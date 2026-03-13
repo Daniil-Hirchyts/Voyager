@@ -1,0 +1,153 @@
+import { Link } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import { VoyagerLogo } from '@/widgets/app-shell/logo'
+
+function LegalPage({
+  title,
+  lastUpdated,
+  children,
+}: {
+  title: string
+  lastUpdated: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-h-dvh bg-[var(--color-bg)]">
+      <div className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-20">
+        <div className="mb-10 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2.5 text-[var(--color-text)]">
+            <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-cta)] text-white">
+              <VoyagerLogo className="size-[0.85rem] translate-y-[1px]" />
+            </span>
+            <span className="text-[0.95rem] font-semibold tracking-[-0.03em]">Voyager</span>
+          </Link>
+          <Link
+            to="/app/trips"
+            className="flex items-center gap-1.5 text-[0.82rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+          >
+            <ArrowLeft className="size-3.5" />
+            Back to app
+          </Link>
+        </div>
+
+        <div className="mb-10 border-b border-[var(--color-border-strong)] pb-8">
+          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#8b97a7]">Legal</p>
+          <h1 className="text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.05em] text-[var(--color-text)] md:text-[2.8rem]">
+            {title}
+          </h1>
+          <p className="mt-3 text-[0.85rem] text-[var(--color-text-muted)]">Last updated: {lastUpdated}</p>
+        </div>
+
+        <div>{children}</div>
+
+        <div className="mt-16 flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--color-border-strong)] pt-8">
+          {[
+            { label: 'Privacy Policy', to: '/privacy' },
+            { label: 'Terms of Service', to: '/terms' },
+            { label: 'Cookie Policy', to: '/cookies' },
+            { label: 'Imprint', to: '/imprint' },
+          ].map(({ label, to }) => (
+            <Link key={label} to={to} className="text-[0.78rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">
+              {label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 text-[1.1rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">{title}</h2>
+      <div className="space-y-3 text-[0.92rem] leading-7 text-[var(--color-text-muted)]">{children}</div>
+    </section>
+  )
+}
+
+export default function TermsOfServicePage() {
+  return (
+    <LegalPage title="Terms of Service" lastUpdated="March 13, 2026">
+      <Section title="1. Acceptance of terms">
+        <p>
+          By accessing or using Voyager you agree to be bound by these Terms of Service. If you do
+          not agree to these terms, do not use the service. We may update these terms from time to
+          time; continued use after changes constitutes acceptance.
+        </p>
+      </Section>
+
+      <Section title="2. Description of service">
+        <p>
+          Voyager is an AI-assisted travel planning tool that allows you to create, manage, and
+          share itineraries. The service is provided "as is" and we make no warranty that it will
+          be uninterrupted, error-free, or fit for any particular purpose.
+        </p>
+      </Section>
+
+      <Section title="3. Your account">
+        <p>
+          You are responsible for maintaining the confidentiality of your account credentials and
+          for all activity that occurs under your account. Notify us immediately at{' '}
+          <span className="font-medium text-[var(--color-text)]">support@voyager.app</span> if you
+          suspect unauthorised access.
+        </p>
+      </Section>
+
+      <Section title="4. Acceptable use">
+        <p>You may not use Voyager to:</p>
+        <ul className="mt-2 list-inside list-disc space-y-1.5 pl-2">
+          <li>Violate any applicable law or regulation.</li>
+          <li>Upload or transmit harmful, offensive, or infringing content.</li>
+          <li>Attempt to reverse-engineer, scrape, or abuse the platform or its AI components.</li>
+          <li>Interfere with the security or integrity of our systems.</li>
+        </ul>
+      </Section>
+
+      <Section title="5. Intellectual property">
+        <p>
+          The Voyager name, logo, and all platform content remain the intellectual property of
+          Voyager and its licensors. Your trip data belongs to you; you grant us a limited licence
+          to process it solely to provide the service.
+        </p>
+      </Section>
+
+      <Section title="6. AI-generated content">
+        <p>
+          Itineraries, suggestions, and route plans generated by our AI are provided for
+          informational purposes only. Always verify critical travel information (visa requirements,
+          health advisories, transport schedules) with official sources before travel.
+        </p>
+      </Section>
+
+      <Section title="7. Limitation of liability">
+        <p>
+          To the fullest extent permitted by law, Voyager shall not be liable for any indirect,
+          incidental, or consequential damages arising from your use of the service, including travel
+          disruptions or losses based on AI-generated recommendations.
+        </p>
+      </Section>
+
+      <Section title="8. Termination">
+        <p>
+          We may suspend or terminate your access at any time for breach of these terms. You may
+          delete your account at any time from the settings page.
+        </p>
+      </Section>
+
+      <Section title="9. Governing law">
+        <p>
+          These terms are governed by the laws of the European Union and, where applicable,
+          the jurisdiction in which Voyager is incorporated.
+        </p>
+      </Section>
+
+      <Section title="10. Contact">
+        <p>
+          Questions about these terms:{' '}
+          <span className="font-medium text-[var(--color-text)]">legal@voyager.app</span>
+        </p>
+      </Section>
+    </LegalPage>
+  )
+}

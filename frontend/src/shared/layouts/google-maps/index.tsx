@@ -38,6 +38,7 @@ import type {
   TripMapFeatureCollection,
   TripMapLayer,
 } from '@/shared/api/types'
+import { cn } from '@/shared/lib/cn'
 
 export type LatLngPoint = {
   lat: number
@@ -346,15 +347,17 @@ export function MapPanTo({
   return null
 }
 
-export function VoyagerMap(props: React.ComponentProps<typeof Map>) {
+export function VoyagerMap({ className, ...props }: React.ComponentProps<typeof Map>) {
   return (
-    <Map
-      reuseMaps
-      disableDefaultUI
-      gestureHandling="greedy"
-      mapId={config.map.mapId || undefined}
-      {...props}
-    />
+    <div className={cn('voyager-google-map h-full w-full', className)}>
+      <Map
+        reuseMaps
+        disableDefaultUI
+        gestureHandling="greedy"
+        mapId={config.map.mapId || undefined}
+        {...props}
+      />
+    </div>
   )
 }
 

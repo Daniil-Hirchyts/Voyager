@@ -1,6 +1,5 @@
 import type { UserProfile } from '@/shared/api/types'
 
-export type PlannerViewPreference = 'kanban' | 'map'
 export type RecommendationAudiencePreference =
   | 'any'
   | 'families'
@@ -12,18 +11,15 @@ export interface VoyagerRecommendationPreferences {
   resultLimit: number
   minRating: number | null
   audience: RecommendationAudiencePreference
-  useLlmRationale: boolean
 }
 
 export interface VoyagerMapPreferences {
-  defaultPlannerView: PlannerViewPreference
   showRoutesByDefault: boolean
   showCustomLayersByDefault: boolean
 }
 
 export interface VoyagerRegionalPreferences {
   locale: string
-  region: string
   currency: string
 }
 
@@ -38,16 +34,13 @@ export const DEFAULT_VOYAGER_PREFERENCES: VoyagerPreferences = {
     resultLimit: 6,
     minRating: 4,
     audience: 'any',
-    useLlmRationale: true,
   },
   map: {
-    defaultPlannerView: 'kanban',
     showRoutesByDefault: true,
     showCustomLayersByDefault: true,
   },
   regional: {
     locale: 'en-US',
-    region: 'US',
     currency: 'USD',
   },
 }
@@ -125,16 +118,8 @@ export function readVoyagerPreferences(
         recommendations.audience,
         DEFAULT_VOYAGER_PREFERENCES.recommendations.audience,
       ),
-      useLlmRationale: coerceBoolean(
-        recommendations.useLlmRationale,
-        DEFAULT_VOYAGER_PREFERENCES.recommendations.useLlmRationale,
-      ),
     },
     map: {
-      defaultPlannerView:
-        map.defaultPlannerView === 'map'
-          ? 'map'
-          : DEFAULT_VOYAGER_PREFERENCES.map.defaultPlannerView,
       showRoutesByDefault: coerceBoolean(
         map.showRoutesByDefault,
         DEFAULT_VOYAGER_PREFERENCES.map.showRoutesByDefault,
@@ -146,7 +131,6 @@ export function readVoyagerPreferences(
     },
     regional: {
       locale: coerceString(regional.locale, DEFAULT_VOYAGER_PREFERENCES.regional.locale),
-      region: coerceString(regional.region, DEFAULT_VOYAGER_PREFERENCES.regional.region),
       currency: coerceString(
         regional.currency,
         DEFAULT_VOYAGER_PREFERENCES.regional.currency,

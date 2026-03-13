@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router-dom'
 import { config } from '@/app/config'
 import { DEFAULT_VOYAGER_PREFERENCES } from '@/entities/user/preferences'
@@ -79,6 +79,20 @@ function buildRecommendationsController(): PlannerRecommendationsController {
     refresh: async () => {},
     addEntryToDestination: async () => null,
   }
+}
+
+function mockDomRect(rect: Partial<DOMRect>): DOMRect {
+  return {
+    x: rect.x ?? 0,
+    y: rect.y ?? 0,
+    width: rect.width ?? 0,
+    height: rect.height ?? 0,
+    top: rect.top ?? 0,
+    right: rect.right ?? 0,
+    bottom: rect.bottom ?? 0,
+    left: rect.left ?? 0,
+    toJSON: () => ({}),
+  } as DOMRect
 }
 
 describe('PlannerMapView', () => {
@@ -298,6 +312,7 @@ describe('PlannerMapView', () => {
         </MemoryRouter>,
       )
 
+      expect(screen.getByTestId('google-map-stub').parentElement).toHaveClass('voyager-google-map')
       expect(
         await screen.findByTestId('planner-map-travel-travel-map-1-origin'),
       ).toBeInTheDocument()
@@ -321,6 +336,108 @@ describe('PlannerMapView', () => {
       expect(path.length).toBeGreaterThan(2)
     } finally {
       globalThis.google.maps.Polyline = originalPolyline
+      config.map.apiKey = originalApiKey
+    }
+  })
+
+  it('fits the selected travel route above the desktop detail sheet', async () => {
+    const originalApiKey = config.map.apiKey
+    config.map.apiKey = 'test-google-maps-key'
+
+    const map = (
+      globalThis as typeof globalThis & {
+        __voyagerGoogleMapStub: { fitBounds: ReturnType<typeof vi.fn> }
+      }
+    ).__voyagerGoogleMapStub
+    const fitBounds = map.fitBounds
+
+    const destinationPlace = buildPlace({
+      id: 'place-prague-airport',
+      name: 'Prague Airport',
+      lat: 50.1008,
+      lon: 14.26,
+    })
+    const trip = buildTrip({ id: 'trip-map-travel-fit' })
+    const travelActivity = buildPlannerActivity({
+      id: 'travel-map-fit',
+      title: 'Orly to Prague airport',
+      category: 'travel',
+      trip_day_id: 'day-1',
+      place_id: destinationPlace.id,
+      place: destinationPlace,
+      category_details: {
+        origin_text: 'Orly, France',
+        destination_text: 'Prague Airport',
+        origin_geo: { lat: 48.7279, lon: 2.3592 },
+        destination_geo: { lat: 50.1008, lon: 14.26 },
+        travel_mode: 'flight',
+      },
+    })
+    const day = buildPlannerDay({
+      id: 'day-1',
+      day_index: 0,
+      date: '2026-04-10',
+      activities: [travelActivity],
+    })
+
+    try {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <PlannerMapView
+            trip={trip}
+            tripId={trip.id}
+            tripVersion={trip.version}
+            days={[day]}
+            inboxActivities={[]}
+            selectedActivityId={travelActivity.id}
+            selectedPlaceId={destinationPlace.id}
+            recommendations={buildRecommendationsController()}
+            selectedRecommendation={null}
+            onAddActivity={() => {}}
+            onSelectActivityId={() => {}}
+            onSelectPlaceId={() => {}}
+            onSelectRecommendation={() => {}}
+            onClearMapSelection={() => {}}
+          />
+        </MemoryRouter>,
+      )
+
+      await waitFor(() => expect(fitBounds).toHaveBeenCalled())
+      fitBounds.mockClear()
+
+      const mapContainer = screen.getByTestId('planner-map-container')
+      const detailSheet = await screen.findByTestId('planner-map-detail-sheet')
+
+      vi.spyOn(mapContainer, 'getBoundingClientRect').mockReturnValue(
+        mockDomRect({
+          top: 0,
+          right: 1400,
+          bottom: 1000,
+          left: 0,
+          width: 1400,
+          height: 1000,
+        }),
+      )
+      vi.spyOn(detailSheet, 'getBoundingClientRect').mockReturnValue(
+        mockDomRect({
+          top: 660,
+          right: 1376,
+          bottom: 980,
+          left: 24,
+          width: 1352,
+          height: 320,
+        }),
+      )
+
+      window.dispatchEvent(new Event('resize'))
+
+      await waitFor(() =>
+        expect(fitBounds).toHaveBeenLastCalledWith(
+          expect.anything(),
+          expect.objectContaining({ top: 120, right: 84, bottom: 352, left: 84 }),
+        ),
+      )
+    } finally {
       config.map.apiKey = originalApiKey
     }
   })

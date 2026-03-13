@@ -40,13 +40,48 @@ class ActivityCategory(StrEnum):
     TRAVEL = "travel"
 
 
+class TripAccessRole(StrEnum):
+    OWNER = "owner"
+    EDITOR = "editor"
+
+
 class UserProfile(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "user_profile"
 
     keycloak_sub: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    first_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
     preferences_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    avatar_object_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avatar_thumbnail_object_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    avatar_content_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    avatar_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    avatar_sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     trips: Mapped[list["Trip"]] = relationship("Trip", back_populates="user", cascade="all,delete")
+    shared_trips: Mapped[list["TripCollaborator"]] = relationship(
+        "TripCollaborator",
+        back_populates="user",
+        cascade="all,delete",
+        foreign_keys="TripCollaborator.user_id",
+    )
+    invited_trip_collaborators: Mapped[list["TripCollaborator"]] = relationship(
+        "TripCollaborator",
+        back_populates="invited_by",
+        foreign_keys="TripCollaborator.invited_by_user_id",
+    )
+    created_trip_invitations: Mapped[list["TripInvitation"]] = relationship(
+        "TripInvitation",
+        back_populates="created_by",
+        foreign_keys="TripInvitation.created_by_user_id",
+    )
+    accepted_trip_invitations: Mapped[list["TripInvitation"]] = relationship(
+        "TripInvitation",
+        back_populates="accepted_by",
+        foreign_keys="TripInvitation.accepted_by_user_id",
+    )
 
 
 class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -109,8 +144,107 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         cascade="all,delete",
         order_by="TripMapLayer.order_index",
     )
+    collaborators: Mapped[list["TripCollaborator"]] = relationship(
+        "TripCollaborator",
+        back_populates="trip",
+        cascade="all,delete",
+        order_by="TripCollaborator.created_at.asc()",
+    )
+    invitations: Mapped[list["TripInvitation"]] = relationship(
+        "TripInvitation",
+        back_populates="trip",
+        cascade="all,delete",
+        order_by="TripInvitation.created_at.desc()",
+    )
 
     __table_args__ = (CheckConstraint("end_date >= start_date", name="trip_valid_date_range"),)
+
+
+class TripCollaborator(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "trip_collaborator"
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    role: Mapped[TripAccessRole] = mapped_column(
+        Enum(TripAccessRole, name="trip_access_role_enum", native_enum=False),
+        nullable=False,
+        default=TripAccessRole.EDITOR,
+    )
+    invited_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="collaborators")
+    user: Mapped["UserProfile"] = relationship(
+        "UserProfile",
+        back_populates="shared_trips",
+        foreign_keys=[user_id],
+    )
+    invited_by: Mapped["UserProfile | None"] = relationship(
+        "UserProfile",
+        back_populates="invited_trip_collaborators",
+        foreign_keys=[invited_by_user_id],
+    )
+
+    __table_args__ = (
+        UniqueConstraint("trip_id", "user_id", name="uq_trip_collaborator_trip_user"),
+        Index("ix_trip_collaborator_trip_created", "trip_id", "created_at"),
+    )
+
+
+class TripInvitation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
+    __tablename__ = "trip_invitation"
+
+    trip_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("trip.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_by_user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    accepted_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("user_profile.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    role: Mapped[TripAccessRole] = mapped_column(
+        Enum(TripAccessRole, name="trip_access_role_enum", native_enum=False),
+        nullable=False,
+        default=TripAccessRole.EDITOR,
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    trip: Mapped["Trip"] = relationship("Trip", back_populates="invitations")
+    created_by: Mapped["UserProfile"] = relationship(
+        "UserProfile",
+        back_populates="created_trip_invitations",
+        foreign_keys=[created_by_user_id],
+    )
+    accepted_by: Mapped["UserProfile | None"] = relationship(
+        "UserProfile",
+        back_populates="accepted_trip_invitations",
+        foreign_keys=[accepted_by_user_id],
+    )
+
+    __table_args__ = (
+        Index("ix_trip_invitation_trip_created", "trip_id", "created_at"),
+        Index("ix_trip_invitation_trip_pending", "trip_id", "revoked_at", "accepted_at"),
+    )
 
 
 class TripDay(Base, UUIDPrimaryKeyMixin, TimestampMixin):

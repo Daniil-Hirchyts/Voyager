@@ -23,16 +23,13 @@ describe('SettingsPage', () => {
                 resultLimit: 8,
                 minRating: 5,
                 audience: 'families',
-                useLlmRationale: false,
               },
               map: {
-                defaultPlannerView: 'map',
                 showRoutesByDefault: false,
                 showCustomLayersByDefault: true,
               },
               regional: {
                 locale: 'fr-FR',
-                region: 'FR',
                 currency: 'EUR',
               },
             },
@@ -80,14 +77,15 @@ describe('SettingsPage', () => {
         resultLimit: 9,
         minRating: 5,
         audience: 'families',
-        useLlmRationale: false,
       },
       regional: {
         locale: 'fr-FR',
-        region: 'FR',
         currency: 'EUR',
       },
     })
+    expect(preferences.recommendations).not.toHaveProperty('useLlmRationale')
+    expect(preferences.map).not.toHaveProperty('defaultPlannerView')
+    expect(preferences.regional).not.toHaveProperty('region')
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument()
   })
 })

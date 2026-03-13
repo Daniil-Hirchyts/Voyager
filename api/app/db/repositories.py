@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import case, func, or_, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -20,9 +21,12 @@ from app.db.models import (
     Place,
     PlacePhoto,
     Trip,
+    TripAccessRole,
     TripAsset,
+    TripCollaborator,
     TripDay,
     TripExport,
+    TripInvitation,
     TripMapLayer,
     UserProfile,
 )
@@ -48,6 +52,13 @@ from app.services.place_photo_assets import build_place_photo_asset_url
 class TripDuplicationResult:
     trip: Trip
     activity_id_map: dict[uuid.UUID, uuid.UUID]
+
+
+@dataclass
+class TripAccessSummary:
+    trip: Trip
+    current_user_role: TripAccessRole
+    collaborator_count: int
 
 
 def _coerce_string(value: Any) -> str | None:
@@ -108,6 +119,9 @@ def _build_trip_title(destination_text: str) -> str:
     return f"Trip to {destination or 'your destination'}"[:255]
 
 
+_UNSET = object()
+
+
 def _unique_strings(values: list[Any]) -> list[str]:
     seen: set[str] = set()
     result: list[str] = []
@@ -164,6 +178,21 @@ async def _assert_trip_day_matches_trip(
         raise ValidationApiError("trip_day_id must belong to trip_id")
 
 
+def _trip_access_clause(
+    *,
+    user_id: uuid.UUID,
+    trip_id_column,
+    owner_user_id_column,
+):
+    collaborator_exists = (
+        select(TripCollaborator.id)
+        .where(TripCollaborator.trip_id == trip_id_column)
+        .where(TripCollaborator.user_id == user_id)
+        .exists()
+    )
+    return or_(owner_user_id_column == user_id, collaborator_exists)
+
+
 class UserRepository:
     @staticmethod
     async def get_by_sub(db: AsyncSession, keycloak_sub: str) -> UserProfile | None:
@@ -173,10 +202,75 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def update_preferences(
-        db: AsyncSession, user: UserProfile, preferences: dict
+    async def sync_identity(
+        db: AsyncSession,
+        user: UserProfile,
+        *,
+        email: str | None,
+        first_name: str | None,
+        last_name: str | None,
+        display_name: str,
     ) -> UserProfile:
-        user.preferences_json = preferences
+        if user.email != email:
+            user.email = email
+        if user.first_name != first_name:
+            user.first_name = first_name
+        if user.last_name != last_name:
+            user.last_name = last_name
+        if user.display_name != display_name:
+            user.display_name = display_name
+        await db.flush()
+        return user
+
+    @staticmethod
+    async def patch_profile(
+        db: AsyncSession,
+        user: UserProfile,
+        *,
+        first_name: str | None | object = _UNSET,
+        last_name: str | None | object = _UNSET,
+        display_name: str | object = _UNSET,
+        preferences: dict | object = _UNSET,
+    ) -> UserProfile:
+        if first_name is not _UNSET:
+            user.first_name = first_name
+        if last_name is not _UNSET:
+            user.last_name = last_name
+        if display_name is not _UNSET:
+            user.display_name = display_name
+        if preferences is not _UNSET:
+            user.preferences_json = preferences
+        await db.flush()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def update_avatar(
+        db: AsyncSession,
+        user: UserProfile,
+        *,
+        object_key: str,
+        thumbnail_object_key: str | None,
+        content_type: str,
+        size_bytes: int,
+        sha256: str,
+    ) -> UserProfile:
+        user.avatar_object_key = object_key
+        user.avatar_thumbnail_object_key = thumbnail_object_key
+        user.avatar_content_type = content_type
+        user.avatar_size_bytes = size_bytes
+        user.avatar_sha256 = sha256
+        await db.flush()
+        await db.refresh(user)
+        return user
+
+    @staticmethod
+    async def clear_avatar(db: AsyncSession, user: UserProfile) -> UserProfile:
+        user.avatar_object_key = None
+        user.avatar_thumbnail_object_key = None
+        user.avatar_content_type = None
+        user.avatar_size_bytes = None
+        user.avatar_sha256 = None
         await db.flush()
         await db.refresh(user)
         return user

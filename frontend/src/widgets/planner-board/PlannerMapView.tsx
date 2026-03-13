@@ -130,6 +130,7 @@ import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { formatMoney } from '@/shared/lib/format'
 import { resolveMediaUrl } from '@/shared/lib/media'
 import { usePlannerStore } from '@/shared/stores/planner.store'
+import { useSideRailStore } from '@/shared/stores/side-rail.store'
 import {
   ControlPosition,
   GoogleDirectionsRoute,
@@ -2693,6 +2694,7 @@ export function PlannerMapView({
   onRegisterSectionOpener,
 }: Props) {
   const isMobile = useIsMobile()
+  const { mobilePlannerView } = useSideRailStore()
   const dragActive = Boolean(isDragActive)
   const queryClient = useQueryClient()
   const createPlaceMutation = useCreatePlace()
@@ -2784,6 +2786,9 @@ export function PlannerMapView({
   const [activeQuickCategory, setActiveQuickCategory] = useState<QuickCategory | null>(null)
   const [selectedSearchItem, setSelectedSearchItem] = useState<SearchResultItem | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
+  const mapContainerRef = useRef<HTMLElement | null>(null)
+  const detailSheetRef = useRef<HTMLDivElement | null>(null)
+  const [detailSheetOverlap, setDetailSheetOverlap] = useState(0)
   const [recommendationsDismissed, setRecommendationsDismissed] = useState(true)
   const [preferredDetailTab, setPreferredDetailTab] = useState('about')
   const [addingToTrip, setAddingToTrip] = useState(false)
@@ -3103,6 +3108,68 @@ export function PlannerMapView({
     !recommendationsDismissed
   const hasActiveSelection = Boolean(
     selectedStop || selectedSearchItem || selectedDetailPlaceId || selectedRecommendation,
+  )
+
+  useEffect(() => {
+    if (isMobile || !detailOpen || !hasActiveSelection) {
+      setDetailSheetOverlap(0)
+      return
+    }
+
+    const measureDetailSheetOverlap = () => {
+      const mapContainerRect = mapContainerRef.current?.getBoundingClientRect()
+      const detailSheetRect = detailSheetRef.current?.getBoundingClientRect()
+      if (!mapContainerRect || !detailSheetRect) {
+        setDetailSheetOverlap(0)
+        return
+      }
+
+      const overlap = Math.max(
+        0,
+        Math.min(mapContainerRect.bottom, detailSheetRect.bottom) -
+          Math.max(mapContainerRect.top, detailSheetRect.top),
+      )
+
+      setDetailSheetOverlap((current) => (Math.abs(current - overlap) < 1 ? current : overlap))
+    }
+
+    measureDetailSheetOverlap()
+
+    if (typeof ResizeObserver === 'undefined') {
+      return
+    }
+
+    const resizeObserver = new ResizeObserver(measureDetailSheetOverlap)
+    if (mapContainerRef.current) {
+      resizeObserver.observe(mapContainerRef.current)
+    }
+    if (detailSheetRef.current) {
+      resizeObserver.observe(detailSheetRef.current)
+    }
+    window.addEventListener('resize', measureDetailSheetOverlap)
+
+    return () => {
+      resizeObserver.disconnect()
+      window.removeEventListener('resize', measureDetailSheetOverlap)
+    }
+  }, [
+    detailOpen,
+    hasActiveSelection,
+    isMobile,
+    selectedActivityId,
+    selectedDetailPlaceId,
+    selectedRecommendation?.item.id,
+    selectedSearchItem?.id,
+  ])
+
+  const selectedTravelOverlayPadding = useMemo<google.maps.Padding>(
+    () => ({
+      top: 120,
+      right: 84,
+      bottom: Math.max(84, Math.round(detailSheetOverlap) + 32),
+      left: 84,
+    }),
+    [detailSheetOverlap],
   )
 
   const clearSelection = () => {
@@ -3590,8 +3657,8 @@ export function PlannerMapView({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="grid h-full min-h-0 gap-0 xl:grid-cols-[minmax(420px,0.47fr)_minmax(0,0.53fr)]">
-        <div className="min-h-0 flex flex-col">
+      <div className="grid h-full min-h-0 gap-0 overflow-hidden md:py-2 md:pr-2 xl:grid-cols-[minmax(420px,0.47fr)_minmax(0,0.53fr)]">
+        <div className={cn('min-h-0 flex-col', mobilePlannerView === 'map' ? 'hidden md:flex' : 'flex')}>
           <div data-planner-scroll className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex flex-col gap-3 p-2">
               <PlannerTripHeroCard trip={trip} coverPhotoUrl={heroPhotoUrl} />
@@ -3765,7 +3832,13 @@ export function PlannerMapView({
         </div>
 
         <section
-          className="relative min-h-[32rem] overflow-hidden rounded-[28px] border border-black/8 md:my-2 md:mr-2 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]"
+          ref={mapContainerRef}
+          className={cn(
+            'relative min-h-0 overflow-hidden rounded-[28px] border border-black/8 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]',
+            mobilePlannerView === 'cards'
+              ? 'hidden md:block'
+              : '',
+          )}
           data-testid="planner-map-container"
         >
         {!config.map.apiKey ? (
@@ -3824,7 +3897,7 @@ export function PlannerMapView({
             {selectedTravelOverlayPath.length > 0 ? (
               <MapFitBounds
                 points={selectedTravelOverlayPath}
-                padding={{ top: 120, right: 84, bottom: 84, left: 84 }}
+                padding={selectedTravelOverlayPadding}
                 maxZoom={selectedTravelOverlay?.mode === 'flight' ? 7 : 10}
                 singlePointZoom={11}
               />
@@ -4185,6 +4258,7 @@ export function PlannerMapView({
             <div className="pointer-events-none absolute inset-0 z-[6] flex flex-col justify-end px-3 pb-3">
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-[rgba(243,245,247,0.55)] via-[rgba(243,245,247,0.14)] to-transparent" />
               <motion.div
+                ref={detailSheetRef}
                 key={detailSelectionKey}
                 role="dialog"
                 aria-modal="false"

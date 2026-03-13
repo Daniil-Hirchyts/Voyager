@@ -20,8 +20,16 @@ createRoot(document.getElementById('root')!).render(
           <Route
             path="/app/trips/:tripId/plan"
             element={(
-              <div className="min-h-[100dvh]">
-                <PlannerBoard tripId="trip-e2e" />
+              <div className="flex h-[100dvh] min-h-0 flex-col bg-white" data-testid="planner-harness-shell">
+                <div
+                  className="flex h-12 shrink-0 items-center border-b border-black/8 px-4 text-sm font-medium text-[var(--color-text)]"
+                  data-testid="planner-harness-header"
+                >
+                  Planner harness
+                </div>
+                <div className="flex min-h-0 flex-1 flex-col" data-testid="planner-harness-content">
+                  <PlannerBoard tripId="trip-e2e" />
+                </div>
               </div>
             )}
           />

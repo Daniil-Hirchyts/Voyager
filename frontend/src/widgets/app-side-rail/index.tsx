@@ -1,11 +1,13 @@
 import { Children, type ComponentPropsWithoutRef, type ReactElement, type ReactNode, useEffect } from 'react'
-import { Link, Outlet, useMatch } from 'react-router-dom'
+import { Link, Outlet, useLocation, useMatch } from 'react-router-dom'
 import { useAuth } from 'react-oidc-context'
 import {
   BedDouble,
   Inbox,
   LayoutGrid,
+  LayoutList,
   LogOut,
+  Map,
   Plane,
   Plus,
   Route,
@@ -28,6 +30,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/shared/lib/cn'
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store'
+import { RouteTransition } from '@/shared/layouts/route-transition'
 
 function getInitials(name: string) {
   return (
@@ -169,7 +172,7 @@ function AppSideRail() {
   const planMatch = useMatch('/app/trips/:tripId/plan')
   const tripsExactMatch = useMatch({ path: '/app/trips', end: true })
   const newTripMatch = useMatch('/app/trips/new')
-  const { plannerInstruments } = useSideRailStore()
+  const { plannerInstruments, mobilePlannerView, setMobilePlannerView } = useSideRailStore()
 
   const isPlannerPage = Boolean(planMatch)
   const userName = (auth.user?.profile?.name as string | undefined) || 'Traveler'
@@ -244,6 +247,26 @@ function AppSideRail() {
               <SlidersHorizontal className="size-[1rem]" />
             </RailActionButton>
           </RailAnimatedColumn>
+
+          <div className="md:hidden flex flex-col items-center w-full">
+            <Divider />
+            <div className="flex flex-col items-center gap-0.5 py-1.5">
+              <RailActionButton
+                data-id="mobile-view-toggle"
+                tooltip={mobilePlannerView === 'cards' ? 'Show map' : 'Show itinerary'}
+                type="button"
+                aria-label={mobilePlannerView === 'cards' ? 'Switch to map view' : 'Switch to itinerary view'}
+                onClick={() => setMobilePlannerView(mobilePlannerView === 'cards' ? 'map' : 'cards')}
+                className={cn(BTN_RAIL, mobilePlannerView === 'map' && 'text-[var(--color-cta)]')}
+              >
+                {mobilePlannerView === 'cards' ? (
+                  <Map className="size-[1rem]" />
+                ) : (
+                  <LayoutList className="size-[1rem]" />
+                )}
+              </RailActionButton>
+            </div>
+          </div>
 
           {plannerInstruments.days.length > 0 && (
             <>
@@ -343,6 +366,8 @@ function AppSideRail() {
 }
 
 export function AppLayout() {
+  const location = useLocation()
+
   useEffect(() => {
     document.documentElement.classList.add('voyager-app-shell')
     document.body.classList.add('voyager-app-shell')
@@ -360,7 +385,9 @@ export function AppLayout() {
           className="flex flex-1 min-w-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain"
           data-testid="app-layout-content"
         >
-          <Outlet />
+          <RouteTransition pageKey={location.pathname} variant="app" className="flex h-full min-h-0 flex-col">
+            <Outlet />
+          </RouteTransition>
         </main>
       </div>
     </TooltipProvider>

@@ -382,6 +382,16 @@
     box-shadow: 0 0 0 4px rgba(114, 174, 230, 0.22);
   }
 
+  .voyager-google-map,
+  .voyager-google-map:focus,
+  .voyager-google-map:focus-visible,
+  .voyager-google-map .gm-style,
+  .voyager-google-map .gm-style:focus,
+  .voyager-google-map .gm-style:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   .voyager-section-stack {
     display: flex;
     flex-direction: column;

@@ -64,10 +64,10 @@ class AdvancedMarkerElementStub {
 vi.mock('@vis.gl/react-google-maps', () => ({
   APIProvider: ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children),
   Map: forwardRef<HTMLDivElement, { children?: ReactNode }>(function MapStub(
-    { children },
+    { children, className, style },
     ref,
   ) {
-    return createElement('div', { ref, 'data-testid': 'google-map-stub' }, children)
+    return createElement('div', { ref, className, style, 'data-testid': 'google-map-stub' }, children)
   }),
   Marker: ({
     children,
@@ -333,6 +333,7 @@ beforeAll(() => {
   server.listen({ onUnhandledRequest: 'error' })
   server.use(...defaultServerHandlers)
   vi.stubGlobal('scrollTo', vi.fn())
+  vi.stubGlobal('__voyagerGoogleMapStub', googleMapStub)
   vi.stubGlobal(
     'ResizeObserver',
     class ResizeObserver {

@@ -263,6 +263,33 @@ async function dragHandleTo(page: Page, sourceHandleSelector: string, targetSele
   await page.mouse.up()
 }
 
+async function ensureAccordionContainsActivity(
+  page: Page,
+  dayId: string,
+  activityTitle: string,
+) {
+  const activity = page.locator(`#planner-day-${dayId} [aria-label="Activity: ${activityTitle}"]`)
+  if ((await activity.count()) === 0) {
+    await page.getByTestId(`planner-map-day-trigger-${dayId}`).click()
+  }
+  await expect(activity).toBeVisible()
+}
+
+async function expectDocumentToStayPinned(page: Page) {
+  const metrics = await page.evaluate(() => {
+    window.scrollTo(0, 240)
+
+    return {
+      innerHeight: window.innerHeight,
+      scrollHeight: document.scrollingElement?.scrollHeight ?? 0,
+      scrollY: window.scrollY,
+    }
+  })
+
+  expect(metrics.scrollY).toBe(0)
+  expect(metrics.scrollHeight).toBeLessThanOrEqual(metrics.innerHeight + 1)
+}
+
 test('desktop kanban supports inbox/day roundtrip without snap scrolling', async ({ page }) => {
   const plannerState = createPlannerState()
   await installPlannerRoutes(page, plannerState)
@@ -270,57 +297,63 @@ test('desktop kanban supports inbox/day roundtrip without snap scrolling', async
   await page.setViewportSize({ width: 1440, height: 960 })
   await page.goto('/planner-harness.html')
 
-  await expect(page.locator('[aria-label="Inbox"]')).toBeVisible()
-  await expect(page.locator('[aria-label="Activity: Inbox museum shortlist"]')).toBeVisible()
-
-  const snapType = await page
-    .getByTestId('planner-board-rail')
-    .evaluate((element) => window.getComputedStyle(element).scrollSnapType)
-  expect(snapType).toBe('none')
+  await expect(page.getByTestId('planner-map-day-trigger-inbox')).toBeVisible()
+  await ensureAccordionContainsActivity(page, 'inbox', 'Inbox museum shortlist')
 
   await dragHandleTo(
     page,
     '[aria-label="Activity: Inbox museum shortlist"] button[aria-label="Drag activity"]',
-    'section[aria-label="Day 1"]',
+    '#planner-day-day-1',
   )
 
-  await expect(
-    page.locator('section[aria-label="Day 1"] [aria-label="Activity: Inbox museum shortlist"]'),
-  ).toBeVisible()
+  await ensureAccordionContainsActivity(page, 'day-1', 'Inbox museum shortlist')
 
   await dragHandleTo(
     page,
-    'section[aria-label="Day 1"] [aria-label="Activity: Inbox museum shortlist"] button[aria-label="Drag activity"]',
-    'section[aria-label="Inbox"]',
+    '#planner-day-day-1 [aria-label="Activity: Inbox museum shortlist"] button[aria-label="Drag activity"]',
+    '#planner-day-inbox',
   )
 
+  await ensureAccordionContainsActivity(page, 'inbox', 'Inbox museum shortlist')
   await expect(
-    page.locator('section[aria-label="Inbox"] [aria-label="Activity: Inbox museum shortlist"]'),
-  ).toBeVisible()
-  await expect(
-    page.locator('section[aria-label="Day 1"] [aria-label="Activity: Inbox museum shortlist"]'),
+    page.locator('#planner-day-day-1 [aria-label="Activity: Inbox museum shortlist"]'),
   ).toHaveCount(0)
 })
 
-test('mobile kanban uses the chip rail to move inbox items across hidden days', async ({ page }) => {
+test('mobile kanban can move inbox items into a day column', async ({ page }) => {
   const plannerState = createPlannerState()
   await installPlannerRoutes(page, plannerState)
 
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/planner-harness.html')
 
-  await expect(page.getByTestId('planner-mobile-chip-rail')).toBeVisible()
-  await expect(page.locator('section[aria-label="Inbox"]')).toBeVisible()
-  await expect(page.locator('section[aria-label="Day 1"]')).toHaveCount(0)
+  await expect(page.getByTestId('planner-map-day-trigger-inbox')).toBeVisible()
+  await expect(page.getByTestId('planner-map-day-trigger-day-1')).toBeVisible()
+  await ensureAccordionContainsActivity(page, 'inbox', 'Inbox museum shortlist')
 
   await dragHandleTo(
     page,
     '[aria-label="Activity: Inbox museum shortlist"] button[aria-label="Drag activity"]',
-    '[data-testid="planner-mobile-chip-rail"] button:has-text("Day 1")',
+    '#planner-day-day-1',
   )
 
-  await expect(page.locator('section[aria-label="Day 1"]')).toBeVisible()
-  await expect(
-    page.locator('section[aria-label="Day 1"] [aria-label="Activity: Inbox museum shortlist"]'),
-  ).toBeVisible()
+  await ensureAccordionContainsActivity(page, 'day-1', 'Inbox museum shortlist')
+})
+
+test('planner harness stays pinned to the available viewport on desktop and mobile', async ({ page }) => {
+  const plannerState = createPlannerState()
+  await installPlannerRoutes(page, plannerState)
+
+  for (const viewport of [
+    { width: 1440, height: 960 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport)
+    await page.goto('/planner-harness.html')
+
+    await expect(page.getByTestId('planner-harness-header')).toBeVisible()
+    await expect(page.getByTestId('planner-trip-hero')).toBeVisible()
+
+    await expectDocumentToStayPinned(page)
+  }
 })

@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     keycloak_jwks_url: str = Field(alias="VOYAGER_KEYCLOAK_JWKS_URL")
     keycloak_client_id: str = Field(alias="VOYAGER_KEYCLOAK_CLIENT_ID")
     keycloak_client_secret: str | None = Field(default=None, alias="VOYAGER_KEYCLOAK_CLIENT_SECRET")
+    trip_invite_secret: str = Field(
+        default="voyager-dev-trip-invite-secret",
+        alias="VOYAGER_TRIP_INVITE_SECRET",
+    )
+    keycloak_admin_user: str | None = Field(default=None, alias="KEYCLOAK_ADMIN")
+    keycloak_admin_password: str | None = Field(default=None, alias="KEYCLOAK_ADMIN_PASSWORD")
 
     require_idempotency_keys: bool = Field(default=True, alias="VOYAGER_REQUIRE_IDEMPOTENCY_KEYS")
     rate_limit_ip_per_min: int = Field(default=240, alias="VOYAGER_RATE_LIMIT_IP_PER_MIN")

@@ -30,6 +30,11 @@ class TripPatchRequest(BaseModel):
     route_travel_mode: RouteTravelMode | None = None
 
 
+class TripAccessRole(StrEnum):
+    OWNER = "owner"
+    EDITOR = "editor"
+
+
 class TripResponse(BaseModel):
     id: UUID
     user_id: UUID
@@ -41,6 +46,8 @@ class TripResponse(BaseModel):
     budget_currency: str | None
     trip_type: str | None
     route_travel_mode: RouteTravelMode
+    current_user_role: TripAccessRole
+    collaborator_count: int
     version: int
     created_at: datetime
     updated_at: datetime
@@ -224,3 +231,53 @@ class TripRegenerateRequest(BaseModel):
 
 class TripResetItineraryRequest(BaseModel):
     day_ids: list[UUID] = Field(min_length=1)
+
+
+class TripCollaboratorResponse(BaseModel):
+    id: UUID
+    trip_id: UUID
+    user_id: UUID
+    role: TripAccessRole
+    email: str | None
+    display_name: str
+    invited_by_user_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TripInvitationCreateRequest(BaseModel):
+    role: TripAccessRole = TripAccessRole.EDITOR
+
+
+class TripInvitationResponse(BaseModel):
+    id: UUID
+    trip_id: UUID
+    created_by_user_id: UUID
+    role: TripAccessRole
+    invite_path: str
+    accepted_at: datetime | None
+    revoked_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class TripInvitationCreateResponse(BaseModel):
+    invitation: TripInvitationResponse
+
+
+class TripSharingResponse(BaseModel):
+    trip_id: UUID
+    current_user_role: TripAccessRole
+    collaborators: list[TripCollaboratorResponse]
+    pending_invitations: list[TripInvitationResponse]
+
+
+class TripInvitationPreviewResponse(BaseModel):
+    invitation_id: UUID
+    trip_id: UUID
+    trip_title: str
+    destination_text: str
+    inviter_display_name: str
+    inviter_email: str | None
+    role: TripAccessRole
+    created_at: datetime

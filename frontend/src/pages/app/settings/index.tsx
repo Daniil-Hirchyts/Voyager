@@ -17,7 +17,6 @@ import {
   mergeVoyagerPreferences,
   readVoyagerPreferences,
   type RecommendationAudiencePreference,
-  type VoyagerPreferences,
 } from '@/entities/user/preferences'
 import { usePatchProfile, useProfile } from '@/entities/user/queries'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
@@ -43,13 +42,12 @@ const AUDIENCE_OPTIONS: Array<{
 ]
 
 const LOCALE_OPTIONS = ['en-US', 'fr-FR', 'it-IT', 'de-DE', 'es-ES']
-const REGION_OPTIONS = ['US', 'FR', 'IT', 'GB', 'DE', 'ES']
 
 export default function SettingsPage() {
   const auth = useAuth()
   const { data: profile, isLoading } = useProfile()
   const patchProfile = usePatchProfile()
-  const [settings, setSettings] = useState<VoyagerPreferences>(DEFAULT_VOYAGER_PREFERENCES)
+  const [settings, setSettings] = useState(DEFAULT_VOYAGER_PREFERENCES)
 
   useEffect(() => {
     if (!profile) {
@@ -97,7 +95,7 @@ export default function SettingsPage() {
                 Recommendation defaults
               </h2>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Controls for planner discovery and saved-fit ranking.
+                Controls for planner discovery.
               </p>
             </div>
           </div>
@@ -174,27 +172,6 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </label>
-
-            <label className="sm:col-span-2 flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-[var(--color-text)]">Use AI rationale</p>
-                <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                  Include an LLM-generated reason in saved-fit recommendations.
-                </p>
-              </div>
-              <Checkbox
-                checked={settings.recommendations.useLlmRationale}
-                onCheckedChange={(checked) =>
-                  setSettings((current) => ({
-                    ...current,
-                    recommendations: {
-                      ...current.recommendations,
-                      useLlmRationale: Boolean(checked),
-                    },
-                  }))
-                }
-              />
-            </label>
           </div>
         </section>
 
@@ -208,36 +185,12 @@ export default function SettingsPage() {
                 Map and display defaults
               </h2>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Choose how planner views should open and what the map shows first.
+                Choose what the planner map shows first.
               </p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-4">
-            <label className="space-y-2">
-              <span className={fieldLabelClassName}>Default planner view</span>
-              <Select
-                value={settings.map.defaultPlannerView}
-                onValueChange={(value) =>
-                  setSettings((current) => ({
-                    ...current,
-                    map: {
-                      ...current.map,
-                      defaultPlannerView: value as VoyagerPreferences['map']['defaultPlannerView'],
-                    },
-                  }))
-                }
-              >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-[16px] border-black/8">
-                  <SelectItem value="kanban">Board</SelectItem>
-                  <SelectItem value="map">Map</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-
             <label className="flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-[var(--color-text)]">Show routes by default</p>
@@ -297,7 +250,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="space-y-2">
               <span className={fieldLabelClassName}>Locale</span>
               <Select
@@ -319,33 +272,6 @@ export default function SettingsPage() {
                   {LOCALE_OPTIONS.map((locale) => (
                     <SelectItem key={locale} value={locale}>
                       {locale}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-
-            <label className="space-y-2">
-              <span className={fieldLabelClassName}>Region</span>
-              <Select
-                value={settings.regional.region}
-                onValueChange={(value) =>
-                  setSettings((current) => ({
-                    ...current,
-                    regional: {
-                      ...current.regional,
-                      region: value,
-                    },
-                  }))
-                }
-              >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-[16px] border-black/8">
-                  {REGION_OPTIONS.map((region) => (
-                    <SelectItem key={region} value={region}>
-                      {region}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate, useParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate, useLocation, useOutlet, useParams } from 'react-router-dom'
 import { RequireAuth } from '@/app/auth/RequireAuth'
 import { ErrorBoundary } from 'react-error-boundary'
 import { lazy, Suspense } from 'react'
@@ -6,6 +6,7 @@ import { config } from '@/app/config'
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { RouteTransition } from '@/shared/layouts/route-transition'
 
 // Public pages
 const LandingPage = lazy(() => import('@/pages/public/landing'))
@@ -14,6 +15,10 @@ const HowItWorksPage = lazy(() => import('@/pages/public/how-it-works'))
 const SignInPage = lazy(() => import('@/pages/public/signin'))
 const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
 const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'))
+const PrivacyPolicyPage = lazy(() => import('@/pages/public/privacy'))
+const TermsOfServicePage = lazy(() => import('@/pages/public/terms'))
+const CookiePolicyPage = lazy(() => import('@/pages/public/cookies'))
+const ImprintPage = lazy(() => import('@/pages/public/imprint'))
 
 // App pages
 const SettingsPage = lazy(() => import('@/pages/app/settings'))
@@ -90,46 +95,94 @@ export function LegacyActivitiesRedirect() {
   return <Navigate to={tripId ? `/app/trips/${tripId}/plan` : '/app/trips'} replace />
 }
 
+function PublicRouteTransitionLayout() {
+  const location = useLocation()
+  const outlet = useOutlet()
+
+  return (
+    <RouteTransition pageKey={location.pathname} variant="public">
+      {outlet}
+    </RouteTransition>
+  )
+}
+
 const router = createBrowserRouter([
   {
-    path: '/',
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <LandingPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/product',
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <ProductPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/how-it-works',
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <HowItWorksPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/signin',
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <SignInPage />
-      </Suspense>
-    ),
-  },
-  {
-    path: '/auth/callback',
-    element: (
-      <Suspense fallback={<PageLoader />}>
-        <AuthCallbackPage />
-      </Suspense>
-    ),
+    element: <PublicRouteTransitionLayout />,
+    children: [
+      {
+        index: true,
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <LandingPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'product',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ProductPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'how-it-works',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <HowItWorksPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'signin',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <SignInPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'auth/callback',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <AuthCallbackPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'privacy',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <PrivacyPolicyPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'terms',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <TermsOfServicePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'cookies',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <CookiePolicyPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'imprint',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <ImprintPage />
+          </Suspense>
+        ),
+      },
+    ],
   },
   {
     path: '/auth/silent',

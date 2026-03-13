@@ -7,7 +7,7 @@ export default function PlanPage() {
   if (!tripId) return null
 
   return (
-    <div className="flex flex-1 min-h-0 flex-col overflow-hidden">
+    <div className="flex h-full flex-1 min-h-0 flex-col overflow-hidden">
       <PlannerBoard tripId={tripId} />
     </div>
   )

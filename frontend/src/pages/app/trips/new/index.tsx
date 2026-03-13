@@ -547,7 +547,14 @@ export default function TripCreatePage() {
                       <FieldContent>
                         <Popover open={showSuggestions} onOpenChange={setDestinationOpen}>
                           <PopoverAnchor asChild>
-                            <div className="relative">
+                            <div
+                              className={cn(
+                                'relative rounded-[calc(var(--radius)+2px)] p-[2px] transition-colors',
+                                fieldState.error
+                                  ? 'bg-[rgba(196,95,79,0.16)]'
+                                  : 'focus-within:bg-[rgba(114,174,230,0.18)]',
+                              )}
+                            >
                               <Input
                                 {...field}
                                 id="destination_text"
@@ -559,7 +566,7 @@ export default function TripCreatePage() {
                                   'h-12 rounded-[var(--radius)] border-[var(--color-border-strong)] bg-white px-4 pr-11 text-[0.93rem] font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)]/50',
                                   'shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]',
                                   'hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-bg-soft)]',
-                                  'focus-visible:border-[var(--color-primary)]/50 focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/20',
+                                  'focus-visible:border-[var(--color-primary)]/55 focus-visible:ring-0',
                                   'aria-invalid:border-[var(--color-danger)]/50',
                                 )}
                                 onFocus={openSuggestions}
@@ -571,7 +578,7 @@ export default function TripCreatePage() {
                                   openSuggestions()
                                 }}
                               />
-                              <div className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center">
+                              <div className="pointer-events-none absolute inset-y-0 right-4 flex items-center">
                                 {isFetchingDest
                                   ? <VoyagerLoader className="size-4 text-[var(--color-text-muted)]/50" />
                                   : <Search className="size-4 text-[var(--color-text-muted)]/50" />
@@ -583,7 +590,7 @@ export default function TripCreatePage() {
                             align="start"
                             sideOffset={6}
                             onOpenAutoFocus={(e) => e.preventDefault()}
-                            className="w-[min(30rem,calc(100vw-2rem))] rounded-[var(--radius)] border border-[var(--color-border-strong)] bg-white p-1.5 shadow-[0_16px_48px_-12px_var(--color-shadow-strong)]"
+                            className="w-[min(var(--radix-popper-anchor-width),calc(100vw-2rem))] min-w-0 rounded-[var(--radius)] border border-[var(--color-border-strong)] bg-white p-1.5 shadow-[0_16px_48px_-12px_var(--color-shadow-strong)]"
                             style={{ zIndex: 200 }}
                           >
                             <div className="flex flex-col gap-0.5">
@@ -595,7 +602,7 @@ export default function TripCreatePage() {
                                     type="button"
                                     variant="ghost"
                                     aria-label={s.label}
-                                    className="h-auto w-full flex-col items-start gap-0.5 rounded-xl px-3 py-2.5 text-left hover:bg-[var(--color-bg-soft)]"
+                                    className="h-auto w-full min-w-0 flex-col items-start gap-0.5 rounded-xl px-3 py-2.5 text-left hover:bg-[var(--color-bg-soft)]"
                                     onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => {
                                       setValue('destination_text', s.label, { shouldDirty: true, shouldValidate: true })
@@ -603,8 +610,8 @@ export default function TripCreatePage() {
                                       setDestinationOpen(false)
                                     }}
                                   >
-                                    <span className="text-[0.88rem] font-semibold text-[var(--color-text)]">{s.label}</span>
-                                    <span className="text-[0.72rem] text-[var(--color-text-muted)]">{meta || 'Place'}</span>
+                                    <span className="w-full truncate text-[0.88rem] font-semibold text-[var(--color-text)]">{s.label}</span>
+                                    <span className="w-full truncate text-[0.72rem] text-[var(--color-text-muted)]">{meta || 'Place'}</span>
                                   </Button>
                                 )
                               }) : (
@@ -873,7 +880,12 @@ export default function TripCreatePage() {
       <div className="relative h-[28%] md:h-full md:flex-1 overflow-hidden">
           <VoyagerMap
             defaultCenter={{ lat: 20, lng: 10 }}
-            defaultZoom={2}
+            defaultZoom={3}
+            minZoom={3}
+            restriction={{
+              latLngBounds: { north: 85, south: -85, west: -180, east: 180 },
+              strictBounds: true,
+            }}
             style={{ width: '100%', height: '100%' }}
             className="absolute inset-0"
           >

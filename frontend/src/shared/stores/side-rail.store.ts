@@ -21,9 +21,13 @@ type PlannerInstruments = {
 type SideRailStore = {
   plannerInstruments: PlannerInstruments | null
   setPlannerInstruments: (instruments: PlannerInstruments | null) => void
+  mobilePlannerView: 'cards' | 'map'
+  setMobilePlannerView: (view: 'cards' | 'map') => void
 }
 
 export const useSideRailStore = create<SideRailStore>((set) => ({
   plannerInstruments: null,
   setPlannerInstruments: (instruments) => set({ plannerInstruments: instruments }),
+  mobilePlannerView: 'cards',
+  setMobilePlannerView: (view) => set({ mobilePlannerView: view }),
 }))
