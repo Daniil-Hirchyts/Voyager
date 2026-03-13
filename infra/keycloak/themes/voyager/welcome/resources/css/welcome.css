@@ -1,0 +1,325 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --voyager-welcome-text: #1a1615;
+  --voyager-welcome-text-muted: #586678;
+  --voyager-welcome-text-soft: #7b8796;
+  --voyager-welcome-accent-deep: #17344c;
+  --voyager-welcome-radius-xl: 36px;
+  --voyager-welcome-radius-md: 20px;
+  --voyager-welcome-shadow-xl: 0 38px 90px -38px rgba(31, 52, 75, 0.34);
+  --voyager-welcome-shadow-lg: 0 28px 60px -36px rgba(31, 52, 75, 0.28);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body.voyager-welcome-body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Outfit", system-ui, sans-serif;
+  color: var(--voyager-welcome-text);
+  background:
+    radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.9), transparent 22%),
+    radial-gradient(circle at 82% 18%, rgba(114, 174, 230, 0.22), transparent 19%),
+    radial-gradient(circle at 70% 78%, rgba(182, 214, 242, 0.5), transparent 24%),
+    linear-gradient(180deg, #d9e8f5 0%, #e4f0fb 36%, #edf5fc 100%);
+  -webkit-font-smoothing: antialiased;
+}
+
+.voyager-welcome-shell {
+  position: relative;
+  min-height: 100vh;
+  padding: 1.75rem 2rem 2rem;
+  overflow: hidden;
+}
+
+.voyager-welcome-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.voyager-welcome-cloud {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(80px);
+  opacity: 0.7;
+}
+
+.voyager-welcome-cloud-one {
+  top: -8rem;
+  right: -9rem;
+  width: 32rem;
+  height: 32rem;
+  background:
+    radial-gradient(circle at 32% 35%, rgba(255, 255, 255, 0.95), transparent 42%),
+    radial-gradient(circle at 74% 48%, rgba(114, 174, 230, 0.32), transparent 48%);
+}
+
+.voyager-welcome-cloud-two {
+  bottom: -10rem;
+  left: -8rem;
+  width: 34rem;
+  height: 34rem;
+  background:
+    radial-gradient(circle at 48% 38%, rgba(255, 255, 255, 0.92), transparent 44%),
+    radial-gradient(circle at 58% 68%, rgba(182, 214, 242, 0.45), transparent 52%);
+}
+
+.voyager-welcome-grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), transparent 88%);
+}
+
+.voyager-welcome-header,
+.voyager-welcome-frame {
+  position: relative;
+  z-index: 1;
+}
+
+.voyager-welcome-header {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.voyager-welcome-brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.voyager-welcome-logo {
+  height: 3rem;
+  width: auto;
+}
+
+.voyager-welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.voyager-welcome-link,
+.voyager-welcome-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.05rem;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: #1a1615;
+  color: #ffffff;
+  font-size: 0.96rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 0 18px 40px -28px rgba(26, 22, 21, 0.56);
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.voyager-welcome-link:hover,
+.voyager-welcome-button:hover {
+  transform: translateY(-1px);
+  background: #10283d;
+}
+
+.voyager-welcome-frame {
+  width: min(1120px, 100%);
+  margin: 1.8rem auto 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 500px) minmax(0, 1fr);
+  gap: clamp(1rem, 2.4vw, 2rem);
+  align-items: start;
+}
+
+.voyager-welcome-story-panel,
+.voyager-welcome-card {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  border-radius: var(--voyager-welcome-radius-xl);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.06)),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.42), transparent 28%);
+  backdrop-filter: blur(26px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), var(--voyager-welcome-shadow-xl);
+}
+
+.voyager-welcome-card {
+  padding: clamp(1.8rem, 4vw, 2.4rem);
+}
+
+.voyager-welcome-story-panel {
+  padding: clamp(1.5rem, 3vw, 2.2rem);
+}
+
+.voyager-welcome-eyebrow,
+.voyager-welcome-kicker {
+  margin: 0 0 0.8rem;
+  color: var(--voyager-welcome-accent-deep);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.voyager-welcome-headline,
+.voyager-welcome-title {
+  margin: 0;
+  color: var(--voyager-welcome-text);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+}
+
+.voyager-welcome-headline {
+  max-width: 12ch;
+  font-size: clamp(2.15rem, 4vw, 3.5rem);
+  line-height: 1.02;
+}
+
+.voyager-welcome-title {
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  line-height: 1.02;
+}
+
+.voyager-welcome-copy,
+.voyager-welcome-description {
+  margin: 1.1rem 0 0;
+  color: var(--voyager-welcome-text-muted);
+  font-size: 1rem;
+  line-height: 1.68;
+}
+
+.voyager-welcome-points {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voyager-welcome-points li {
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 1.05rem;
+  background: rgba(255, 255, 255, 0.42);
+  color: var(--voyager-welcome-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.voyager-welcome-story-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.2rem;
+  margin-top: 1.4rem;
+  color: var(--voyager-welcome-text-soft);
+  font-size: 0.92rem;
+}
+
+.voyager-welcome-form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.voyager-welcome-field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.voyager-welcome-field span {
+  color: var(--voyager-welcome-text);
+  font-size: 0.94rem;
+  font-weight: 600;
+}
+
+.voyager-welcome-field input {
+  min-height: 3.15rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(91, 123, 159, 0.34);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--voyager-welcome-text);
+  font: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.voyager-welcome-field input:focus {
+  outline: none;
+  border-color: rgba(114, 174, 230, 0.72);
+  box-shadow:
+    0 0 0 4px rgba(114, 174, 230, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.voyager-welcome-alert {
+  margin-top: 1.5rem;
+  padding: 1rem 1.05rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(97, 126, 158, 0.16);
+  background: rgba(255, 255, 255, 0.74);
+  box-shadow: var(--voyager-welcome-shadow-lg);
+  color: var(--voyager-welcome-text);
+  line-height: 1.7;
+}
+
+.voyager-welcome-alert a,
+.voyager-welcome-alert code {
+  color: var(--voyager-welcome-accent-deep);
+}
+
+.voyager-welcome-alert-success {
+  border-color: rgba(45, 124, 99, 0.22);
+}
+
+.voyager-welcome-alert-info {
+  border-color: rgba(63, 111, 152, 0.2);
+}
+
+.voyager-welcome-alert-danger {
+  border-color: rgba(196, 95, 79, 0.2);
+}
+
+@media (max-width: 1080px) {
+  .voyager-welcome-frame {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .voyager-welcome-shell {
+    padding: 1rem;
+  }
+
+  .voyager-welcome-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .voyager-welcome-actions,
+  .voyager-welcome-link,
+  .voyager-welcome-button {
+    width: 100%;
+  }
+
+  .voyager-welcome-headline {
+    font-size: 2.8rem;
+  }
+
+  .voyager-welcome-points li {
+    padding: 0.85rem 0.9rem;
+  }
+}

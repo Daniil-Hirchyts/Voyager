@@ -24,19 +24,26 @@ export function getAuthToken() {
 }
 
 async function notifyUnauthorizedResponse(response: Response) {
-  if (response.status !== 401 || !unauthorizedHandler) {
-    return
+  if (response.status !== 401) {
+    return false
+  }
+
+  return triggerUnauthorizedHandler().catch(() => false)
+}
+
+export async function triggerUnauthorizedHandler() {
+  if (!unauthorizedHandler) {
+    return false
   }
 
   if (!unauthorizedInFlight) {
-    unauthorizedInFlight = Promise.resolve(unauthorizedHandler())
-      .catch(() => undefined)
-      .finally(() => {
-        unauthorizedInFlight = null
-      })
+    unauthorizedInFlight = Promise.resolve(unauthorizedHandler()).finally(() => {
+      unauthorizedInFlight = null
+    })
   }
 
   await unauthorizedInFlight
+  return true
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -67,6 +74,7 @@ export class ApiError extends Error {
     message: string,
     public readonly details?: Record<string, unknown>,
     public readonly traceId?: string,
+    public readonly unauthorizedHandled = false,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -74,7 +82,7 @@ export class ApiError extends Error {
 }
 
 export async function toApiError(response: Response) {
-  await notifyUnauthorizedResponse(response)
+  const unauthorizedHandled = await notifyUnauthorizedResponse(response)
 
   const body = await response.clone().json().catch(() => null)
   const apiError = body?.error
@@ -84,6 +92,7 @@ export async function toApiError(response: Response) {
     apiError?.message ?? response.statusText,
     apiError?.details,
     apiError?.trace_id,
+    unauthorizedHandled,
   )
 }
 

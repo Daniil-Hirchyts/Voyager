@@ -1,0 +1,3488 @@
+{
+  "kyoto-lantern-week": {
+    "route_id": "kyoto-lantern-week",
+    "destination_text": "Kyoto, Japan",
+    "trip_type": "culture",
+    "route_travel_mode": "WALK",
+    "seed": 3289362188,
+    "days": [
+      [
+        {
+          "category": "visit",
+          "title": "Fushimi Inari Taisha Shrine",
+          "description": "Explore the famous thousand torii gates and hiking trails at this iconic Shinto shrine dedicated to Inari, the god of rice and prosperity.",
+          "start_time": "09:00:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+          "place_name": "Fushimi Inari Taisha",
+          "address_text": "68 Fukakusa Yabunouchich\u014d, Fushimi Ward, Kyoto, 612-0882, Japan",
+          "place_category": "shinto_shrine",
+          "lat": 34.9676945,
+          "lon": 135.7791876,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "shinto_shrine",
+              "tourist_attraction",
+              "place_of_worship",
+              "point_of_interest",
+              "association_or_organization",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8870624639634301673&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://inari.jp/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Kinkaku-ji (Golden Pavilion)",
+          "description": "Visit the stunning golden Zen temple reflected in its surrounding pond, a UNESCO World Heritage Site and one of Kyoto's most iconic landmarks.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJvUbrwCCoAWARX2QiHCsn5A4",
+          "place_name": "Kinkaku-ji",
+          "address_text": "1 Kinkakujich\u014d, Kita Ward, Kyoto, 603-8361, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 35.03937,
+          "lon": 135.7292431,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "point_of_interest",
+              "association_or_organization",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1073025677330113631&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.shokoku-ji.jp/kinkakuji/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Kaiseki Dinner at Gion Moriwaki",
+          "description": "Experience authentic multi-course kaiseki cuisine in the historic Gion district, featuring seasonal ingredients and traditional presentation.",
+          "start_time": "19:00:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJjbOS9sMIAWARqfx3JUGb5Xw",
+          "place_name": "Gion Moriwaki - Kyoto restaurant",
+          "address_text": "570-177 Gionmachi Minamigawa, Higashiyama Ward, Kyoto, 605-0074, Japan",
+          "place_category": "japanese_restaurant",
+          "lat": 35.00289,
+          "lon": 135.7761864,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "japanese_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8999770134473604265&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://gion-moriwaki.jp/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Kiyomizu-dera Temple",
+          "description": "Discover this historic Buddhist temple with its famous wooden stage offering panoramic views of Kyoto, surrounded by cherry blossoms and autumn foliage.",
+          "start_time": "09:00:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJB_vchdMIAWARujTEUIZlr2I",
+          "place_name": "Kiyomizu-dera",
+          "address_text": "1-ch\u014dme-294 Kiyomizu, Higashiyama Ward, Kyoto, 605-0862, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 34.9946662,
+          "lon": 135.784661,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7111013964196361402&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.kiyomizudera.or.jp/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Traditional Tea Ceremony at MAIKOYA",
+          "description": "Participate in an authentic tea ceremony experience, often with kimono rental, in a traditional tea house in the Gion area.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJPdR0A7IJAWAR-lN3Dtj1Ofo",
+          "place_name": "Kimono Tea Ceremony MAIKOYA Gion Kiyomizu",
+          "address_text": "100 Rokuroch\u014d, Higashiyama Ward, Kyoto, 605-0813, Japan",
+          "place_category": "tea_house",
+          "lat": 34.997696399999995,
+          "lon": 135.7740186,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "tea_house",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18030712891458933754&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://mai-ko.com/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Traditional Performing Arts at Gion Corner",
+          "description": "Watch a showcase of traditional Japanese performing arts including tea ceremony, ikebana, gagaku, and kyogen in an intimate theater setting.",
+          "start_time": "19:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJfwHp8MAIAWARSg0O3EYOO7o",
+          "place_name": "Gion Corner",
+          "address_text": "570-2 Gionmachi Minamigawa, Higashiyama Ward, Kyoto, 605-0074, Japan",
+          "place_category": "event_venue",
+          "lat": 35.001396799999995,
+          "lon": 135.7755067,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "event_venue",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=13419335212182932810&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.kyoto-gioncorner.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Kiyomizu-dera Temple Visit",
+          "description": "Explore this UNESCO World Heritage Buddhist temple famous for its wooden stage offering panoramic views of Kyoto. Experience the spiritual atmosphere and ancient architecture dating back to 778 AD.",
+          "start_time": "09:00:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJB_vchdMIAWARujTEUIZlr2I",
+          "place_name": "Kiyomizu-dera",
+          "address_text": "1-ch\u014dme-294 Kiyomizu, Higashiyama Ward, Kyoto, 605-0862, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 34.9946662,
+          "lon": 135.784661,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7111013964196361402&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.kiyomizudera.or.jp/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Kyoto National Museum",
+          "description": "Discover Japanese art and cultural artifacts at this premier museum. View extensive collections including ceramics, paintings, sculptures, and historical items spanning centuries of Japanese heritage.",
+          "start_time": "13:30:00",
+          "duration_min": 180,
+          "google_place_id": "ChIJt1kBRcoIAWAR00msugECEYw",
+          "place_name": "Kyoto National Museum",
+          "address_text": "527 Chayach\u014d, Higashiyama Ward, Kyoto, 605-0931, Japan",
+          "place_category": "museum",
+          "lat": 34.9899887,
+          "lon": 135.773116,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "art_museum",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=10092850446364068307&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.kyohaku.go.jp/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Kaiseki Dinner at Gion Moriwaki",
+          "description": "Experience authentic multi-course kaiseki cuisine in the historic Gion district. This traditional restaurant offers exquisite seasonal dishes prepared with meticulous attention to detail in a refined setting.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJjbOS9sMIAWARqfx3JUGb5Xw",
+          "place_name": "Gion Moriwaki - Kyoto restaurant",
+          "address_text": "570-177 Gionmachi Minamigawa, Higashiyama Ward, Kyoto, 605-0074, Japan",
+          "place_category": "japanese_restaurant",
+          "lat": 35.00289,
+          "lon": 135.7761864,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "japanese_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8999770134473604265&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://gion-moriwaki.jp/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Fushimi Inari Taisha Shrine",
+          "description": "Walk through the famous thousands of vermilion torii gates at this important Shinto shrine dedicated to Inari, the god of rice and business. The mountain trail offers peaceful walking and spiritual ambiance.",
+          "start_time": "09:00:00",
+          "duration_min": 180,
+          "google_place_id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+          "place_name": "Fushimi Inari Taisha",
+          "address_text": "68 Fukakusa Yabunouchich\u014d, Fushimi Ward, Kyoto, 612-0882, Japan",
+          "place_category": "shinto_shrine",
+          "lat": 34.9676945,
+          "lon": 135.7791876,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "shinto_shrine",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8870624639634301673&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://inari.jp/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Arashiyama Bamboo Forest",
+          "description": "Stroll through the enchanting bamboo grove in Arashiyama. The towering bamboo creates a serene, otherworldly atmosphere with the sound of wind rustling through the stalks. Visit nearby Tenryu-ji Temple as well.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJrYtcv-urAWAR3XzWvXv8n_s",
+          "place_name": "Arashiyama Bamboo Forest",
+          "address_text": "Sagaogurayama Tabuchiyamacho, Ukyo Ward, Kyoto, 616-8394, Japan",
+          "place_category": "scenic_spot",
+          "lat": 35.0168187,
+          "lon": 135.67130129999998,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "scenic_spot",
+              "tourist_attraction",
+              "park",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18131488233213033693&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://ja.kyoto.travel/tourism/single01.php?category_id=8&tourism_id=2683"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Kinkaku-ji Golden Pavilion",
+          "description": "Visit the iconic Golden Pavilion, a Zen temple covered in gold leaf that reflects in the surrounding pond. The sunset lighting creates a magical view of this famous Kyoto landmark.",
+          "start_time": "19:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJvUbrwCCoAWARX2QiHCsn5A4",
+          "place_name": "Kinkaku-ji",
+          "address_text": "1 Kinkakujich\u014d, Kita Ward, Kyoto, 603-8361, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 35.03937,
+          "lon": 135.7292431,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1073025677330113631&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.shokoku-ji.jp/kinkakuji/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Kiyomizu-dera Temple",
+          "description": "Explore this UNESCO World Heritage Buddhist temple famous for its wooden stage offering panoramic views of Kyoto. The temple's main hall and surrounding grounds showcase classical Japanese architecture and beautiful gardens.",
+          "start_time": "09:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJB_vchdMIAWARujTEUIZlr2I",
+          "place_name": "Kiyomizu-dera",
+          "address_text": "1-ch\u014dme-294 Kiyomizu, Higashiyama Ward, Kyoto, 605-0862, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 34.9946662,
+          "lon": 135.784661,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7111013964196361402&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.kiyomizudera.or.jp/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Traditional Tea Ceremony Experience",
+          "description": "Participate in an authentic Japanese tea ceremony at MAIKOYA Nishiki. Learn about the history, etiquette, and philosophy behind this cultural practice while enjoying matcha tea and traditional sweets. Kimono rental available.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJc-ER9pIIAWARSYOriOksyWE",
+          "place_name": "Kimono Tea Ceremony MAIKOYA Nishiki",
+          "address_text": "329 Ebiyach\u014d, Gokomachi-dori Sanjo sagaru, 329 \u6d77\u8001\u5c4b\u753a \u4e2d\u4eac\u533a \u4eac\u90fd\u5e02 \u4eac\u90fd\u5e9c 604-8076, Japan",
+          "place_category": "tourist_attraction",
+          "lat": 35.0076598,
+          "lon": 135.76637119999998,
+          "country": "Japan",
+          "region": "\u4eac\u90fd\u5e9c",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "cafe",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7046212473529795401&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://mai-ko.com/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Kaiseki Dinner at Gion Moriwaki",
+          "description": "Savor an exquisite multi-course kaiseki dinner at this renowned restaurant in the historic Gion district. Experience the pinnacle of Japanese cuisine with seasonal ingredients, artistic presentation, and impeccable service in a traditional setting.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJjbOS9sMIAWARqfx3JUGb5Xw",
+          "place_name": "Gion Moriwaki - Kyoto restaurant",
+          "address_text": "570-177 Gionmachi Minamigawa, Higashiyama Ward, Kyoto, 605-0074, Japan",
+          "place_category": "japanese_restaurant",
+          "lat": 35.00289,
+          "lon": 135.7761864,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "japanese_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8999770134473604265&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://gion-moriwaki.jp/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Kinkaku-ji (Golden Pavilion)",
+          "description": "Visit the iconic Golden Pavilion, a Zen Buddhist temple covered in gold leaf. The reflection of the pavilion in the surrounding pond creates a breathtaking sight. Explore the temple grounds and learn about its history as a former shogun residence.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJvUbrwCCoAWARX2QiHCsn5A4",
+          "place_name": "Kinkaku-ji",
+          "address_text": "1 Kinkakujich\u014d, Kita Ward, Kyoto, 603-8361, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 35.03937,
+          "lon": 135.7292431,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1073025677330113631&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.shokoku-ji.jp/kinkakuji/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Arashiyama Bamboo Forest Walk",
+          "description": "Stroll through the enchanting Arashiyama Bamboo Grove, one of Japan's most photographed natural wonders. The towering bamboo stalks create a serene, otherworldly atmosphere. Visit nearby Tenryu-ji Temple and enjoy views of the surrounding mountains.",
+          "start_time": "13:30:00",
+          "duration_min": 60,
+          "google_place_id": "ChIJrYtcv-urAWAR3XzWvXv8n_s",
+          "place_name": "Arashiyama Bamboo Forest",
+          "address_text": "Sagaogurayama Tabuchiyamacho, Ukyo Ward, Kyoto, 616-8394, Japan",
+          "place_category": "scenic_spot",
+          "lat": 35.0168187,
+          "lon": 135.67130129999998,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "scenic_spot",
+              "tourist_attraction",
+              "park",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18131488233213033693&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://ja.kyoto.travel/tourism/single01.php?category_id=8&tourism_id=2683"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Fushimi Inari Taisha at Dusk",
+          "description": "Experience the magical atmosphere of Fushimi Inari Taisha as the sun sets. This Shinto shrine is famous for its thousands of vermilion torii gates that form a stunning tunnel up the mountainside. The evening lighting creates a mystical ambiance perfect for photography.",
+          "start_time": "19:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+          "place_name": "Fushimi Inari Taisha",
+          "address_text": "68 Fukakusa Yabunouchich\u014d, Fushimi Ward, Kyoto, 612-0882, Japan",
+          "place_category": "shinto_shrine",
+          "lat": 34.9676945,
+          "lon": 135.7791876,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "shinto_shrine",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8870624639634301673&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://inari.jp/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Fushimi Inari Taisha Shrine Visit",
+          "description": "Explore the famous thousand torii gates and hike through the sacred Mount Inari. This iconic Shinto shrine offers stunning views and a serene spiritual atmosphere.",
+          "start_time": "09:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJIW0uPRUPAWAR6eI6dRzKGns",
+          "place_name": "Fushimi Inari Taisha",
+          "address_text": "68 Fukakusa Yabunouchich\u014d, Fushimi Ward, Kyoto, 612-0882, Japan",
+          "place_category": "shinto_shrine",
+          "lat": 34.9676945,
+          "lon": 135.7791876,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "shinto_shrine",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8870624639634301673&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://inari.jp/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Kinkaku-ji (Golden Pavilion) Tour",
+          "description": "Visit the stunning Golden Pavilion, a UNESCO World Heritage Site. This Zen Buddhist temple covered in gold leaf reflects beautifully in the surrounding pond, representing classic Japanese garden design.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJvUbrwCCoAWARX2QiHCsn5A4",
+          "place_name": "Kinkaku-ji",
+          "address_text": "1 Kinkakujich\u014d, Kita Ward, Kyoto, 603-8361, Japan",
+          "place_category": "buddhist_temple",
+          "lat": 35.03937,
+          "lon": 135.7292431,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "buddhist_temple",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1073025677330113631&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.shokoku-ji.jp/kinkakuji/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Traditional Tea Ceremony at Gion Tsujiri",
+          "description": "Experience an authentic Japanese tea ceremony in the historic Gion district at this renowned tea house. Sample matcha tea and traditional sweets while learning about tea culture.",
+          "start_time": "19:00:00",
+          "duration_min": 60,
+          "google_place_id": "ChIJgUSxvcEIAWARVGK_421AjWo",
+          "place_name": "Saryo Tsujiri Tea House, Gion Main Store",
+          "address_text": "573-3 Gionmachi Minamigawa, Higashiyama Ward, Kyoto, 605-0074, Japan",
+          "place_category": "tea_house",
+          "lat": 35.003665,
+          "lon": 135.774477,
+          "country": "Japan",
+          "region": "Kyoto",
+          "time_zone_id": "Asia/Tokyo",
+          "metadata": {
+            "types": [
+              "tea_house",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7677863780453147220&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.giontsujiri.co.jp/store/saryotsujiri-honten/"
+          }
+        }
+      ]
+    ]
+  },
+  "marrakech-riad-edit": {
+    "route_id": "marrakech-riad-edit",
+    "destination_text": "Marrakech, Morocco",
+    "trip_type": "city_break",
+    "route_travel_mode": "DRIVE",
+    "seed": 3134716828,
+    "days": [
+      [
+        {
+          "category": "visit",
+          "title": "Visit Koutoubia Mosque",
+          "description": "Explore the iconic Koutoubia Mosque, a masterpiece of Almohad architecture and the largest mosque in Marrakech. Admire its 77-meter tall minaret that dominates the city skyline.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJ313XmVzurw0Rwm9umhM4zdg",
+          "place_name": "Koutoubia",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "mosque",
+          "lat": 31.623720499999997,
+          "lon": -7.993619599999999,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "mosque",
+              "tourist_attraction",
+              "historical_landmark",
+              "historical_place",
+              "place_of_worship",
+              "point_of_interest",
+              "association_or_organization",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15622204339264581570&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://visitmarrakech.com/ar/listing/mosquee-koutoubia/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Tour Bahia Palace",
+          "description": "Discover the stunning Bahia Palace, a 19th-century palace with beautiful gardens, intricate mosaics, and traditional Moroccan architecture. It's a prime example of Islamic art and design.",
+          "start_time": "13:30:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJq0vBckfurw0R23-BRUdfmII",
+          "place_name": "Bahia Palace",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "historical_landmark",
+          "lat": 31.6217067,
+          "lon": -7.981968800000001,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "tourist_attraction",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9410376181104082907&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Jemaa el-Fnaa",
+          "description": "Immerse yourself in the vibrant atmosphere of Jemaa el-Fnaa, the famous main square. Enjoy street food, watch performers, snake charmers, and storytellers as the sun sets.",
+          "start_time": "19:00:00",
+          "duration_min": 180,
+          "google_place_id": "ChIJ-WuddEHvrw0RDeah4wzCrnI",
+          "place_name": "Jemaa el-Fnaa",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "cultural_landmark",
+          "lat": 31.625952100000003,
+          "lon": -7.989049099999999,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "cultural_landmark",
+              "tourist_attraction",
+              "market",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8263755726885873165&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Jardin Majorelle",
+          "description": "Stroll through the enchanting Jardin Majorelle, a botanical garden with exotic plants, vibrant blue structures, and a Berber museum. Once owned by Yves Saint Laurent, it's a peaceful oasis.",
+          "start_time": "09:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJj7dmi4furw0RHPHQzsn2zIg",
+          "place_name": "Jardin Majorelle",
+          "address_text": "Rue Yves St Laurent, Marrakech 40090, Morocco",
+          "place_category": "garden",
+          "lat": 31.641203100000002,
+          "lon": -8.0032397,
+          "country": "Morocco",
+          "region": "Marrakech-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "garden",
+              "tourist_attraction",
+              "botanical_garden",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9857525031025832220&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.jardinmajorelle.com/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Explore Le Jardin Secret",
+          "description": "Discover Le Jardin Secret, a restored historic mansion with beautiful gardens, a museum, and a rooftop caf\u00e9. It offers a glimpse into traditional Moroccan residential architecture.",
+          "start_time": "13:30:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJAT6_TWjurw0RDFwgrWaR2FA",
+          "place_name": "Le Jardin Secret",
+          "address_text": "121 Rue Mouassine, Marrakesh 40030, Morocco",
+          "place_category": "botanical_garden",
+          "lat": 31.6306908,
+          "lon": -7.98952,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "botanical_garden",
+              "tourist_attraction",
+              "art_gallery",
+              "cafeteria",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5825565988181007372&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.lejardinsecretmarrakech.com/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Dar Yacout",
+          "description": "Enjoy an exquisite Moroccan fine dining experience at Dar Yacout, set in a beautifully restored traditional riad. Savor authentic cuisine in an elegant, atmospheric setting.",
+          "start_time": "19:00:00",
+          "duration_min": 180,
+          "google_place_id": "ChIJuXAbl2Xurw0R9pfGiHPcnso",
+          "place_name": "Dar Yacout",
+          "address_text": "NO 79\u060c Derb Sidi Ahmed Soussi, \u0645\u0631\u0627\u0643\u0634 40000, Morocco",
+          "place_category": "moroccan_restaurant",
+          "lat": 31.636393700000003,
+          "lon": -7.993531399999999,
+          "country": "Morocco",
+          "region": "\u0645\u0631\u0627\u0643\u0634 - \u0622\u0633\u0641\u064a",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "moroccan_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14600349430755792886&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.daryacout.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Bahia Palace",
+          "description": "Explore this stunning 19th-century palace with its intricate Islamic architecture, beautiful courtyards, and ornate rooms. A masterpiece of Moroccan design.",
+          "start_time": "09:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJq0vBckfurw0R23-BRUdfmII",
+          "place_name": "Bahia Palace",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "historical_landmark",
+          "lat": 31.6217067,
+          "lon": -7.981968800000001,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "tourist_attraction",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9410376181104082907&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Marrakech Museum",
+          "description": "Visit this art museum housed in a beautifully restored 19th-century mansion, showcasing contemporary and traditional Moroccan art in the heart of the old city.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJy_j9iGnurw0RZnze99OMJF8",
+          "place_name": "Marrakech Museum",
+          "address_text": "J2H6+VPJ, Place Ben Youssef, Marrakech 40000, Morocco",
+          "place_category": "museum",
+          "lat": 31.631642300000003,
+          "lon": -7.9862131000000005,
+          "country": "Morocco",
+          "region": "Marrakech-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "museum",
+              "tourist_attraction",
+              "art_museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6855759374789278822&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://marrakechmuseum.com/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Dar Cherifa",
+          "description": "Enjoy authentic Moroccan cuisine in this charming traditional riad restaurant, known for its delicious tagines and warm hospitality in the medina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJR5VEJmjurw0RB31SXiQRRZw",
+          "place_name": "Dar Cherifa",
+          "address_text": "8 Derb Chorfa Lakbir\u060c \u0645\u0631\u0627\u0643\u0634 40000, Morocco",
+          "place_category": "moroccan_restaurant",
+          "lat": 31.629217099999998,
+          "lon": -7.9900536,
+          "country": "Morocco",
+          "region": "\u0645\u0631\u0627\u0643\u0634 - \u0622\u0633\u0641\u064a",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "moroccan_restaurant",
+              "halal_restaurant",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11260425291208752391&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://marrakech-riads.com/restaurant-dar-cherifa/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Jardin Majorelle",
+          "description": "Stroll through these enchanting botanical gardens featuring exotic plants, vibrant blue structures, and the former studio of painter Jacques Majorelle.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJj7dmi4furw0RHPHQzsn2zIg",
+          "place_name": "Jardin Majorelle",
+          "address_text": "Rue Yves St Laurent, Marrakech 40090, Morocco",
+          "place_category": "garden",
+          "lat": 31.641203100000002,
+          "lon": -8.0032397,
+          "country": "Morocco",
+          "region": "Marrakech-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "garden",
+              "botanical_garden",
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9857525031025832220&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.jardinmajorelle.com/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Jemaa el-Fnaa",
+          "description": "Experience the famous main square of Marrakech, bustling with street performers, food stalls, snake charmers, and vibrant market activity.",
+          "start_time": "13:30:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ-WuddEHvrw0RDeah4wzCrnI",
+          "place_name": "Jemaa el-Fnaa",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "cultural_landmark",
+          "lat": 31.625952100000003,
+          "lon": -7.989049099999999,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "cultural_landmark",
+              "tourist_attraction",
+              "market",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8263755726885873165&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Traditional Hammam at Les Bains de Marrakech",
+          "description": "Relax with an authentic Moroccan hammam spa experience, featuring traditional steam baths, exfoliation, and massage in a beautiful setting.",
+          "start_time": "19:00:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJe4aAj0_urw0RmyEHIzGe2DY",
+          "place_name": "Les Bains de Marrakech Morocco",
+          "address_text": "Bab Agnaou, 2 Derb Sedra, Marrakech 40000, Morocco",
+          "place_category": "spa",
+          "lat": 31.617405599999998,
+          "lon": -7.9906235,
+          "country": "Morocco",
+          "region": "Marrakech-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "spa",
+              "point_of_interest",
+              "store",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3952082606895866267&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.lesbainsdemarrakech.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Jemaa el-Fnaa Exploration",
+          "description": "Discover the heart of Marrakech at the famous square, bustling with street performers, food stalls, and local culture.",
+          "start_time": "09:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ-WuddEHvrw0RDeah4wzCrnI",
+          "place_name": "Jemaa el-Fnaa",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "cultural_landmark",
+          "lat": 31.625952100000003,
+          "lon": -7.989049099999999,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "cultural_landmark",
+              "market",
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8263755726885873165&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Bahia Palace Tour",
+          "description": "Tour the historic 19th-century Bahia Palace, showcasing stunning Moroccan architecture, intricate tilework, and beautiful gardens.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJq0vBckfurw0R23-BRUdfmII",
+          "place_name": "Bahia Palace",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "historical_landmark",
+          "lat": 31.6217067,
+          "lon": -7.981968800000001,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "tourist_attraction",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9410376181104082907&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Dar Yacout",
+          "description": "Enjoy an exquisite traditional Moroccan dinner in an elegant riad setting, featuring authentic cuisine and live music.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJuXAbl2Xurw0R9pfGiHPcnso",
+          "place_name": "Dar Yacout",
+          "address_text": "NO 79\u060c Derb Sidi Ahmed Soussi, \u0645\u0631\u0627\u0643\u0634 40000, Morocco",
+          "place_category": "moroccan_restaurant",
+          "lat": 31.636393700000003,
+          "lon": -7.993531399999999,
+          "country": "Morocco",
+          "region": "\u0645\u0631\u0627\u0643\u0634 - \u0622\u0633\u0641\u064a",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "moroccan_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14600349430755792886&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.daryacout.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Koutoubia Mosque Visit",
+          "description": "Visit the iconic Koutoubia Mosque, the largest in Marrakech, and admire its impressive minaret and surrounding gardens.",
+          "start_time": "09:00:00",
+          "duration_min": 60,
+          "google_place_id": "ChIJ313XmVzurw0Rwm9umhM4zdg",
+          "place_name": "Koutoubia",
+          "address_text": "Marrakesh 40000, Morocco",
+          "place_category": "mosque",
+          "lat": 31.623720499999997,
+          "lon": -7.993619599999999,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "mosque",
+              "tourist_attraction",
+              "historical_landmark",
+              "historical_place",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15622204339264581570&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://visitmarrakech.com/ar/listing/mosquee-koutoubia/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Jardin Majorelle Stroll",
+          "description": "Wander through the beautiful Jardin Majorelle, a botanical garden with vibrant plants, blue structures, and a Berber museum.",
+          "start_time": "13:30:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJj7dmi4furw0RHPHQzsn2zIg",
+          "place_name": "Jardin Majorelle",
+          "address_text": "Rue Yves St Laurent, Marrakech 40090, Morocco",
+          "place_category": "garden",
+          "lat": 31.641203100000002,
+          "lon": -8.0032397,
+          "country": "Morocco",
+          "region": "Marrakech-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "garden",
+              "botanical_garden",
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9857525031025832220&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.jardinmajorelle.com/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Nomad Marrakech",
+          "description": "Savor modern Moroccan cuisine at Nomad, a popular restaurant in the medina with rooftop dining and city views.",
+          "start_time": "19:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJCU9KCULurw0RUA4KjdtDOdc",
+          "place_name": "Nomad Marrakech",
+          "address_text": "1 Derb Aarjane, Marrakesh 40000, Morocco",
+          "place_category": "moroccan_restaurant",
+          "lat": 31.6285931,
+          "lon": -7.9875304,
+          "country": "Morocco",
+          "region": "Marrakesh-Safi",
+          "time_zone_id": "Africa/Casablanca",
+          "metadata": {
+            "types": [
+              "moroccan_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15508501402070158928&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://nomadmarrakech.com/fr/"
+          }
+        }
+      ]
+    ]
+  },
+  "reykjavik-midnight-route": {
+    "route_id": "reykjavik-midnight-route",
+    "destination_text": "Reykjavik, Iceland",
+    "trip_type": "outdoors",
+    "route_travel_mode": "DRIVE",
+    "seed": 1174158557,
+    "days": [
+      [
+        {
+          "category": "visit",
+          "title": "Visit Hallgrimskirkja",
+          "description": "Spend the morning at Hallgrimskirkja, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJtS1DoMx01kgR76qdSMQor_c",
+          "place_name": "Hallgrimskirkja",
+          "address_text": "Hallgr\u00edmstorg 1, 101 Reykjav\u00edk, Iceland",
+          "place_category": "church",
+          "lat": 64.1420229,
+          "lon": -21.9265494,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "church",
+              "tourist_attraction",
+              "place_of_worship",
+              "association_or_organization",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=17847528671789558511&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.hallgrimskirkja.is/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Sky Lagoon",
+          "description": "Block out the afternoon for Sky Lagoon, a verified activity stop on this Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJpyUozoYL1kgREGm6RWPXuio",
+          "place_name": "Sky Lagoon",
+          "address_text": "Vesturv\u00f6r 44-48, 200 K\u00f3pavogur, Iceland",
+          "place_category": "public_bath",
+          "lat": 64.1164891,
+          "lon": -21.9462908,
+          "country": "Iceland",
+          "region": "K\u00f3pavogsb\u00e6r",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "public_bath",
+              "spa",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3079010116632733968&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.skylagoon.com/is"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Apotek Restaurant",
+          "description": "Use the evening for a real stop at Apotek Restaurant in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJmQJsQC0L1kgRq11-0x4ghXA",
+          "place_name": "Apotek Restaurant",
+          "address_text": "Austurstr\u00e6ti 16, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.1474996,
+          "lon": -21.938454099999998,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "european_restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8107922020919827883&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.apotekrestaurant.is/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Brau\u00f0 & Co",
+          "description": "Use the morning for a real stop at Brau\u00f0 & Co in Reykjavik, Iceland.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJRW_988x01kgR2UA5DL7q8rQ",
+          "place_name": "Brau\u00f0 & Co",
+          "address_text": "Frakkast\u00edgur 16, 101 Reykjav\u00edk, Iceland",
+          "place_category": "bakery",
+          "lat": 64.1440791,
+          "lon": -21.9259781,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "bakery",
+              "food_store",
+              "food",
+              "point_of_interest",
+              "store",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=13038741973160771801&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.braudogco.is/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Harpa Concert Hall and Conference Centre",
+          "description": "Spend the afternoon at Harpa Concert Hall and Conference Centre, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJS4YW06l11kgRW-aFizec8sE",
+          "place_name": "Harpa Concert Hall and Conference Centre",
+          "address_text": "Austurbakki 2, 101 Reykjav\u00edk, Iceland",
+          "place_category": "event_venue",
+          "lat": 64.1502464,
+          "lon": -21.932280499999997,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "event_venue",
+              "coffee_shop",
+              "cafe",
+              "cultural_center",
+              "transportation_service",
+              "service",
+              "food_store",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "store",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=13975404356062013019&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.harpa.is/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Messinn",
+          "description": "Use the evening for a real stop at Messinn in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ84QQXi0L1kgR91608ywTlqo",
+          "place_name": "Messinn",
+          "address_text": "L\u00e6kjargata 6, 101 Reykjav\u00edk, Iceland",
+          "place_category": "seafood_restaurant",
+          "lat": 64.1465831,
+          "lon": -21.9377268,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "seafood_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12292033316742520567&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://messinn.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Perlan",
+          "description": "Spend the morning at Perlan, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJnXOkuUwL1kgRKT9vWdb_DnI",
+          "place_name": "Perlan",
+          "address_text": "Varmahl\u00ed\u00f0 1, 105 Reykjav\u00edk, Iceland",
+          "place_category": "museum",
+          "lat": 64.1292528,
+          "lon": -21.918870899999998,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "tourist_attraction",
+              "historical_place",
+              "cafe",
+              "planetarium",
+              "museum",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8218787666086281001&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://perlan.is/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Sun Voyager",
+          "description": "Spend the afternoon at Sun Voyager, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJz-YMCc501kgRqKacmXs6e9g",
+          "place_name": "Sun Voyager",
+          "address_text": "S\u00e6braut, 101 Reykjav\u00edk, Iceland",
+          "place_category": "sculpture",
+          "lat": 64.1476306,
+          "lon": -21.9222847,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "sculpture",
+              "tourist_attraction",
+              "historical_landmark",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15599126036860413608&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://sunvoyager.is/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Matur og Drykkur",
+          "description": "Use the evening for a real stop at Matur og Drykkur in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJKUCXxSsL1kgRT9dDDH4D1oY",
+          "place_name": "Matur og Drykkur",
+          "address_text": "Grandagar\u00f0ur 2, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.1525697,
+          "lon": -21.9514992,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9715957086004959055&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.maturogdrykkur.is/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Reykjavik Roasters",
+          "description": "Use the morning for a real stop at Reykjavik Roasters in Reykjavik, Iceland.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJbWl38sx01kgR1ZBsASao5zc",
+          "place_name": "Reykjavik Roasters",
+          "address_text": "K\u00e1rast\u00edgur 1, 101 Reykjav\u00edk, Iceland",
+          "place_category": "cafe",
+          "lat": 64.1436111,
+          "lon": -21.9266667,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "cafe",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4028373272892313813&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.reykjavikroasters.is/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Blue Lagoon",
+          "description": "Block out the afternoon for Blue Lagoon, a verified activity stop on this Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJDd_3r2Yd1kgRbvAWRIl6dPM",
+          "place_name": "Blue Lagoon",
+          "address_text": "Nor\u00f0urlj\u00f3savegur 9, 240 Grindav\u00edk, Iceland",
+          "place_category": "public_bath",
+          "lat": 63.8807176,
+          "lon": -22.447296299999998,
+          "country": "Iceland",
+          "region": "Grindav\u00edkurb\u00e6r",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "spa",
+              "public_bath",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=17542781178486386798&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.bluelagoon.com/is?utm_medium=gmb&utm_content=cta"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at S\u00fcmac Grill + Drinks",
+          "description": "Use the evening for a real stop at S\u00fcmac Grill + Drinks in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJJQqQBc101kgRiTVn9aDJn9o",
+          "place_name": "S\u00fcmac Grill + Drinks",
+          "address_text": "Laugavegur 28, 101, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.1453878,
+          "lon": -21.9280273,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15753531714714416521&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.sumac.is/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit \u00d6xar\u00e1rfoss",
+          "description": "Spend the morning at \u00d6xar\u00e1rfoss, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJlf3wrR6B1kgRV27jl6py3Ug",
+          "place_name": "\u00d6xar\u00e1rfoss",
+          "address_text": "7V8J+8RH, 806 Thingvellir, Iceland",
+          "place_category": "tourist_attraction",
+          "lat": 64.2658062,
+          "lon": -21.1178849,
+          "country": "Iceland",
+          "region": "Bl\u00e1sk\u00f3gabygg\u00f0",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5250478817602137687&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Seljalandsfoss",
+          "description": "Spend the afternoon at Seljalandsfoss, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJFSTv6K0e10gRjRcJUiDmAa4",
+          "place_name": "Seljalandsfoss",
+          "address_text": "Seljalandsfoss, 861, Iceland",
+          "place_category": "natural_feature",
+          "lat": 63.61562319999999,
+          "lon": -19.988568800000003,
+          "country": "Iceland",
+          "region": "Rang\u00e1r\u00feing eystra",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12538555864065841037&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Icelandic Street Food",
+          "description": "Use the evening for a real stop at Icelandic Street Food in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJVxyfYC0L1kgRT5xxsk6z3kg",
+          "place_name": "Icelandic Street Food",
+          "address_text": "L\u00e6kjargata 8, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.1464577,
+          "lon": -21.9380098,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5250831366143188047&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.icelandicfoods.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Sandholt",
+          "description": "Use the morning for a real stop at Sandholt in Reykjavik, Iceland.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJS3A1x8d01kgRQF2oXQG-4qk",
+          "place_name": "Sandholt",
+          "address_text": "Laugavegur 36, 101 Reykjav\u00edk, Iceland",
+          "place_category": "bakery",
+          "lat": 64.145055,
+          "lon": -21.926318,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "bakery",
+              "breakfast_restaurant",
+              "coffee_shop",
+              "cafe",
+              "food_store",
+              "restaurant",
+              "food",
+              "store",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12241555650221989184&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://sandholt.is/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Reykjadalur Hot Spring Thermal River",
+          "description": "Block out the afternoon for Reykjadalur Hot Spring Thermal River, a verified activity stop on this Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJf-ftCwJk1kgRrDOC5eVTA3s",
+          "place_name": "Reykjadalur Hot Spring Thermal River",
+          "address_text": "Reykjadalur 816, 816, Iceland",
+          "place_category": "hiking_area",
+          "lat": 64.0218948,
+          "lon": -21.2111691,
+          "country": "Iceland",
+          "region": "Hverager\u00f0isb\u00e6r",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "hiking_area",
+              "tourist_attraction",
+              "spa",
+              "public_bath",
+              "sports_activity_location",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8864020738458399660&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Grillmarka\u00f0urinn",
+          "description": "Use the evening for a real stop at Grillmarka\u00f0urinn in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJcRCrXC0L1kgR1efjhHAQZVQ",
+          "place_name": "Grillmarka\u00f0urinn",
+          "address_text": "L\u00e6kjargata 2a, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.1471693,
+          "lon": -21.9374717,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6081284947285632981&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.grillmarkadurinn.is/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Gr\u00f3tta Lighthouse",
+          "description": "Spend the morning at Gr\u00f3tta Lighthouse, a verified place on the Reykjavik, Iceland route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJZePZB-AK1kgROrWX2ADLjqs",
+          "place_name": "Gr\u00f3tta Lighthouse",
+          "address_text": "5X7H+VF5 Gr\u00f3tta, 170, 170 Seltjarnarnes, Iceland",
+          "place_category": "historical_landmark",
+          "lat": 64.16501,
+          "lon": -22.021981399999998,
+          "country": "Iceland",
+          "region": "Seltjarnarnesb\u00e6r",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12362041231672849722&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://grotta.is/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience FlyOver Iceland",
+          "description": "Block out the afternoon for FlyOver Iceland, a verified activity stop on this Reykjavik, Iceland route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ1wXOtZUL1kgR4Y50lMiQx2w",
+          "place_name": "FlyOver Iceland",
+          "address_text": "Fiskisl\u00f3\u00f0 43, 101 Reykjav\u00edk, Iceland",
+          "place_category": "tourist_attraction",
+          "lat": 64.1567623,
+          "lon": -21.9487487,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7838392867620163297&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.flyovericeland.com/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Dill Restaurant",
+          "description": "Use the evening for a real stop at Dill Restaurant in Reykjavik, Iceland.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJxeTXptJ01kgR4Dcvo45O5Cs",
+          "place_name": "Dill Restaurant",
+          "address_text": "Laugavegur 59, 101 Reykjav\u00edk, Iceland",
+          "place_category": "restaurant",
+          "lat": 64.14447539999999,
+          "lon": -21.922635099999997,
+          "country": "Iceland",
+          "region": "Reykjav\u00edkurborg",
+          "time_zone_id": "Atlantic/Reykjavik",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3162739212851034080&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.dillrestaurant.is/"
+          }
+        }
+      ]
+    ]
+  },
+  "santorini-blue-hour": {
+    "route_id": "santorini-blue-hour",
+    "destination_text": "Santorini, Greece",
+    "trip_type": "leisure",
+    "route_travel_mode": "WALK",
+    "seed": 3741670583,
+    "days": [
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Passaggio Santorini",
+          "description": "Use the morning for a real stop at Passaggio Santorini in Santorini, Greece.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJ79bCm4DMmRQRS8pqL37iUT0",
+          "place_name": "Passaggio Santorini",
+          "address_text": "Nik. Nomikou, O\u00eda 847 02, Greece",
+          "place_category": "bistro",
+          "lat": 36.462133,
+          "lon": 25.382690999999998,
+          "country": "Greece",
+          "region": "O\u00eda",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "bistro",
+              "bar",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4418561741016451659&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.passaggio.gr/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Castle of Oia",
+          "description": "Spend the afternoon at Castle of Oia, a verified place on the Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJE4gLZoHLmRQRI1a7pVBqoVo",
+          "place_name": "Castle of Oia",
+          "address_text": "Oia 847 02, Greece",
+          "place_category": "castle",
+          "lat": 36.4600133,
+          "lon": 25.3729387,
+          "country": "Greece",
+          "region": "Oia",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "castle",
+              "tourist_attraction",
+              "historical_place",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6530617829274375715&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Ammoudi Fish Tavern",
+          "description": "Use the evening for a real stop at Ammoudi Fish Tavern in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ9T0PmYPLmRQR7hzxFyr9Efk",
+          "place_name": "Ammoudi Fish Tavern",
+          "address_text": "Ammoudi Bay, Santorini, Oia, Ammoudi 847 02, Greece",
+          "place_category": "restaurant",
+          "lat": 36.460585699999996,
+          "lon": 25.3702063,
+          "country": "Greece",
+          "region": "Santorini, Oia, Ammoudi",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=17947404347280268526&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.ammoudisantorini.com/?utm_source=gmb&utm_medium=referral&utm_campaign=gmb_referral"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Galini Cafe Santorini",
+          "description": "Use the morning for a real stop at Galini Cafe Santorini in Santorini, Greece.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJyRSg88zNmRQRAnW4mqaK7Zo",
+          "place_name": "Galini Cafe Santorini",
+          "address_text": "Firostefani, Thira 847 00, Greece",
+          "place_category": "brunch_restaurant",
+          "lat": 36.4247562,
+          "lon": 25.4285025,
+          "country": "Greece",
+          "region": "Thira",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "brunch_restaurant",
+              "bar",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11163731499486311682&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://hotelgalini.gr/contact-us"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Akrotiri",
+          "description": "Spend the afternoon at Akrotiri, a verified place on the Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ5xoba2rPmRQR-8qpNnWSnRM",
+          "place_name": "Akrotiri",
+          "address_text": "Fira 847 00, Greece",
+          "place_category": null,
+          "lat": 36.3517952,
+          "lon": 25.403447,
+          "country": "Greece",
+          "region": "Fira",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1413446890190129915&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://odysseus.culture.gr/h/3/eh351.jsp?obj_id=2410"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Metaxi Mas",
+          "description": "Use the evening for a real stop at Metaxi Mas in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJBXVFhxzOmRQRkmHfaqSO1ik",
+          "place_name": "Metaxi Mas",
+          "address_text": "Exo Gonia 847 00, Greece",
+          "place_category": "greek_restaurant",
+          "lat": 36.3880029,
+          "lon": 25.4573423,
+          "country": "Greece",
+          "region": "Exo Gonia",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "greek_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3014753837389930898&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.santorini-metaximas.gr/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Pyrgos Kallistis",
+          "description": "Spend the morning at Pyrgos Kallistis, a verified place on the Santorini, Greece route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJnwQElUDOmRQRfThBJCUaOlA",
+          "place_name": "Pyrgos Kallistis",
+          "address_text": "Pyrgos Kallistis 847 00, Greece",
+          "place_category": null,
+          "lat": 36.383038,
+          "lon": 25.4478176,
+          "country": "Greece",
+          "region": "Pyrgos Kallistis",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "locality",
+              "political"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5780961818507819133&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Santo Wines",
+          "description": "Block out the afternoon for Santo Wines, a verified activity stop on this Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJFbhZ3F7OmRQReOlBpwauSzg",
+          "place_name": "Santo Wines",
+          "address_text": "Pyrgos Kallistis 847 00, Greece",
+          "place_category": "winery",
+          "lat": 36.387564,
+          "lon": 25.436746,
+          "country": "Greece",
+          "region": "Pyrgos Kallistis",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "winery",
+              "tourist_attraction",
+              "farm",
+              "manufacturer",
+              "food",
+              "point_of_interest",
+              "service",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4056527232976415096&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.santowines.gr/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Selene Restaurant",
+          "description": "Use the evening for a real stop at Selene Restaurant in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJX8E34kPPmRQRuP0FvNTwPMg",
+          "place_name": "Selene Restaurant",
+          "address_text": "Old catholic monastery, \u03a6\u03b7\u03c1\u03ac 847 00, Greece",
+          "place_category": "fine_dining_restaurant",
+          "lat": 36.4214959,
+          "lon": 25.4307765,
+          "country": "Greece",
+          "region": "\u03a6\u03b7\u03c1\u03ac",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "fine_dining_restaurant",
+              "greek_restaurant",
+              "place_of_worship",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "association_or_organization",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14428672102666468792&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://selene.gr/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Ancient Thera",
+          "description": "Spend the morning at Ancient Thera, a verified place on the Santorini, Greece route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJSWbLVdnRmRQR02BT9swY-6Y",
+          "place_name": "Ancient Thera",
+          "address_text": "Santorini 847 00, Greece",
+          "place_category": "museum",
+          "lat": 36.363571799999995,
+          "lon": 25.4778475,
+          "country": "Greece",
+          "region": null,
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "historical_landmark",
+              "historical_place",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12032238098035466451&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Red beach",
+          "description": "Block out the afternoon for Red beach, a verified activity stop on this Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ8ZbWwETPmRQRXH_K_oZUxZE",
+          "place_name": "Red beach",
+          "address_text": "Red beach, Greece",
+          "place_category": "beach",
+          "lat": 36.348912899999995,
+          "lon": 25.3939009,
+          "country": "Greece",
+          "region": null,
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "beach",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=10503894644688584540&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at To Psaraki",
+          "description": "Use the evening for a real stop at To Psaraki in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJLYDk14TPmRQRROWxipIeuxg",
+          "place_name": "To Psaraki",
+          "address_text": "Marina, Vlichada 847 00, Greece",
+          "place_category": "seafood_restaurant",
+          "lat": 36.3379258,
+          "lon": 25.4348982,
+          "country": "Greece",
+          "region": "Vlichada",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "seafood_restaurant",
+              "mediterranean_restaurant",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1782051692296136004&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.topsaraki.gr/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Zotos",
+          "description": "Use the morning for a real stop at Zotos in Santorini, Greece.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJQ7ctL9LNmRQRwFnsFsF4Ivs",
+          "place_name": "Zotos",
+          "address_text": "Gold Street, \u03a6\u03b7\u03c1\u03ac 84700 \u03a6\u03b7\u03c1\u03b1, Thira 847 00, Greece",
+          "place_category": "ice_cream_shop",
+          "lat": 36.418212499999996,
+          "lon": 25.431410399999997,
+          "country": "Greece",
+          "region": "Thira",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "ice_cream_shop",
+              "dessert_shop",
+              "confectionery",
+              "food_store",
+              "store",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18096159023436683712&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://zotosgelato.gr/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Kamari beach",
+          "description": "Block out the afternoon for Kamari beach, a verified activity stop on this Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJDQoSK93RmRQRCuTtniz4LaI",
+          "place_name": "Kamari beach",
+          "address_text": "Kamari beach, Greece",
+          "place_category": "beach",
+          "lat": 36.375865499999996,
+          "lon": 25.485664,
+          "country": "Greece",
+          "region": null,
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "beach",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11686269478624945162&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.facebook.com/kmarabeach"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Roka Oia",
+          "description": "Use the evening for a real stop at Roka Oia in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJcWkkzIHLmRQRtyu7-jaSEb4",
+          "place_name": "Roka Oia",
+          "address_text": "m.Mpotsari 6, \u039f\u03af\u03b1 847 02, Greece",
+          "place_category": "greek_restaurant",
+          "lat": 36.4624494,
+          "lon": 25.3752741,
+          "country": "Greece",
+          "region": "\u039f\u03af\u03b1",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "greek_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=13695888706642848695&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.roka.gr/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Skaros Rock",
+          "description": "Spend the morning at Skaros Rock, a verified place on the Santorini, Greece route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJIas6OTbMmRQRe2ncd0RDHh4",
+          "place_name": "Skaros Rock",
+          "address_text": "Imerovigli 847 00, Greece",
+          "place_category": null,
+          "lat": 36.432356999999996,
+          "lon": 25.4180815,
+          "country": "Greece",
+          "region": "Imerovigli",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "scenic_spot",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=2170246031786928507&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Museum of Prehistoric Thera",
+          "description": "Spend the afternoon at Museum of Prehistoric Thera, a verified place on the Santorini, Greece route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJEYqz8NLNmRQRQA2rGP-CQXY",
+          "place_name": "Museum of Prehistoric Thera",
+          "address_text": "Fira 847 00, Greece",
+          "place_category": "museum",
+          "lat": 36.4167947,
+          "lon": 25.4326851,
+          "country": "Greece",
+          "region": "Fira",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8521236002103823680&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://odysseus.culture.gr/h/1/eh155.jsp?obj_id=3325"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Naoussa",
+          "description": "Use the evening for a real stop at Naoussa in Santorini, Greece.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJOxEM2dPNmRQR27LCspMg5UU",
+          "place_name": "Naoussa",
+          "address_text": "Fira Santorini Next to the Central Orthodox Cathedral of Fira Town Mitropoleos Fira Town, Thira 847 00, Greece",
+          "place_category": "greek_restaurant",
+          "lat": 36.416204799999996,
+          "lon": 25.4314248,
+          "country": "Greece",
+          "region": "Thira",
+          "time_zone_id": "Europe/Athens",
+          "metadata": {
+            "types": [
+              "greek_restaurant",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5036467577015153371&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://naoussasantorini.restaurant/"
+          }
+        }
+      ]
+    ]
+  },
+  "cape-town-peninsula-cut": {
+    "route_id": "cape-town-peninsula-cut",
+    "destination_text": "Cape Town, South Africa",
+    "trip_type": "adventure",
+    "route_travel_mode": "DRIVE",
+    "seed": 3333658121,
+    "days": [
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Jason Bakery",
+          "description": "Use the morning for a real stop at Jason Bakery in Cape Town, South Africa.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJkQCIw0VnzB0RLx7D5DZ0qSk",
+          "place_name": "Jason Bakery",
+          "address_text": "83 Main Rd, Green Point, Cape Town, 8005, South Africa",
+          "place_category": "bakery",
+          "lat": -33.9083793,
+          "lon": 18.4108145,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "bakery",
+              "breakfast_restaurant",
+              "food_store",
+              "restaurant",
+              "food",
+              "store",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3002058405734194735&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.jasonbakery.com/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Table Mountain Aerial Cableway",
+          "description": "Block out the afternoon for Table Mountain Aerial Cableway, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJTSM82_FnzB0RK5X9oWUjsgc",
+          "place_name": "Table Mountain Aerial Cableway",
+          "address_text": "Tafelberg Rd, Gardens, Cape Town, 8001, South Africa",
+          "place_category": "transit_station",
+          "lat": -33.948335199999995,
+          "lon": 18.4029463,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "transit_station",
+              "transportation_service",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=554544623536411947&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://tablemountain.net/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Kloof Street House",
+          "description": "Use the evening for a real stop at Kloof Street House in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ_Tc00XFnzB0R1TIppn46x4I",
+          "place_name": "Kloof Street House",
+          "address_text": "30 Kloof St, Gardens, Cape Town, 8005, South Africa",
+          "place_category": "restaurant",
+          "lat": -33.9282119,
+          "lon": 18.412091699999998,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9423565060924060373&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.kloofstreethouse.co.za/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Truth Coffee Roasting",
+          "description": "Use the morning for a real stop at Truth Coffee Roasting in Cape Town, South Africa.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJk0_6kHxnzB0R9hOYtdW5I_s",
+          "place_name": "Truth Coffee Roasting",
+          "address_text": "36 Buitenkant St, Cape Town City Centre, Cape Town, 8000, South Africa",
+          "place_category": "cafe",
+          "lat": -33.92819,
+          "lon": 18.4226889,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "cafe",
+              "coffee_shop",
+              "coffee_roastery",
+              "bakery",
+              "food_store",
+              "store",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18096512055230600182&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.truth.capetown/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Kirstenbosch National Botanical Garden",
+          "description": "Spend the afternoon at Kirstenbosch National Botanical Garden, a verified place on the Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJecz6YqhCzB0RZqXqcdmKfBs",
+          "place_name": "Kirstenbosch National Botanical Garden",
+          "address_text": "Rhodes Dr, Newlands, Cape Town, 7735, South Africa",
+          "place_category": "botanical_garden",
+          "lat": -33.987501099999996,
+          "lon": 18.432722,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "botanical_garden",
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1980610602659915110&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.sanbi.org/gardens/kirstenbosch/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at The Pot Luck Club",
+          "description": "Use the evening for a real stop at The Pot Luck Club in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJYxj8tKZdzB0R2_H65PgjFV4",
+          "place_name": "The Pot Luck Club",
+          "address_text": "6, The Silo, The Old Biscuit Mill, 373-375 Albert Rd, Woodstock, Cape Town, 7915, South Africa",
+          "place_category": "restaurant",
+          "lat": -33.9275985,
+          "lon": 18.457482199999998,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "tapas_restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6779364365976662491&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.thepotluckclub.co.za/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Boulders Beach",
+          "description": "Spend the morning at Boulders Beach, a verified place on the Cape Town, South Africa route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJKeByCDY-zB0RECn0gAHgvHw",
+          "place_name": "Boulders Beach",
+          "address_text": "Simon's Town, Cape Town, 7995, South Africa",
+          "place_category": null,
+          "lat": -34.1956153,
+          "lon": 18.4503585,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "nature_preserve",
+              "park",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8988305253387741456&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.sanparks.org/parks/table_mountain/tourism/attractions.php#boulders"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Cape Point",
+          "description": "Spend the afternoon at Cape Point, a verified place on the Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ25w6pMpqzB0ReWHAOFJCzHA",
+          "place_name": "Cape Point",
+          "address_text": "Cape Point, Cape Town, South Africa",
+          "place_category": null,
+          "lat": -34.2500139,
+          "lon": 18.4157357,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "sublocality_level_1",
+              "sublocality",
+              "political"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8127944348403786105&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Harbour House Kalk Bay",
+          "description": "Use the evening for a real stop at Harbour House Kalk Bay in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJHWikDhRAzB0RyOvryzibbV8",
+          "place_name": "Harbour House Kalk Bay",
+          "address_text": "Harbour, Main Rd, Kalk Bay, Cape Town, 7900, South Africa",
+          "place_category": "seafood_restaurant",
+          "lat": -34.129699599999995,
+          "lon": 18.4490193,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "seafood_restaurant",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6876322874306325448&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.harbourhouse.co.za/?utm_source=google_maps&utm_medium=website_button&utm_campaign=SP&utm_content=SP"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Oranjezicht City Farm Market",
+          "description": "Use the morning for a real stop at Oranjezicht City Farm Market in Cape Town, South Africa.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJJda7Ik5nzB0RNkLL5Oqi17c",
+          "place_name": "Oranjezicht City Farm Market",
+          "address_text": "Parking Deck, Breakwater Blvd, Victoria & Alfred Waterfront, Cape Town, 8001, South Africa",
+          "place_category": "farmers_market",
+          "lat": -33.9031083,
+          "lon": 18.417244699999998,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "farmers_market",
+              "market",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=13247235958678176310&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://ozcf.co.za/market"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Robben Island",
+          "description": "Block out the afternoon for Robben Island, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJy3XfS2WKzB0RYZDeLkVkb30",
+          "place_name": "Robben Island",
+          "address_text": "Robben Island, South Africa",
+          "place_category": "island",
+          "lat": -33.8076073,
+          "lon": 18.3712309,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "island",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9038553225457733729&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Fyn Restaurant",
+          "description": "Use the evening for a real stop at Fyn Restaurant in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJJXjP9dFnzB0RKRtezQrweYM",
+          "place_name": "Fyn Restaurant",
+          "address_text": "5th Floor, Speakers Corner, 37 Parliament St, Cape Town City Centre, Cape Town, 8001, South Africa",
+          "place_category": "restaurant",
+          "lat": -33.924723,
+          "lon": 18.421803099999998,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9473867220336384809&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://fynrestaurant.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Iziko Bo-Kaap Museum",
+          "description": "Spend the morning at Iziko Bo-Kaap Museum, a verified place on the Cape Town, South Africa route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJjSQp42VnzB0R6WYFH3MPXjk",
+          "place_name": "Iziko Bo-Kaap Museum",
+          "address_text": "71 Wale St, Schotsche Kloof, Cape Town, 8001, South Africa",
+          "place_category": "museum",
+          "lat": -33.9215332,
+          "lon": 18.4149866,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "museum",
+              "tourist_attraction",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4133758495088797417&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.iziko.org.za/museums/bo-kaap-museum/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Clifton 4th",
+          "description": "Block out the afternoon for Clifton 4th, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJNTC0x_5mzB0RcEN-wOIN0Ag",
+          "place_name": "Clifton 4th",
+          "address_text": "Clifton 4th, South Africa",
+          "place_category": "beach",
+          "lat": -33.9405758,
+          "lon": 18.3751248,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "beach",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=635022815002510192&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.capetown.gov.za/en/SportRecreation/Pages/Clifton4th.aspx"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at La Colombe Restaurant",
+          "description": "Use the evening for a real stop at La Colombe Restaurant in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJCWq-g2FCzB0R4RYvykSREW4",
+          "place_name": "La Colombe Restaurant",
+          "address_text": "Silvermist Wine Estate, Main Road, Constantia Nek, Cape Town, 7806, South Africa",
+          "place_category": "french_restaurant",
+          "lat": -34.0151706,
+          "lon": 18.4033113,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "fine_dining_restaurant",
+              "french_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=7931280143412041441&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.lacolombe.restaurant/la-colombe"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Zeitz Museum of Contemporary Art Africa",
+          "description": "Spend the morning at Zeitz Museum of Contemporary Art Africa, a verified place on the Cape Town, South Africa route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJ3dD0bFlnzB0RGBEddr2FeY8",
+          "place_name": "Zeitz Museum of Contemporary Art Africa",
+          "address_text": "S Arm Rd, Victoria & Alfred Waterfront, Cape Town, 8001, South Africa",
+          "place_category": "art_museum",
+          "lat": -33.908411799999996,
+          "lon": 18.4226404,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "tourist_attraction",
+              "art_museum",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=10338441468382613784&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://zeitzmocaa.museum/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Camps Bay Beach",
+          "description": "Block out the afternoon for Camps Bay Beach, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJuUZtdVNmzB0R-7OvUK-IBzE",
+          "place_name": "Camps Bay Beach",
+          "address_text": "Camps Bay Beach, Cape Town, 8005, South Africa",
+          "place_category": "beach",
+          "lat": -33.9506605,
+          "lon": 18.3776413,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "beach",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3532942719249789947&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Codfather Seafood & Sushi",
+          "description": "Use the evening for a real stop at Codfather Seafood & Sushi in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJUVWciFJmzB0Rhech9dAcUjw",
+          "place_name": "Codfather Seafood & Sushi",
+          "address_text": "37 The Dr, Camps Bay, Cape Town, 8040, South Africa",
+          "place_category": "seafood_restaurant",
+          "lat": -33.954155,
+          "lon": 18.377465,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "seafood_restaurant",
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4346568274157365125&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.codfather.co.za/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "activity",
+          "title": "Morning at Groot Constantia",
+          "description": "Block out the morning for Groot Constantia, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJEXoUs9ppzB0RzHENeddpBUY",
+          "place_name": "Groot Constantia",
+          "address_text": "Groot Constantia Rd, Constantia, Cape Town, 7806, South Africa",
+          "place_category": "winery",
+          "lat": -34.029526,
+          "lon": 18.4201952,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "winery",
+              "tourist_attraction",
+              "farm",
+              "manufacturer",
+              "food",
+              "point_of_interest",
+              "service",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5045555331708318156&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.grootconstantia.co.za/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Hout Bay Harbour",
+          "description": "Spend the afternoon at Hout Bay Harbour, a verified place on the Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJGTXBCDdpzB0RKm4FZkOkZMs",
+          "place_name": "Hout Bay Harbour",
+          "address_text": "Hout Bay Harbour, Cape Town, 7806, South Africa",
+          "place_category": null,
+          "lat": -34.055091,
+          "lon": 18.3438309,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "sublocality_level_2",
+              "sublocality",
+              "political"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14656019696751832618&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Chefs Warehouse Beau Constantia",
+          "description": "Use the evening for a real stop at Chefs Warehouse Beau Constantia in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJz1AGNjhozB0RQPOmHsK2ZtY",
+          "place_name": "Chefs Warehouse Beau Constantia",
+          "address_text": "1043 Constantia Main Road, Beau Constantia Wine Farm, Constantia Neck, Glen Alpine, Kaapstad, 7806, South Africa",
+          "place_category": "restaurant",
+          "lat": -34.013672299999996,
+          "lon": 18.406393899999998,
+          "country": "South Africa",
+          "region": "Wes-Kaap",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15449236516595233600&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.chefswarehouse.co.za/beau-constantia"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Clarke's Bar & Dining Room",
+          "description": "Use the morning for a real stop at Clarke's Bar & Dining Room in Cape Town, South Africa.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJnTuF52VnzB0RTGAL7oSEWTU",
+          "place_name": "Clarke's Bar & Dining Room",
+          "address_text": "133 Bree St, Cape Town City Centre, Cape Town, 8001, South Africa",
+          "place_category": "restaurant",
+          "lat": -33.9223425,
+          "lon": 18.4171662,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "diner",
+              "cafe",
+              "breakfast_restaurant",
+              "brunch_restaurant",
+              "hamburger_restaurant",
+              "american_restaurant",
+              "food",
+              "bar",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=3844249463401701452&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://clarkesdining.co.za/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Experience Lion's Head",
+          "description": "Block out the afternoon for Lion's Head, a verified activity stop on this Cape Town, South Africa route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ7Tf0rQVnzB0REQJgaykzKEg",
+          "place_name": "Lion's Head",
+          "address_text": "Lion's Head, Signal Hill, Cape Town, 8001, South Africa",
+          "place_category": "mountain_peak",
+          "lat": -33.9350375,
+          "lon": 18.3889709,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "mountain_peak",
+              "natural_feature",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5199462022787367441&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Bouchon Bistro",
+          "description": "Use the evening for a real stop at Bouchon Bistro in Cape Town, South Africa.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJHf2TYGZnzB0RIfeC17qjQ8Q",
+          "place_name": "Bouchon Bistro",
+          "address_text": "95 Hout St, Cape Town City Centre, Cape Town, 8001, South Africa",
+          "place_category": "restaurant",
+          "lat": -33.9203338,
+          "lon": 18.418454,
+          "country": "South Africa",
+          "region": "Western Cape",
+          "time_zone_id": "Africa/Johannesburg",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14142327277748418337&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.bouchon.co.za/"
+          }
+        }
+      ]
+    ]
+  },
+  "buenos-aires-late-tables": {
+    "route_id": "buenos-aires-late-tables",
+    "destination_text": "Buenos Aires, Argentina",
+    "trip_type": "city_break",
+    "route_travel_mode": "WALK",
+    "seed": 2511298346,
+    "days": [
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Caf\u00e9 Tortoni",
+          "description": "Use the morning for a real stop at Caf\u00e9 Tortoni in Buenos Aires, Argentina.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJ01wendHKvJURLcQXvCCCC1I",
+          "place_name": "Caf\u00e9 Tortoni",
+          "address_text": "Av. de Mayo 825, C1084 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "cafe",
+          "lat": -34.6086531,
+          "lon": -58.3782121,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "cafe",
+              "coffee_shop",
+              "food_store",
+              "point_of_interest",
+              "store",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5911962012960146477&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.cafetortoni.com.ar/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Teatro Col\u00f3n",
+          "description": "Spend the afternoon at Teatro Col\u00f3n, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJIxYSMMbKvJURqZGJyCpvOFM",
+          "place_name": "Teatro Col\u00f3n",
+          "address_text": "Cerrito 628, C1010 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "opera_house",
+          "lat": -34.601152,
+          "lon": -58.3833278,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "opera_house",
+              "tourist_attraction",
+              "concert_hall",
+              "live_music_venue",
+              "auditorium",
+              "museum",
+              "performing_arts_theater",
+              "event_venue",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5996665133387583913&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://teatrocolon.org.ar/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Don Julio Parrilla",
+          "description": "Use the evening for a real stop at Don Julio Parrilla in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJoYl36oa1vJURWWhqD9z3UV8",
+          "place_name": "Don Julio Parrilla",
+          "address_text": "Guatemala 4699, C1425 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "restaurant",
+          "lat": -34.5863164,
+          "lon": -58.424268899999994,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=6868543431240214617&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.parrilladonjulio.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit El Ateneo Grand Splendid",
+          "description": "Spend the morning at El Ateneo Grand Splendid, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJlRIZ_L3KvJURwGSeZ0wIEIE",
+          "place_name": "El Ateneo Grand Splendid",
+          "address_text": "Av. Sta. Fe 1860, C1123 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "book_store",
+          "lat": -34.5959833,
+          "lon": -58.3942285,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "book_store",
+              "tourist_attraction",
+              "movie_rental",
+              "service",
+              "point_of_interest",
+              "store",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9299942354769044672&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.yenny-elateneo.com/local/grand-splendid/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Recoleta Cemetery",
+          "description": "Spend the afternoon at Recoleta Cemetery, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJs5EH8aLKvJURw6UX3MYKGKE",
+          "place_name": "Recoleta Cemetery",
+          "address_text": "Jun\u00edn 1760, C1113 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "cemetery",
+          "lat": -34.5873639,
+          "lon": -58.3929555,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "cemetery",
+              "service",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11608039888759793091&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://turismo.buenosaires.gob.ar/es/otros-establecimientos/cementerio-de-la-recoleta"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at El Preferido de Palermo",
+          "description": "Use the evening for a real stop at El Preferido de Palermo in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJRazshIa1vJURczNt-pu4coU",
+          "place_name": "El Preferido de Palermo",
+          "address_text": "Jorge Luis Borges 2108, C1425FFD Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "restaurant",
+          "lat": -34.5854137,
+          "lon": -58.4253412,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=9615951134450332531&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://elpreferido.meitre.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Lattente",
+          "description": "Use the morning for a real stop at Lattente in Buenos Aires, Argentina.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJmezOB4a1vJURDMhzx6lY6xc",
+          "place_name": "Lattente",
+          "address_text": "Thames 1891, C1414 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "coffee_shop",
+          "lat": -34.5861921,
+          "lon": -58.428055,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "coffee_shop",
+              "cafeteria",
+              "cafe",
+              "food_store",
+              "store",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=1723568768618317836&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.cafelattente.com/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Mercado San Telmo",
+          "description": "Spend the afternoon at Mercado San Telmo, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJ01hQWivLvJURgrAJYmqWsHE",
+          "place_name": "Mercado San Telmo",
+          "address_text": "Bol\u00edvar 970, C1066AAT, C1066AAT Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "market",
+          "lat": -34.6193062,
+          "lon": -58.37282,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "market",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=8192213105842434178&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.mercadosantelmo.com.ar/"
+          }
+        },
+        {
+          "category": "activity",
+          "title": "Evening at La Catedral Club",
+          "description": "Block out the evening for La Catedral Club, a verified activity stop on this Buenos Aires, Argentina route.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJK9p0bGHKvJUR464PBRcLiu0",
+          "place_name": "La Catedral Club",
+          "address_text": "Sarmiento 4006, C1197AAH Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "dance_hall",
+          "lat": -34.6049101,
+          "lon": -58.421548599999994,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "dance_hall",
+              "night_club",
+              "association_or_organization",
+              "event_venue",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=17116505527272058595&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.lacatedralclub.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Cuervo Caf\u00e9",
+          "description": "Use the morning for a real stop at Cuervo Caf\u00e9 in Buenos Aires, Argentina.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJF19rgHjKvJURjAVINc8ud9k",
+          "place_name": "Cuervo Caf\u00e9",
+          "address_text": "El Salvador 4580, C1414 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "cafe",
+          "lat": -34.5903849,
+          "lon": -58.4258604,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "cafe",
+              "point_of_interest",
+              "food",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=15670044895945950604&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.cuervocafe.com/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Museo de Arte Latinoamericano de Buenos Aires",
+          "description": "Spend the afternoon at Museo de Arte Latinoamericano de Buenos Aires, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJw2lP92S1vJUR0oZeeeJ7qO4",
+          "place_name": "Museo de Arte Latinoamericano de Buenos Aires",
+          "address_text": "Av. Pres. Figueroa Alcorta 3415, C1425CLA Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "art_museum",
+          "lat": -34.5769032,
+          "lon": -58.4033959,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "art_museum",
+              "tourist_attraction",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=17197131389743302354&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.malba.org.ar/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Gran Dabbang",
+          "description": "Use the evening for a real stop at Gran Dabbang in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJM3RR83jKvJURRbA_5OGjCwQ",
+          "place_name": "Gran Dabbang",
+          "address_text": "Av. Ra\u00fal Scalabrini Ortiz 1543, C1414DOC Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "restaurant",
+          "lat": -34.5913918,
+          "lon": -58.42544989999999,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=291506791487877189&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://grandabbang.meitre.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Plaza de Mayo",
+          "description": "Spend the morning at Plaza de Mayo, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJXx79V9vKvJURS2GosE58c8w",
+          "place_name": "Plaza de Mayo",
+          "address_text": "Av. Hip\u00f3lito Yrigoyen s/n, C1087 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "historical_landmark",
+          "lat": -34.6083667,
+          "lon": -58.3722832,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "historical_landmark",
+              "tourist_attraction",
+              "park",
+              "historical_place",
+              "plaza",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=14732255483472142667&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.turismo.buenosaires.gob.ar/es/atractivo/plaza-de-mayo"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Nacional Museum of Fine Arts",
+          "description": "Spend the afternoon at Nacional Museum of Fine Arts, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJQ_bCmaHKvJURfb4aM7hD5Uk",
+          "place_name": "Nacional Museum of Fine Arts",
+          "address_text": "Av. del Libertador 1473, C1425 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "art_museum",
+          "lat": -34.5839894,
+          "lon": -58.393004399999995,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "art_museum",
+              "tourist_attraction",
+              "art_gallery",
+              "museum",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=5324736592845913725&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.bellasartes.gob.ar/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Fog\u00f3n Asado",
+          "description": "Use the evening for a real stop at Fog\u00f3n Asado in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJDY1kFaq1vJURdGHcaAqu0Z4",
+          "place_name": "Fog\u00f3n Asado",
+          "address_text": "Uriarte 1423, C1414 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "restaurant",
+          "lat": -34.588548599999996,
+          "lon": -58.4335611,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "steak_house",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11444119487857320308&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.fogonasado.com/"
+          }
+        }
+      ],
+      [
+        {
+          "category": "eat",
+          "title": "Breakfast at Birkin",
+          "description": "Use the morning for a real stop at Birkin in Buenos Aires, Argentina.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJKQHSP3m1vJURSeVxNLDu9yQ",
+          "place_name": "Birkin",
+          "address_text": "Rep\u00fablica \u00c1rabe Siria 3061, C1425 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "cafe",
+          "lat": -34.5804397,
+          "lon": -58.4132052,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "cafe",
+              "breakfast_restaurant",
+              "snack_bar",
+              "meal_takeaway",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=2663860145174472009&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://www.facebook.com/birkincafe/"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Jard\u00edn Japon\u00e9s",
+          "description": "Spend the afternoon at Jard\u00edn Japon\u00e9s, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJx8VHQXq1vJURH4ffL_cLk_w",
+          "place_name": "Jard\u00edn Japon\u00e9s",
+          "address_text": "Av. Casares 3450, C1425EWN C1425EWN, Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "garden",
+          "lat": -34.574641199999995,
+          "lon": -58.409835799999996,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "garden",
+              "tourist_attraction",
+              "park",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=18199903675422312223&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://jardinjapones.org.ar/"
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Ni\u00f1o Gordo",
+          "description": "Use the evening for a real stop at Ni\u00f1o Gordo in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJYRgoqYi1vJURmIm7r39sV6g",
+          "place_name": "Ni\u00f1o Gordo",
+          "address_text": "Thames 1810, C1414DDL C1414DDL, Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "restaurant",
+          "lat": -34.586464,
+          "lon": -58.4289625,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=12130283417010669976&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        }
+      ],
+      [
+        {
+          "category": "visit",
+          "title": "Visit Reserva Ecol\u00f3gica Costanera Sur",
+          "description": "Spend the morning at Reserva Ecol\u00f3gica Costanera Sur, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "09:00:00",
+          "duration_min": 90,
+          "google_place_id": "ChIJl9_7lx81o5URTyXCnVNNCgw",
+          "place_name": "Reserva Ecol\u00f3gica Costanera Sur",
+          "address_text": "Av. Dr. Trist\u00e1n Ach\u00e1val Rodr\u00edguez 1550, Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "nature_preserve",
+          "lat": -34.6068644,
+          "lon": -58.351955999999994,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "nature_preserve",
+              "park",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=867590899746612559&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "https://buenosaires.gob.ar/reservasecologicas/reservaecologicacostanerasur"
+          }
+        },
+        {
+          "category": "visit",
+          "title": "Visit Caminito",
+          "description": "Spend the afternoon at Caminito, a verified place on the Buenos Aires, Argentina route.",
+          "start_time": "13:30:00",
+          "duration_min": 150,
+          "google_place_id": "ChIJk5Zj-LA0o5URFK_uteT36Z4",
+          "place_name": "Caminito",
+          "address_text": "Caminito, C1166 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": null,
+          "lat": -34.6393256,
+          "lon": -58.3626807,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "route"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=11450956089243119380&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": null
+          }
+        },
+        {
+          "category": "eat",
+          "title": "Dinner at Caba\u00f1a Las Lilas",
+          "description": "Use the evening for a real stop at Caba\u00f1a Las Lilas in Buenos Aires, Argentina.",
+          "start_time": "19:00:00",
+          "duration_min": 120,
+          "google_place_id": "ChIJ7yoB8i01o5URXijw57yzW0U",
+          "place_name": "Caba\u00f1a Las Lilas",
+          "address_text": "Av. Alicia Moreau de Justo 516, C1107 Cdad. Aut\u00f3noma de Buenos Aires, Argentina",
+          "place_category": "steak_house",
+          "lat": -34.6038114,
+          "lon": -58.36689690000001,
+          "country": "Argentina",
+          "region": "Ciudad Aut\u00f3noma de Buenos Aires",
+          "time_zone_id": "America/Buenos_Aires",
+          "metadata": {
+            "types": [
+              "steak_house",
+              "argentinian_restaurant",
+              "south_american_restaurant",
+              "restaurant",
+              "food",
+              "point_of_interest",
+              "establishment"
+            ],
+            "google_maps_uri": "https://maps.google.com/?cid=4997785835424196702&g_mp=CiVnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLkdldFBsYWNlEAIYBCAA",
+            "website_uri": "http://www.restaurantlaslilas.com.ar/"
+          }
+        }
+      ]
+    ]
+  }
+}

@@ -29,14 +29,19 @@ class AssistantConfirmationRequest(BaseModel):
     confirmed: bool
 
 
+class AssistantCommandRequest(BaseModel):
+    name: str
+    args: dict = Field(default_factory=dict)
+
+
 class AssistantMessageStreamRequest(BaseModel):
     client_message_id: UUID | None = None
     text: str | None = None
     confirmation: AssistantConfirmationRequest | None = None
+    command: AssistantCommandRequest | None = None
 
 
 class AssistantMirrorJobRequest(BaseModel):
     job_id: UUID
     request_text: str
     action: str
-

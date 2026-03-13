@@ -4274,80 +4274,82 @@ export function PlannerMapView({
                   <PopoverContent
                     align="end"
                     sideOffset={10}
-                    className="w-[290px] rounded-[20px] border-black/8 p-3 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.3)]"
+                    className="w-[min(22rem,calc(100vw-1.25rem))] overflow-hidden rounded-[20px] border-black/8 p-0 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.3)]"
                   >
-                    <div className="space-y-4 py-1">
-                      <div>
-                        <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                          Categories
-                        </p>
-                        <div className="mt-1 space-y-0.5">
-                          {([
-                            ['visit', 'Visits', Landmark],
-                            ['eat', 'Eat', Utensils],
-                            ['activity', 'Activities', Sparkles],
-                            ['hotel', 'Hotels', BedDouble],
-                            ['travel', 'Travel', Route],
-                          ] as const).map(([key, label, Icon]) => (
-                            <label key={key} className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
-                              <span className="flex items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                <Icon className="h-[18px] w-[18px] text-[var(--color-text-muted)]" />
-                                {label}
-                              </span>
-                              <Checkbox
-                                checked={visibleGroups.has(key)}
-                                onCheckedChange={() => toggleVisibleGroup(key)}
-                              />
-                            </label>
-                          ))}
+                    <ScrollArea className="max-h-[min(70dvh,34rem)]">
+                      <div className="space-y-4 p-3">
+                        <div>
+                          <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                            Categories
+                          </p>
+                          <div className="mt-1 space-y-0.5">
+                            {([
+                              ['visit', 'Visits', Landmark],
+                              ['eat', 'Eat', Utensils],
+                              ['activity', 'Activities', Sparkles],
+                              ['hotel', 'Hotels', BedDouble],
+                              ['travel', 'Travel', Route],
+                            ] as const).map(([key, label, Icon]) => (
+                              <label key={key} className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                                <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                  <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--color-text-muted)]" />
+                                  <span className="truncate">{label}</span>
+                                </span>
+                                <Checkbox
+                                  checked={visibleGroups.has(key)}
+                                  onCheckedChange={() => toggleVisibleGroup(key)}
+                                />
+                              </label>
+                            ))}
+                          </div>
                         </div>
-                      </div>
 
-                      <div>
-                        <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                          Routes
-                        </p>
-                        <div className="mt-1 space-y-0.5">
-                          <label className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
-                            <span className="text-[0.9rem] font-medium text-[var(--color-text)]">Route lines</span>
-                            <Checkbox
-                              checked={showRoutes}
-                              onCheckedChange={(checked) => {
-                                setMapVisibilityCustomized(true)
-                                setShowRoutes(Boolean(checked))
-                              }}
-                            />
-                          </label>
-                          <label className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
-                            <span className="text-[0.9rem] font-medium text-[var(--color-text)]">Custom layers</span>
-                            <Checkbox
-                              checked={showCustomLayers}
-                              onCheckedChange={(checked) => {
-                                setMapVisibilityCustomized(true)
-                                setShowCustomLayers(Boolean(checked))
-                              }}
-                            />
-                          </label>
-                          {sections.map((section) => (
-                            <label key={section.dayId} className="group flex cursor-pointer items-center justify-between rounded-lg px-2 py-2.5 hover:bg-black/4 transition-colors">
-                              <span className="flex items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                <div className="flex h-[18px] w-[18px] items-center justify-center">
-                                  <span
-                                    className="h-3 w-3 rounded-full"
-                                    style={{ backgroundColor: section.color }}
-                                  />
-                                </div>
-                                {section.title}
-                              </span>
+                        <div>
+                          <p className="px-2 text-[0.68rem] font-bold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                            Routes
+                          </p>
+                          <div className="mt-1 space-y-0.5">
+                            <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                              <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">Route lines</span>
                               <Checkbox
-                                checked={visibleDayIds.has(section.dayId)}
-                                onCheckedChange={() => toggleVisibleDay(section.dayId)}
+                                checked={showRoutes}
+                                onCheckedChange={(checked) => {
+                                  setMapVisibilityCustomized(true)
+                                  setShowRoutes(Boolean(checked))
+                                }}
                               />
                             </label>
-                          ))}
+                            <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                              <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">Custom layers</span>
+                              <Checkbox
+                                checked={showCustomLayers}
+                                onCheckedChange={(checked) => {
+                                  setMapVisibilityCustomized(true)
+                                  setShowCustomLayers(Boolean(checked))
+                                }}
+                              />
+                            </label>
+                            {sections.map((section) => (
+                              <label key={section.dayId} className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                                <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                  <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">
+                                    <span
+                                      className="h-3 w-3 rounded-full"
+                                      style={{ backgroundColor: section.color }}
+                                    />
+                                  </div>
+                                  <span className="truncate">{section.title}</span>
+                                </span>
+                                <Checkbox
+                                  checked={visibleDayIds.has(section.dayId)}
+                                  onCheckedChange={() => toggleVisibleDay(section.dayId)}
+                                />
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </ScrollArea>
                   </PopoverContent>
                 </Popover>
 

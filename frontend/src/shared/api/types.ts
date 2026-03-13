@@ -253,10 +253,22 @@ export type AssistantConfirmationInput = {
   confirmed: boolean
 }
 
+export type AssistantCommandInput = {
+  name:
+    | 'snapshot'
+    | 'search_places'
+    | 'create_activity'
+    | 'update_activity'
+    | 'move_activity'
+    | 'delete_activity'
+  args: Record<string, unknown>
+}
+
 export type AssistantMessageStreamInput = {
   client_message_id?: string | null
   text?: string | null
   confirmation?: AssistantConfirmationInput | null
+  command?: AssistantCommandInput | null
 }
 
 export type AssistantMirrorJobInput = {
@@ -275,6 +287,23 @@ export type AssistantStreamEvent =
         code?: string
       }
     }
+
+export type JobProgressEvent = {
+  type: 'step' | 'tool_call' | 'tool_result' | 'done'
+  event_id: string
+  job_id: string
+  call_id?: string | null
+  phase?: string | null
+  name?: string
+  detail?: string
+  tool_name?: string
+  args?: Record<string, unknown>
+  result?: Record<string, unknown>
+  is_error?: boolean
+  status?: string
+  summary?: Record<string, unknown>
+  ts?: string
+}
 
 export type MapLayerRenderer = 'native' | 'deckgl' | 'dds-boundary' | 'dds-dataset'
 export type MapLayerSource = 'manual_draw' | 'routes' | 'places' | 'analytics'

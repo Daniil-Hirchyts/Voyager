@@ -4,6 +4,8 @@
   "displayName": "Voyager Travel",
   "loginTheme": "voyager",
   "accountTheme": "voyager",
+  "adminTheme": "keycloak.v2",
+  "emailTheme": "voyager",
   "registrationAllowed": true,
   "verifyEmail": true,
   "resetPasswordAllowed": true,
@@ -98,7 +100,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["user"]
+      "realmRoles": ["user", "default-roles-travel"]
     },
     {
       "username": "voyager_user_2",
@@ -114,7 +116,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["user"]
+      "realmRoles": ["user", "default-roles-travel"]
     },
     {
       "username": "voyager_admin",
@@ -130,7 +132,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["user", "admin"]
+      "realmRoles": ["user", "admin", "default-roles-travel"]
     }
   ]
 }

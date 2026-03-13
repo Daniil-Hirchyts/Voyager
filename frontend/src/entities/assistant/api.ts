@@ -1,4 +1,4 @@
-import { buildApiUrl, createRequestHeaders, requestJson } from '@/shared/api/client'
+import { buildApiUrl, createRequestHeaders, requestJson, toApiError } from '@/shared/api/client'
 import type {
   AssistantMessage,
   AssistantMessageStreamInput,
@@ -34,6 +34,9 @@ export async function streamAssistantMessages(
     signal,
   })
   if (!response.ok || !response.body) {
+    if (!response.ok) {
+      throw await toApiError(response)
+    }
     throw new Error('Failed to stream assistant messages')
   }
 
@@ -60,4 +63,3 @@ export async function streamAssistantMessages(
     }
   }
 }
-

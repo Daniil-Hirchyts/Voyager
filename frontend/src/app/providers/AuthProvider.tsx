@@ -4,6 +4,7 @@ import { config } from '@/app/config'
 import { setTokenGetter, setUnauthorizedHandler } from '@/shared/api/client'
 import { useAuthStore } from '@/shared/stores/auth.store'
 import { createSessionExpiryHandler, getBrowserPath } from './auth-session'
+import { startKeycloakSignIn } from '@/app/auth/signin'
 
 const oidcConfig = {
   authority: config.keycloak.issuer,
@@ -24,6 +25,16 @@ interface Props {
 function AuthSessionManager() {
   const auth = useAuth()
   const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
+  const startSignin = useMemo(
+    () =>
+      (intendedPath?: string | null) =>
+        startKeycloakSignIn({
+          auth,
+          intendedPath,
+          setIntendedPath,
+        }),
+    [auth, setIntendedPath],
+  )
 
   const handleSessionExpired = useMemo(
     () =>
@@ -31,10 +42,9 @@ function AuthSessionManager() {
         getCurrentPath: () => getBrowserPath(),
         getCurrentPathname: () => window.location.pathname,
         removeUser: () => auth.removeUser(),
-        redirectToSignin: () => window.location.replace('/signin'),
-        setIntendedPath,
+        startSignin,
       }),
-    [auth.removeUser, setIntendedPath],
+    [auth.removeUser, startSignin],
   )
 
   useEffect(() => {

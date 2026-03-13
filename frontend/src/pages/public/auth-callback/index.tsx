@@ -4,11 +4,19 @@ import { useAuth } from 'react-oidc-context'
 import { AlertCircle, Compass } from 'lucide-react'
 import { useAuthStore } from '@/shared/stores/auth.store'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import { startKeycloakSignIn } from '@/app/auth/signin'
 
 export default function AuthCallbackPage() {
   const auth = useAuth()
   const navigate = useNavigate()
   const { intendedPath, setIntendedPath } = useAuthStore()
+  const handleRetry = () => {
+    void startKeycloakSignIn({
+      auth,
+      intendedPath,
+      setIntendedPath,
+    })
+  }
 
   useEffect(() => {
     if (auth.isAuthenticated) {
@@ -36,13 +44,14 @@ export default function AuthCallbackPage() {
               {auth.error.message}
             </p>
 
-            <a
-              href="/signin"
+            <button
+              type="button"
+              onClick={handleRetry}
               className="mt-8 flex h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[var(--color-text)] px-6 text-sm font-medium text-white shadow-[0_16px_40px_-20px_rgba(26,22,21,0.6)] transition-all duration-200 hover:bg-[var(--color-cta)]"
             >
               <Compass className="size-4" />
               Try again
-            </a>
+            </button>
           </section>
         </div>
       </div>

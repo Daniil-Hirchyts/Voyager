@@ -19,7 +19,7 @@ import {
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import { toast } from "sonner";
 import { config } from "@/app/config";
@@ -33,7 +33,12 @@ import { getPlanner } from "@/entities/planner/api";
 import { plannerKeys, usePlanner } from "@/entities/planner/queries";
 import { readTripCoverPhotoPreference } from "@/entities/trip/cover-photo";
 import { tripAssetKeys } from "@/entities/trip-asset/queries";
-import { isConflict, isRateLimit } from "@/shared/api/client";
+import {
+  isApiError,
+  isConflict,
+  isRateLimit,
+  triggerUnauthorizedHandler,
+} from "@/shared/api/client";
 import { isJobSuccessful, isJobTerminal } from "@/shared/lib/jobs";
 import { usePlannerStore } from "@/shared/stores/planner.store";
 import { useSideRailStore, type DayAnchor } from "@/shared/stores/side-rail.store";
@@ -514,6 +519,7 @@ function parsePlannerMapSeed(
 }
 
 export default function PlannerBoard({ tripId }: Props) {
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const plannerMapSeed = useMemo(
@@ -529,6 +535,9 @@ export default function PlannerBoard({ tripId }: Props) {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [collaborationMenuOpen, setCollaborationMenuOpen] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [generateDialogAction, setGenerateDialogAction] = useState<
+    "generate" | "regenerate" | "reset"
+  >("generate");
   const [isSaving, setIsSaving] = useState(false);
 
   const setPlannerInstruments = useSideRailStore((s) => s.setPlannerInstruments);
@@ -552,8 +561,57 @@ export default function PlannerBoard({ tripId }: Props) {
   const dragOriginPlannerRef = useRef<PlannerResponse | null>(null);
   const openRailSectionRef = useRef<((sectionKey: string) => void) | null>(null);
 
-  const { data: planner, isLoading, isError } = usePlanner(tripId);
+  const [plannerLoadRecovery, setPlannerLoadRecovery] = useState<
+    "auth" | "trip" | null
+  >(null);
+  const { data: planner, isLoading, isError, error } = usePlanner(tripId);
+  const plannerError = isApiError(error) ? error : null;
+  const plannerLoadRecoveryMode =
+    plannerLoadRecovery ??
+    (plannerError?.status === 401
+      ? "auth"
+      : plannerError?.status === 404
+        ? "trip"
+        : null);
   const plannerDays = planner?.days ?? null;
+
+  useEffect(() => {
+    if (!plannerError) {
+      if (plannerLoadRecovery != null) {
+        setPlannerLoadRecovery(null);
+      }
+      return;
+    }
+
+    if (plannerError.status === 401) {
+      if (plannerLoadRecovery === "auth") {
+        return;
+      }
+
+      setPlannerLoadRecovery("auth");
+
+      if (!plannerError.unauthorizedHandled) {
+        void triggerUnauthorizedHandler().catch(() => undefined);
+      }
+
+      return;
+    }
+
+    if (plannerError.status === 404) {
+      if (plannerLoadRecovery === "trip") {
+        return;
+      }
+
+      setPlannerLoadRecovery("trip");
+      navigate("/app/trips", { replace: true });
+      return;
+    }
+
+    if (plannerLoadRecovery != null) {
+      setPlannerLoadRecovery(null);
+    }
+  }, [navigate, plannerError, plannerLoadRecovery]);
+
   useEffect(() => {
     const days: DayAnchor[] = [
       { dayId: 'inbox', label: '+', date: '', color: '#94a3b8', isInbox: true },
@@ -602,7 +660,10 @@ export default function PlannerBoard({ tripId }: Props) {
       onOpenAssistant: () => setAssistantPanelOpen(tripId, true),
       onOpenSettings: () => setSettingsMenuOpen(true),
       onShare: () => setCollaborationMenuOpen(true),
-      onGenerate: () => setGenerateDialogOpen(true),
+      onGenerate: () => {
+        setGenerateDialogAction("generate");
+        setGenerateDialogOpen(true);
+      },
       days,
       onScrollToDay,
       onScrollToSection,
@@ -1221,6 +1282,18 @@ export default function PlannerBoard({ tripId }: Props) {
     );
   }
 
+  if (plannerLoadRecoveryMode) {
+    return (
+      <div className="p-4 md:p-5">
+        <div className="rounded-[12px] border border-black/8 bg-white p-5 text-sm text-[var(--color-text-muted)]">
+          {plannerLoadRecoveryMode === "auth"
+            ? "Redirecting to sign in..."
+            : "Returning to your trips..."}
+        </div>
+      </div>
+    );
+  }
+
   if (isError || !planner) {
     return (
       <div className="p-4 md:p-5">
@@ -1356,18 +1429,22 @@ export default function PlannerBoard({ tripId }: Props) {
         }
         jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
         controlledOpen={generateDialogOpen}
+        controlledAction={generateDialogAction}
         onControlledOpenChange={setGenerateDialogOpen}
       />
 
       <PlannerAssistantPanel
         tripId={tripId}
         destination={planner.trip.destination_text ?? ""}
+        hasActivities={hasActivities}
         isOpen={assistantPanelOpen}
+        onRequestGenerationDialog={(action) => {
+          setGenerateDialogAction(action);
+          setGenerateDialogOpen(true);
+          setAssistantPanelOpen(tripId, true);
+        }}
         onOpenChange={(open) => {
           setAssistantPanelOpen(tripId, open);
-          if (!open) {
-            clearGenerationReport(tripId);
-          }
         }}
       />
     </div>

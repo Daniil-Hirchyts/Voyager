@@ -1,9 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { config } from '@/app/config'
+import { setUnauthorizedHandler } from '@/shared/api/client'
 import { usePlannerStore } from '@/shared/stores/planner.store'
 import PlannerBoard, { resolveDragPreviewSize } from './index'
 import { renderWithQueryClient } from '@/test/utils'
@@ -29,6 +30,10 @@ async function selectDateFromPicker(
 }
 
 describe('PlannerBoard', () => {
+  afterEach(() => {
+    setUnauthorizedHandler(null)
+  })
+
   it('captures the dragged card rect for the overlay preview size', () => {
     expect(
       resolveDragPreviewSize({
@@ -103,6 +108,61 @@ describe('PlannerBoard', () => {
     })
 
     article.remove()
+  })
+
+  it('shows auth recovery instead of the planner error when the session has expired', async () => {
+    const trip = buildTrip({ id: 'trip-auth-recovery' })
+    const handleUnauthorized = vi.fn(async () => {})
+    setUnauthorizedHandler(handleUnauthorized)
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () =>
+        HttpResponse.json(
+          { error: { code: 'AUTH_INVALID_TOKEN', message: 'Invalid token' } },
+          { status: 401 },
+        ),
+      ),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={[`/app/trips/${trip.id}/plan`]}>
+        <Routes>
+          <Route path="/app/trips/:tripId/plan" element={<PlannerBoard tripId={trip.id} />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(handleUnauthorized).toHaveBeenCalledOnce()
+    })
+
+    expect(screen.getByText('Redirecting to sign in...')).toBeInTheDocument()
+    expect(screen.queryByText('Failed to load the planner workspace.')).not.toBeInTheDocument()
+  })
+
+  it('returns to trips when the planner trip can no longer be loaded', async () => {
+    const trip = buildTrip({ id: 'trip-missing-planner' })
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () =>
+        HttpResponse.json(
+          { error: { code: 'RESOURCE_NOT_FOUND', message: 'Trip not found' } },
+          { status: 404 },
+        ),
+      ),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={[`/app/trips/${trip.id}/plan`]}>
+        <Routes>
+          <Route path="/app/trips" element={<div>Trips home</div>} />
+          <Route path="/app/trips/:tripId/plan" element={<PlannerBoard tripId={trip.id} />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Trips home')).toBeInTheDocument()
+    expect(screen.queryByText('Failed to load the planner workspace.')).not.toBeInTheDocument()
   })
 
   it('renders inbox activities separately from untimed day activities in kanban view', async () => {

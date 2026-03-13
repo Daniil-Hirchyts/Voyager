@@ -125,10 +125,19 @@ body::after {
   backdrop-filter: blur(24px);
 }
 
+.pf-v5-c-masthead {
+  gap: 1rem;
+  padding-inline: 1rem !important;
+}
+
 .pf-v5-c-masthead__brand img,
 [data-testid="page-header"] img {
   height: 2rem;
   width: auto;
+}
+
+.pf-v5-c-masthead__content {
+  margin-left: auto;
 }
 
 [data-testid="referrer-link"] {
@@ -308,6 +317,46 @@ body::after {
   background: rgba(255, 255, 255, 0.92) !important;
   box-shadow: var(--voyager-account-shadow-soft) !important;
   backdrop-filter: blur(20px);
+}
+
+.pf-v5-c-masthead .pf-v5-c-toolbar {
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+.pf-v5-c-masthead .pf-v5-c-toolbar__content,
+.pf-v5-c-masthead .pf-v5-c-toolbar__content-section {
+  padding: 0 !important;
+}
+
+.pf-v5-c-masthead .pf-v5-c-toolbar__content-section {
+  justify-content: flex-end !important;
+  gap: 0.75rem;
+}
+
+.pf-v5-c-masthead .pf-v5-c-toolbar__item.pf-m-align-right:empty {
+  display: none !important;
+}
+
+.pf-v5-c-masthead .pf-v5-c-menu-toggle {
+  min-width: 0;
+  padding-inline: 0.95rem !important;
+  color: var(--voyager-account-text) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-color: rgba(91, 123, 159, 0.22) !important;
+}
+
+.pf-v5-c-masthead .pf-v5-c-menu-toggle__text,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle__toggle-icon,
+.pf-v5-c-masthead .pf-v5-c-menu-toggle svg {
+  color: inherit !important;
+}
+
+.pf-v5-c-masthead .pf-v5-c-button.pf-m-plain {
+  color: var(--voyager-account-text-soft) !important;
 }
 
 .pf-v5-c-dropdown__menu-item,

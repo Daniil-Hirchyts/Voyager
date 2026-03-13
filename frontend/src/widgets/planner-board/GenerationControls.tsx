@@ -33,6 +33,7 @@ interface Props {
   compact?: boolean
   /** When provided, controls the dialog open state externally (bypasses the DropdownMenu trigger) */
   controlledOpen?: boolean
+  controlledAction?: 'generate' | 'regenerate' | 'reset'
   onControlledOpenChange?: (open: boolean) => void
 }
 
@@ -147,6 +148,7 @@ export function GenerationControls({
   jobStatus,
   compact = false,
   controlledOpen,
+  controlledAction,
   onControlledOpenChange,
 }: Props) {
   const isMobile = useIsMobile()
@@ -173,14 +175,14 @@ export function GenerationControls({
     }
   }
 
-  // When controlled, always use 'generate' action
+  // When controlled, let the caller choose which action the dialog opens on.
   useEffect(() => {
     if (isControlled && controlledOpen) {
-      setAction('generate')
+      setAction(controlledAction ?? 'generate')
       genKeyRef.current = crypto.randomUUID()
       resetKeyRef.current = crypto.randomUUID()
     }
-  }, [isControlled, controlledOpen])
+  }, [controlledAction, isControlled, controlledOpen])
 
   const openDialog = (act: typeof action) => {
     setAction(act)

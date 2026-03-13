@@ -8,11 +8,16 @@ import {
   getAssistantThread,
   streamAssistantMessages,
 } from '@/entities/assistant/api'
+import { streamJobProgress } from '@/entities/job/api'
 
 vi.mock('@/entities/assistant/api', () => ({
   getAssistantThread: vi.fn(),
   mirrorAssistantJob: vi.fn(),
   streamAssistantMessages: vi.fn(),
+}))
+
+vi.mock('@/entities/job/api', () => ({
+  streamJobProgress: vi.fn(),
 }))
 
 function buildAssistantMessage(
@@ -47,6 +52,7 @@ describe('PlannerAssistantPanel', () => {
   beforeEach(() => {
     vi.mocked(getAssistantThread).mockReset()
     vi.mocked(streamAssistantMessages).mockReset()
+    vi.mocked(streamJobProgress).mockReset()
   })
 
   it('renders persisted job progress from the assistant thread', async () => {
@@ -73,8 +79,10 @@ describe('PlannerAssistantPanel', () => {
       <PlannerAssistantPanel
         tripId="trip-1"
         destination="Paris, France"
+        hasActivities
         isOpen
         onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
       />,
     )
 
@@ -112,8 +120,10 @@ describe('PlannerAssistantPanel', () => {
       <PlannerAssistantPanel
         tripId="trip-1"
         destination="Paris, France"
+        hasActivities
         isOpen
         onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
       />,
     )
 
@@ -153,8 +163,10 @@ describe('PlannerAssistantPanel', () => {
       <PlannerAssistantPanel
         tripId="trip-1"
         destination="Paris, France"
+        hasActivities
         isOpen
         onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
       />,
     )
 
@@ -173,6 +185,141 @@ describe('PlannerAssistantPanel', () => {
         },
         expect.any(Function),
         undefined,
+      )
+    })
+  })
+
+  it('renders user messages without triggering assistant status errors', async () => {
+    vi.mocked(getAssistantThread).mockResolvedValue(
+      buildAssistantThread([
+        buildAssistantMessage({
+          id: 'user-message-1',
+          role: 'user',
+          parts: [{ type: 'text', text: 'Move the museum to day two' }],
+        }),
+      ]),
+    )
+
+    renderWithQueryClient(
+      <PlannerAssistantPanel
+        tripId="trip-1"
+        destination="Paris, France"
+        hasActivities
+        isOpen
+        onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
+      />,
+    )
+
+    expect(await screen.findByText('Move the museum to day two')).toBeInTheDocument()
+  })
+
+  it('sends on Enter and keeps Cmd+Enter as a newline', async () => {
+    const user = userEvent.setup()
+    vi.mocked(getAssistantThread).mockResolvedValue(buildAssistantThread())
+    vi.mocked(streamAssistantMessages).mockResolvedValue()
+
+    renderWithQueryClient(
+      <PlannerAssistantPanel
+        tripId="trip-1"
+        destination="Paris, France"
+        hasActivities
+        isOpen
+        onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
+      />,
+    )
+
+    const composer = await screen.findByPlaceholderText(/ask about this trip/i)
+    await user.type(composer, 'Move the museum')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(streamAssistantMessages).toHaveBeenCalledWith(
+        'trip-1',
+        expect.objectContaining({ text: 'Move the museum' }),
+        expect.any(Function),
+        undefined,
+      )
+    })
+
+    vi.mocked(streamAssistantMessages).mockClear()
+
+    await user.type(composer, 'Line one')
+    await user.keyboard('{Meta>}{Enter}{/Meta}')
+
+    expect(composer).toHaveValue('Line one\n')
+    expect(streamAssistantMessages).not.toHaveBeenCalled()
+  })
+
+  it('opens the generation dialog for slash generate instead of streaming', async () => {
+    const user = userEvent.setup()
+    const onRequestGenerationDialog = vi.fn()
+    vi.mocked(getAssistantThread).mockResolvedValue(buildAssistantThread())
+
+    renderWithQueryClient(
+      <PlannerAssistantPanel
+        tripId="trip-1"
+        destination="Paris, France"
+        hasActivities
+        isOpen
+        onOpenChange={() => {}}
+        onRequestGenerationDialog={onRequestGenerationDialog}
+      />,
+    )
+
+    const composer = await screen.findByPlaceholderText(/ask about this trip/i)
+    await user.type(composer, '/generate')
+    await user.keyboard('{Enter}')
+
+    await waitFor(() => {
+      expect(onRequestGenerationDialog).toHaveBeenCalledWith('generate')
+    })
+    expect(streamAssistantMessages).not.toHaveBeenCalled()
+  })
+
+  it('resumes mirrored job progress streams on reload', async () => {
+    vi.mocked(getAssistantThread).mockResolvedValue(
+      buildAssistantThread([
+        buildAssistantMessage({
+          id: 'assistant-message-job',
+          status: 'running',
+          source_job_id: 'job-1',
+          parts: [
+            {
+              type: 'data',
+              name: 'job-progress',
+              data: {
+                action: 'generate',
+                request_text: 'Generate · replace · 2 days',
+                job_status: 'RUNNING',
+                events: [],
+              },
+            },
+          ],
+        }),
+      ]),
+    )
+    vi.mocked(streamJobProgress).mockResolvedValue()
+
+    renderWithQueryClient(
+      <PlannerAssistantPanel
+        tripId="trip-1"
+        destination="Paris, France"
+        hasActivities
+        isOpen
+        onOpenChange={() => {}}
+        onRequestGenerationDialog={() => {}}
+      />,
+    )
+
+    await screen.findByText('Generate · replace · 2 days')
+
+    await waitFor(() => {
+      expect(streamJobProgress).toHaveBeenCalledWith(
+        'job-1',
+        expect.any(Function),
+        expect.any(AbortSignal),
       )
     })
   })

@@ -10,12 +10,22 @@ import {
 } from '@/shared/lib/public-assets'
 import { MarketingImagePlaceholder } from '@/shared/layouts/marketing-image-placeholder'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import { useAuthStore } from '@/shared/stores/auth.store'
+import { startKeycloakSignIn } from '@/app/auth/signin'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 
 export default function LandingPage() {
   const auth = useAuth()
+  const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
   const containerRef = useRef<HTMLDivElement>(null)
+  const handleSignIn = () => {
+    void startKeycloakSignIn({
+      auth,
+      intendedPath: '/app/trips',
+      setIntendedPath,
+    })
+  }
 
   useEffect(() => {
     if (!document.getElementById('premium-font')) {
@@ -171,9 +181,13 @@ export default function LandingPage() {
                 Open Planner <ArrowRight className="w-4 h-4" />
               </Link>
             ) : (
-              <Link to="/signin" className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1615] text-white text-sm font-medium rounded-full hover:scale-95 transition-transform duration-300 shadow-[0_8px_16px_rgba(26,22,21,0.2)]">
+              <button
+                type="button"
+                onClick={handleSignIn}
+                className="flex items-center gap-2 px-6 py-2.5 bg-[#1A1615] text-white text-sm font-medium rounded-full hover:scale-95 transition-transform duration-300 shadow-[0_8px_16px_rgba(26,22,21,0.2)]"
+              >
                 Sign In <ArrowRight className="w-4 h-4" />
-              </Link>
+              </button>
             )}
           </div>
         </nav>
@@ -202,9 +216,19 @@ export default function LandingPage() {
           </p>
 
           <div className="hero-fade-in flex flex-wrap items-center gap-4">
-            <Link to="/signin" className="inline-flex items-center gap-2.5 px-10 py-5 bg-[#1A1615] text-white font-medium rounded-[2rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-lg">
-              Start Planning <ArrowRight className="w-5 h-5" />
-            </Link>
+            {auth.isAuthenticated ? (
+              <Link to="/app/trips" className="inline-flex items-center gap-2.5 px-10 py-5 bg-[#1A1615] text-white font-medium rounded-[2rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-lg">
+                Start Planning <ArrowRight className="w-5 h-5" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSignIn}
+                className="inline-flex items-center gap-2.5 px-10 py-5 bg-[#1A1615] text-white font-medium rounded-[2rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-lg"
+              >
+                Start Planning <ArrowRight className="w-5 h-5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -297,9 +321,19 @@ export default function LandingPage() {
             <p className="text-[#453F3D] mb-14 text-xl md:text-2xl max-w-2xl font-medium leading-relaxed">
               Sign in to create your first trip and experience what premium AI-assisted travel planning should feel like.
             </p>
-            <Link to="/signin" className="inline-flex items-center gap-3 px-12 py-6 bg-[#1A1615] text-white font-semibold rounded-[2.5rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-xl">
-              Get Started Now <ArrowRight className="w-6 h-6" />
-            </Link>
+            {auth.isAuthenticated ? (
+              <Link to="/app/trips" className="inline-flex items-center gap-3 px-12 py-6 bg-[#1A1615] text-white font-semibold rounded-[2.5rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-xl">
+                Get Started Now <ArrowRight className="w-6 h-6" />
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSignIn}
+                className="inline-flex items-center gap-3 px-12 py-6 bg-[#1A1615] text-white font-semibold rounded-[2.5rem] hover:scale-95 transition-transform duration-300 shadow-[0_20px_40px_-15px_rgba(26,22,21,0.5)] text-xl"
+              >
+                Get Started Now <ArrowRight className="w-6 h-6" />
+              </button>
+            )}
           </div>
         </div>
       </section>

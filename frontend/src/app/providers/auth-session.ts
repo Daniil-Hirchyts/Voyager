@@ -2,8 +2,7 @@ interface SessionExpiryHandlerOptions {
   getCurrentPath: () => string
   getCurrentPathname: () => string
   removeUser: () => Promise<void>
-  redirectToSignin: () => void
-  setIntendedPath: (path: string | null) => void
+  startSignin: (intendedPath?: string | null) => Promise<unknown>
 }
 
 export function getBrowserPath(
@@ -16,8 +15,7 @@ export function createSessionExpiryHandler({
   getCurrentPath,
   getCurrentPathname,
   removeUser,
-  redirectToSignin,
-  setIntendedPath,
+  startSignin,
 }: SessionExpiryHandlerOptions) {
   let inFlight: Promise<void> | null = null
 
@@ -27,14 +25,12 @@ export function createSessionExpiryHandler({
     }
 
     inFlight = (async () => {
-      if (getCurrentPathname().startsWith('/app')) {
-        setIntendedPath(getCurrentPath())
-      }
+      const intendedPath = getCurrentPathname().startsWith('/app') ? getCurrentPath() : null
 
       try {
         await removeUser()
       } finally {
-        redirectToSignin()
+        await startSignin(intendedPath)
       }
     })().finally(() => {
       inFlight = null

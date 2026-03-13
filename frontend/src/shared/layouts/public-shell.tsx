@@ -4,6 +4,8 @@ import { useAuth } from 'react-oidc-context'
 import { PUBLIC_CLOUD_PRIMARY_SRC, PUBLIC_CLOUD_SECONDARY_SRC } from '@/shared/lib/public-assets'
 import { cn } from '@/shared/lib/cn'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import { useAuthStore } from '@/shared/stores/auth.store'
+import { startKeycloakSignIn } from '@/app/auth/signin'
 
 type PublicSiteShellProps = {
   children: React.ReactNode
@@ -28,8 +30,15 @@ export function PublicSiteShell({
   footerNote = 'Built for the deliberate traveler.',
 }: PublicSiteShellProps) {
   const auth = useAuth()
-  const ctaHref = auth.isAuthenticated ? '/app/trips' : '/signin'
+  const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
   const ctaLabel = auth.isAuthenticated ? 'Open Planner' : 'Sign In'
+  const handleSignIn = () => {
+    void startKeycloakSignIn({
+      auth,
+      intendedPath: '/app/trips',
+      setIntendedPath,
+    })
+  }
 
   return (
     <div className={cn('relative min-h-[100dvh] overflow-x-hidden text-[var(--color-text)]', className)}>
@@ -59,12 +68,21 @@ export function PublicSiteShell({
             <span className="text-lg">Voyager</span>
           </Link>
 
-          <Link to={ctaHref} className="inline-flex">
-            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cta)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_18px_32px_-22px_rgba(26,22,21,0.8)] transition-transform duration-200 hover:scale-[0.98]">
-              {ctaLabel}
-              <ArrowRight className="size-4" />
-            </span>
-          </Link>
+          {auth.isAuthenticated ? (
+            <Link to="/app/trips" className="inline-flex">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cta)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_18px_32px_-22px_rgba(26,22,21,0.8)] transition-transform duration-200 hover:scale-[0.98]">
+                {ctaLabel}
+                <ArrowRight className="size-4" />
+              </span>
+            </Link>
+          ) : (
+            <button type="button" onClick={handleSignIn} className="inline-flex">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-cta)] px-5 py-2.5 text-sm font-medium text-white shadow-[0_18px_32px_-22px_rgba(26,22,21,0.8)] transition-transform duration-200 hover:scale-[0.98]">
+                {ctaLabel}
+                <ArrowRight className="size-4" />
+              </span>
+            </button>
+          )}
         </nav>
       </div>
 

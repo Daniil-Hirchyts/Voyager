@@ -26,11 +26,16 @@
   --voyager-shadow-xl: 0 38px 90px -38px rgba(31, 52, 75, 0.34);
   --voyager-shadow-lg: 0 28px 60px -36px rgba(31, 52, 75, 0.28);
   --voyager-shadow-sm: 0 18px 40px -28px rgba(31, 52, 75, 0.2);
+  --voyager-shell-pad: clamp(0.9rem, 2.4vw, 1.6rem);
 }
 
 html,
 body {
   min-height: 100%;
+}
+
+body {
+  scrollbar-gutter: stable both-edges;
 }
 
 body.voyager-login-body {
@@ -46,14 +51,19 @@ body.voyager-login-body {
   -webkit-font-smoothing: antialiased;
 }
 
+.login-pf-page {
+  background: transparent !important;
+}
+
 .login-pf-page.voyager-auth-shell {
   position: relative !important;
   min-height: 100vh !important;
   display: flex !important;
-  align-items: center !important;
+  align-items: stretch !important;
   justify-content: center !important;
-  padding: 5.5rem 2rem 2rem !important;
-  overflow: hidden !important;
+  padding: var(--voyager-shell-pad) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 .voyager-auth-backdrop {
@@ -103,29 +113,28 @@ body.voyager-login-body {
 }
 
 .voyager-back-link {
-  position: absolute !important;
-  top: 1.75rem !important;
-  left: 2rem !important;
-  z-index: 2 !important;
+  position: static !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 0.6rem !important;
-  padding: 0.7rem 1rem !important;
-  border-radius: 999px !important;
-  border: 1px solid rgba(255, 255, 255, 0.72) !important;
-  background: rgba(255, 255, 255, 0.54) !important;
-  backdrop-filter: blur(18px) !important;
-  color: var(--voyager-text) !important;
-  font-size: 0.9rem !important;
-  font-weight: 500 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  color: var(--voyager-text-muted) !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
   text-decoration: none !important;
-  box-shadow: 0 14px 34px -26px rgba(17, 32, 49, 0.5) !important;
-  transition: transform 0.25s ease, background-color 0.25s ease !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+  transition: color 0.2s ease !important;
 }
 
 .voyager-back-link:hover {
-  transform: translateY(-1px);
-  background: rgba(255, 255, 255, 0.74) !important;
+  transform: none;
+  background: transparent !important;
+  color: var(--voyager-text) !important;
 }
 
 .voyager-back-link-icon {
@@ -139,23 +148,19 @@ body.voyager-login-body {
 .voyager-auth-frame {
   position: relative;
   z-index: 1;
-  width: min(1320px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1.06fr) minmax(380px, 520px);
-  gap: clamp(1.5rem, 3vw, 3rem);
-  align-items: stretch;
+  width: min(78rem, 100%);
+  min-height: calc(100vh - (var(--voyager-shell-pad) * 2));
+  display: flex;
 }
 
 .voyager-auth-story {
-  display: flex;
-  align-items: stretch;
+  display: none;
 }
 
 .voyager-auth-story-panel {
   position: relative;
   width: 100%;
-  min-height: 100%;
-  padding: clamp(2rem, 4vw, 3rem);
+  padding: clamp(1.5rem, 3vw, 2.2rem);
   border-radius: var(--voyager-radius-xl);
   border: 1px solid rgba(255, 255, 255, 0.42);
   background:
@@ -182,7 +187,7 @@ body.voyager-login-body {
   display: inline-flex;
   align-items: center;
   gap: 0.85rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1.65rem;
   color: var(--voyager-text) !important;
   text-decoration: none !important;
 }
@@ -221,75 +226,45 @@ body.voyager-login-body {
 
 .voyager-auth-headline {
   margin: 0;
-  max-width: 10ch;
+  max-width: 12ch;
   color: var(--voyager-text);
-  font-size: clamp(2.6rem, 5vw, 4.6rem);
+  font-size: clamp(2.15rem, 4vw, 3.5rem);
   font-weight: 700;
-  line-height: 1;
+  line-height: 1.02;
   letter-spacing: -0.055em;
 }
 
 .voyager-auth-copy {
-  margin: 1.25rem 0 0;
-  max-width: 36rem;
+  margin: 1rem 0 0;
+  max-width: 30rem;
   color: var(--voyager-text-muted);
-  font-size: 1.06rem;
-  line-height: 1.72;
-}
-
-.voyager-auth-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-  margin-top: 1.5rem;
-}
-
-.voyager-auth-chip-row span {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.65rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.58);
-  background: rgba(255, 255, 255, 0.42);
-  color: var(--voyager-accent-deep);
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.voyager-auth-story-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  margin-top: clamp(2rem, 4vw, 3.4rem);
-}
-
-.voyager-story-card {
-  padding: 1.15rem;
-  border-radius: var(--voyager-radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.52);
-  background: rgba(255, 255, 255, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
-}
-
-.voyager-story-card h3 {
-  margin: 0 0 0.55rem;
   font-size: 1rem;
-  font-weight: 650;
-  letter-spacing: -0.03em;
+  line-height: 1.68;
 }
 
-.voyager-story-card p {
-  margin: 0;
+.voyager-auth-points {
+  display: grid;
+  gap: 0.8rem;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.voyager-auth-points li {
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 1.05rem;
+  background: rgba(255, 255, 255, 0.42);
   color: var(--voyager-text-muted);
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   line-height: 1.6;
 }
 
-.voyager-auth-story-footer {
+.voyager-auth-story-note {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-  margin-top: 1.6rem;
+  margin-top: 1.4rem;
   color: var(--voyager-text-soft);
   font-size: 0.9rem;
 }
@@ -302,6 +277,9 @@ body.voyager-login-body {
 .card-pf.voyager-auth-card {
   position: relative !important;
   width: 100% !important;
+  max-width: none !important;
+  display: flex !important;
+  flex: 1 1 auto !important;
   margin: 0 !important;
   padding: 0 !important;
   border-radius: var(--voyager-radius-xl) !important;
@@ -314,31 +292,52 @@ body.voyager-login-body {
 
 .voyager-auth-card-shell {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: clamp(1.25rem, 2.5vw, 2rem);
+  flex: 1 1 auto;
   min-height: 100%;
-  padding: clamp(1.35rem, 3vw, 2rem);
+  padding: clamp(1.25rem, 2.8vw, 2rem);
 }
 
 .voyager-auth-topline {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(97, 126, 158, 0.14);
 }
 
-.voyager-auth-context {
+.voyager-auth-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.8rem 1.1rem;
+  min-width: 0;
+}
+
+.voyager-auth-brand {
   display: inline-flex;
   align-items: center;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  background: var(--voyager-accent-soft);
-  color: var(--voyager-accent-deep);
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  gap: 0.75rem;
+  color: var(--voyager-text) !important;
+  text-decoration: none !important;
+}
+
+.voyager-auth-brand .voyager-brand-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.95rem;
+}
+
+.voyager-auth-brand .voyager-brand-mark svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.voyager-auth-brand .voyager-brand-wordmark {
+  font-size: 1.15rem;
 }
 
 #kc-locale {
@@ -397,8 +396,9 @@ body.voyager-login-body {
 
 .login-pf-header.voyager-auth-header,
 .voyager-auth-header {
-  margin: 0 !important;
-  text-align: left !important;
+  width: min(43rem, 100%);
+  margin: 0 auto !important;
+  text-align: center !important;
 }
 
 .voyager-required-note {
@@ -447,19 +447,22 @@ body.voyager-login-body {
 }
 
 #kc-page-title {
-  margin: 0 !important;
+  margin: 0 auto !important;
+  max-width: 12ch;
   color: var(--voyager-text) !important;
-  font-size: clamp(2rem, 3vw, 2.7rem) !important;
+  font-size: clamp(2rem, 4vw, 3rem) !important;
   font-weight: 700 !important;
-  line-height: 1.04 !important;
+  line-height: 1.08 !important;
   letter-spacing: -0.05em !important;
 }
 
 .voyager-auth-subtitle {
-  margin: 0.8rem 0 0 !important;
+  max-width: 34rem;
+  margin: 0.65rem auto 0 !important;
   color: var(--voyager-text-muted) !important;
-  font-size: 0.98rem !important;
-  line-height: 1.65 !important;
+  font-size: 1rem !important;
+  line-height: 1.55 !important;
+  text-wrap: balance;
 }
 
 #kc-content,
@@ -469,6 +472,16 @@ body.voyager-login-body {
 .form-horizontal,
 .form-vertical {
   width: 100%;
+}
+
+#kc-content {
+  width: min(43rem, 100%);
+  margin: 0 auto;
+}
+
+#kc-content-wrapper {
+  display: grid;
+  gap: 1rem;
 }
 
 .col-xs-12,
@@ -570,8 +583,8 @@ select[aria-invalid="true"] {
   background: transparent !important;
 }
 
-.pf-c-button.pf-m-control,
-.pf-c-input-group .pf-c-button {
+.pf-c-input-group .pf-c-button.pf-m-control,
+.pf-c-input-group .pf-c-button[data-password-toggle] {
   display: inline-flex !important;
   width: 3.35rem !important;
   align-items: center !important;
@@ -584,8 +597,8 @@ select[aria-invalid="true"] {
   box-shadow: none !important;
 }
 
-.pf-c-button.pf-m-control:hover,
-.pf-c-input-group .pf-c-button:hover {
+.pf-c-input-group .pf-c-button.pf-m-control:hover,
+.pf-c-input-group .pf-c-button[data-password-toggle]:hover {
   color: var(--voyager-accent-deep) !important;
 }
 
@@ -821,7 +834,7 @@ button[name="cancel-aia"]:hover,
 #kc-user-organizations a {
   display: flex !important;
   align-items: center !important;
-  justify-content: center !important;
+  justify-content: flex-start !important;
   gap: 0.7rem !important;
   width: 100% !important;
   min-height: 3.25rem !important;
@@ -842,6 +855,11 @@ button[name="cancel-aia"]:hover,
   background: rgba(255, 255, 255, 1) !important;
 }
 
+.kc-social-item .kc-social-provider-name {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
 .kc-social-provider-logo {
   color: var(--voyager-accent-deep) !important;
 }
@@ -856,6 +874,28 @@ button[name="cancel-aia"]:hover,
 
 #kc-registration {
   text-align: center;
+}
+
+body:has(#kc-register-form) .voyager-auth-header,
+body:has(#kc-register-form) #kc-content,
+body:has(#kc-form-webauthn) .voyager-auth-header,
+body:has(#kc-form-webauthn) #kc-content,
+body:has(.select-auth-container) .voyager-auth-header,
+body:has(.select-auth-container) #kc-content,
+body:has(#kc-terms-text) .voyager-auth-header,
+body:has(#kc-terms-text) #kc-content,
+body:has(#kc-oauth) .voyager-auth-header,
+body:has(#kc-oauth) #kc-content {
+  width: min(60rem, 100%);
+}
+
+body:has(#kc-info-message) .voyager-auth-header,
+body:has(#kc-info-message) #kc-content,
+body:has(#kc-error-message) .voyager-auth-header,
+body:has(#kc-error-message) #kc-content,
+body:has(#kc-logout-confirm) .voyager-auth-header,
+body:has(#kc-logout-confirm) #kc-content {
+  width: min(36rem, 100%);
 }
 
 #try-another-way {
@@ -1068,53 +1108,106 @@ hr {
   display: none;
 }
 
+body:has(#kc-register-form) .voyager-auth-frame {
+  width: min(78rem, 100%);
+}
+
+body:has(#kc-register-form) .card-pf.voyager-auth-card {
+  max-width: none !important;
+}
+
+#kc-register-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  align-items: start;
+}
+
+#kc-register-form > .form-group {
+  margin: 0 !important;
+}
+
+#kc-register-form > .form-group:nth-of-type(1),
+#kc-register-form > .form-group:nth-of-type(4),
+#kc-register-form > .form-group:last-of-type {
+  grid-column: 1 / -1;
+}
+
+#kc-register-form > .form-group:last-of-type {
+  margin-top: 0.25rem !important;
+}
+
 @media (max-width: 1100px) {
   .voyager-auth-frame {
-    grid-template-columns: 1fr;
+    width: min(62rem, 100%);
   }
 
-  .voyager-auth-story-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .voyager-auth-card {
-    max-width: 36rem !important;
-    margin-inline: auto !important;
+  body:has(#kc-register-form) .voyager-auth-header,
+  body:has(#kc-register-form) #kc-content,
+  body:has(#kc-form-webauthn) .voyager-auth-header,
+  body:has(#kc-form-webauthn) #kc-content,
+  body:has(.select-auth-container) .voyager-auth-header,
+  body:has(.select-auth-container) #kc-content,
+  body:has(#kc-terms-text) .voyager-auth-header,
+  body:has(#kc-terms-text) #kc-content,
+  body:has(#kc-oauth) .voyager-auth-header,
+  body:has(#kc-oauth) #kc-content {
+    width: min(52rem, 100%);
   }
 }
 
 @media (max-width: 900px) {
   .login-pf-page.voyager-auth-shell {
-    padding-top: 6rem !important;
+    padding: 1rem !important;
   }
 
-  .voyager-auth-story-panel,
+  .voyager-auth-frame {
+    width: min(100%, 48rem);
+    min-height: auto;
+  }
+
   .voyager-auth-card-shell {
-    padding: 1.4rem;
+    padding: 1.15rem;
   }
 
-  .voyager-auth-headline {
-    max-width: none;
+  .voyager-auth-topline {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .voyager-auth-story-grid {
-    grid-template-columns: 1fr;
+  #kc-locale {
+    margin-left: 0;
   }
 }
 
 @media (max-width: 640px) {
   .login-pf-page.voyager-auth-shell {
-    padding: 5.25rem 1rem 1rem !important;
+    padding: 0.75rem !important;
   }
 
-  .voyager-back-link {
-    top: 1rem !important;
-    left: 1rem !important;
-  }
-
-  .card-pf.voyager-auth-card,
-  .voyager-auth-story-panel {
+  .card-pf.voyager-auth-card {
     border-radius: 1.7rem !important;
+  }
+
+  .voyager-auth-header,
+  #kc-content,
+  body:has(#kc-register-form) .voyager-auth-header,
+  body:has(#kc-register-form) #kc-content,
+  body:has(#kc-form-webauthn) .voyager-auth-header,
+  body:has(#kc-form-webauthn) #kc-content,
+  body:has(.select-auth-container) .voyager-auth-header,
+  body:has(.select-auth-container) #kc-content,
+  body:has(#kc-terms-text) .voyager-auth-header,
+  body:has(#kc-terms-text) #kc-content,
+  body:has(#kc-oauth) .voyager-auth-header,
+  body:has(#kc-oauth) #kc-content,
+  body:has(#kc-info-message) .voyager-auth-header,
+  body:has(#kc-info-message) #kc-content,
+  body:has(#kc-error-message) .voyager-auth-header,
+  body:has(#kc-error-message) #kc-content,
+  body:has(#kc-logout-confirm) .voyager-auth-header,
+  body:has(#kc-logout-confirm) #kc-content {
+    width: 100%;
   }
 
   #kc-form-buttons,
@@ -1128,6 +1221,26 @@ hr {
   #kc-username {
     flex-direction: column;
     align-items: flex-start !important;
+  }
+
+  #kc-page-title {
+    max-width: 100%;
+    font-size: clamp(1.9rem, 10vw, 2.5rem) !important;
+  }
+
+  .voyager-auth-brand .voyager-brand-wordmark {
+    font-size: 1rem;
+  }
+
+  #kc-register-form {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  #kc-register-form > .form-group:nth-of-type(1),
+  #kc-register-form > .form-group:nth-of-type(4),
+  #kc-register-form > .form-group:last-of-type {
+    grid-column: auto;
   }
 
   .select-auth-box-parent,

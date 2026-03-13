@@ -60,68 +60,30 @@
         <div class="voyager-auth-grid"></div>
     </div>
 
-    <a href="${properties.kcLogoLink!'http://localhost:5173'}" class="voyager-back-link">
-        <span class="voyager-back-link-icon">&#8592;</span>
-        <span>Back to Voyager</span>
-    </a>
-
     <div id="kc-header" class="${properties.kcHeaderClass!}" aria-hidden="true">
         <div id="kc-header-wrapper"
              class="${properties.kcHeaderWrapperClass!}">${kcSanitize(msg("loginTitleHtml",(realm.displayNameHtml!'')))?no_esc}</div>
     </div>
 
     <main class="voyager-auth-frame">
-        <section class="voyager-auth-story" aria-label="Voyager identity overview">
-            <div class="voyager-auth-story-panel">
-                <a href="${properties.kcLogoLink!'http://localhost:5173'}" class="voyager-brand-link">
-                    <span class="voyager-brand-mark" aria-hidden="true">
-                        <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M60 15L15 100H42L60 62L78 100H105L60 15Z" fill="currentColor" opacity="0.96" />
-                            <path d="M60 62L42 100H78L60 62Z" fill="currentColor" opacity="0.4" />
-                        </svg>
-                    </span>
-                    <span class="voyager-brand-wordmark">Voyager</span>
-                </a>
-
-                <p class="voyager-auth-eyebrow">Secure travel identity</p>
-                <h2 class="voyager-auth-headline">A calmer checkpoint for every route into Voyager.</h2>
-                <p class="voyager-auth-copy">
-                    Sign in, recover access, approve devices, or manage passkeys from one interface that follows the same Voyager design language as the rest of the product.
-                </p>
-
-                <div class="voyager-auth-chip-row" aria-hidden="true">
-                    <span>Sign in</span>
-                    <span>Recover</span>
-                    <span>Verify</span>
-                    <span>Manage</span>
-                </div>
-
-                <div class="voyager-auth-story-grid">
-                    <article class="voyager-story-card">
-                        <h3>Unified flows</h3>
-                        <p>Password, social, OTP, and passkey states stay visually consistent.</p>
-                    </article>
-                    <article class="voyager-story-card">
-                        <h3>Readable recovery</h3>
-                        <p>Reset, verification, and consent screens keep the same hierarchy and spacing.</p>
-                    </article>
-                    <article class="voyager-story-card">
-                        <h3>Account clarity</h3>
-                        <p>Devices, sessions, and linked identities inherit the same Voyager treatment.</p>
-                    </article>
-                </div>
-
-                <div class="voyager-auth-story-footer">
-                    <span class="voyager-auth-story-label">${realm.displayName!'Voyager Travel'}</span>
-                    <span class="voyager-auth-story-meta">Keycloak 26 theme adapted for Voyager.</span>
-                </div>
-            </div>
-        </section>
-
         <section class="${properties.kcFormCardClass!} voyager-auth-card">
             <div class="voyager-auth-card-shell">
                 <div class="voyager-auth-topline">
-                    <span class="voyager-auth-context">Voyager access</span>
+                    <div class="voyager-auth-meta">
+                        <a href="${properties.kcLogoLink!'http://localhost:5173'}" class="voyager-back-link">
+                            <span class="voyager-back-link-icon">&#8592;</span>
+                            <span>Back to Voyager</span>
+                        </a>
+                        <a href="${properties.kcLogoLink!'http://localhost:5173'}" class="voyager-auth-brand">
+                            <span class="voyager-brand-mark" aria-hidden="true">
+                                <svg viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M60 15L15 100H42L60 62L78 100H105L60 15Z" fill="currentColor" opacity="0.96" />
+                                    <path d="M60 62L42 100H78L60 62Z" fill="currentColor" opacity="0.4" />
+                                </svg>
+                            </span>
+                            <span class="voyager-brand-wordmark">Voyager</span>
+                        </a>
+                    </div>
                     <#if realm.internationalizationEnabled && locale.supported?size gt 1>
                         <div class="${properties.kcLocaleMainClass!}" id="kc-locale">
                             <div id="kc-locale-wrapper" class="${properties.kcLocaleWrapperClass!}">
@@ -161,7 +123,7 @@
                     </#if>
 
                     <h1 id="kc-page-title"><#nested "header"></h1>
-                    <p class="voyager-auth-subtitle">Protected access to your trips, preferences, devices, and connected identities.</p>
+                    <p class="voyager-auth-subtitle">Complete this secure step to continue in Voyager.</p>
                 </header>
 
                 <div id="kc-content">

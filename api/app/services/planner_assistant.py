@@ -39,6 +39,14 @@ STREAM_EVENT_DONE = "done"
 STREAM_EVENT_ERROR = "error"
 MAX_TOOL_TURNS = 8
 DESTRUCTIVE_TOOLS = {"delete_activity", "reset_itinerary", "replace_itinerary"}
+DIRECT_COMMAND_TOOL_MAP = {
+    "snapshot": "read_trip_snapshot",
+    "search_places": "search_places",
+    "create_activity": "create_activity",
+    "update_activity": "update_activity",
+    "move_activity": "move_activity",
+    "delete_activity": "delete_activity",
+}
 
 
 def _jsonable(value: Any) -> Any:
@@ -916,6 +924,17 @@ def _format_tool_summary(tool_name: str, result: dict[str, Any]) -> str:
     return "Completed the requested tool action."
 
 
+def _format_command_request_text(command_name: str, args: dict[str, Any]) -> str:
+    if command_name == "snapshot":
+        return "/snapshot"
+    if command_name == "search_places":
+        query = _string(args.get("query")) or ""
+        return f"/search_places {query}".strip()
+    if args:
+        return f"/{command_name} {json.dumps(_jsonable(args), separators=(',', ':'), ensure_ascii=True)}"
+    return f"/{command_name}"
+
+
 def _decode_tool_arguments(raw: Any) -> dict[str, Any]:
     if isinstance(raw, dict):
         return raw
@@ -968,6 +987,122 @@ class PlannerAssistantSession:
         self._thread_id = thread_id
         self._emit = emit
 
+    async def _emit_message(self, message: AssistantMessage) -> None:
+        await self._emit(assistant_message_to_response(message))
+
+    async def _create_assistant_message(self, *, metadata: dict[str, Any] | None = None) -> AssistantMessage:
+        message = await AssistantRepository.create_message(
+            self._db,
+            thread_id=self._thread_id,
+            role="assistant",
+            parts=[],
+            metadata=metadata or {"kind": "chat"},
+            status="running",
+        )
+        await self._emit_message(message)
+        return message
+
+    async def _prepare_confirmation(
+        self,
+        *,
+        message: AssistantMessage,
+        tool_name: str,
+        tool_call_id: str,
+        args: dict[str, Any],
+        confirmation_text: str,
+        interrupt_payload: dict[str, Any],
+    ) -> None:
+        parts = list(message.parts_json or [])
+        parts.append({"type": "text", "text": confirmation_text})
+        parts.append(
+            _tool_call_part(
+                tool_call_id=tool_call_id,
+                tool_name=tool_name,
+                args=args,
+                interrupt=interrupt_payload,
+            )
+        )
+        await AssistantRepository.update_message(
+            self._db,
+            message,
+            status="requires_action",
+            parts=parts,
+            metadata={
+                **(message.metadata_json or {}),
+                "kind": message.metadata_json.get("kind", "chat")
+                if isinstance(message.metadata_json, dict)
+                else "chat",
+                "pending_confirmation": interrupt_payload,
+            },
+        )
+        await self._emit_message(message)
+
+    async def _run_direct_tool_call(
+        self,
+        *,
+        message: AssistantMessage,
+        tool_name: str,
+        args: dict[str, Any],
+        request_text: str,
+    ) -> None:
+        tool_call_id = str(uuid.uuid4())
+        parts = list(message.parts_json or [])
+        parts.append(_tool_call_part(tool_call_id=tool_call_id, tool_name=tool_name, args=args))
+        await AssistantRepository.update_message(
+            self._db,
+            message,
+            status="running",
+            parts=parts,
+        )
+        await self._emit_message(message)
+
+        try:
+            result, extra_messages = await _execute_tool_call(
+                self._db,
+                redis=self._redis,
+                user_id=self._user_id,
+                trip_id=self._trip_id,
+                thread_id=self._thread_id,
+                tool_name=tool_name,
+                arguments=args,
+                request_text=request_text,
+            )
+        except Exception as exc:
+            parts[-1] = _tool_call_part(
+                tool_call_id=tool_call_id,
+                tool_name=tool_name,
+                args=args,
+                result={"error": {"message": str(exc)}},
+                is_error=True,
+            )
+            parts.append({"type": "text", "text": f"Tool failed: {exc}"})
+            await AssistantRepository.update_message(
+                self._db,
+                message,
+                status="incomplete",
+                parts=parts,
+            )
+            await self._emit_message(message)
+            return
+
+        parts[-1] = _tool_call_part(
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            args=args,
+            result=result,
+        )
+        parts.append(_planner_result_part(tool_name, result))
+        parts.append({"type": "text", "text": _format_tool_summary(tool_name, result)})
+        await AssistantRepository.update_message(
+            self._db,
+            message,
+            status="complete",
+            parts=parts,
+        )
+        await self._emit_message(message)
+        for extra_message in extra_messages:
+            await self._emit(extra_message)
+
     async def handle_user_turn(
         self,
         *,
@@ -992,17 +1127,9 @@ class PlannerAssistantSession:
             status="complete",
             message_id=client_message_id,
         )
-        await self._emit(assistant_message_to_response(user_message))
+        await self._emit_message(user_message)
 
-        assistant_message = await AssistantRepository.create_message(
-            self._db,
-            thread_id=thread.id,
-            role="assistant",
-            parts=[],
-            metadata={"kind": "chat"},
-            status="running",
-        )
-        await self._emit(assistant_message_to_response(assistant_message))
+        assistant_message = await self._create_assistant_message(metadata={"kind": "chat"})
 
         provider_history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt()}]
         for item in history:
@@ -1044,28 +1171,14 @@ class PlannerAssistantSession:
                             tool_call_id=call_id,
                             args=args,
                         )
-                        parts = list(assistant_message.parts_json or [])
-                        parts.append({"type": "text", "text": confirmation_text})
-                        parts.append(
-                            _tool_call_part(
-                                tool_call_id=call_id,
-                                tool_name=tool_name,
-                                args=args,
-                                interrupt=interrupt_payload,
-                            )
+                        await self._prepare_confirmation(
+                            message=assistant_message,
+                            tool_name=tool_name,
+                            tool_call_id=call_id,
+                            args=args,
+                            confirmation_text=confirmation_text,
+                            interrupt_payload=interrupt_payload,
                         )
-                        await AssistantRepository.update_message(
-                            self._db,
-                            assistant_message,
-                            status="requires_action",
-                            parts=parts,
-                            metadata={
-                                **(assistant_message.metadata_json or {}),
-                                "kind": "chat",
-                                "pending_confirmation": interrupt_payload,
-                            },
-                        )
-                        await self._emit(assistant_message_to_response(assistant_message))
                         return
 
                     parts = list(assistant_message.parts_json or [])
@@ -1159,6 +1272,57 @@ class PlannerAssistantSession:
             parts=parts,
         )
         await self._emit(assistant_message_to_response(assistant_message))
+
+    async def handle_command(
+        self,
+        *,
+        client_message_id: uuid.UUID | None,
+        command_name: str,
+        args: dict[str, Any],
+    ) -> None:
+        normalized_name = command_name.strip().lower()
+        tool_name = DIRECT_COMMAND_TOOL_MAP.get(normalized_name)
+        if tool_name is None:
+            raise ValidationApiError(f"Unsupported assistant command: {command_name}")
+
+        request_text = _format_command_request_text(normalized_name, args)
+        user_message = await AssistantRepository.create_message(
+            self._db,
+            thread_id=self._thread_id,
+            role="user",
+            parts=[{"type": "text", "text": request_text}],
+            metadata={"kind": "command", "command_name": normalized_name, "command_args": _jsonable(args)},
+            status="complete",
+            message_id=client_message_id,
+        )
+        await self._emit_message(user_message)
+
+        assistant_message = await self._create_assistant_message(
+            metadata={"kind": "command", "command_name": normalized_name}
+        )
+
+        if tool_name in DESTRUCTIVE_TOOLS:
+            interrupt_payload, confirmation_text = _pending_confirmation_payload(
+                tool_name=tool_name,
+                tool_call_id=str(uuid.uuid4()),
+                args=args,
+            )
+            await self._prepare_confirmation(
+                message=assistant_message,
+                tool_name=tool_name,
+                tool_call_id=str(interrupt_payload["tool_call_id"]),
+                args=args,
+                confirmation_text=confirmation_text,
+                interrupt_payload=interrupt_payload,
+            )
+            return
+
+        await self._run_direct_tool_call(
+            message=assistant_message,
+            tool_name=tool_name,
+            args=args,
+            request_text=request_text,
+        )
 
     async def handle_confirmation(
         self,
@@ -1270,6 +1434,7 @@ async def stream_assistant_messages(
     client_message_id: uuid.UUID | None,
     text: str | None,
     confirmation: dict[str, Any] | None,
+    command: dict[str, Any] | None,
 ) -> AsyncIterator[dict[str, Any]]:
     queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
 
@@ -1297,6 +1462,12 @@ async def stream_assistant_messages(
                     message_id=uuid.UUID(str(confirmation["message_id"])),
                     tool_call_id=str(confirmation["tool_call_id"]),
                     confirmed=bool(confirmation["confirmed"]),
+                )
+            elif command is not None:
+                await session.handle_command(
+                    client_message_id=client_message_id,
+                    command_name=str(command.get("name") or ""),
+                    args=command.get("args") if isinstance(command.get("args"), dict) else {},
                 )
             else:
                 await session.handle_user_turn(client_message_id=client_message_id, text=text or "")

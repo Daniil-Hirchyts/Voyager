@@ -72,11 +72,13 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: voyager-keycloak
+    entrypoint: ["/bin/sh", "/opt/keycloak/bin/voyager-keycloak-entrypoint.sh"]
     command:
       [
         "start-dev",
         "--import-realm",
         "--http-port=8080",
+        "--spi-theme--welcome-theme=voyager",
         "--spi-admin--allowed-system-variables=KEYCLOAK_GOOGLE_CLIENT_ID,KEYCLOAK_GOOGLE_CLIENT_SECRET",
       ]
     environment:
@@ -100,6 +102,7 @@ services:
     volumes:
       - ./infra/keycloak/realm-travel.json:/opt/keycloak/data/import/realm-travel.json:ro
       - ./infra/keycloak/themes:/opt/keycloak/themes:ro
+      - ./infra/keycloak/voyager-keycloak-entrypoint.sh:/opt/keycloak/bin/voyager-keycloak-entrypoint.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
       interval: 10s

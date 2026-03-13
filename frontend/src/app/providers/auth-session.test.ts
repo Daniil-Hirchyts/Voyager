@@ -13,48 +13,43 @@ describe('auth-session', () => {
   })
 
   it('stores the current app path before redirecting to sign in', async () => {
-    const setIntendedPath = vi.fn()
     const removeUser = vi.fn(async () => {})
-    const redirectToSignin = vi.fn()
+    const startSignin = vi.fn(async () => {})
 
     const handleSessionExpiry = createSessionExpiryHandler({
       getCurrentPath: () => '/app/trips/trip-1/plan?day=2#board',
       getCurrentPathname: () => '/app/trips/trip-1/plan',
       removeUser,
-      redirectToSignin,
-      setIntendedPath,
+      startSignin,
     })
 
     await handleSessionExpiry()
 
-    expect(setIntendedPath).toHaveBeenCalledWith('/app/trips/trip-1/plan?day=2#board')
     expect(removeUser).toHaveBeenCalledOnce()
-    expect(redirectToSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledWith('/app/trips/trip-1/plan?day=2#board')
   })
 
   it('skips storing intended path for public routes', async () => {
-    const setIntendedPath = vi.fn()
     const removeUser = vi.fn(async () => {})
-    const redirectToSignin = vi.fn()
+    const startSignin = vi.fn(async () => {})
 
     const handleSessionExpiry = createSessionExpiryHandler({
       getCurrentPath: () => '/signin',
       getCurrentPathname: () => '/signin',
       removeUser,
-      redirectToSignin,
-      setIntendedPath,
+      startSignin,
     })
 
     await handleSessionExpiry()
 
-    expect(setIntendedPath).not.toHaveBeenCalled()
     expect(removeUser).toHaveBeenCalledOnce()
-    expect(redirectToSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledWith(null)
   })
 
   it('coalesces repeated expiry triggers into a single logout flow', async () => {
-    const setIntendedPath = vi.fn()
-    const redirectToSignin = vi.fn()
+    const startSignin = vi.fn(async () => {})
     let resolveRemoveUser: (() => void) | null = null
     const removeUser = vi.fn(
       () =>
@@ -67,20 +62,19 @@ describe('auth-session', () => {
       getCurrentPath: () => '/app/trips/trip-1/plan',
       getCurrentPathname: () => '/app/trips/trip-1/plan',
       removeUser,
-      redirectToSignin,
-      setIntendedPath,
+      startSignin,
     })
 
     const first = handleSessionExpiry()
     const second = handleSessionExpiry()
 
     expect(removeUser).toHaveBeenCalledOnce()
-    expect(setIntendedPath).toHaveBeenCalledOnce()
 
     expect(resolveRemoveUser).not.toBeNull()
     resolveRemoveUser!()
     await Promise.all([first, second])
 
-    expect(redirectToSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledOnce()
+    expect(startSignin).toHaveBeenCalledWith('/app/trips/trip-1/plan')
   })
 })
