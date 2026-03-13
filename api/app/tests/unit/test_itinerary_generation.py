@@ -108,7 +108,14 @@ async def test_resolve_google_place_rejects_destination_level_place(monkeypatch)
 async def test_resolve_candidates_for_scope_fails_when_llm_grounding_is_incomplete(monkeypatch):
     trip, days = _trip_fixture()
 
-    async def _fake_generate_with_openrouter(*, trip: Trip, days: list[TripDay], seed, constraints):
+    async def _fake_generate_with_openrouter(
+        *,
+        trip: Trip,
+        days: list[TripDay],
+        seed,
+        constraints,
+        progress=None,
+    ):
         return OpenRouterGenerationResult(
             attempted=True,
             success=True,
@@ -125,6 +132,7 @@ async def test_resolve_candidates_for_scope_fails_when_llm_grounding_is_incomple
         candidates_by_day,
         llm_model,
         constraints,
+        progress=None,
     ):
         return itinerary_generation.CandidateResolutionResult(
             candidates_by_day={day.id: [] for day in days},
@@ -171,7 +179,14 @@ async def test_resolve_candidates_for_scope_fails_when_llm_grounding_is_incomple
 async def test_resolve_candidates_for_scope_marks_provider_timeouts_retryable(monkeypatch):
     trip, days = _trip_fixture()
 
-    async def _fake_generate_with_openrouter(*, trip: Trip, days: list[TripDay], seed, constraints):
+    async def _fake_generate_with_openrouter(
+        *,
+        trip: Trip,
+        days: list[TripDay],
+        seed,
+        constraints,
+        progress=None,
+    ):
         return OpenRouterGenerationResult(
             attempted=True,
             success=False,

@@ -532,6 +532,16 @@ export default function PlannerBoard({ tripId }: Props) {
   const [isSaving, setIsSaving] = useState(false);
 
   const setPlannerInstruments = useSideRailStore((s) => s.setPlannerInstruments);
+  const {
+    pendingJobIds,
+    setPendingJobId,
+    clearPendingJobId,
+    generationReports,
+    setGenerationReport,
+    clearGenerationReport,
+    assistantPanelOpenByTrip,
+    setAssistantPanelOpen,
+  } = usePlannerStore();
   const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(
     null,
   );
@@ -599,17 +609,6 @@ export default function PlannerBoard({ tripId }: Props) {
     })
     return () => { setPlannerInstruments(null) }
   }, [plannerDays, setAssistantPanelOpen, setPlannerInstruments, tripId]);
-
-  const {
-    pendingJobIds,
-    setPendingJobId,
-    clearPendingJobId,
-    generationReports,
-    setGenerationReport,
-    clearGenerationReport,
-    assistantPanelOpenByTrip,
-    setAssistantPanelOpen,
-  } = usePlannerStore();
 
   const pendingJobId = pendingJobIds[tripId] ?? null;
   const latestReport = generationReports[tripId];

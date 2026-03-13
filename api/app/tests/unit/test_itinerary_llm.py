@@ -285,7 +285,7 @@ async def test_call_openrouter_allows_more_than_six_tool_turns(monkeypatch):
     _configure_settings(api_key="live-key", model_order="stepfun/step-3.5-flash:free")
     call_count = 0
 
-    async def _fake_execute_tool_call(name: str, arguments):
+    async def _fake_execute_tool_call(name: str, arguments, **kwargs):
         return {
             "tool": name,
             "arguments": arguments,
@@ -629,7 +629,14 @@ async def test_openrouter_failover_moves_to_next_model(monkeypatch):
     _configure_settings(api_key="live-key")
     calls: list[str] = []
 
-    async def _fake_call(*, model: str, trip: Trip, days: list[TripDay], seed: int | None):
+    async def _fake_call(
+        *,
+        model: str,
+        trip: Trip,
+        days: list[TripDay],
+        seed: int | None,
+        progress=None,
+    ):
         calls.append(model)
         if model == "openai/gpt-oss-20b:free":
             raise RuntimeError("PROVIDER_ERROR:503")

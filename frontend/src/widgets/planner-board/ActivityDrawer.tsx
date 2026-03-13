@@ -984,11 +984,7 @@ export function ActivityDrawer({
     );
     setValue(
       "travel_mode",
-      activity?.category === "travel"
-        ? normalizeTravelMode(activity.category_details?.travel_mode)
-        : createFlow === "travel"
-          ? "flight"
-          : "",
+      createFlow === "travel" ? "flight" : "",
     );
   }, [
     activity,

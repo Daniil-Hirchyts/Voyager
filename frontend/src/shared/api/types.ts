@@ -47,6 +47,8 @@ export interface TripCollaborator {
   role: TripAccessRole
   email: string | null
   display_name: string
+  avatar_url?: string | null
+  avatar_thumbnail_url?: string | null
   invited_by_user_id: string | null
   created_at: string
   updated_at: string

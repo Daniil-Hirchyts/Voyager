@@ -37,7 +37,6 @@ import {
   Receipt,
   Route,
   Search,
-  Share2,
   ShipWheel,
   Sparkles,
   Star,
@@ -3473,16 +3472,6 @@ export function PlannerMapView({
     })
   }
 
-  const handleShare = async () => {
-    const url = window.location.href
-    try {
-      await navigator.clipboard.writeText(url)
-      toast.success('Planner map link copied')
-    } catch {
-      toast.error('Could not copy the planner map link')
-    }
-  }
-
   const handleAddToTrip = async (destinationId: string) => {
     const candidate =
       selectedSearchItem ??
@@ -3746,7 +3735,7 @@ export function PlannerMapView({
   const detailPanelContent = selectedRecommendation ? (
     <PlannerRecommendationDetailPanel
       tripId={tripId}
-      locale={recommendations.preferences.regional.locale}
+      locale="en-US"
       entry={selectedRecommendation}
       recommendations={recommendations}
       onBack={() => onSelectRecommendation(null)}

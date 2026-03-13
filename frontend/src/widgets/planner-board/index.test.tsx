@@ -492,14 +492,16 @@ describe('PlannerBoard', () => {
           title: String(createPayload.title ?? 'Visit'),
           category_details: (createPayload.category_details as Record<string, unknown>) ?? {},
           place_id: 'place-louvre-1',
-          place: buildPlace({
+          place: {
             id: 'place-louvre-1',
             name: 'Louvre Museum',
             address_text: 'Rue de Rivoli, Paris',
             category: 'museum',
             lat: 48.8606,
             lon: 2.3376,
-          }),
+            photo_count: 0,
+            primary_photo: null,
+          },
           source: 'manual',
         })
         planner.days[0] = { ...planner.days[0], activities: [created] }

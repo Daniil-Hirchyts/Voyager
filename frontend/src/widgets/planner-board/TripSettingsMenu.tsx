@@ -8,7 +8,6 @@ import {
   Link2,
   RefreshCw,
   Settings2,
-  ShieldCheck,
   Trash2,
   Upload,
   UserMinus,
@@ -45,7 +44,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { Separator } from '@/components/ui/separator'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Combobox } from '@/components/ui/combobox'
 import { buildTripInviteUrl } from '@/entities/trip-sharing/api'
@@ -73,9 +71,6 @@ import { cn } from '@/shared/lib/cn'
 import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 const fieldLabelClassName = 'text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]'
-const sharingPanelClassName =
-  'rounded-[24px] border border-black/8 bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_58%,rgba(240,247,255,0.92)_100%)] p-5 shadow-[0_24px_48px_-38px_rgba(15,23,42,0.24)]'
-
 const TRIP_TYPES = [
   'leisure',
   'business',
@@ -218,7 +213,6 @@ export function TripSettingsMenu({
   const collaborators = sharing.data?.collaborators ?? []
   const pendingInvitations = sharing.data?.pending_invitations ?? []
   const totalMembers = collaborators.length
-  const editorCount = collaborators.filter((collaborator) => collaborator.role === 'editor').length
 
   useEffect(() => {
     if (!trip) {

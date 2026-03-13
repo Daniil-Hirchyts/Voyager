@@ -3,6 +3,7 @@
   "enabled": true,
   "displayName": "Voyager Travel",
   "loginTheme": "voyager",
+  "accountTheme": "voyager",
   "registrationAllowed": true,
   "verifyEmail": true,
   "resetPasswordAllowed": true,

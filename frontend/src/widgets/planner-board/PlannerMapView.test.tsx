@@ -332,7 +332,7 @@ describe('PlannerMapView', () => {
       })
       const path = coloredPolyline.path as Array<{ lat: number; lng: number }>
       expect(path[0]).toEqual({ lat: 48.969, lng: 2.441 })
-      expect(path.at(-1)).toEqual({ lat: 38.7756, lng: -9.1354 })
+      expect(path[path.length - 1]).toEqual({ lat: 38.7756, lng: -9.1354 })
       expect(path.length).toBeGreaterThan(2)
     } finally {
       globalThis.google.maps.Polyline = originalPolyline
@@ -364,7 +364,16 @@ describe('PlannerMapView', () => {
       category: 'travel',
       trip_day_id: 'day-1',
       place_id: destinationPlace.id,
-      place: destinationPlace,
+      place: {
+        id: destinationPlace.id,
+        name: destinationPlace.name,
+        category: destinationPlace.category,
+        address_text: destinationPlace.address_text,
+        lat: destinationPlace.lat,
+        lon: destinationPlace.lon,
+        photo_count: destinationPlace.photo_count ?? 0,
+        primary_photo: destinationPlace.primary_photo ?? null,
+      },
       category_details: {
         origin_text: 'Orly, France',
         destination_text: 'Prague Airport',

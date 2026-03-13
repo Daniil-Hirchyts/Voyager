@@ -1,7 +1,6 @@
 import {
   createContext,
   useContext,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -136,8 +135,8 @@ function extractAppendText(message: AppendMessage) {
 
 function formatToolLabel(toolName: string) {
   return toolName
-    .replaceAll('_', ' ')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter: string) => letter.toUpperCase())
 }
 
 type JobTimelineRow =
@@ -385,7 +384,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                 <div key={row.eventId} className="space-y-2">
                   {showPhase && (
                     <div className="text-[0.66rem] uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-                      {row.phase?.replaceAll('_', ' ')}
+                      {row.phase?.replace(/_/g, ' ')}
                     </div>
                   )}
                   {row.kind === 'step' && (
@@ -466,7 +465,7 @@ function AssistantMessageView() {
           <Bot className="size-3.5" />
         </span>
         <span>Voyager Assistant</span>
-        {state.status.type === 'running' && <Loader2 className="size-3 animate-spin text-[var(--color-primary)]" />}
+        {state.status?.type === 'running' && <Loader2 className="size-3 animate-spin text-[var(--color-primary)]" />}
       </div>
       <div className="space-y-3">
         {parts.map((part, index) => {
@@ -510,7 +509,6 @@ export function PlannerAssistantPanel({
   const abortRef = useRef<AbortController | null>(null)
 
   const messages = data?.messages ?? []
-  const runtimeMessages = useMemo(() => messages.map(toThreadMessage), [messages])
 
   const cancelCurrentStream = async () => {
     abortRef.current?.abort()

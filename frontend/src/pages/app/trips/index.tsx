@@ -13,7 +13,6 @@ import {
   Map,
   Plus,
   Route,
-  Sparkles,
 } from 'lucide-react'
 import { VoyagerLogo } from '@/widgets/app-shell/logo'
 import { differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns'
