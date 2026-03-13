@@ -16,7 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.models import Activity, Job, Place, Trip, TripDay
-from app.db.repositories import ExportRepository
+from app.db.repositories import ExportRepository, TripRepository
+from app.errors import NotFoundError
 from app.services.itinerary_generation import NonRetryableJobError
 
 settings = get_settings()
@@ -993,9 +994,9 @@ async def execute_export_job(db: AsyncSession, job: Job) -> ExportExecutionResul
     expected_version = int(payload.get("expected_trip_version"))
     format_name = _as_format(payload.get("format"))
 
-    trip_row = await db.execute(select(Trip).where(Trip.id == trip_id).where(Trip.user_id == user_id))
-    trip = trip_row.scalar_one_or_none()
-    if not trip:
+    try:
+        trip = await TripRepository.get_trip(db, user_id, trip_id)
+    except NotFoundError:
         raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for export job")
     if trip.version != expected_version:
         raise NonRetryableJobError(

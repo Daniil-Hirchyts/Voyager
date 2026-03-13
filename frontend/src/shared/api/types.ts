@@ -4,14 +4,89 @@ import type { components } from './generated/schema'
 export type UserProfile = components['schemas']['UserProfileResponse']
 export type UserProfilePatchInput = components['schemas']['UserProfilePatchRequest']
 
-export type Trip = components['schemas']['TripResponse']
-export type TripListResponse = components['schemas']['TripListResponse']
+export type TripAccessRole = 'owner' | 'editor'
+
+export interface Trip {
+  id: string
+  user_id: string
+  title: string
+  destination_text: string
+  start_date: string
+  end_date: string
+  budget_amount: string | null
+  budget_currency: string | null
+  trip_type: string | null
+  route_travel_mode: RouteTravelMode
+  current_user_role: TripAccessRole
+  collaborator_count: number
+  version: number
+  created_at: string
+  updated_at: string
+}
+
+export interface TripListResponse {
+  total: number
+  limit: number
+  offset: number
+  items: Trip[]
+}
+
 export type TripCreateInput = components['schemas']['TripCreateRequest']
 export type TripUpdateInput = components['schemas']['TripPatchRequest']
 export type GenerationMode = components['schemas']['GenerationMode']
 export type TripGenerateInput = components['schemas']['TripGenerateRequest']
 export type TripRegenerateInput = components['schemas']['TripRegenerateRequest']
 export type TripResetInput = components['schemas']['TripResetItineraryRequest']
+
+export interface TripCollaborator {
+  id: string | null
+  trip_id: string
+  user_id: string
+  role: TripAccessRole
+  email: string | null
+  display_name: string
+  invited_by_user_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TripInvitation {
+  id: string
+  trip_id: string
+  created_by_user_id: string
+  role: TripAccessRole
+  invite_path: string
+  accepted_at: string | null
+  revoked_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TripInvitationCreateInput {
+  role?: Extract<TripAccessRole, 'editor'>
+}
+
+export interface TripInvitationCreateResponse {
+  invitation: TripInvitation
+}
+
+export interface TripInvitationPreview {
+  invitation_id: string
+  trip_id: string
+  trip_title: string
+  destination_text: string
+  inviter_display_name: string
+  inviter_email: string | null
+  role: TripAccessRole
+  created_at: string
+}
+
+export interface TripSharingResponse {
+  trip_id: string
+  current_user_role: TripAccessRole
+  collaborators: TripCollaborator[]
+  pending_invitations: TripInvitation[]
+}
 
 export type Day = components['schemas']['DayResponse']
 export type DayListResponse = components['schemas']['DayListResponse']

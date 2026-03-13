@@ -1,8 +1,32 @@
 import uuid
 
+import jwt
 import pytest
 
 pytestmark = [pytest.mark.integration, pytest.mark.phase1]
+
+PNG_1X1 = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDAT\x08\x99c\xf8\xff"
+    b"\xff?\x00\x05\xfe\x02\xfeA\x0f\xdb\xb5\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+def _fresh_travel_claims(keycloak_client, *, username: str) -> dict:
+    response = keycloak_client.post(
+        "/realms/travel/protocol/openid-connect/token",
+        data={
+            "grant_type": "password",
+            "client_id": "voyager-api",
+            "username": username,
+            "password": "voyager_pass",
+        },
+    )
+    response.raise_for_status()
+    return jwt.decode(
+        response.json()["access_token"],
+        options={"verify_signature": False, "verify_exp": False},
+    )
 
 
 def test_profile_auth_valid_and_invalid(api_client, headers_user1):
@@ -10,10 +34,73 @@ def test_profile_auth_valid_and_invalid(api_client, headers_user1):
     assert ok.status_code == 200
     body = ok.json()
     assert body["keycloak_sub"]
+    assert body["first_name"] == "Voyager"
+    assert body["last_name"] == "User"
+    assert body["display_name"] == "Voyager User"
 
     bad = api_client.get("/users/profile", headers={"Authorization": "Bearer bad.token"})
     assert bad.status_code == 401
     assert bad.json()["error"]["code"] == "AUTH_INVALID_TOKEN"
+
+
+def test_profile_patch_updates_keycloak_names(api_client, headers_user1, keycloak_client):
+    try:
+        response = api_client.patch(
+            "/users/profile",
+            headers=headers_user1,
+            json={"first_name": "Captain", "last_name": "Atlas"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["first_name"] == "Captain"
+        assert body["last_name"] == "Atlas"
+        assert body["display_name"] == "Captain Atlas"
+
+        updated_claims = _fresh_travel_claims(keycloak_client, username="voyager_user")
+        assert updated_claims["given_name"] == "Captain"
+        assert updated_claims["family_name"] == "Atlas"
+        assert updated_claims["name"] == "Captain Atlas"
+    finally:
+        reset_response = api_client.patch(
+            "/users/profile",
+            headers=headers_user1,
+            json={
+                "first_name": "Voyager",
+                "last_name": "User",
+            },
+        )
+        assert reset_response.status_code == 200
+
+
+def test_profile_avatar_upload_and_delete(api_client, headers_user1):
+    upload = api_client.post(
+        "/users/profile/avatar",
+        headers=headers_user1,
+        files={"file": ("avatar.png", PNG_1X1, "image/png")},
+    )
+    assert upload.status_code == 200
+    body = upload.json()
+    assert body["avatar_url"]
+    assert body["avatar_thumbnail_url"]
+
+    profile = api_client.get("/users/profile", headers=headers_user1)
+    assert profile.status_code == 200
+    assert profile.json()["avatar_url"]
+
+    delete = api_client.delete("/users/profile/avatar", headers=headers_user1)
+    assert delete.status_code == 200
+    assert delete.json()["avatar_url"] is None
+    assert delete.json()["avatar_thumbnail_url"] is None
+
+
+def test_profile_avatar_rejects_non_images(api_client, headers_user1):
+    response = api_client.post(
+        "/users/profile/avatar",
+        headers=headers_user1,
+        files={"file": ("avatar.txt", b"not-an-image", "text/plain")},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
 def test_trip_create_and_idempotency(api_client, headers_user1, unique_idempotency_key):

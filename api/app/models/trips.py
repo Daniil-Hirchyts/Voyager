@@ -234,7 +234,7 @@ class TripResetItineraryRequest(BaseModel):
 
 
 class TripCollaboratorResponse(BaseModel):
-    id: UUID
+    id: UUID | None
     trip_id: UUID
     user_id: UUID
     role: TripAccessRole

@@ -19,6 +19,7 @@ from app.routers import (
     places,
     proposals,
     routing,
+    trip_collaboration,
     trips,
     users,
 )
@@ -101,6 +102,7 @@ app.add_middleware(IpRateLimitMiddleware)
 app.include_router(health.router)
 app.include_router(users.router)
 app.include_router(trips.router)
+app.include_router(trip_collaboration.router)
 app.include_router(days.router)
 app.include_router(activities.router)
 app.include_router(assets.router)

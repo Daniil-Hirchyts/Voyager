@@ -913,6 +913,8 @@ export default function MapWorkspace({ tripId }: Props) {
               </label>
               <input
                 type="number"
+                min="-90"
+                max="90"
                 step="any"
                 {...nearbyForm.register('lat', { valueAsNumber: true })}
                 className="w-full px-3 py-2 rounded-[10px] border text-sm"
@@ -925,6 +927,8 @@ export default function MapWorkspace({ tripId }: Props) {
               </label>
               <input
                 type="number"
+                min="-180"
+                max="180"
                 step="any"
                 {...nearbyForm.register('lon', { valueAsNumber: true })}
                 className="w-full px-3 py-2 rounded-[10px] border text-sm"
@@ -937,6 +941,8 @@ export default function MapWorkspace({ tripId }: Props) {
               </label>
               <input
                 type="number"
+                min="0"
+                max="50000"
                 {...nearbyForm.register('radius_m', { valueAsNumber: true })}
                 className="w-full px-3 py-2 rounded-[10px] border text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
@@ -1067,6 +1073,8 @@ export default function MapWorkspace({ tripId }: Props) {
               </label>
               <input
                 type="number"
+                min="-90"
+                max="90"
                 step="any"
                 {...createPlaceForm.register('lat', { valueAsNumber: true })}
                 className="w-full px-3 py-2 rounded-[10px] border text-sm"
@@ -1079,6 +1087,8 @@ export default function MapWorkspace({ tripId }: Props) {
               </label>
               <input
                 type="number"
+                min="-180"
+                max="180"
                 step="any"
                 {...createPlaceForm.register('lon', { valueAsNumber: true })}
                 className="w-full px-3 py-2 rounded-[10px] border text-sm"

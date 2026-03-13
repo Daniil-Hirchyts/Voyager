@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { Globe2, Map, Settings2, Sparkles } from 'lucide-react'
+import { Camera, Globe2, Map, Sparkles, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -18,12 +19,14 @@ import {
   readVoyagerPreferences,
   type RecommendationAudiencePreference,
 } from '@/entities/user/preferences'
-import { usePatchProfile, useProfile } from '@/entities/user/queries'
-import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import {
-  WorkspaceHeader,
-  WorkspacePage,
-} from '@/shared/layouts/workspace-shell'
+  useDeleteProfileAvatar,
+  usePatchProfile,
+  useProfile,
+  useUploadProfileAvatar,
+} from '@/entities/user/queries'
+import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
+import { WorkspaceHeader, WorkspacePage } from '@/shared/layouts/workspace-shell'
 
 const sectionClassName =
   'rounded-[20px] border border-black/8 bg-white p-5 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.22)]'
@@ -43,26 +46,49 @@ const AUDIENCE_OPTIONS: Array<{
 
 const LOCALE_OPTIONS = ['en-US', 'fr-FR', 'it-IT', 'de-DE', 'es-ES']
 
+function getInitials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'V'
+  )
+}
+
 export default function SettingsPage() {
   const auth = useAuth()
+  const avatarInputRef = useRef<HTMLInputElement | null>(null)
   const { data: profile, isLoading } = useProfile()
-  const patchProfile = usePatchProfile()
+  const patchSettings = usePatchProfile()
+  const patchAccount = usePatchProfile()
+  const uploadAvatar = useUploadProfileAvatar()
+  const deleteAvatar = useDeleteProfileAvatar()
   const [settings, setSettings] = useState(DEFAULT_VOYAGER_PREFERENCES)
+  const [account, setAccount] = useState({
+    firstName: '',
+    lastName: '',
+  })
 
   useEffect(() => {
     if (!profile) {
       return
     }
     setSettings(readVoyagerPreferences(profile))
+    setAccount({
+      firstName: profile.first_name ?? '',
+      lastName: profile.last_name ?? '',
+    })
   }, [profile])
 
-  async function handleSave() {
+  async function handleSaveSettings() {
     if (!profile) {
       return
     }
 
     try {
-      await patchProfile.mutateAsync({
+      await patchSettings.mutateAsync({
         preferences: mergeVoyagerPreferences(profile.preferences, settings),
       })
       toast.success('App settings saved')
@@ -71,6 +97,68 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleSaveAccount() {
+    const firstName = account.firstName.trim()
+    const lastName = account.lastName.trim()
+
+    if (!firstName || !lastName) {
+      toast.error('First and last name are required')
+      return
+    }
+
+    try {
+      await patchAccount.mutateAsync({
+        first_name: firstName,
+        last_name: lastName,
+      })
+      toast.success('Account details saved')
+    } catch {
+      toast.error('Could not save account details')
+    }
+  }
+
+  async function handleAvatarInputChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    try {
+      await uploadAvatar.mutateAsync(file)
+      toast.success('Avatar updated')
+    } catch {
+      toast.error('Could not update avatar')
+    }
+  }
+
+  async function handleAvatarRemove() {
+    try {
+      await deleteAvatar.mutateAsync()
+      toast.success('Avatar removed')
+    } catch {
+      toast.error('Could not remove avatar')
+    }
+  }
+
+  const displayName =
+    profile?.display_name || (auth.user?.profile?.name as string | undefined) || 'Traveler'
+  const userEmail =
+    profile?.email ||
+    (auth.user?.profile?.email as string | undefined) ||
+    profile?.keycloak_sub ||
+    'Signed in'
+  const avatarUrl =
+    profile?.avatar_thumbnail_url ||
+    profile?.avatar_url ||
+    (auth.user?.profile?.picture as string | undefined)
+  const accountDirty =
+    account.firstName.trim() !== (profile?.first_name ?? '') ||
+    account.lastName.trim() !== (profile?.last_name ?? '')
+  const avatarBusy = uploadAvatar.isPending || deleteAvatar.isPending
+  const accountBusy = patchAccount.isPending || avatarBusy
+
   return (
     <WorkspacePage className="gap-4">
       <WorkspaceHeader
@@ -78,8 +166,11 @@ export default function SettingsPage() {
         title="App defaults"
         description="Set the recommendation, map, and regional defaults Voyager should use across trips."
         actions={(
-          <Button onClick={() => void handleSave()} disabled={patchProfile.isPending || isLoading}>
-            {patchProfile.isPending ? 'Saving…' : 'Save settings'}
+          <Button
+            onClick={() => void handleSaveSettings()}
+            disabled={patchSettings.isPending || isLoading}
+          >
+            {patchSettings.isPending ? 'Saving…' : 'Save settings'}
           </Button>
         )}
       />
@@ -310,34 +401,109 @@ export default function SettingsPage() {
         <section className={sectionClassName}>
           <div className="flex items-center gap-3">
             <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(15,23,42,0.08)] text-[var(--color-text)]">
-              <Settings2 className="size-4" />
+              <UserRound className="size-4" />
             </span>
             <div>
               <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
                 Account
               </h2>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Signed-in profile details and session controls.
+                Update the identity Voyager shows across the app and keep it aligned with Keycloak.
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
-            <p className={fieldLabelClassName}>Signed in as</p>
-            <p className="mt-2 text-base font-medium text-[var(--color-text)]">
-              {(auth.user?.profile?.name as string | undefined) || 'Traveler'}
-            </p>
-            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-              {(auth.user?.profile?.email as string | undefined) ||
-                profile?.keycloak_sub ||
-                'Signed in'}
-            </p>
-          </div>
+          <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+            <div className="rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+              <p className={fieldLabelClassName}>Avatar</p>
+              <div className="mt-4 flex flex-col items-center text-center">
+                <Avatar className="size-24 rounded-[26px] border border-black/8 bg-white shadow-none">
+                  <AvatarImage src={avatarUrl} alt={displayName} />
+                  <AvatarFallback className="rounded-[26px] text-lg font-semibold">
+                    {getInitials(displayName)}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="mt-4 text-sm text-[var(--color-text-muted)]">
+                  JPG, PNG, or WebP. Voyager stores the uploaded avatar in its own media bucket.
+                </p>
+              </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="outline" onClick={() => auth.signoutRedirect()}>
-              Sign out
-            </Button>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={avatarBusy}
+                >
+                  <Camera className="size-4" />
+                  {uploadAvatar.isPending ? 'Uploading…' : avatarUrl ? 'Replace' : 'Upload'}
+                </Button>
+                {avatarUrl ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void handleAvatarRemove()}
+                    disabled={avatarBusy}
+                  >
+                    {deleteAvatar.isPending ? 'Removing…' : 'Remove'}
+                  </Button>
+                ) : null}
+              </div>
+
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => void handleAvatarInputChange(event)}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="space-y-2">
+                  <span className={fieldLabelClassName}>First name</span>
+                  <Input
+                    value={account.firstName}
+                    onChange={(event) =>
+                      setAccount((current) => ({ ...current, firstName: event.target.value }))
+                    }
+                    placeholder="Voyager"
+                  />
+                </label>
+
+                <label className="space-y-2">
+                  <span className={fieldLabelClassName}>Last name</span>
+                  <Input
+                    value={account.lastName}
+                    onChange={(event) =>
+                      setAccount((current) => ({ ...current, lastName: event.target.value }))
+                    }
+                    placeholder="User"
+                  />
+                </label>
+              </div>
+
+              <div className="rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+                <p className={fieldLabelClassName}>Signed in as</p>
+                <p className="mt-2 text-base font-medium text-[var(--color-text)]">{displayName}</p>
+                <p className="mt-1 text-sm text-[var(--color-text-muted)]">{userEmail}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={() => void handleSaveAccount()}
+                  disabled={accountBusy || !accountDirty || isLoading}
+                >
+                  {patchAccount.isPending ? 'Saving…' : 'Save account'}
+                </Button>
+                <Button variant="outline" onClick={() => auth.signoutRedirect()} disabled={accountBusy}>
+                  Sign out
+                </Button>
+              </div>
+            </div>
           </div>
         </section>
       </div>

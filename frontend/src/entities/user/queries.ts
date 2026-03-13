@@ -1,9 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getProfile, patchProfile } from './api'
-import type { UserProfilePatchInput } from '@/shared/api/types'
+import { deleteProfileAvatar, getProfile, patchProfile, uploadProfileAvatar } from './api'
+import type { UserProfile, UserProfilePatchInput } from '@/shared/api/types'
 
 export const profileKeys = {
   all: ['profile'] as const,
+}
+
+function writeProfileCache(qc: ReturnType<typeof useQueryClient>, profile: UserProfile) {
+  qc.setQueryData(profileKeys.all, profile)
 }
 
 export function useProfile() {
@@ -18,6 +22,28 @@ export function usePatchProfile() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (data: UserProfilePatchInput) => patchProfile(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: profileKeys.all }),
+    onSuccess: (profile) => {
+      writeProfileCache(qc, profile)
+    },
+  })
+}
+
+export function useUploadProfileAvatar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => uploadProfileAvatar(file),
+    onSuccess: (profile) => {
+      writeProfileCache(qc, profile)
+    },
+  })
+}
+
+export function useDeleteProfileAvatar() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => deleteProfileAvatar(),
+    onSuccess: (profile) => {
+      writeProfileCache(qc, profile)
+    },
   })
 }

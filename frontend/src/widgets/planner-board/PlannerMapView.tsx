@@ -1077,8 +1077,10 @@ function PlannerBudgetOverview({
                 </Select>
                 <div className="h-5 w-px bg-black/8" />
                 <Input
+                  aria-label="Trip budget amount"
                   type="number"
                   min="0"
+                  max="1000000000"
                   step="any"
                   inputMode="decimal"
                   disabled={patchTrip.isPending}

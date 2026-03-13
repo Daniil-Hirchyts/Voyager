@@ -286,6 +286,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     <label className={fieldLabelClassName}>Trip Title</label>
                     <Input
                       value={form.title}
+                      maxLength={100}
                       className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"
                       onChange={(event) =>
                         setForm((current) => ({ ...current, title: event.target.value }))
@@ -331,6 +332,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     <Input
                       type="number"
                       min={0}
+                      max={1000000000}
                       step="0.01"
                       value={form.budget_amount}
                       className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"

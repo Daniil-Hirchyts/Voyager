@@ -7,7 +7,7 @@ from app.cache.redis_helpers import build_cache_key, cache_delete, cache_delete_
 from app.config import get_settings
 from app.db.audit_context import set_audit_context
 from app.db.models import Trip
-from app.db.repositories import ExportRepository, JobRepository
+from app.db.repositories import ExportRepository, JobRepository, TripRepository
 from app.db.session import AsyncSessionLocal, redis_client
 from app.metrics import increment_job_metric
 from app.services.export_pipeline import execute_export_job
@@ -83,8 +83,15 @@ async def _set_trip_generation_failed(payload: dict[str, Any]) -> None:
     user_id = uuid.UUID(str(user_id_raw))
     async with AsyncSessionLocal() as db:
         async with db.begin():
+            has_access = await TripRepository.user_has_access(
+                db,
+                user_id=user_id,
+                trip_id=trip_id,
+            )
+            if not has_access:
+                return
             trip = await db.get(Trip, trip_id)
-            if not trip or trip.user_id != user_id:
+            if trip is None:
                 return
             trip.generation_state = "FAILED"
             await db.flush()

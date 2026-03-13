@@ -28,7 +28,13 @@ from app.db.repositories import (
     TripRepository,
 )
 from app.db.session import get_db_session, get_redis
-from app.errors import ConflictError, NotFoundError, ServiceUnavailableError, ValidationApiError
+from app.errors import (
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ServiceUnavailableError,
+    ValidationApiError,
+)
 from app.models.activity_discovery import ActivityDiscoveryPhoto
 from app.models.audit import AuditLogEntry, AuditLogListResponse
 from app.models.jobs import JobAcceptedResponse
@@ -74,7 +80,12 @@ def _storage_unavailable(exc: Exception) -> ServiceUnavailableError:
     )
 
 
-def _trip_response(trip) -> TripResponse:
+def _trip_response(
+    trip,
+    *,
+    current_user_role: str = "owner",
+    collaborator_count: int = 0,
+) -> TripResponse:
     return TripResponse(
         id=trip.id,
         user_id=trip.user_id,
@@ -86,6 +97,8 @@ def _trip_response(trip) -> TripResponse:
         budget_currency=trip.budget_currency,
         trip_type=trip.trip_type,
         route_travel_mode=trip.route_travel_mode,
+        current_user_role=current_user_role,
+        collaborator_count=collaborator_count,
         version=trip.version,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
@@ -318,7 +331,7 @@ async def create_trip(
         return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
 
     trip = await TripRepository.create_trip(db, auth.user_id, payload)
-    response = _trip_response(trip)
+    response = _trip_response(trip, current_user_role="owner", collaborator_count=0)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
 
@@ -354,7 +367,14 @@ async def list_trips(
         total=total,
         limit=limit,
         offset=offset,
-        items=[_trip_response(item) for item in items],
+        items=[
+            _trip_response(
+                item.trip,
+                current_user_role=item.current_user_role.value,
+                collaborator_count=item.collaborator_count,
+            )
+            for item in items
+        ],
     )
     await cache_set_json(
         redis, cache_key, response.model_dump(mode="json"), get_settings().trip_cache_ttl_sec
@@ -374,8 +394,12 @@ async def get_trip(
     if cached:
         return TripResponse.model_validate(cached)
 
-    trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
-    response = _trip_response(trip)
+    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    response = _trip_response(
+        summary.trip,
+        current_user_role=summary.current_user_role.value,
+        collaborator_count=summary.collaborator_count,
+    )
     await cache_set_json(
         redis, cache_key, response.model_dump(mode="json"), get_settings().trip_cache_ttl_sec
     )
@@ -388,7 +412,8 @@ async def get_trip_planner(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db_session),
 ) -> TripPlannerResponse:
-    trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
+    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    trip = summary.trip
     days = await TripRepository.list_days(db, auth.user_id, trip_id)
     activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
 
@@ -420,7 +445,11 @@ async def get_trip_planner(
         activities_by_day.setdefault(activity.trip_day_id, []).append(response_activity)
 
     return TripPlannerResponse(
-        trip=_trip_response(trip),
+        trip=_trip_response(
+            trip,
+            current_user_role=summary.current_user_role.value,
+            collaborator_count=summary.collaborator_count,
+        ),
         inbox_activities=inbox_activities,
         days=[
             PlannerDayResponse(
@@ -563,9 +592,14 @@ async def patch_trip(
 ) -> TripResponse:
     expected_version = parse_if_match(if_match)
     trip = await TripRepository.patch_trip(db, auth.user_id, trip_id, expected_version, payload)
+    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
-    return _trip_response(trip)
+    return _trip_response(
+        trip,
+        current_user_role=summary.current_user_role.value,
+        collaborator_count=summary.collaborator_count,
+    )
 
 
 @router.delete("/{trip_id}", status_code=204)
@@ -575,6 +609,10 @@ async def delete_trip(
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> None:
+    trip, role = await TripRepository.get_trip_role(db, user_id=auth.user_id, trip_id=trip_id)
+    if role.value != "owner":
+        raise ForbiddenError("Only trip owners can delete a shared trip")
+
     assets = await TripAssetRepository.list_assets_for_trip(
         db,
         user_id=auth.user_id,
@@ -589,7 +627,7 @@ async def delete_trip(
             )
         except (BotoCoreError, ClientError, OSError) as exc:
             raise _storage_unavailable(exc) from exc
-    await TripRepository.delete_trip(db, auth.user_id, trip_id)
+    await TripRepository.delete_trip(db, auth.user_id, trip.id)
     await cache_delete_prefix(redis, "trip:asset:")
     await cache_delete_prefix(redis, "audit:list:")
     await cache_delete_prefix(redis, "trip:get:")
@@ -687,7 +725,7 @@ async def duplicate_trip(
             raise _storage_unavailable(exc) from exc
         raise
 
-    response = _trip_response(duplication.trip)
+    response = _trip_response(duplication.trip, current_user_role="owner", collaborator_count=0)
     await cache_delete_prefix(redis, "trip:asset:")
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")

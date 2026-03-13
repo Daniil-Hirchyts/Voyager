@@ -73,6 +73,24 @@ export interface paths {
         patch: operations["patch_profile_users_profile_patch"];
         trace?: never;
     };
+    "/users/profile/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Profile Avatar */
+        post: operations["upload_profile_avatar_users_profile_avatar_post"];
+        /** Delete Profile Avatar */
+        delete: operations["delete_profile_avatar_users_profile_avatar_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/trips": {
         parameters: {
             query?: never;
@@ -464,6 +482,42 @@ export interface paths {
         /** Recommend Saved Activities */
         post: operations["recommend_saved_activities_trips__trip_id__activities_recommendations_post"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/assets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Trip Assets */
+        get: operations["list_trip_assets_trips__trip_id__assets_get"];
+        put?: never;
+        /** Create Trip Asset */
+        post: operations["create_trip_asset_trips__trip_id__assets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/assets/{asset_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trip Asset */
+        get: operations["get_trip_asset_assets__asset_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Trip Asset */
+        delete: operations["delete_trip_asset_assets__asset_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1444,6 +1498,18 @@ export interface components {
             /** Items */
             items: components["schemas"]["AuditLogEntry"][];
         };
+        /** Body_create_trip_asset_trips__trip_id__assets_post */
+        Body_create_trip_asset_trips__trip_id__assets_post: {
+            /** File */
+            file: string;
+            /** Activity Id */
+            activity_id?: string | null;
+        };
+        /** Body_upload_profile_avatar_users_profile_avatar_post */
+        Body_upload_profile_avatar_users_profile_avatar_post: {
+            /** File */
+            file: string;
+        };
         /** DayListResponse */
         DayListResponse: {
             /** Total */
@@ -2342,6 +2408,70 @@ export interface components {
          * @enum {string}
          */
         RouteTravelMode: "WALK" | "DRIVE" | "BICYCLE" | "TRANSIT";
+        /**
+         * TripAccessRole
+         * @enum {string}
+         */
+        TripAccessRole: "owner" | "editor";
+        /**
+         * TripAssetKind
+         * @enum {string}
+         */
+        TripAssetKind: "photo" | "file";
+        /** TripAssetListResponse */
+        TripAssetListResponse: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["TripAssetResponse"][];
+        };
+        /** TripAssetResponse */
+        TripAssetResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /** Activity Id */
+            activity_id: string | null;
+            kind: components["schemas"]["TripAssetKind"];
+            /** Original Filename */
+            original_filename: string;
+            /** Content Type */
+            content_type: string;
+            /** Size Bytes */
+            size_bytes: number;
+            /** Sha256 */
+            sha256: string;
+            /** Image Width */
+            image_width: number | null;
+            /** Image Height */
+            image_height: number | null;
+            /** Preview Url */
+            preview_url: string | null;
+            /** Download Url */
+            download_url: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** TripCreateRequest */
         TripCreateRequest: {
             /** Destination Text */
@@ -2363,7 +2493,7 @@ export interface components {
             /** Trip Type */
             trip_type?: string | null;
             /** @default WALK */
-            route_travel_mode?: components["schemas"]["RouteTravelMode"];
+            route_travel_mode: components["schemas"]["RouteTravelMode"];
         };
         /** TripExportCreateRequest */
         TripExportCreateRequest: {
@@ -2603,8 +2733,10 @@ export interface components {
             budget_currency: string | null;
             /** Trip Type */
             trip_type: string | null;
-            /** Route Travel Mode */
             route_travel_mode: components["schemas"]["RouteTravelMode"];
+            current_user_role: components["schemas"]["TripAccessRole"];
+            /** Collaborator Count */
+            collaborator_count: number;
             /** Version */
             version: number;
             /**
@@ -2620,10 +2752,14 @@ export interface components {
         };
         /** UserProfilePatchRequest */
         UserProfilePatchRequest: {
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
             /** Preferences */
             preferences?: {
                 [key: string]: unknown;
-            };
+            } | null;
         };
         /** UserProfileResponse */
         UserProfileResponse: {
@@ -2634,6 +2770,18 @@ export interface components {
             id: string;
             /** Keycloak Sub */
             keycloak_sub: string;
+            /** Email */
+            email: string | null;
+            /** First Name */
+            first_name?: string | null;
+            /** Last Name */
+            last_name?: string | null;
+            /** Display Name */
+            display_name: string;
+            /** Avatar Url */
+            avatar_url?: string | null;
+            /** Avatar Thumbnail Url */
+            avatar_thumbnail_url?: string | null;
             /** Preferences */
             preferences?: {
                 [key: string]: unknown;
@@ -2643,6 +2791,11 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -2779,6 +2932,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_profile_avatar_users_profile_avatar_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_profile_avatar_users_profile_avatar_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_profile_avatar_users_profile_avatar_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserProfileResponse"];
                 };
             };
         };
@@ -3756,6 +3962,134 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ActivityRecommendationResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_trip_assets_trips__trip_id__assets_get: {
+        parameters: {
+            query?: {
+                activity_id?: string | null;
+            };
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripAssetListResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_trip_asset_trips__trip_id__assets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_create_trip_asset_trips__trip_id__assets_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripAssetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_asset_assets__asset_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripAssetResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_trip_asset_assets__asset_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                asset_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

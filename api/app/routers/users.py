@@ -94,14 +94,17 @@ async def patch_profile(
         next_first_name != user.first_name or next_last_name != user.last_name
     )
 
-    user = await UserRepository.patch_profile(
-        db,
-        user,
-        first_name=first_name,
-        last_name=last_name,
-        display_name=display_name,
-        preferences=preferences,
-    )
+    patch_kwargs: dict[str, object] = {}
+    if first_name is not _UNSET:
+        patch_kwargs["first_name"] = first_name
+    if last_name is not _UNSET:
+        patch_kwargs["last_name"] = last_name
+    if display_name is not _UNSET:
+        patch_kwargs["display_name"] = display_name
+    if preferences is not _UNSET:
+        patch_kwargs["preferences"] = preferences
+
+    user = await UserRepository.patch_profile(db, user, **patch_kwargs)
 
     if names_changed and next_first_name and next_last_name:
         await sync_keycloak_user_names(

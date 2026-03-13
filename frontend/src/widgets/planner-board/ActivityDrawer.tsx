@@ -1927,6 +1927,7 @@ export function ActivityDrawer({
                                     id="activity-duration"
                                     type="number"
                                     min={0}
+                                    max={1000000}
                                     className="h-11 rounded-[10px] border-black/8 bg-white"
                                     value={field.value ?? ""}
                                     onChange={(event) =>
@@ -1963,6 +1964,7 @@ export function ActivityDrawer({
                                   id="activity-cost"
                                   type="number"
                                   min={0}
+                                  max={1000000000}
                                   step="0.01"
                                   className="h-11 rounded-[10px] border-black/8 bg-white"
                                   value={field.value ?? ""}

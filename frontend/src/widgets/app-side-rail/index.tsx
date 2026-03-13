@@ -8,6 +8,7 @@ import {
   LayoutList,
   LogOut,
   Map,
+  MoreVertical,
   Plane,
   Plus,
   Route,
@@ -28,6 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/shared/lib/cn'
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store'
 import { RouteTransition } from '@/shared/layouts/route-transition'
@@ -135,7 +137,7 @@ function renderDayAnchors({
   days: DayAnchor[]
   onScrollToDay: (dayId: string) => void
 }) {
-  return days.map((day) => {
+  const renderDay = (day: DayAnchor) => {
     const monthStr = !day.isInbox && day.date ? format(new Date(day.date), 'MMM').toUpperCase() : null
     const dayStr   = !day.isInbox && day.date ? format(new Date(day.date), 'd') : null
 
@@ -163,7 +165,24 @@ function renderDayAnchors({
         )}
       </RailActionButton>
     )
-  })
+  }
+
+  if (days.length <= 12) {
+    return days.map(renderDay)
+  }
+
+  const firstDays = days.slice(0, 5)
+  const lastDays = days.slice(-5)
+
+  return (
+    <>
+      {firstDays.map(renderDay)}
+      <div className="my-1.5 flex flex-col items-center justify-center opacity-40">
+        <MoreVertical className="size-4 text-[#94a3b8]" />
+      </div>
+      {lastDays.map(renderDay)}
+    </>
+  )
 }
 
 function AppSideRail() {
@@ -175,8 +194,10 @@ function AppSideRail() {
   const { plannerInstruments, mobilePlannerView, setMobilePlannerView } = useSideRailStore()
 
   const isPlannerPage = Boolean(planMatch)
-  const userName = (auth.user?.profile?.name as string | undefined) || 'Traveler'
-  const userEmail = (auth.user?.profile?.email as string | undefined) || profile?.keycloak_sub || undefined
+  const userName = profile?.display_name || (auth.user?.profile?.name as string | undefined) || 'Traveler'
+  const userEmail = profile?.email || (auth.user?.profile?.email as string | undefined) || profile?.keycloak_sub || undefined
+  const avatarUrl =
+    profile?.avatar_thumbnail_url || profile?.avatar_url || (auth.user?.profile?.picture as string | undefined)
   const initials = getInitials(userName)
 
   return (
@@ -189,7 +210,7 @@ function AppSideRail() {
         <Link
           to="/app/trips"
           aria-label="Voyager — go to trips"
-          className="mb-2 flex h-9 w-9 items-center justify-center rounded-full bg-[#1a1a1a] text-white transition-opacity hover:opacity-80"
+          className="mb-2 flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#1a1a1a] text-white transition-opacity hover:opacity-80"
         >
           <VoyagerLogo className="size-[0.95rem] translate-y-[1px]" />
         </Link>
@@ -326,9 +347,17 @@ function AppSideRail() {
             <button
               type="button"
               aria-label={userName}
-              className={cn(BTN_STANDALONE, 'mt-1.5 text-[0.7rem] font-semibold tracking-wide')}
+              className={cn(
+                BTN_STANDALONE,
+                'mt-1.5 overflow-hidden p-0 text-[0.7rem] font-semibold tracking-wide',
+              )}
             >
-              {initials}
+              <Avatar className="size-9 rounded-[12px] border-0 bg-[#ECEEF0] shadow-none">
+                <AvatarImage src={avatarUrl} alt={userName} />
+                <AvatarFallback className="rounded-[12px] bg-[#ECEEF0] text-[0.7rem] font-semibold tracking-wide text-[#526072]">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
             </button>
           </DropdownMenuTrigger>
         </RailTooltip>

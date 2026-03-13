@@ -81,7 +81,7 @@ const schema = z
     start_date: z.string().min(1, 'Start date is required'),
     end_date: z.string().min(1, 'End date is required'),
     budget_amount: z
-      .union([z.number().positive('Budget must be a positive number'), z.nan()])
+      .union([z.number().positive('Budget must be a positive number').max(1000000000, 'Budget is too large'), z.nan()])
       .optional()
       .transform((v) => (v === undefined || Number.isNaN(v) ? undefined : v)),
     budget_currency: z.string().default('USD'),
@@ -721,6 +721,7 @@ export default function TripCreatePage() {
                         id="budget_amount"
                         type="number"
                         min="0"
+                        max="1000000000"
                         step="any"
                         inputMode="decimal"
                         placeholder="5 000"

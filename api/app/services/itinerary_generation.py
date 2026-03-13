@@ -15,6 +15,7 @@ from app.db.repositories import (
     PlaceRepository,
     TripRepository,
 )
+from app.errors import NotFoundError
 from app.services.google_maps import (
     GoogleMapsError,
     geocode_address,
@@ -107,11 +108,9 @@ async def _load_trip_for_job(db: AsyncSession, payload: dict[str, Any]) -> Trip:
             "Job payload missing trip or user identifiers",
         )
 
-    result = await db.execute(
-        select(Trip).where(Trip.id == uuid.UUID(trip_id)).where(Trip.user_id == uuid.UUID(user_id))
-    )
-    trip = result.scalar_one_or_none()
-    if not trip:
+    try:
+        trip = await TripRepository.get_trip(db, uuid.UUID(user_id), uuid.UUID(trip_id))
+    except NotFoundError:
         raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for job payload")
     return trip
 

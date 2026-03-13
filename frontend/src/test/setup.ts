@@ -17,6 +17,7 @@ vi.mock('react-oidc-context', () => ({
       profile: {
         name: 'Voyager User',
         email: 'voyager_user@example.com',
+        picture: null,
       },
     },
     signinRedirect: vi.fn(),
@@ -223,8 +224,15 @@ const defaultServerHandlers = [
     HttpResponse.json({
       id: 'user-profile-1',
       keycloak_sub: 'voyager-user',
+      email: 'voyager_user@example.com',
+      first_name: 'Voyager',
+      last_name: 'User',
+      display_name: 'Voyager User',
+      avatar_url: null,
+      avatar_thumbnail_url: null,
       preferences: {},
       created_at: '2026-03-06T09:00:00.000Z',
+      updated_at: '2026-03-06T09:00:00.000Z',
     }),
   ),
   http.get('http://localhost:8000/trips/:tripId', ({ params }) =>

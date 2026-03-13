@@ -601,7 +601,7 @@ export default function TripsPage() {
       {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section
         id="destinations"
-        className="mt-20 scroll-mt-6 overflow-hidden rounded-[24px] border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-5 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)] md:px-6 md:py-6"
+        className="mt-10 scroll-mt-6 overflow-hidden rounded-[24px] border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-5 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)] md:px-6 md:py-6"
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>

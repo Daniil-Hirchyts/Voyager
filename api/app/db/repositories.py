@@ -5,7 +5,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import case, func, or_, select, text, update
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -278,6 +277,29 @@ class UserRepository:
 
 class TripRepository:
     @staticmethod
+    def _collaborator_count_expr():
+        return (
+            select(func.count(TripCollaborator.id))
+            .where(TripCollaborator.trip_id == Trip.id)
+            .scalar_subquery()
+        )
+
+    @staticmethod
+    def _role_expr(user_id: uuid.UUID):
+        return case(
+            (Trip.user_id == user_id, TripAccessRole.OWNER.value),
+            else_=TripAccessRole.EDITOR.value,
+        )
+
+    @staticmethod
+    def _summary_from_row(row) -> TripAccessSummary:
+        return TripAccessSummary(
+            trip=row[0],
+            current_user_role=TripAccessRole(row[1]),
+            collaborator_count=int(row[2] or 0),
+        )
+
+    @staticmethod
     async def _validate_date_range(payload: TripCreateRequest | TripPatchRequest) -> None:
         start = payload.start_date
         end = payload.end_date
@@ -324,28 +346,84 @@ class TripRepository:
         *,
         limit: int,
         offset: int,
-    ) -> tuple[int, list[Trip]]:
-        count_result = await db.execute(select(func.count(Trip.id)).where(Trip.user_id == user_id))
+    ) -> tuple[int, list[TripAccessSummary]]:
+        access_clause = _trip_access_clause(
+            user_id=user_id,
+            trip_id_column=Trip.id,
+            owner_user_id_column=Trip.user_id,
+        )
+        count_result = await db.execute(select(func.count(Trip.id)).where(access_clause))
         total = int(count_result.scalar_one())
 
+        collaborator_count = TripRepository._collaborator_count_expr()
+        role_expr = TripRepository._role_expr(user_id)
         result = await db.execute(
-            select(Trip)
-            .where(Trip.user_id == user_id)
+            select(Trip, role_expr.label("current_user_role"), collaborator_count.label("collaborator_count"))
+            .where(access_clause)
             .order_by(Trip.updated_at.desc())
             .limit(limit)
             .offset(offset)
         )
-        return total, list(result.scalars().all())
+        return total, [TripRepository._summary_from_row(row) for row in result.all()]
 
     @staticmethod
     async def get_trip(db: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID) -> Trip:
-        result = await db.execute(
-            select(Trip).where(Trip.id == trip_id).where(Trip.user_id == user_id)
+        summary = await TripRepository.get_trip_access_summary(db, user_id=user_id, trip_id=trip_id)
+        return summary.trip
+
+    @staticmethod
+    async def get_trip_access_summary(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> TripAccessSummary:
+        collaborator_count = TripRepository._collaborator_count_expr()
+        role_expr = TripRepository._role_expr(user_id)
+        access_clause = _trip_access_clause(
+            user_id=user_id,
+            trip_id_column=Trip.id,
+            owner_user_id_column=Trip.user_id,
         )
-        trip = result.scalar_one_or_none()
-        if not trip:
+        result = await db.execute(
+            select(Trip, role_expr.label("current_user_role"), collaborator_count.label("collaborator_count"))
+            .where(Trip.id == trip_id)
+            .where(access_clause)
+        )
+        row = result.first()
+        if not row:
             raise NotFoundError("Trip not found")
-        return trip
+        return TripRepository._summary_from_row(row)
+
+    @staticmethod
+    async def get_trip_role(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> tuple[Trip, TripAccessRole]:
+        summary = await TripRepository.get_trip_access_summary(db, user_id=user_id, trip_id=trip_id)
+        return summary.trip, summary.current_user_role
+
+    @staticmethod
+    async def user_has_access(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> bool:
+        result = await db.execute(
+            select(Trip.id)
+            .where(Trip.id == trip_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
+        )
+        return result.scalar_one_or_none() is not None
 
     @staticmethod
     async def patch_trip(
@@ -392,7 +470,7 @@ class TripRepository:
         source = await TripRepository.get_trip(db, user_id, trip_id)
 
         duplicate = Trip(
-            user_id=source.user_id,
+            user_id=user_id,
             title=f"{source.title} (Copy)",
             destination_text=source.destination_text,
             start_date=source.start_date,
@@ -503,6 +581,174 @@ class TripRepository:
         return result.trip
 
     @staticmethod
+    async def list_trip_collaborators(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+    ) -> list[TripCollaborator]:
+        rows = await db.execute(
+            select(TripCollaborator)
+            .options(selectinload(TripCollaborator.user))
+            .where(TripCollaborator.trip_id == trip_id)
+            .order_by(TripCollaborator.created_at.asc(), TripCollaborator.id.asc())
+        )
+        return list(rows.scalars().all())
+
+    @staticmethod
+    async def get_trip_collaborator(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        collaborator_user_id: uuid.UUID,
+    ) -> TripCollaborator | None:
+        row = await db.execute(
+            select(TripCollaborator)
+            .options(selectinload(TripCollaborator.user))
+            .where(TripCollaborator.trip_id == trip_id)
+            .where(TripCollaborator.user_id == collaborator_user_id)
+        )
+        return row.scalar_one_or_none()
+
+    @staticmethod
+    async def remove_trip_collaborator(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        collaborator_user_id: uuid.UUID,
+    ) -> TripCollaborator:
+        collaborator = await TripRepository.get_trip_collaborator(
+            db,
+            trip_id=trip_id,
+            collaborator_user_id=collaborator_user_id,
+        )
+        if collaborator is None:
+            raise NotFoundError("Trip collaborator not found")
+        await db.delete(collaborator)
+        await db.flush()
+        return collaborator
+
+    @staticmethod
+    async def list_pending_trip_invitations(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+    ) -> list[TripInvitation]:
+        rows = await db.execute(
+            select(TripInvitation)
+            .options(selectinload(TripInvitation.created_by))
+            .where(TripInvitation.trip_id == trip_id)
+            .where(TripInvitation.accepted_at.is_(None))
+            .where(TripInvitation.revoked_at.is_(None))
+            .order_by(TripInvitation.created_at.desc(), TripInvitation.id.desc())
+        )
+        return list(rows.scalars().all())
+
+    @staticmethod
+    async def create_trip_invitation(
+        db: AsyncSession,
+        *,
+        invitation_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        created_by_user_id: uuid.UUID,
+        role: TripAccessRole,
+        token_hash: str,
+    ) -> TripInvitation:
+        invitation = TripInvitation(
+            id=invitation_id,
+            trip_id=trip_id,
+            created_by_user_id=created_by_user_id,
+            role=role,
+            token_hash=token_hash,
+            accepted_at=None,
+            revoked_at=None,
+        )
+        db.add(invitation)
+        await db.flush()
+        await db.refresh(invitation)
+        return invitation
+
+    @staticmethod
+    async def get_trip_invitation_by_id(
+        db: AsyncSession,
+        *,
+        invitation_id: uuid.UUID,
+    ) -> TripInvitation | None:
+        row = await db.execute(
+            select(TripInvitation)
+            .options(selectinload(TripInvitation.created_by), selectinload(TripInvitation.trip))
+            .where(TripInvitation.id == invitation_id)
+        )
+        return row.scalar_one_or_none()
+
+    @staticmethod
+    async def revoke_trip_invitation(
+        db: AsyncSession,
+        *,
+        invitation_id: uuid.UUID,
+    ) -> TripInvitation:
+        invitation = await TripRepository.get_trip_invitation_by_id(db, invitation_id=invitation_id)
+        if invitation is None:
+            raise NotFoundError("Trip invitation not found")
+        invitation.revoked_at = datetime.now(UTC)
+        await db.flush()
+        await db.refresh(invitation)
+        return invitation
+
+    @staticmethod
+    async def accept_trip_invitation(
+        db: AsyncSession,
+        *,
+        invitation: TripInvitation,
+        accepted_by_user_id: uuid.UUID,
+    ) -> tuple[TripInvitation, TripCollaborator]:
+        if invitation.trip.user_id == accepted_by_user_id:
+            raise ConflictError(
+                code="TRIP_INVITATION_OWNER_CANNOT_ACCEPT",
+                message="Trip owners cannot accept their own invitation",
+            )
+        if invitation.revoked_at is not None:
+            raise ConflictError(
+                code="TRIP_INVITATION_REVOKED",
+                message="Trip invitation has been revoked",
+            )
+        if invitation.accepted_at is not None:
+            raise ConflictError(
+                code="TRIP_INVITATION_ALREADY_USED",
+                message="Trip invitation has already been accepted",
+            )
+
+        existing_collaborator = await TripRepository.get_trip_collaborator(
+            db,
+            trip_id=invitation.trip_id,
+            collaborator_user_id=accepted_by_user_id,
+        )
+        if existing_collaborator is not None:
+            raise ConflictError(
+                code="TRIP_ALREADY_SHARED_WITH_USER",
+                message="Trip is already shared with this user",
+            )
+
+        collaborator = TripCollaborator(
+            trip_id=invitation.trip_id,
+            user_id=accepted_by_user_id,
+            role=invitation.role,
+            invited_by_user_id=invitation.created_by_user_id,
+        )
+        db.add(collaborator)
+        invitation.accepted_by_user_id = accepted_by_user_id
+        invitation.accepted_at = datetime.now(UTC)
+        try:
+            await db.flush()
+        except IntegrityError as exc:
+            raise ConflictError(
+                code="TRIP_ALREADY_SHARED_WITH_USER",
+                message="Trip is already shared with this user",
+            ) from exc
+        await db.refresh(invitation)
+        await db.refresh(collaborator)
+        return invitation, collaborator
+
+    @staticmethod
     async def _sync_days_to_date_range(db: AsyncSession, trip: Trip) -> None:
         existing_result = await db.execute(
             select(TripDay).where(TripDay.trip_id == trip.id).order_by(TripDay.day_index)
@@ -553,7 +799,13 @@ class DayRepository:
             select(TripDay)
             .join(Trip, TripDay.trip_id == Trip.id)
             .where(TripDay.id == day_id)
-            .where(Trip.user_id == user_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
         )
         day = result.scalar_one_or_none()
         if not day:
@@ -918,7 +1170,13 @@ class ActivityRepository:
             .join(Trip, Activity.trip_id == Trip.id)
             .outerjoin(TripDay, Activity.trip_day_id == TripDay.id)
             .where(Activity.id == activity_id)
-            .where(Trip.user_id == user_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
         )
         row = result.first()
         if not row:
@@ -1906,7 +2164,13 @@ class EventRepository:
             .options(selectinload(EventSnapshot.place))
             .join(Trip, EventSnapshot.trip_id == Trip.id)
             .where(EventSnapshot.id == snapshot_id)
-            .where(Trip.user_id == user_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
         )
         item = row.scalar_one_or_none()
         if not item:
@@ -2185,8 +2449,15 @@ class TripAssetRepository:
     ) -> TripAsset:
         row = await db.execute(
             select(TripAsset)
+            .join(Trip, TripAsset.trip_id == Trip.id)
             .where(TripAsset.id == asset_id)
-            .where(TripAsset.user_id == user_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
         )
         item = row.scalar_one_or_none()
         if item is None:
@@ -2257,11 +2528,7 @@ class TripAssetRepository:
         activity_id: uuid.UUID | None,
     ) -> list[TripAsset]:
         await TripRepository.get_trip(db, user_id, trip_id)
-        query = (
-            select(TripAsset)
-            .where(TripAsset.user_id == user_id)
-            .where(TripAsset.trip_id == trip_id)
-        )
+        query = select(TripAsset).where(TripAsset.trip_id == trip_id)
         if activity_id is None:
             query = query.where(TripAsset.activity_id.is_(None))
         else:
@@ -2279,7 +2546,6 @@ class TripAssetRepository:
         await TripRepository.get_trip(db, user_id, trip_id)
         rows = await db.execute(
             select(TripAsset)
-            .where(TripAsset.user_id == user_id)
             .where(TripAsset.trip_id == trip_id)
             .order_by(TripAsset.created_at.asc(), TripAsset.id.asc())
         )
@@ -2322,7 +2588,7 @@ class TripAssetRepository:
         )
         rows = await db.execute(
             select(TripAsset)
-            .where(TripAsset.user_id == user_id)
+            .where(TripAsset.trip_id == activity.trip_id)
             .where(TripAsset.activity_id == activity.id)
             .order_by(TripAsset.created_at.asc(), TripAsset.id.asc())
         )
@@ -2499,7 +2765,13 @@ class ProposalRepository:
             .options(selectinload(ItineraryProposal.items))
             .join(Trip, ItineraryProposal.trip_id == Trip.id)
             .where(ItineraryProposal.id == proposal_id)
-            .where(Trip.user_id == user_id)
+            .where(
+                _trip_access_clause(
+                    user_id=user_id,
+                    trip_id_column=Trip.id,
+                    owner_user_id_column=Trip.user_id,
+                )
+            )
         )
         proposal = row.scalar_one_or_none()
         if not proposal:
