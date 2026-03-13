@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react'
 import { useAuth } from 'react-oidc-context'
-import { Camera, Globe2, Map, Sparkles, UserRound } from 'lucide-react'
+import { Camera, Map, Sparkles, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -25,11 +25,10 @@ import {
   useProfile,
   useUploadProfileAvatar,
 } from '@/entities/user/queries'
-import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
-import { WorkspaceHeader, WorkspacePage } from '@/shared/layouts/workspace-shell'
+import { WorkspacePage } from '@/shared/layouts/workspace-shell'
 
 const sectionClassName =
-  'rounded-[20px] border border-black/8 bg-white p-5 shadow-[0_22px_60px_-44px_rgba(15,23,42,0.22)]'
+  'rounded-xl border border-black/5 bg-white p-6 shadow-sm'
 const fieldLabelClassName =
   'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]'
 
@@ -43,8 +42,6 @@ const AUDIENCE_OPTIONS: Array<{
   { value: 'friends', label: 'Friends' },
   { value: 'solo_travelers', label: 'Solo travelers' },
 ]
-
-const LOCALE_OPTIONS = ['en-US', 'fr-FR', 'it-IT', 'de-DE', 'es-ES']
 
 function getInitials(name: string) {
   return (
@@ -161,19 +158,21 @@ export default function SettingsPage() {
 
   return (
     <WorkspacePage className="gap-4">
-      <WorkspaceHeader
-        eyebrow="Settings"
-        title="App defaults"
-        description="Set the recommendation, map, and regional defaults Voyager should use across trips."
-        actions={(
-          <Button
-            onClick={() => void handleSaveSettings()}
-            disabled={patchSettings.isPending || isLoading}
-          >
-            {patchSettings.isPending ? 'Saving…' : 'Save settings'}
-          </Button>
-        )}
-      />
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-1.5">
+          <span className="w-fit rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            Settings
+          </span>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">App defaults</h1>
+        </div>
+        <Button
+          onClick={() => void handleSaveSettings()}
+          disabled={patchSettings.isPending || isLoading}
+          className="h-10 rounded-lg px-6"
+        >
+          {patchSettings.isPending ? 'Saving…' : 'Save settings'}
+        </Button>
+      </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <section className={sectionClassName}>
@@ -326,79 +325,7 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        <section className={sectionClassName}>
-          <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(34,197,94,0.14)] text-[var(--color-text)]">
-              <Globe2 className="size-4" />
-            </span>
-            <div>
-              <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                Regional defaults
-              </h2>
-              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Locale and currency used for recommendations and display formatting.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2">
-              <span className={fieldLabelClassName}>Locale</span>
-              <Select
-                value={settings.regional.locale}
-                onValueChange={(value) =>
-                  setSettings((current) => ({
-                    ...current,
-                    regional: {
-                      ...current.regional,
-                      locale: value,
-                    },
-                  }))
-                }
-              >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-[16px] border-black/8">
-                  {LOCALE_OPTIONS.map((locale) => (
-                    <SelectItem key={locale} value={locale}>
-                      {locale}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-
-            <label className="space-y-2">
-              <span className={fieldLabelClassName}>Currency</span>
-              <Select
-                value={settings.regional.currency}
-                onValueChange={(value) =>
-                  setSettings((current) => ({
-                    ...current,
-                    regional: {
-                      ...current.regional,
-                      currency: value,
-                    },
-                  }))
-                }
-              >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="max-h-64 rounded-[16px] border-black/8">
-                  {CURRENCY_OPTIONS.map((currency) => (
-                    <SelectItem key={currency.value} value={currency.value}>
-                      {currency.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          </div>
-        </section>
-
-        <section className={sectionClassName}>
+        <section className={`${sectionClassName} xl:col-span-2`}>
           <div className="flex items-center gap-3">
             <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(15,23,42,0.08)] text-[var(--color-text)]">
               <UserRound className="size-4" />
@@ -408,23 +335,23 @@ export default function SettingsPage() {
                 Account
               </h2>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Update the identity Voyager shows across the app and keep it aligned with Keycloak.
+                Update the identity.
               </p>
             </div>
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+            <div className="rounded-lg border border-black/5 bg-[var(--color-secondary-surface)] p-4">
               <p className={fieldLabelClassName}>Avatar</p>
               <div className="mt-4 flex flex-col items-center text-center">
-                <Avatar className="size-24 rounded-[26px] border border-black/8 bg-white shadow-none">
+                <Avatar className="size-24 rounded-xl border border-black/8 bg-white shadow-none">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="rounded-[26px] text-lg font-semibold">
+                  <AvatarFallback className="rounded-xl text-lg font-semibold">
                     {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
                 <p className="mt-4 text-sm text-[var(--color-text-muted)]">
-                  JPG, PNG, or WebP. Voyager stores the uploaded avatar in its own media bucket.
+                  JPG, PNG, or WebP.
                 </p>
               </div>
 
@@ -486,7 +413,7 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] p-4">
+              <div className="rounded-lg border border-black/5 bg-[var(--color-secondary-surface)] p-4">
                 <p className={fieldLabelClassName}>Signed in as</p>
                 <p className="mt-2 text-base font-medium text-[var(--color-text)]">{displayName}</p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">{userEmail}</p>

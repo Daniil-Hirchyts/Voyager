@@ -44,6 +44,10 @@ from app.models.trips import (
     TripCreateRequest,
     TripPatchRequest,
 )
+from app.services.editorial_trip_templates import (
+    has_editorial_route_template,
+    seed_editorial_route_template,
+)
 from app.services.place_photo_assets import build_place_photo_asset_url
 
 
@@ -309,6 +313,11 @@ class TripRepository:
     @staticmethod
     async def create_trip(db: AsyncSession, user_id: uuid.UUID, payload: TripCreateRequest) -> Trip:
         await TripRepository._validate_date_range(payload)
+        if payload.editorial_route_id and not has_editorial_route_template(payload.editorial_route_id):
+            raise ValidationApiError(
+                "Unknown editorial route",
+                {"editorial_route_id": payload.editorial_route_id},
+            )
 
         trip = Trip(
             user_id=user_id,
@@ -336,6 +345,12 @@ class TripRepository:
             db.add(day)
 
         await db.flush()
+        if payload.editorial_route_id:
+            await seed_editorial_route_template(
+                db,
+                trip=trip,
+                route_id=payload.editorial_route_id,
+            )
         await db.refresh(trip)
         return trip
 

@@ -54,10 +54,6 @@ describe('SettingsPage', () => {
                   showRoutesByDefault: false,
                   showCustomLayersByDefault: true,
                 },
-                regional: {
-                  locale: 'fr-FR',
-                  currency: 'EUR',
-                },
               },
             },
           }),
@@ -97,14 +93,9 @@ describe('SettingsPage', () => {
         minRating: 5,
         audience: 'families',
       },
-      regional: {
-        locale: 'fr-FR',
-        currency: 'EUR',
-      },
     })
     expect(preferences.recommendations).not.toHaveProperty('useLlmRationale')
     expect(preferences.map).not.toHaveProperty('defaultPlannerView')
-    expect(preferences.regional).not.toHaveProperty('region')
     expect(screen.getByRole('button', { name: /sign out/i })).toBeInTheDocument()
   })
 
@@ -120,12 +111,7 @@ describe('SettingsPage', () => {
             last_name: 'Name',
             display_name: 'Old Name',
             preferences: {
-              voyager: {
-                regional: {
-                  locale: 'en-US',
-                  currency: 'USD',
-                },
-              },
+              voyager: {},
             },
           }),
         ),
@@ -138,12 +124,7 @@ describe('SettingsPage', () => {
             last_name: patchedBody?.last_name ?? 'Name',
             display_name: `${patchedBody?.first_name ?? 'Old'} ${patchedBody?.last_name ?? 'Name'}`,
             preferences: {
-              voyager: {
-                regional: {
-                  locale: 'en-US',
-                  currency: 'USD',
-                },
-              },
+              voyager: {},
             },
           }),
         )

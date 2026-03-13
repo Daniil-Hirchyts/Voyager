@@ -20,6 +20,7 @@ import { useProfile } from '@/entities/user/queries'
 import { VoyagerLogo } from './logo'
 import { cn } from '@/shared/lib/cn'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -88,6 +89,10 @@ function getSectionLabel(pathname: string, tripId?: string) {
     return 'Settings'
   }
 
+  if (pathname.startsWith('/app/invites/')) {
+    return 'Invite'
+  }
+
   if (pathname === '/app/trips') {
     return 'Trips'
   }
@@ -121,6 +126,24 @@ function getInitials(userName: string) {
   return initials || 'V'
 }
 
+function getTripShareBadge(trip: Trip) {
+  if (trip.current_user_role === 'editor') {
+    return {
+      label: 'Editor',
+      variant: 'accent' as const,
+    }
+  }
+
+  if (trip.collaborator_count > 0) {
+    return {
+      label: trip.collaborator_count > 1 ? `Shared ${trip.collaborator_count}` : 'Shared',
+      variant: 'outline' as const,
+    }
+  }
+
+  return null
+}
+
 function AppSidebarLink({ to, label, icon: Icon, end = false }: NavItem) {
   const resolvedPath = useResolvedPath(to)
   const match = useMatch({ path: resolvedPath.pathname, end })
@@ -152,12 +175,14 @@ function AppRecentTripLink({
   trip: Trip
   isActive: boolean
 }) {
+  const shareBadge = getTripShareBadge(trip)
+
   return (
     <SidebarMenuItem>
       <Link
         to={`/app/trips/${trip.id}`}
         className={cn(
-          'flex min-h-8 items-center rounded-[8px] px-2 py-1.5 text-[0.84rem] transition-colors',
+          'flex min-h-8 items-center justify-between gap-2 rounded-[8px] px-2 py-1.5 text-[0.84rem] transition-colors',
           'hover:bg-black/3',
           isActive ? 'bg-black/4' : 'bg-transparent',
         )}
@@ -165,6 +190,7 @@ function AppRecentTripLink({
         <span className={cn('truncate text-[#5f6b7a]', isActive ? 'font-medium text-[var(--color-text)]' : 'font-normal')}>
           {trip.title}
         </span>
+        {shareBadge ? <Badge variant={shareBadge.variant}>{shareBadge.label}</Badge> : null}
       </Link>
     </SidebarMenuItem>
   )

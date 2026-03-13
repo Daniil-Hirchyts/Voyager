@@ -1,10 +1,13 @@
-.PHONY: up down logs logs-worker migrate test test-integration fmt lint smoke-phase1 smoke-phase2 smoke-phase2-llm smoke-phase3 smoke-phase5 smoke-phase6
+.PHONY: up down logs logs-worker migrate test test-integration fmt lint smoke-phase1 smoke-phase2 smoke-phase2-llm smoke-phase3 smoke-phase5 smoke-phase6 reset-keycloak
 
 up:
 	docker compose up -d --build
 
 down:
 	docker compose down
+
+reset-keycloak:
+	./scripts/reset_keycloak.sh
 
 logs:
 	docker compose logs -f --tail=200 api

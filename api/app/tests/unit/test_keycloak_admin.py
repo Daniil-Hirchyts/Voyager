@@ -115,6 +115,8 @@ async def test_sync_keycloak_user_names_updates_user(monkeypatch):
 async def test_sync_keycloak_user_names_requires_admin_credentials(monkeypatch):
     monkeypatch.delenv("KEYCLOAK_ADMIN", raising=False)
     monkeypatch.delenv("KEYCLOAK_ADMIN_PASSWORD", raising=False)
+    monkeypatch.delenv("KC_BOOTSTRAP_ADMIN_USERNAME", raising=False)
+    monkeypatch.delenv("KC_BOOTSTRAP_ADMIN_PASSWORD", raising=False)
     get_settings.cache_clear()
 
     with pytest.raises(ServiceUnavailableError) as exc_info:
@@ -125,3 +127,68 @@ async def test_sync_keycloak_user_names_requires_admin_credentials(monkeypatch):
         )
 
     assert exc_info.value.code == "INTEGRATION_NOT_CONFIGURED"
+
+
+@pytest.mark.asyncio
+async def test_sync_keycloak_user_names_accepts_bootstrap_admin_env_names(monkeypatch):
+    monkeypatch.delenv("KEYCLOAK_ADMIN", raising=False)
+    monkeypatch.delenv("KEYCLOAK_ADMIN_PASSWORD", raising=False)
+    monkeypatch.setenv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+    get_settings.cache_clear()
+
+    calls: list[tuple[str, str, object | None]] = []
+
+    class _FakeAsyncClient:
+        def __init__(self, *, base_url: str, timeout: int, trust_env: bool):
+            assert base_url == "http://keycloak:8080"
+            assert timeout == 10
+            assert trust_env is False
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def post(self, url: str, data: dict[str, str]):
+            calls.append(("POST", url, data))
+            return httpx.Response(
+                200,
+                json={"access_token": "admin-token"},
+                request=httpx.Request("POST", f"http://keycloak:8080{url}"),
+            )
+
+        async def get(self, url: str, headers: dict[str, str]):
+            calls.append(("GET", url, headers))
+            return httpx.Response(
+                200,
+                json={"id": "user-123"},
+                request=httpx.Request("GET", f"http://keycloak:8080{url}"),
+            )
+
+        async def put(self, url: str, headers: dict[str, str], json: dict[str, str]):
+            calls.append(("PUT", url, json))
+            return httpx.Response(
+                204,
+                request=httpx.Request("PUT", f"http://keycloak:8080{url}"),
+            )
+
+    monkeypatch.setattr(keycloak_admin.httpx, "AsyncClient", _FakeAsyncClient)
+
+    await keycloak_admin.sync_keycloak_user_names(
+        user_id="user-123",
+        first_name="Captain",
+        last_name="Atlas",
+    )
+
+    assert calls[0] == (
+        "POST",
+        "/realms/master/protocol/openid-connect/token",
+        {
+            "grant_type": "password",
+            "client_id": "admin-cli",
+            "username": "admin",
+            "password": "admin",
+        },
+    )

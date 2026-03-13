@@ -3,6 +3,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { tripKeys, useTrips } from '@/entities/trip/queries'
 import { createTrip } from '@/entities/trip/api'
+import { createPlannerActivity } from '@/entities/activity/api'
+import { getPlanner } from '@/entities/planner/api'
 import { createPlace } from '@/entities/place/api'
 import { mergeTripCoverPhotoPreference } from '@/entities/trip/cover-photo'
 import {
@@ -20,6 +22,7 @@ import { differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns
 import { toast } from 'sonner'
 import { config } from '@/app/config'
 import { AnimatedNumber } from '@/components/ui/animated-number'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AnimatedBackground } from '@/components/ui/animated-background'
 import { Carousel, CarouselContent, CarouselItem, CarouselNavigation } from '@/components/ui/carousel'
@@ -35,6 +38,7 @@ import {
   CURATED_DESTINATIONS,
   type CuratedDestination,
 } from './curated-destinations'
+import { buildEditorialTemplate } from './editorial-templates'
 
 function formatTripDates(startDate?: string | null, endDate?: string | null) {
   if (!startDate && !endDate) {
@@ -120,6 +124,26 @@ function formatTravelModeLabel(mode: CuratedDestination['routeTravelMode']) {
   return mode.charAt(0) + mode.slice(1).toLowerCase()
 }
 
+function getTripShareBadge(trip: Trip) {
+  if (trip.current_user_role === 'editor') {
+    return {
+      label: 'Editor',
+      detail: 'Shared access',
+      variant: 'accent' as const,
+    }
+  }
+
+  if (trip.collaborator_count > 0) {
+    return {
+      label: 'Shared',
+      detail: `${trip.collaborator_count} ${trip.collaborator_count === 1 ? 'editor' : 'editors'}`,
+      variant: 'outline' as const,
+    }
+  }
+
+  return null
+}
+
 function getDestinationPoint(destination: CuratedDestination) {
   return {
     lat: destination.lat,
@@ -170,6 +194,7 @@ function TripCard({
   const tripLengthLabel = getTripLengthLabel(trip.start_date, trip.end_date)
   const timingLabel = getTripTimingLabel(trip.start_date, trip.end_date)
   const dateLabel = formatTripDates(trip.start_date, trip.end_date)
+  const shareBadge = getTripShareBadge(trip)
 
   return (
     <Link to={`/app/trips/${trip.id}`} className="block group" draggable={false}>
@@ -198,6 +223,12 @@ function TripCard({
             </span>
           </div>
 
+          {shareBadge ? (
+            <div className="absolute right-3 top-3">
+              <Badge variant={shareBadge.variant}>{shareBadge.label}</Badge>
+            </div>
+          ) : null}
+
           <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">
             <h3 className="line-clamp-2 text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.04em] text-white drop-shadow-sm">
               {trip.title}
@@ -209,9 +240,16 @@ function TripCard({
         </div>
 
         <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
-            <span className="truncate text-[0.78rem] text-[#64748b]">{dateLabel}</span>
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
+              <span className="truncate text-[0.78rem] text-[#64748b]">{dateLabel}</span>
+            </div>
+            {shareBadge ? (
+              <span className="text-[0.74rem] font-medium text-[#7a8796]">
+                {shareBadge.detail}
+              </span>
+            ) : null}
           </div>
           {tripLengthLabel && (
             <span className="shrink-0 rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[0.7rem] font-medium text-[#64748b]">
@@ -425,6 +463,39 @@ export default function TripsPage() {
     CURATED_DESTINATIONS.find((destination) => destination.id === activeDestinationId) ??
     CURATED_DESTINATIONS[0]
 
+  async function seedEditorialActionsIfNeeded(tripId: string, destination: CuratedDestination) {
+    const planner = await getPlanner(tripId)
+    const hasActivities =
+      planner.inbox_activities.length > 0 ||
+      planner.days.some((day) => day.activities.length > 0)
+
+    if (hasActivities) {
+      return false
+    }
+
+    const template = buildEditorialTemplate(destination)
+    for (const [dayIndex, day] of planner.days.entries()) {
+      const dayTemplate = template[dayIndex] ?? []
+      for (const action of dayTemplate) {
+        await createPlannerActivity(
+          tripId,
+          {
+            trip_day_id: day.id,
+            category: action.category,
+            title: action.title,
+            description: action.description ?? null,
+            start_time: action.start_time ?? null,
+            duration_min: action.duration_min ?? null,
+            source: action.source,
+          },
+          crypto.randomUUID(),
+        )
+      }
+    }
+
+    return true
+  }
+
   async function handleAddDestination(destination: CuratedDestination) {
     if (addingDestinationId) {
       return
@@ -443,9 +514,18 @@ export default function TripsPage() {
           budget_currency: destination.budgetCurrency,
           trip_type: destination.tripType,
           route_travel_mode: destination.routeTravelMode,
+          editorial_route_id: destination.id,
         },
         crypto.randomUUID(),
       )
+
+      let editorialSeedFailed = false
+
+      try {
+        await seedEditorialActionsIfNeeded(trip.id, destination)
+      } catch {
+        editorialSeedFailed = true
+      }
 
       let placeId: string | null = null
 
@@ -486,6 +566,9 @@ export default function TripsPage() {
       setSearchParams(next, { replace: true })
       await queryClient.invalidateQueries({ queryKey: tripKeys.all })
       toast.success(`${destination.name} added to your trips`)
+      if (editorialSeedFailed) {
+        toast.error('Trip created, but its editorial actions could not be prefilled.')
+      }
     } catch (mutationError) {
       if (isApiError(mutationError) && mutationError.status === 429) {
         toast.error('Too many requests. Wait a moment and try again.')
@@ -501,14 +584,16 @@ export default function TripsPage() {
 
   return (
     <WorkspacePage className="gap-6 pb-12 md:gap-8 md:pb-14 lg:gap-10">
-      <header className="relative overflow-hidden rounded-[24px] border border-white/75 px-5 py-5 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)] md:px-6 md:py-6">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-50 mix-blend-luminosity"
-          style={{
-            backgroundImage: 'url("/images/trips/trips-hero.jpg")',
-          }}
+      <header className="relative overflow-hidden rounded-xl border border-white/75 px-5 py-5 shadow-sm md:px-6 md:py-6">
+        <img
+          src="/images/trips/trips-hero.jpg"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          loading="eager"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-50 mix-blend-luminosity"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.65)_0%,rgba(243,247,251,0.95)_100%)] backdrop-blur-[2px]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.65)_0%,rgba(243,247,251,0.95)_100%)]" />
         <div className="relative">
           <div className="flex flex-col items-center justify-center text-center py-6 md:py-10">
             <h1 className="text-[2.4rem] font-semibold leading-[1.05] tracking-[-0.06em] text-[var(--color-text)] md:text-[3.2rem] max-w-[25ch]">
@@ -535,6 +620,7 @@ export default function TripsPage() {
         </div>
       </header>
 
+      {(isLoading || error || trips.length > 0) && (
       <section id="board" className="mt-8 scroll-mt-6 px-1 md:px-2">
         <Carousel className="animate-in fade-in slide-in-from-bottom-4 duration-300 group/board">
           <SectionIntro
@@ -567,41 +653,14 @@ export default function TripsPage() {
               ))}
             </CarouselContent>
           )}
-
-          {!isLoading && trips.length === 0 && !error && (
-            <div className="mt-6 overflow-hidden rounded-[24px] border border-[#dce6ef] bg-white px-6 py-7 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)]">
-              <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-[#8b97a7]">
-                Your archive starts here
-              </p>
-              <h3 className="mt-3 text-[1.7rem] font-semibold tracking-[-0.05em] text-[var(--color-text)]">
-                No trips yet
-              </h3>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--color-text-muted)] md:text-[0.98rem]">
-                Start with a blank trip or use one of the curated destinations below to drop in dates, budget, route style, and a destination cover immediately.
-              </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <Button asChild className="h-11 rounded-full px-5 text-[0.95rem]">
-                  <Link to="/app/trips/new">
-                    <Plus className="mr-1.5 size-4" />
-                    New trip
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" className="h-11 rounded-full px-5 text-[0.95rem]">
-                  <a href="#destinations">
-                    Try a proposed destination
-                    <ChevronRight className="ml-1 size-4" />
-                  </a>
-                </Button>
-              </div>
-            </div>
-          )}
         </Carousel>
       </section>
+      )}
 
       {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section
         id="destinations"
-        className="mt-10 scroll-mt-6 overflow-hidden rounded-[24px] border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-5 shadow-[0_16px_40px_-24px_rgba(24,42,62,0.2)] md:px-6 md:py-6"
+        className="mt-10 scroll-mt-6 overflow-hidden rounded-xl border border-white/75 bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] px-5 py-5 shadow-sm md:px-6 md:py-6"
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -650,7 +709,7 @@ export default function TripsPage() {
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-[24px] border border-[#d8e0e8] bg-white shadow-[0_24px_70px_-46px_rgba(24,42,62,0.34)]">
+        <div className="mt-6 overflow-hidden rounded-xl border border-[#d8e0e8] bg-white shadow-sm">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
             {/* Map or Info Area */}
             <div className="h-[30rem] lg:h-[34rem] overflow-y-auto bg-white relative">

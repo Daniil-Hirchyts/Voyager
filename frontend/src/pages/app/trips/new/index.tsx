@@ -408,6 +408,7 @@ export default function TripCreatePage() {
           budget_amount: data.budget_amount ?? null,
           budget_currency: data.budget_currency,
           trip_type: data.trip_type as FormValues['trip_type'],
+          route_travel_mode: 'WALK',
         },
         idempotencyKey,
       ),

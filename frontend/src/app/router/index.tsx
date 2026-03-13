@@ -24,6 +24,7 @@ const ImprintPage = lazy(() => import('@/pages/public/imprint'))
 const SettingsPage = lazy(() => import('@/pages/app/settings'))
 const TripsPage = lazy(() => import('@/pages/app/trips'))
 const TripCreatePage = lazy(() => import('@/pages/app/trips/new'))
+const TripInvitePage = lazy(() => import('@/pages/app/invites'))
 const PlanPage = lazy(() => import('@/pages/app/plan'))
 const EventsPage = lazy(() => import('@/pages/app/events'))
 const ProposalsPage = lazy(() => import('@/pages/app/proposals'))
@@ -226,6 +227,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageLoader />}>
             <TripCreatePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'invites/:token',
+        element: (
+          <Suspense fallback={<PageLoader />}>
+            <TripInvitePage />
           </Suspense>
         ),
       },

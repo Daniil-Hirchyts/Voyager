@@ -21,7 +21,7 @@ function toLatLng(point: PreviewPoint) {
 function PlannerMapMarker({ title }: { title: string }) {
   return (
     <div className="transition-transform origin-bottom pb-1">
-      <div className="relative flex items-center justify-center h-7 w-7 rounded-[50%_50%_50%_10%] -rotate-45 backdrop-blur-md border-[1.5px] border-white/80 shadow-[0_6px_12px_rgba(0,0,0,0.15)] bg-zinc-900/85">
+      <div className="relative flex items-center justify-center h-7 w-7 rounded-[50%_50%_50%_10%] -rotate-45 border-[1.5px] border-white shadow-[0_6px_12px_rgba(0,0,0,0.15)] bg-zinc-900">
         <div className="rotate-45 flex items-center justify-center">
           <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
         </div>
@@ -72,7 +72,7 @@ export function PlannerPreviewMap({
 
   if (!config.map.apiKey) {
     return (
-      <div className="rounded-[14px] border border-black/8 bg-white px-4 py-4 text-sm text-[var(--color-text-muted)]">
+      <div className="border border-black/8 bg-white px-4 py-4 text-sm text-[var(--color-text-muted)]">
         Map preview is unavailable without a Google Maps API key.
       </div>
     );
@@ -82,7 +82,7 @@ export function PlannerPreviewMap({
   const hasRoute = normalizedRoute.length >= 2;
 
   return (
-    <div className="overflow-hidden rounded-[14px] border border-black/8 bg-white">
+    <div className="overflow-hidden border border-black/8 bg-white">
       <div style={{ height: heightPx }}>
         <GoogleMapCanvas
           key={mapSignature}

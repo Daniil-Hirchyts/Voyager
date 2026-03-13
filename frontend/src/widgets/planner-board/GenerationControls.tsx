@@ -8,9 +8,11 @@ import { AiLoadingText } from '@/components/ui/ai-loading-text'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import type { Day } from '@/shared/api/types'
 import { VoyagerLoader } from '@/widgets/app-shell/logo'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 
 const schema = z.object({
   mode: z.enum(['replace', 'merge', 'append']),
@@ -40,6 +42,101 @@ const MODE_LABELS: Record<string, { label: string; desc: string }> = {
   append: { label: 'Append', desc: 'Add new activities without removing existing ones' },
 }
 
+function GenerationForm({
+  action,
+  mode,
+  days,
+  dayIds,
+  register,
+  handleSubmit,
+  onSubmit,
+  setValue,
+}: {
+  action: 'generate' | 'regenerate' | 'reset'
+  mode: string
+  days: Day[]
+  dayIds: string[]
+  register: ReturnType<typeof useForm<FormValues>>['register']
+  handleSubmit: ReturnType<typeof useForm<FormValues>>['handleSubmit']
+  onSubmit: (values: FormValues) => Promise<void>
+  setValue: ReturnType<typeof useForm<FormValues>>['setValue']
+}) {
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-5 py-5">
+      {action !== 'reset' && (
+        <div>
+          <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
+            Mode
+          </label>
+          <div className="space-y-2">
+            {(['replace', 'merge', 'append'] as const).map((m) => (
+              <label
+                key={m}
+                className={cn(
+                  'flex cursor-pointer items-start gap-3 rounded-[10px] border border-black/8 p-3 transition-colors',
+                  mode === m
+                    ? 'border-[rgba(0,0,0,0.14)] bg-[var(--color-secondary-surface)]'
+                    : 'bg-white hover:bg-[var(--color-secondary-surface)]',
+                )}
+              >
+                <input
+                  type="radio"
+                  value={m}
+                  {...register('mode')}
+                  className="mt-0.5"
+                />
+                <div>
+                  <p className="text-sm font-medium text-[var(--color-text)]">
+                    {MODE_LABELS[m].label}
+                  </p>
+                  <p className="text-xs text-[var(--color-text-muted)]">{MODE_LABELS[m].desc}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {days.length > 0 && (
+        <div>
+          <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
+            Scope to specific days (optional)
+          </label>
+          <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
+            {days.map((day, i) => (
+              <label
+                key={day.id}
+                htmlFor={`gen-day-${day.id}`}
+                className="flex cursor-pointer items-center gap-2 rounded-[8px] px-1 py-1 text-sm text-[var(--color-text)]"
+              >
+                <Checkbox
+                  id={`gen-day-${day.id}`}
+                  checked={dayIds.includes(day.id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setValue('day_ids', [...dayIds, day.id])
+                    } else {
+                      setValue('day_ids', dayIds.filter((id) => id !== day.id))
+                    }
+                  }}
+                />
+                Day {i + 1}{day.date && ` — ${day.date}`}
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {action === 'reset' && (
+        <p className="text-sm text-[var(--color-text-muted)]">
+          This will remove all generated activities from the selected days. Manually
+          added activities will be preserved.
+        </p>
+      )}
+    </form>
+  )
+}
+
 export function GenerationControls({
   days,
   hasActivities,
@@ -52,6 +149,7 @@ export function GenerationControls({
   controlledOpen,
   onControlledOpenChange,
 }: Props) {
+  const isMobile = useIsMobile()
   const isControlled = controlledOpen !== undefined
   const [open, setOpen] = useState(false)
   const [action, setAction] = useState<'generate' | 'regenerate' | 'reset'>('generate')
@@ -156,107 +254,89 @@ export function GenerationControls({
         )}
       </div>}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-[34rem] rounded-[12px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-none">
-          <DialogHeader>
-            <DialogTitle className="font-medium tracking-normal">
-              {action === 'generate' && 'Generate Itinerary'}
-              {action === 'regenerate' && 'Regenerate Itinerary'}
-              {action === 'reset' && 'Reset Itinerary'}
-            </DialogTitle>
-          </DialogHeader>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-6 py-5">
-            {action !== 'reset' && (
-              <div>
-                <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-                  Mode
-                </label>
-                <div className="space-y-2">
-                  {(['replace', 'merge', 'append'] as const).map((m) => (
-                    <label
-                      key={m}
-                      className={cn(
-                        'flex cursor-pointer items-start gap-3 rounded-[10px] border border-black/8 p-3 transition-colors',
-                        mode === m
-                          ? 'border-[rgba(0,0,0,0.14)] bg-[var(--color-secondary-surface)]'
-                          : 'bg-white hover:bg-[var(--color-secondary-surface)]',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        value={m}
-                        {...register('mode')}
-                        className="mt-0.5"
-                      />
-                      <div>
-                        <p className="text-sm font-medium text-[var(--color-text)]">
-                          {MODE_LABELS[m].label}
-                        </p>
-                        <p className="text-xs text-[var(--color-text-muted)]">{MODE_LABELS[m].desc}</p>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Day selection */}
-            {days.length > 0 && (
-              <div>
-                <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-                  Scope to specific days (optional)
-                </label>
-                <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
-                  {days.map((day, i) => (
-                    <label
-                      key={day.id}
-                      htmlFor={`day-${day.id}`}
-                      className="flex cursor-pointer items-center gap-2 rounded-[8px] px-1 py-1 text-sm text-[var(--color-text)]"
-                    >
-                      <Checkbox
-                        id={`day-${day.id}`}
-                        checked={dayIds.includes(day.id)}
-                        onCheckedChange={(checked) => {
-                          if (checked) {
-                            setValue('day_ids', [...dayIds, day.id])
-                          } else {
-                            setValue('day_ids', dayIds.filter((id) => id !== day.id))
-                          }
-                        }}
-                      />
-                      Day {i + 1}{day.date && ` — ${day.date}`}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {action === 'reset' && (
-              <p className="text-sm text-[var(--color-text-muted)]">
-                This will remove all generated activities from the selected days. Manually
-                added activities will be preserved.
-              </p>
-            )}
-          </form>
-
-          <DialogFooter>
-            <Button variant="outline" type="button" onClick={() => setOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSubmit(onSubmit)}
-              variant={action === 'reset' ? 'destructive' : 'default'}
-              className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
-            >
-              {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
-              {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
-              {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isMobile ? (
+        <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
+          <SheetContent
+            side="bottom"
+            className="flex h-auto max-h-[90dvh] flex-col overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none"
+          >
+            <SheetHeader className="shrink-0 border-b border-black/5 px-5 py-4">
+              <SheetTitle className="font-medium tracking-normal text-left">
+                {action === 'generate' && 'Generate Itinerary'}
+                {action === 'regenerate' && 'Regenerate Itinerary'}
+                {action === 'reset' && 'Reset Itinerary'}
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                {action === 'generate' ? 'Configure itinerary generation options' : action === 'reset' ? 'Reset generated activities' : 'Regenerate itinerary'}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <GenerationForm
+                action={action}
+                mode={mode}
+                days={days}
+                dayIds={dayIds}
+                register={register}
+                handleSubmit={handleSubmit}
+                onSubmit={onSubmit}
+                setValue={setValue}
+              />
+            </div>
+            <div className="shrink-0 border-t border-black/5 flex gap-2 px-5 py-4">
+              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit(onSubmit)}
+                variant={action === 'reset' ? 'destructive' : 'default'}
+                className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
+              >
+                {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
+                {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
+                {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="max-w-[34rem] rounded-[12px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-none">
+            <DialogHeader>
+              <DialogTitle className="font-medium tracking-normal">
+                {action === 'generate' && 'Generate Itinerary'}
+                {action === 'regenerate' && 'Regenerate Itinerary'}
+                {action === 'reset' && 'Reset Itinerary'}
+              </DialogTitle>
+            </DialogHeader>
+            <GenerationForm
+              action={action}
+              mode={mode}
+              days={days}
+              dayIds={dayIds}
+              register={register}
+              handleSubmit={handleSubmit}
+              onSubmit={onSubmit}
+              setValue={setValue}
+            />
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSubmit(onSubmit)}
+                variant={action === 'reset' ? 'destructive' : 'default'}
+                className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
+              >
+                {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
+                {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
+                {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }

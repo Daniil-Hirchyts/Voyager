@@ -12,6 +12,7 @@ export type PlannerSectionAnchor = 'itinerary' | 'hotel' | 'travel'
 
 type PlannerInstruments = {
   onOpenSettings: () => void
+  onShare: () => void
   onGenerate: () => void
   days: DayAnchor[]
   onScrollToDay: (dayId: string) => void

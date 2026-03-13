@@ -205,8 +205,8 @@ export function usePlannerRecommendations({
       entity_type: 'attraction' as const,
       query: trip?.destination_text ?? '',
       limit: preferences.recommendations.resultLimit,
-      locale: preferences.regional.locale,
-      currency: trip?.budget_currency || preferences.regional.currency,
+      locale: 'en-US',
+      currency: trip?.budget_currency || 'USD',
       min_rating: preferences.recommendations.minRating ?? undefined,
       good_for:
         preferences.recommendations.audience === 'any'
@@ -217,8 +217,6 @@ export function usePlannerRecommendations({
       preferences.recommendations.audience,
       preferences.recommendations.minRating,
       preferences.recommendations.resultLimit,
-      preferences.regional.currency,
-      preferences.regional.locale,
       trip?.budget_currency,
       trip?.destination_text,
     ],
@@ -250,7 +248,7 @@ export function usePlannerRecommendations({
       return await saveMutation.mutateAsync({
         data: buildShortlistSavePayload(
           entry.item,
-          trip?.budget_currency || preferences.regional.currency,
+          trip?.budget_currency || 'USD',
         ),
         idempotencyKey: crypto.randomUUID(),
       })

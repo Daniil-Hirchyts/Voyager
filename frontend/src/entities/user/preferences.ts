@@ -18,15 +18,9 @@ export interface VoyagerMapPreferences {
   showCustomLayersByDefault: boolean
 }
 
-export interface VoyagerRegionalPreferences {
-  locale: string
-  currency: string
-}
-
 export interface VoyagerPreferences {
   recommendations: VoyagerRecommendationPreferences
   map: VoyagerMapPreferences
-  regional: VoyagerRegionalPreferences
 }
 
 export const DEFAULT_VOYAGER_PREFERENCES: VoyagerPreferences = {
@@ -38,10 +32,6 @@ export const DEFAULT_VOYAGER_PREFERENCES: VoyagerPreferences = {
   map: {
     showRoutesByDefault: true,
     showCustomLayersByDefault: true,
-  },
-  regional: {
-    locale: 'en-US',
-    currency: 'USD',
   },
 }
 
@@ -73,10 +63,6 @@ function coerceNullableRating(value: unknown, fallback: number | null) {
   return Math.min(5, Math.max(1, Math.round(value)))
 }
 
-function coerceString(value: unknown, fallback: string) {
-  return typeof value === 'string' && value.trim() ? value.trim() : fallback
-}
-
 function coerceAudience(
   value: unknown,
   fallback: RecommendationAudiencePreference,
@@ -100,7 +86,6 @@ export function readVoyagerPreferences(
   const voyager = asRecord(root.voyager)
   const recommendations = asRecord(voyager.recommendations)
   const map = asRecord(voyager.map)
-  const regional = asRecord(voyager.regional)
 
   return {
     recommendations: {
@@ -129,13 +114,6 @@ export function readVoyagerPreferences(
         DEFAULT_VOYAGER_PREFERENCES.map.showCustomLayersByDefault,
       ),
     },
-    regional: {
-      locale: coerceString(regional.locale, DEFAULT_VOYAGER_PREFERENCES.regional.locale),
-      currency: coerceString(
-        regional.currency,
-        DEFAULT_VOYAGER_PREFERENCES.regional.currency,
-      ).toUpperCase(),
-    },
   }
 }
 
@@ -153,10 +131,6 @@ export function mergeVoyagerPreferences(
     map: {
       ...current.map,
       ...patch.map,
-    },
-    regional: {
-      ...current.regional,
-      ...patch.regional,
     },
   }
 

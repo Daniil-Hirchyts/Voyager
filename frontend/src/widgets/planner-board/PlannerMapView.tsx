@@ -61,6 +61,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { AnimatedMoney, AnimatedNumber } from '@/components/ui/animated-number'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AnimatedBackground } from '@/components/ui/animated-background'
@@ -113,8 +114,10 @@ import { estimateRouteLegs } from '@/entities/routes/api'
 import { useRouteLegEstimates } from '@/entities/routes/queries'
 import { useTripAssets } from '@/entities/trip-asset/queries'
 import { useTripMapLayers } from '@/entities/trip-map-layer/queries'
+import { useTripSharing } from '@/entities/trip-sharing/queries'
 import { usePatchTrip } from '@/entities/trip/queries'
 import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
+import { useProfile } from '@/entities/user/queries'
 import type {
   GooglePlaceCandidate,
   PlannerActivity,
@@ -123,6 +126,7 @@ import type {
   PlannerResponse,
   RouteTravelMode,
   Trip,
+  TripCollaborator,
 } from '@/shared/api/types'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { cn } from '@/shared/lib/cn'
@@ -210,6 +214,7 @@ interface Props {
   onEditActivity?: (activity: PlannerActivity) => void
   onDeleteActivity?: (activityId: string) => void
   onRegisterSectionOpener?: (opener: (sectionKey: string) => void) => void
+  onOpenCollaboration?: () => void
 }
 
 type SearchResultItem = {
@@ -879,13 +884,32 @@ function PlannerSidebarSectionTrigger({
 
 function PlannerTripHeroCard({
   trip,
+  tripId,
   coverPhotoUrl,
+  onOpenCollaboration,
 }: {
   trip: Trip
+  tripId: string
   coverPhotoUrl: string | null
+  onOpenCollaboration?: () => void
 }) {
   const tripTypeLabel = formatTripTypeLabel(trip.trip_type)
   const dateLabel = formatTripDateRangeLabel(trip.start_date, trip.end_date)
+  const { data: profile } = useProfile()
+  const sharing = useTripSharing(tripId)
+  const collaborators = sharing.data?.collaborators ?? []
+
+  const myName = profile?.display_name || 'Me'
+  const myAvatar = profile?.avatar_thumbnail_url || profile?.avatar_url || null
+  const myInitials = myName.split(/\s+/).filter(Boolean).slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('') || 'M'
+
+  function getCollaboratorName(c: TripCollaborator) {
+    return c.display_name || c.email || 'Traveler'
+  }
+
+  const visibleCollaborators = collaborators.filter(
+    (c) => c.user_id !== trip.user_id && c.user_id !== profile?.keycloak_sub
+  ).slice(0, 3)
 
   return (
     <section
@@ -917,13 +941,41 @@ function PlannerTripHeroCard({
           ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,20,32,0.08)_0%,rgba(10,20,32,0.14)_42%,rgba(255,255,255,0.68)_82%,#ffffff_100%)]" />
           <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-
             {tripTypeLabel ? (
               <span className="rounded-full border border-white/45 bg-white/16 px-2.5 py-1 text-[0.64rem] font-medium text-white/92 backdrop-blur">
                 {tripTypeLabel}
               </span>
             ) : null}
           </div>
+          <button
+            type="button"
+            className="absolute right-3 top-3 flex items-center"
+            onClick={onOpenCollaboration}
+            aria-label="Open collaboration"
+          >
+            <div className="flex -space-x-2">
+              {/* Plus circle (behind) */}
+              <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 backdrop-blur shadow-sm">
+                <span className="text-white text-[1rem] font-light leading-none">+</span>
+              </div>
+              {/* Collaborator avatars */}
+              {visibleCollaborators.map((c) => {
+                const name = getCollaboratorName(c)
+                const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('') || 'T'
+                return (
+                  <Avatar key={c.user_id} className="h-8 w-8 rounded-full border-2 border-white shadow-sm">
+                    <AvatarImage src={(c as TripCollaborator & { avatar_url?: string }).avatar_url ?? undefined} alt={name} />
+                    <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[#526072]">{initials}</AvatarFallback>
+                  </Avatar>
+                )
+              })}
+              {/* My avatar (front) */}
+              <Avatar className="h-8 w-8 rounded-full border-2 border-white shadow-sm">
+                <AvatarImage src={myAvatar ?? undefined} alt={myName} />
+                <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[#526072]">{myInitials}</AvatarFallback>
+              </Avatar>
+            </div>
+          </button>
           {!coverPhotoUrl ? (
             <div className="absolute inset-x-4 bottom-5">
               <p className="text-[0.66rem] font-semibold uppercase tracking-[0.22em] text-white/80">
@@ -1287,8 +1339,8 @@ function PlannerMapPin({
   return (
     <div className={cn("pointer-events-none relative transition-transform origin-bottom pb-1", selected && "scale-110")}>
       <div
-        className="flex h-9 w-9 items-center justify-center rounded-[50%_50%_50%_10%] -rotate-45 backdrop-blur-md border-[1.5px] border-white/80 shadow-[0_6px_12px_rgba(0,0,0,0.15)]"
-        style={{ backgroundColor: selected ? '#111827d9' : `${color}d9` }}
+        className="flex h-9 w-9 items-center justify-center rounded-[50%_50%_50%_10%] -rotate-45 border-[1.5px] border-white shadow-[0_6px_12px_rgba(0,0,0,0.15)]"
+        style={{ backgroundColor: selected ? '#111827' : `${color}` }}
       >
         <div className="rotate-45 flex items-center justify-center">
           <span className="text-[14px] font-bold text-white tracking-tight leading-none drop-shadow-md">
@@ -2694,6 +2746,7 @@ export function PlannerMapView({
   onEditActivity,
   onDeleteActivity,
   onRegisterSectionOpener,
+  onOpenCollaboration,
 }: Props) {
   const isMobile = useIsMobile()
   const { mobilePlannerView } = useSideRailStore()
@@ -3659,11 +3712,11 @@ export function PlannerMapView({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="grid h-full min-h-0 gap-0 overflow-hidden md:py-2 md:pr-2 xl:grid-cols-[minmax(420px,0.47fr)_minmax(0,0.53fr)]">
-        <div className={cn('min-h-0 flex-col', mobilePlannerView === 'map' ? 'hidden md:flex' : 'flex')}>
-          <div data-planner-scroll className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex flex-col gap-3 p-2">
-              <PlannerTripHeroCard trip={trip} coverPhotoUrl={heroPhotoUrl} />
+      <div className="grid h-full min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(380px,0.46fr)_minmax(0,0.54fr)]">
+        <div className={cn('min-h-0 min-w-0 flex-col', mobilePlannerView === 'map' ? 'hidden lg:flex' : 'flex')}>
+          <div data-planner-scroll className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex flex-col gap-3 p-2 pb-8">
+              <PlannerTripHeroCard trip={trip} coverPhotoUrl={heroPhotoUrl} tripId={tripId} onOpenCollaboration={onOpenCollaboration} />
 
               <div className="px-1 pt-1">
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
@@ -3836,9 +3889,9 @@ export function PlannerMapView({
         <section
           ref={mapContainerRef}
           className={cn(
-            'relative min-h-0 overflow-hidden rounded-[28px] border border-black/8 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]',
+            'relative min-h-0 overflow-hidden lg:border-l border-black/8 bg-[var(--color-secondary-surface)] shadow-[0_28px_80px_-40px_rgba(15,23,42,0.28)]',
             mobilePlannerView === 'cards'
-              ? 'hidden md:block'
+              ? 'hidden lg:block'
               : '',
           )}
           data-testid="planner-map-container"
@@ -4034,12 +4087,6 @@ export function PlannerMapView({
 
             <VoyagerMapControl position={ControlPosition.TOP_LEFT}>
               <div className="pointer-events-auto relative z-[5] m-4 flex flex-wrap items-center gap-2">
-                <FloatingIconButton
-                  icon={<Share2 className="h-4 w-4" />}
-                  label="Share"
-                  onClick={handleShare}
-                  isMobile={isMobile}
-                />
                 <ExportMenu
                   tripId={tripId}
                   tripVersion={tripVersion}

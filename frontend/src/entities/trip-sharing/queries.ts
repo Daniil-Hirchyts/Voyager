@@ -73,6 +73,7 @@ export function useAcceptTripInvitation() {
   return useMutation({
     mutationFn: (token: string) => acceptTripInvitation(token),
     onSuccess: (trip) => {
+      qc.invalidateQueries({ queryKey: tripSharingKeys.all })
       qc.invalidateQueries({ queryKey: tripKeys.all })
       qc.invalidateQueries({ queryKey: tripKeys.detail(trip.id) })
     },

@@ -37,7 +37,7 @@ const steps = [
     number: '05',
     icon: FileDown,
     title: 'Export & Travel',
-    description: 'Export a beautifully formatted PDF, Markdown, or JSON. Share a read-only link with travel companions so everyone has the plan.',
+    description: 'Export a beautifully formatted PDF, Markdown, or JSON. Or invite signed-in travel companions into the same trip so everyone can collaborate live.',
   },
 ]
 
@@ -177,7 +177,7 @@ export default function HowItWorksPage() {
               <AccordionItem value="item-3" className="border-none py-2">
                 <AccordionTrigger className="text-lg font-medium text-[#1A1615] hover:no-underline hover:text-black">Can I share my itinerary with travel companions?</AccordionTrigger>
                 <AccordionContent className="text-[#453F3D] leading-relaxed text-base pt-2 pb-4">
-                  Yes. You can generate a read-only share link that anyone can view, or export the entire trip to a cleanly formatted PDF or Markdown document.
+                  Yes. You can invite signed-in collaborators into the same trip with a single-use link, or export the itinerary to a cleanly formatted PDF or Markdown document.
                 </AccordionContent>
               </AccordionItem>
             </Accordion>

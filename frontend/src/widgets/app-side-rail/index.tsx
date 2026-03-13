@@ -8,10 +8,9 @@ import {
   LayoutList,
   LogOut,
   Map,
-  MoreVertical,
   Plane,
   Plus,
-  Route,
+  Share2,
   SlidersHorizontal,
   Sparkles,
   Settings2,
@@ -167,22 +166,36 @@ function renderDayAnchors({
     )
   }
 
-  if (days.length <= 12) {
+  if (days.length <= 6) {
     return days.map(renderDay)
   }
 
-  const firstDays = days.slice(0, 5)
-  const lastDays = days.slice(-5)
+  const firstDays = days.slice(0, 3)
+  const lastDays = days.slice(-2)
+  const middleDays = days.slice(3, -2)
 
-  return (
-    <>
-      {firstDays.map(renderDay)}
-      <div className="my-1.5 flex flex-col items-center justify-center opacity-40">
-        <MoreVertical className="size-4 text-[#94a3b8]" />
-      </div>
-      {lastDays.map(renderDay)}
-    </>
-  )
+  const middleDay = middleDays[Math.floor(middleDays.length / 2)]
+
+  const result: ReactElement[] = [...firstDays.map(renderDay)]
+  
+  if (middleDay) {
+    result.push(
+      <RailActionButton
+        key={`dot-${middleDay.dayId}`}
+        data-id={`dot-${middleDay.dayId}`}
+        tooltip={middleDay.isInbox ? 'Inbox' : `Day ${middleDay.label}`}
+        type="button"
+        aria-label={middleDay.isInbox ? 'Inbox' : `Day ${middleDay.label}`}
+        onClick={() => onScrollToDay(middleDay.dayId)}
+        className={cn(BTN_RAIL, 'group')}
+      >
+        <div className="size-1.5 rounded-full bg-[#94a3b8] transition-all group-hover:bg-[#1D2430] group-hover:scale-125" />
+      </RailActionButton>
+    )
+  }
+  
+  result.push(...lastDays.map(renderDay))
+  return result
 }
 
 function AppSideRail() {
@@ -258,6 +271,16 @@ function AppSideRail() {
               <Sparkles className="size-[1rem]" />
             </RailActionButton>
             <RailActionButton
+              data-id="share-trip"
+              tooltip="Collaboration & Share"
+              type="button"
+              aria-label="Share trip"
+              onClick={plannerInstruments.onShare}
+              className={BTN_RAIL}
+            >
+              <Share2 className="size-[1rem]" />
+            </RailActionButton>
+            <RailActionButton
               data-id="trip-settings"
               tooltip="Trip settings"
               type="button"
@@ -269,7 +292,7 @@ function AppSideRail() {
             </RailActionButton>
           </RailAnimatedColumn>
 
-          <div className="md:hidden flex flex-col items-center w-full">
+          <div className="lg:hidden flex flex-col items-center w-full">
             <Divider />
             <div className="flex flex-col items-center gap-0.5 py-1.5">
               <RailActionButton
@@ -293,16 +316,6 @@ function AppSideRail() {
             <>
               <Divider />
               <RailAnimatedColumn className="max-h-[38vh] w-full overflow-y-auto">
-                <RailActionButton
-                  data-id="itinerary"
-                  tooltip="Itinerary"
-                  type="button"
-                  aria-label="Scroll to itinerary"
-                  onClick={() => plannerInstruments.onScrollToSection('itinerary')}
-                  className={BTN_RAIL}
-                >
-                  <Route className="size-[1rem]" />
-                </RailActionButton>
                 {renderDayAnchors({
                   days: plannerInstruments.days,
                   onScrollToDay: plannerInstruments.onScrollToDay,
@@ -411,7 +424,10 @@ export function AppLayout() {
       <div className="flex h-dvh overflow-hidden">
         <AppSideRail />
         <main
-          className="flex flex-1 min-w-0 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain"
+          className={cn(
+            'flex flex-1 min-w-0 flex-col overflow-x-hidden overscroll-y-contain',
+            location.pathname.endsWith('/plan') ? 'overflow-y-hidden' : 'overflow-y-auto'
+          )}
           data-testid="app-layout-content"
         >
           <RouteTransition pageKey={location.pathname} variant="app" className="flex h-full min-h-0 flex-col">

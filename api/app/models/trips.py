@@ -17,6 +17,7 @@ class TripCreateRequest(BaseModel):
     budget_currency: str | None = None
     trip_type: str | None = None
     route_travel_mode: RouteTravelMode = RouteTravelMode.WALK
+    editorial_route_id: str | None = None
 
 
 class TripPatchRequest(BaseModel):

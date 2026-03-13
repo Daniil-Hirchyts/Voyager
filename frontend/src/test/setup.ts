@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { Fragment, createElement, forwardRef, type ReactNode } from 'react'
+import { Fragment, createElement, forwardRef, type CSSProperties, type ReactNode } from 'react'
 import { afterAll, afterEach, beforeAll, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -7,7 +7,7 @@ import { server } from './msw/server'
 import { useMapStore } from '@/shared/stores/map.store'
 import { usePlannerStore } from '@/shared/stores/planner.store'
 import { useSideRailStore } from '@/shared/stores/side-rail.store'
-import { buildPlace, buildTrip } from '@/test/fixtures/api'
+import { buildPlace, buildTrip, buildTripSharingResponse } from '@/test/fixtures/api'
 
 vi.mock('react-oidc-context', () => ({
   useAuth: () => ({
@@ -64,7 +64,11 @@ class AdvancedMarkerElementStub {
 
 vi.mock('@vis.gl/react-google-maps', () => ({
   APIProvider: ({ children }: { children?: ReactNode }) => createElement(Fragment, null, children),
-  Map: forwardRef<HTMLDivElement, { children?: ReactNode }>(function MapStub(
+  Map: forwardRef<HTMLDivElement, {
+    children?: ReactNode
+    className?: string
+    style?: CSSProperties
+  }>(function MapStub(
     { children, className, style },
     ref,
   ) {
@@ -237,6 +241,9 @@ const defaultServerHandlers = [
   ),
   http.get('http://localhost:8000/trips/:tripId', ({ params }) =>
     HttpResponse.json(buildTrip({ id: String(params.tripId) })),
+  ),
+  http.get('http://localhost:8000/trips/:tripId/sharing', ({ params }) =>
+    HttpResponse.json(buildTripSharingResponse({ trip_id: String(params.tripId) })),
   ),
   http.get('http://localhost:8000/trips/:tripId/map-layers', () =>
     HttpResponse.json({

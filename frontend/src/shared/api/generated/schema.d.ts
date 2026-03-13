@@ -264,6 +264,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/trips/{trip_id}/sharing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trip Sharing */
+        get: operations["get_trip_sharing_trips__trip_id__sharing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Trip Invitation */
+        post: operations["create_trip_invitation_trips__trip_id__invites_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/invites/{invitation_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Trip Invitation */
+        delete: operations["revoke_trip_invitation_trips__trip_id__invites__invitation_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trips/{trip_id}/collaborators/{collaborator_user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Trip Collaborator */
+        delete: operations["remove_trip_collaborator_trips__trip_id__collaborators__collaborator_user_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trip-invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Trip Invitation Preview */
+        get: operations["get_trip_invitation_preview_trip_invitations__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/trip-invitations/{token}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept Trip Invitation */
+        post: operations["accept_trip_invitation_trip_invitations__token__accept_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/days/{day_id}": {
         parameters: {
             query?: never;
@@ -2472,6 +2574,38 @@ export interface components {
              */
             updated_at: string;
         };
+        /** TripCollaboratorResponse */
+        TripCollaboratorResponse: {
+            /** Id */
+            id: string | null;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /**
+             * User Id
+             * Format: uuid
+             */
+            user_id: string;
+            role: components["schemas"]["TripAccessRole"];
+            /** Email */
+            email: string | null;
+            /** Display Name */
+            display_name: string;
+            /** Invited By User Id */
+            invited_by_user_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
         /** TripCreateRequest */
         TripCreateRequest: {
             /** Destination Text */
@@ -2510,6 +2644,77 @@ export interface components {
             };
             /** Seed */
             seed?: number | null;
+        };
+        /** TripInvitationCreateRequest */
+        TripInvitationCreateRequest: {
+            /** @default editor */
+            role: components["schemas"]["TripAccessRole"];
+        };
+        /** TripInvitationCreateResponse */
+        TripInvitationCreateResponse: {
+            invitation: components["schemas"]["TripInvitationResponse"];
+        };
+        /** TripInvitationPreviewResponse */
+        TripInvitationPreviewResponse: {
+            /**
+             * Invitation Id
+             * Format: uuid
+             */
+            invitation_id: string;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /** Trip Title */
+            trip_title: string;
+            /** Destination Text */
+            destination_text: string;
+            /** Inviter Display Name */
+            inviter_display_name: string;
+            /** Inviter Email */
+            inviter_email: string | null;
+            role: components["schemas"]["TripAccessRole"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** TripInvitationResponse */
+        TripInvitationResponse: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            /**
+             * Created By User Id
+             * Format: uuid
+             */
+            created_by_user_id: string;
+            role: components["schemas"]["TripAccessRole"];
+            /** Invite Path */
+            invite_path: string;
+            /** Accepted At */
+            accepted_at: string | null;
+            /** Revoked At */
+            revoked_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** TripListResponse */
         TripListResponse: {
@@ -2749,6 +2954,19 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /** TripSharingResponse */
+        TripSharingResponse: {
+            /**
+             * Trip Id
+             * Format: uuid
+             */
+            trip_id: string;
+            current_user_role: components["schemas"]["TripAccessRole"];
+            /** Collaborators */
+            collaborators: components["schemas"]["TripCollaboratorResponse"][];
+            /** Pending Invitations */
+            pending_invitations: components["schemas"]["TripInvitationResponse"][];
         };
         /** UserProfilePatchRequest */
         UserProfilePatchRequest: {
@@ -3422,6 +3640,194 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["JobAcceptedResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_sharing_trips__trip_id__sharing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripSharingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_trip_invitation_trips__trip_id__invites_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TripInvitationCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripInvitationCreateResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_trip_invitation_trips__trip_id__invites__invitation_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                invitation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_trip_collaborator_trips__trip_id__collaborators__collaborator_user_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                trip_id: string;
+                collaborator_user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_trip_invitation_preview_trip_invitations__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripInvitationPreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_trip_invitation_trip_invitations__token__accept_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripResponse"];
                 };
             };
             /** @description Validation Error */

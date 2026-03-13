@@ -485,6 +485,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const [selectedRecommendation, setSelectedRecommendation] =
     useState<PlannerRecommendationEntry | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [collaborationMenuOpen, setCollaborationMenuOpen] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -520,13 +521,19 @@ export default function PlannerBoard({ tripId }: Props) {
       }
     }
     function onScrollToDay(dayId: string) {
+      const { mobilePlannerView, setMobilePlannerView } = useSideRailStore.getState()
+      const wasInMapMode = mobilePlannerView === 'map'
+      if (wasInMapMode) {
+        setMobilePlannerView('cards')
+      }
       const { mapDayAccordionStateByTrip, setMapDayAccordionState } = usePlannerStore.getState()
       const current = mapDayAccordionStateByTrip[tripId] ?? {}
+      const delay = wasInMapMode ? 350 : 200
       if (!current[dayId]) {
         setMapDayAccordionState(tripId, { ...current, [dayId]: true })
-        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), 200)
+        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), delay)
       } else {
-        scrollIntoView(document.getElementById(`planner-day-${dayId}`))
+        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), wasInMapMode ? delay : 0)
       }
     }
     const sectionKeyMap: Record<string, string> = { hotel: 'accommodation', travel: 'travel' }
@@ -541,6 +548,7 @@ export default function PlannerBoard({ tripId }: Props) {
     }
     setPlannerInstruments({
       onOpenSettings: () => setSettingsMenuOpen(true),
+      onShare: () => setCollaborationMenuOpen(true),
       onGenerate: () => setGenerateDialogOpen(true),
       days,
       onScrollToDay,
@@ -1182,6 +1190,7 @@ export default function PlannerBoard({ tripId }: Props) {
               onEditActivity={openEditDrawer}
               onDeleteActivity={handleDeleteActivity}
               onRegisterSectionOpener={(opener) => { openRailSectionRef.current = opener }}
+              onOpenCollaboration={() => setCollaborationMenuOpen(true)}
             />
           </div>
 
@@ -1232,6 +1241,8 @@ export default function PlannerBoard({ tripId }: Props) {
         tripId={tripId}
         open={settingsMenuOpen}
         onOpenChange={setSettingsMenuOpen}
+        collaborationOpen={collaborationMenuOpen}
+        onCollaborationOpenChange={setCollaborationMenuOpen}
         hasActivities={hasActivities}
         onReset={handleReset}
       />

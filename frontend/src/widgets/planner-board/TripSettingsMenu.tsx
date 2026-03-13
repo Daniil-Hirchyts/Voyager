@@ -1,12 +1,19 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useIsMobile } from '@/shared/hooks/use-mobile'
 import {
   Copy,
+  Clock3,
   Image as ImageIcon,
+  Link2,
   RefreshCw,
   Settings2,
+  ShieldCheck,
   Trash2,
   Upload,
+  UserMinus,
+  UserPlus,
+  Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -19,6 +26,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
@@ -36,8 +45,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Separator } from '@/components/ui/separator'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Combobox } from '@/components/ui/combobox'
+import { buildTripInviteUrl } from '@/entities/trip-sharing/api'
+import {
+  useCreateTripInvite,
+  useRemoveTripCollaborator,
+  useRevokeTripInvite,
+  useTripSharing,
+} from '@/entities/trip-sharing/queries'
 import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager'
 import { useUploadTripAsset } from '@/entities/trip-asset/queries'
 import { useDestinationAutocomplete } from '@/entities/place/queries'
@@ -47,7 +64,7 @@ import {
   usePatchTrip,
   useTrip,
 } from '@/entities/trip/queries'
-import type { RouteTravelMode } from '@/shared/api/types'
+import type { RouteTravelMode, TripCollaborator, TripInvitation } from '@/shared/api/types'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
 import { resolvePhotoUrl } from '@/shared/lib/media'
 import TripAssetManager from '@/widgets/trip-assets'
@@ -56,6 +73,8 @@ import { cn } from '@/shared/lib/cn'
 import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 const fieldLabelClassName = 'text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--color-text-muted)]'
+const sharingPanelClassName =
+  'rounded-[24px] border border-black/8 bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_58%,rgba(240,247,255,0.92)_100%)] p-5 shadow-[0_24px_48px_-38px_rgba(15,23,42,0.24)]'
 
 const TRIP_TYPES = [
   'leisure',
@@ -92,17 +111,48 @@ function toTripSettingsForm(value: NonNullable<ReturnType<typeof useTrip>['data'
   }
 }
 
+function formatInviteDate(value: string) {
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(value))
+}
+
+function getCollaboratorName(collaborator: TripCollaborator) {
+  return collaborator.display_name || collaborator.email || 'Traveler'
+}
+
+function getInvitationLabel(invitation: TripInvitation) {
+  return invitation.role === 'editor' ? 'Editor invite' : invitation.role
+}
+
 interface TripSettingsMenuProps {
   tripId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  collaborationOpen?: boolean
+  onCollaborationOpenChange?: (open: boolean) => void
   hasActivities?: boolean
   onReset?: (dayIds: string[] | undefined, idempotencyKey: string) => Promise<void>
 }
 
-export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, onReset }: TripSettingsMenuProps) {
+export function TripSettingsMenu({
+  tripId,
+  open,
+  onOpenChange,
+  collaborationOpen,
+  onCollaborationOpenChange,
+  hasActivities,
+  onReset,
+}: TripSettingsMenuProps) {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const { data: trip } = useTrip(tripId)
+  const sharing = useTripSharing(tripId)
+  const createTripInvite = useCreateTripInvite(tripId)
+  const revokeTripInvite = useRevokeTripInvite(tripId)
+  const removeTripCollaborator = useRemoveTripCollaborator(tripId)
   const patchTrip = usePatchTrip(tripId)
   const uploadTripAsset = useUploadTripAsset(tripId)
   const duplicateTrip = useDuplicateTrip()
@@ -163,6 +213,12 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
     commitPhotoSelection,
     handleCoverPhotoRefresh,
   } = useTripCoverPhotoManager(tripId, trip)
+
+  const isOwner = trip?.current_user_role === 'owner'
+  const collaborators = sharing.data?.collaborators ?? []
+  const pendingInvitations = sharing.data?.pending_invitations ?? []
+  const totalMembers = collaborators.length
+  const editorCount = collaborators.filter((collaborator) => collaborator.role === 'editor').length
 
   useEffect(() => {
     if (!trip) {
@@ -257,12 +313,64 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
     }
   }
 
+  async function copyInviteUrl(invitation: Pick<TripInvitation, 'invite_path'>) {
+    const inviteUrl = buildTripInviteUrl(invitation)
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl)
+      toast.success('Invite link copied')
+      return true
+    } catch {
+      toast.error('Could not copy invite link')
+      return false
+    }
+  }
+
+  async function handleCreateInvite() {
+    try {
+      const response = await createTripInvite.mutateAsync()
+      const copied = await copyInviteUrl(response.invitation)
+      if (!copied) {
+        toast.success('Invite link created')
+      }
+    } catch {
+      toast.error('Could not create invite link')
+    }
+  }
+
+  async function handleCopyInvite(invitation: TripInvitation) {
+    await copyInviteUrl(invitation)
+  }
+
+  async function handleRevokeInvite(invitationId: string) {
+    try {
+      await revokeTripInvite.mutateAsync(invitationId)
+      toast.success('Invite revoked')
+    } catch {
+      toast.error('Could not revoke invite')
+    }
+  }
+
+  async function handleRemoveCollaborator(collaboratorUserId: string) {
+    try {
+      await removeTripCollaborator.mutateAsync(collaboratorUserId)
+      toast.success('Collaborator removed')
+    } catch {
+      toast.error('Could not remove collaborator')
+    }
+  }
+
   if (!trip) return null
 
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="flex h-[100dvh] w-full flex-col gap-0 overflow-hidden bg-white p-0 sm:max-w-xl border-l border-black/8">
+        <SheetContent
+          side={isMobile ? 'bottom' : 'right'}
+          className={isMobile
+            ? 'flex h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
+            : 'flex h-[100dvh] w-full flex-col gap-0 overflow-hidden bg-white p-0 sm:max-w-xl border-l border-black/8'}
+        >
           <SheetHeader className="shrink-0 border-b border-black/5 bg-white px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-black text-white">
@@ -280,9 +388,9 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="flex flex-col gap-8 px-6 py-8 pb-12">
               {/* General Details */}
-              <div className="space-y-6">
+              <div className="flex flex-col gap-6">
                 <div className="grid gap-5 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="flex flex-col gap-2 sm:col-span-2">
                     <label className={fieldLabelClassName}>Trip Title</label>
                     <Input
                       value={form.title}
@@ -294,7 +402,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     />
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="flex flex-col gap-2 sm:col-span-2">
                     <label className={fieldLabelClassName}>Destination</label>
                     <Combobox
                       value={form.destination_text}
@@ -309,7 +417,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <label className={fieldLabelClassName}>Start Date</label>
                     <DatePicker
                       value={form.start_date}
@@ -318,7 +426,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <label className={fieldLabelClassName}>End Date</label>
                     <DatePicker
                       value={form.end_date}
@@ -327,7 +435,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <label className={fieldLabelClassName}>Budget Amount</label>
                     <Input
                       type="number"
@@ -343,7 +451,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <label className={fieldLabelClassName}>Currency</label>
                     <Select
                       value={form.budget_currency}
@@ -364,7 +472,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     </Select>
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="flex flex-col gap-2 sm:col-span-2">
                     <label className={fieldLabelClassName}>Trip Type</label>
                     <Select
                       value={form.trip_type}
@@ -385,7 +493,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                     </Select>
                   </div>
 
-                  <div className="space-y-2 sm:col-span-2">
+                  <div className="flex flex-col gap-2 sm:col-span-2">
                     <label className={fieldLabelClassName}>Travel Mode</label>
                     <Select
                       value={form.route_travel_mode}
@@ -417,8 +525,32 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                 </div>
               </div>
 
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className={fieldLabelClassName}>Collaboration</label>
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full justify-between rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] px-4 font-normal text-[var(--color-text)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                    onClick={() => onCollaborationOpenChange?.(true)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Users className="size-4 text-[var(--color-text-muted)]" />
+                      Manage access
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[var(--color-text-muted)]">
+                        {totalMembers} {totalMembers === 1 ? 'member' : 'members'}
+                      </span>
+                      <span className="flex size-5 items-center justify-center rounded-full bg-black/5 text-[0.6rem] text-black/40">
+                        {'>'}
+                      </span>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+
               {/* Cover Photo */}
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <label className={fieldLabelClassName}>Cover Photo</label>
                   <div className="flex items-center gap-1">
@@ -540,7 +672,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
               </div>
 
               {/* Asset Manager */}
-              <div className="space-y-4">
+              <div className="flex flex-col gap-4">
                 <TripAssetManager
                   tripId={tripId}
                   className="border-none bg-transparent shadow-none p-0"
@@ -548,7 +680,7 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
               </div>
 
               {/* Management Actions */}
-              <div className="space-y-4 pt-4">
+              <div className="flex flex-col gap-4 pt-4">
                 <label className={fieldLabelClassName}>Management</label>
                 <div className="flex flex-col gap-3">
                   <Button
@@ -581,15 +713,17 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
                       Reset Itinerary
                     </Button>
                   )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-11 justify-start rounded-[14px] border-black/8 px-4 font-semibold text-[0.82rem] text-red-600 shadow-none hover:bg-black/5 hover:text-red-700"
-                    onClick={() => setShowDeleteConfirm(true)}
-                  >
-                    <Trash2 className="mr-3 size-4" />
-                    Delete Trip Permanently
-                  </Button>
+                  {isOwner ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-11 justify-start rounded-[14px] border-black/8 px-4 font-semibold text-[0.82rem] text-red-600 shadow-none hover:bg-black/5 hover:text-red-700"
+                      onClick={() => setShowDeleteConfirm(true)}
+                    >
+                      <Trash2 className="mr-3 size-4" />
+                      Delete Trip Permanently
+                    </Button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -655,6 +789,187 @@ export function TripSettingsMenu({ tripId, open, onOpenChange, hasActivities, on
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={collaborationOpen} onOpenChange={onCollaborationOpenChange}>
+        <SheetContent
+          side={isMobile ? 'bottom' : 'right'}
+          className={isMobile
+            ? 'flex h-[90dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
+            : 'flex h-[100dvh] w-full max-w-2xl flex-col gap-0 overflow-hidden bg-white p-0 sm:max-w-2xl border-l border-black/8'}
+        >
+          <SheetHeader className="shrink-0 border-b border-black/5 p-6 pb-6 pr-[120px]">
+            <div className="flex flex-col gap-2.5 text-left">
+              <SheetTitle className="text-xl font-bold tracking-tight text-[var(--color-text)]">Collaboration</SheetTitle>
+              <SheetDescription className="text-sm leading-relaxed text-[var(--color-text-muted)]">
+                {isOwner
+                  ? 'Create a single-use invite link so other signed-in travelers can edit this trip with you.'
+                  : 'This trip is shared with you. Members can edit the itinerary together, while only the owner can manage invites and access.'}
+              </SheetDescription>
+            </div>
+          </SheetHeader>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="grid gap-8 md:grid-cols-[1fr_1.2fr]">
+              {/* Members List */}
+              <div className="flex flex-col gap-4">
+                <h3 className="text-sm font-bold tracking-tight text-[var(--color-text)]">
+                  Members
+                </h3>
+
+                {sharing.isLoading ? (
+                  <div className="py-2 text-sm text-[var(--color-text-muted)]">
+                    Loading collaborators…
+                  </div>
+                ) : sharing.isError ? (
+                  <div className="py-2 text-sm text-[var(--color-text-muted)]">
+                    Could not load sharing details.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {collaborators.map((collaborator) => {
+                      const isOwnerRow = collaborator.role === 'owner'
+                      const canRemove = isOwner && !isOwnerRow
+
+                      return (
+                        <div
+                          key={`${collaborator.user_id}-${collaborator.role}`}
+                          className="group flex items-center justify-between gap-3 py-2"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Avatar className="size-10 border border-black/10">
+                              {collaborator.avatar_url ? (
+                                <AvatarImage src={collaborator.avatar_url} alt={getCollaboratorName(collaborator)} />
+                              ) : null}
+                              <AvatarFallback className="bg-[#ECEEF0] text-[0.7rem] font-semibold tracking-wide text-[#526072]">
+                                {getCollaboratorName(collaborator).split(/\s+/).filter(Boolean).slice(0, 2).map((p: string) => p[0]?.toUpperCase()).join('') || 'V'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex min-w-0 flex-1 flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate text-sm font-semibold leading-none text-[var(--color-text)]">
+                                  {getCollaboratorName(collaborator)}
+                                </span>
+                                {isOwnerRow ? (
+                                  <Badge variant="outline" className="h-[22px] whitespace-nowrap border-black/8 bg-transparent px-2 text-[0.65rem] font-semibold uppercase text-black/60 tracking-wider">
+                                    Owner
+                                  </Badge>
+                                ) : null}
+                              </div>
+                              <span className="mt-1 truncate text-[0.8rem] leading-none text-[var(--color-text-muted)]">
+                                {collaborator.email || 'No email available'}
+                              </span>
+                            </div>
+                          </div>
+
+                          {canRemove && collaborator.id ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 shrink-0 rounded-full text-black/40 opacity-0 transition-opacity hover:bg-black/5 hover:text-[var(--color-danger)] group-hover:opacity-100"
+                              onClick={() => void handleRemoveCollaborator(collaborator.user_id)}
+                              disabled={removeTripCollaborator.isPending}
+                              title="Remove member"
+                            >
+                              <UserMinus className="size-4" />
+                            </Button>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Pending Invites */}
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold tracking-tight text-[var(--color-text)]">
+                    {isOwner ? 'Pending invites' : 'Access rules'}
+                  </h3>
+                  {isOwner ? (
+                    <Button
+                      type="button"
+                      className="h-8 shrink-0 rounded-full px-4 text-xs font-semibold shadow-sm"
+                      onClick={() => void handleCreateInvite()}
+                      disabled={createTripInvite.isPending}
+                    >
+                      {createTripInvite.isPending ? (
+                        <VoyagerLoader className="mr-2 size-3.5" />
+                      ) : (
+                        <UserPlus className="mr-2 size-3.5" />
+                      )}
+                      Create invite link
+                    </Button>
+                  ) : null}
+                </div>
+
+                {isOwner ? (
+                  sharing.isLoading ? (
+                    <div className="py-2 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      Loading pending invites…
+                    </div>
+                  ) : pendingInvitations.length > 0 ? (
+                    <div className="flex flex-col gap-3">
+                      {pendingInvitations.map((invitation) => (
+                        <div
+                          key={invitation.id}
+                          className="group flex items-center justify-between gap-3 rounded-[12px] border border-black/8 bg-transparent p-3.5 transition-colors hover:bg-black/[0.02]"
+                        >
+                          <div className="flex min-w-0 flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                              <Badge variant="warning" className="h-[22px] whitespace-nowrap bg-[#FDF6E9] px-2 text-[0.65rem] font-semibold tracking-wider text-[#A27B3D] border border-[#E9D9B7]">
+                                <Link2 className="mr-1.5 size-3" />
+                                {getInvitationLabel(invitation)}
+                              </Badge>
+                            </div>
+                            <span className="flex items-center gap-1.5 whitespace-nowrap text-[0.8rem] text-[var(--color-text-muted)]">
+                              <Clock3 className="size-3.5 shrink-0" />
+                              Created {formatInviteDate(invitation.created_at)}
+                            </span>
+                          </div>
+
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 rounded-full text-black/60 hover:bg-black/5 hover:text-black"
+                              onClick={() => void handleCopyInvite(invitation)}
+                              title="Copy link"
+                            >
+                              <Copy className="size-3.5" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="size-8 rounded-full text-black/40 hover:bg-black/5 hover:text-[var(--color-danger)]"
+                              onClick={() => void handleRevokeInvite(invitation.id)}
+                              disabled={revokeTripInvite.isPending}
+                              title="Revoke link"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-[16px] border border-dashed border-black/10 bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                      No active invite links. Create one when you want another traveler to collaborate on this trip.
+                    </div>
+                  )
+                ) : (
+                  <div className="rounded-[16px] border border-dashed border-black/10 bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    You can edit trip details, activities, assets, and map content. Only the trip owner can create invite links, revoke access, or delete the trip.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

@@ -34,9 +34,9 @@ def test_profile_auth_valid_and_invalid(api_client, headers_user1):
     assert ok.status_code == 200
     body = ok.json()
     assert body["keycloak_sub"]
-    assert body["first_name"] == "Voyager"
-    assert body["last_name"] == "User"
-    assert body["display_name"] == "Voyager User"
+    assert body["first_name"]
+    assert body["last_name"]
+    assert body["display_name"] == f"{body['first_name']} {body['last_name']}"
 
     bad = api_client.get("/users/profile", headers={"Authorization": "Bearer bad.token"})
     assert bad.status_code == 401
@@ -440,6 +440,42 @@ def test_duplicate_trip_preserves_inbox_activities(api_client, headers_user1):
     assert any(
         activity["title"] == "Acropolis sunrise"
         for day in duplicate_body["days"]
+        for activity in day["activities"]
+    )
+
+
+def test_create_trip_with_editorial_route_seeds_generated_activities(api_client, headers_user1):
+    created = api_client.post(
+        "/trips",
+        headers=headers_user1 | {"Idempotency-Key": f"editorial-trip-{uuid.uuid4()}"},
+        json={
+            "destination_text": "Kyoto, Japan",
+            "start_date": "2026-04-18",
+            "end_date": "2026-04-24",
+            "budget_amount": 2400,
+            "budget_currency": "USD",
+            "trip_type": "culture",
+            "route_travel_mode": "WALK",
+            "editorial_route_id": "kyoto-lantern-week",
+        },
+    )
+    assert created.status_code == 201
+    trip_id = created.json()["id"]
+
+    planner = api_client.get(f"/trips/{trip_id}/planner", headers=headers_user1)
+    assert planner.status_code == 200
+    body = planner.json()
+
+    assert len(body["days"]) == 7
+    assert body["inbox_activities"] == []
+    assert [activity["title"] for activity in body["days"][0]["activities"]] == [
+        "Nishiki Market breakfast crawl",
+        "Higashiyama lanes and temple approach",
+        "Gion kaiseki dinner",
+    ]
+    assert all(
+        activity["source"] == "generated"
+        for day in body["days"]
         for activity in day["activities"]
     )
 

@@ -31,7 +31,9 @@ export interface TripListResponse {
   items: Trip[]
 }
 
-export type TripCreateInput = components['schemas']['TripCreateRequest']
+export type TripCreateInput = components['schemas']['TripCreateRequest'] & {
+  editorial_route_id?: string | null
+}
 export type TripUpdateInput = components['schemas']['TripPatchRequest']
 export type GenerationMode = components['schemas']['GenerationMode']
 export type TripGenerateInput = components['schemas']['TripGenerateRequest']

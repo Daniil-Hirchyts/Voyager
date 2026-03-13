@@ -23,8 +23,14 @@ class Settings(BaseSettings):
         default="voyager-dev-trip-invite-secret",
         alias="VOYAGER_TRIP_INVITE_SECRET",
     )
-    keycloak_admin_user: str | None = Field(default=None, alias="KEYCLOAK_ADMIN")
-    keycloak_admin_password: str | None = Field(default=None, alias="KEYCLOAK_ADMIN_PASSWORD")
+    keycloak_admin_user: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("KEYCLOAK_ADMIN", "KC_BOOTSTRAP_ADMIN_USERNAME"),
+    )
+    keycloak_admin_password: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("KEYCLOAK_ADMIN_PASSWORD", "KC_BOOTSTRAP_ADMIN_PASSWORD"),
+    )
 
     require_idempotency_keys: bool = Field(default=True, alias="VOYAGER_REQUIRE_IDEMPOTENCY_KEYS")
     rate_limit_ip_per_min: int = Field(default=240, alias="VOYAGER_RATE_LIMIT_IP_PER_MIN")

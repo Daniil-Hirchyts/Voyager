@@ -15,7 +15,11 @@ import type {
   ProposalActivityResponse,
   ProposalResponse,
   Trip,
+  TripCollaborator,
+  TripInvitation,
+  TripInvitationPreview,
   TripMapLayer,
+  TripSharingResponse,
 } from '@/shared/api/types'
 
 const NOW = '2026-03-06T09:00:00.000Z'
@@ -32,9 +36,77 @@ export function buildTrip(overrides: Partial<Trip> = {}): Trip {
     budget_currency: 'EUR',
     trip_type: 'city_break',
     route_travel_mode: 'WALK',
+    current_user_role: 'owner',
+    collaborator_count: 0,
     version: 3,
     created_at: NOW,
     updated_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildTripCollaborator(overrides: Partial<TripCollaborator> = {}): TripCollaborator {
+  return {
+    id: 'collaborator-1',
+    trip_id: 'trip-1',
+    user_id: 'user-2',
+    role: 'editor',
+    email: 'collaborator@example.com',
+    display_name: 'Alex Traveler',
+    invited_by_user_id: 'user-1',
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildTripInvitation(overrides: Partial<TripInvitation> = {}): TripInvitation {
+  return {
+    id: 'invitation-1',
+    trip_id: 'trip-1',
+    created_by_user_id: 'user-1',
+    role: 'editor',
+    invite_path: '/app/invites/token-1',
+    accepted_at: null,
+    revoked_at: null,
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  }
+}
+
+export function buildTripSharingResponse(overrides: Partial<TripSharingResponse> = {}): TripSharingResponse {
+  return {
+    trip_id: 'trip-1',
+    current_user_role: 'owner',
+    collaborators: [
+      buildTripCollaborator({
+        id: null,
+        user_id: 'user-1',
+        role: 'owner',
+        email: 'owner@example.com',
+        display_name: 'Voyager Owner',
+        invited_by_user_id: null,
+      }),
+      buildTripCollaborator(),
+    ],
+    pending_invitations: [buildTripInvitation()],
+    ...overrides,
+  }
+}
+
+export function buildTripInvitationPreview(
+  overrides: Partial<TripInvitationPreview> = {},
+): TripInvitationPreview {
+  return {
+    invitation_id: 'invitation-1',
+    trip_id: 'trip-1',
+    trip_title: 'Paris Atlas',
+    destination_text: 'Paris, France',
+    inviter_display_name: 'Voyager Owner',
+    inviter_email: 'owner@example.com',
+    role: 'editor',
+    created_at: NOW,
     ...overrides,
   }
 }

@@ -405,11 +405,11 @@ export function VoyagerMarker({
         {children ?? (
           <div className="transition-transform hover:scale-110 origin-bottom pb-1">
             <div
-              className={`flex items-center justify-center shadow-[0_6px_12px_rgba(0,0,0,0.15)] backdrop-blur-md border-[1.5px] border-white/80 rounded-[50%_50%_50%_10%] -rotate-45 ${
+              className={`flex items-center justify-center shadow-[0_6px_12px_rgba(0,0,0,0.15)] border-[1.5px] border-white rounded-[50%_50%_50%_10%] -rotate-45 ${
                 label ? 'w-9 h-9' : 'w-7 h-7'
               }`}
               style={{
-                backgroundColor: selected ? `${DEFAULT_SELECTED_MARKER_COLOR}d9` : `${color}d9`,
+                backgroundColor: selected ? `${DEFAULT_SELECTED_MARKER_COLOR}` : `${color}`,
               }}
             >
               <div className="rotate-45 flex items-center justify-center">
