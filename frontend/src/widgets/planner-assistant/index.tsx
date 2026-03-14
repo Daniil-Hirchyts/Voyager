@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from 'react'
 import {
   AssistantRuntimeProvider,
@@ -27,8 +28,8 @@ import {
   MapPin,
   Slash,
   Sparkles,
-  Trash2,
   WandSparkles,
+  X,
   XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -77,7 +78,6 @@ import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { cn } from '@/shared/lib/cn'
 import { resolveMediaUrl } from '@/shared/lib/media'
 import {
-  PLANNER_ASSISTANT_COMMANDS,
   getPlannerAssistantCommandSuggestions,
   parsePlannerAssistantCommand,
   type PlannerAssistantCommandDefinition,
@@ -576,22 +576,22 @@ function getAvailableCommandSuggestions(
 }
 
 const MESSAGE_MARKDOWN_COMPONENTS = {
-  p: ({ children }: { children?: React.ReactNode }) => (
+  p: ({ children }: { children?: ReactNode }) => (
     <p className="m-0 leading-7 text-[var(--color-text)]">{children}</p>
   ),
-  strong: ({ children }: { children?: React.ReactNode }) => (
+  strong: ({ children }: { children?: ReactNode }) => (
     <strong className="font-semibold text-[var(--color-text)]">{children}</strong>
   ),
-  em: ({ children }: { children?: React.ReactNode }) => (
+  em: ({ children }: { children?: ReactNode }) => (
     <em className="italic text-[var(--color-text)]">{children}</em>
   ),
-  ol: ({ children }: { children?: React.ReactNode }) => (
+  ol: ({ children }: { children?: ReactNode }) => (
     <ol className="m-0 flex list-decimal flex-col gap-2 pl-5">{children}</ol>
   ),
-  ul: ({ children }: { children?: React.ReactNode }) => (
+  ul: ({ children }: { children?: ReactNode }) => (
     <ul className="m-0 flex list-disc flex-col gap-2 pl-5">{children}</ul>
   ),
-  li: ({ children }: { children?: React.ReactNode }) => (
+  li: ({ children }: { children?: ReactNode }) => (
     <li className="pl-0.5 text-[var(--color-text)] marker:text-[var(--color-text-muted)]">
       {children}
     </li>
@@ -600,7 +600,7 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
     children,
     href,
   }: {
-    children?: React.ReactNode
+    children?: ReactNode
     href?: string
   }) => (
     <a
@@ -612,7 +612,7 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
       {children}
     </a>
   ),
-  blockquote: ({ children }: { children?: React.ReactNode }) => (
+  blockquote: ({ children }: { children?: ReactNode }) => (
     <blockquote className="m-0 border-l-2 border-black/10 pl-3 text-[var(--color-text-muted)]">
       {children}
     </blockquote>
@@ -683,7 +683,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
             Map
           </span>
         </div>
-        <p className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+        <p className="mt-2 max-h-[2.6rem] overflow-hidden text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
           {place.addressText ?? place.label ?? 'Open this place on the map.'}
         </p>
       </div>
@@ -958,49 +958,30 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
 
 function EmptyThreadState({
   destination,
-  onRunAction,
   hasActivities,
 }: {
   destination: string
-  onRunAction: (command: PlannerAssistantCommandDefinition) => void
   hasActivities: boolean
 }) {
-  const emptyActions = getEmptyStateActions(hasActivities)
-
   return (
-    <div className="flex min-h-[12rem] flex-col justify-center gap-4 px-1 pb-3 pt-1">
-      <div className="flex items-start gap-3">
-        <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
-          <Bot className="size-4" />
+    <div className="flex min-h-[12rem] flex-col justify-center px-1 pb-3 pt-1">
+      <div className="flex gap-2 pb-2.5">
+        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
+          <Bot className="size-3.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="rounded-[18px] border border-black/7 bg-white px-3 py-2.5">
+            <p className="text-[0.84rem] leading-7 text-[var(--color-text)]">
+              I can help shape{' '}
+              <span className="font-semibold">
+                {destination || 'this trip'}
+              </span>
+              . Ask me to add places, rebalance a day, or use{' '}
+              <span className="font-medium">/generate</span>
+              {hasActivities ? ' or /reset' : ''}.
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-            Planner Assistant
-          </p>
-          <p className="mt-1 text-[0.8rem] leading-6 text-[var(--color-text-muted)]">
-            Ask for itinerary edits, inspect the plan, or queue generation for{' '}
-            <span className="font-medium text-[var(--color-text)]">
-              {destination || 'this trip'}
-            </span>
-            .
-          </p>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {emptyActions.map((command) => (
-          <Button
-            key={command.name}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 rounded-full px-3 text-[0.74rem]"
-            onClick={() => onRunAction(command)}
-          >
-            {command.name === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
-            {command.name === 'reset' ? <Trash2 data-icon="inline-start" /> : null}
-            {command.chipLabel}
-          </Button>
-        ))}
       </div>
     </div>
   )
@@ -1009,127 +990,93 @@ function EmptyThreadState({
 function PlannerAssistantEmptyState({
   destination,
   hasActivities,
-  setStreamError,
-  onRequestInlineAction,
 }: {
   destination: string
   hasActivities: boolean
-  setStreamError: (error: string | null) => void
-  onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void
 }) {
-  const { handleCommandAction } = usePlannerAssistantCommandActions({
-    hasActivities,
-    setStreamError,
-    onRequestInlineAction,
-  })
-
-  return (
-    <EmptyThreadState
-      destination={destination}
-      onRunAction={handleCommandAction}
-      hasActivities={hasActivities}
-    />
-  )
+  return <EmptyThreadState destination={destination} hasActivities={hasActivities} />
 }
 
 function PlannerAssistantComposer({
   hasActivities,
+  draft,
+  setDraft,
   isStreaming,
   streamError,
   setStreamError,
   textareaRef,
-  cancelCurrentStream,
   onRequestInlineAction,
   onSubmitInput,
 }: {
   hasActivities: boolean
+  draft: string
+  setDraft: (value: string) => void
   isStreaming: boolean
   streamError: string | null
   setStreamError: (error: string | null) => void
   textareaRef: { current: HTMLTextAreaElement | null }
-  cancelCurrentStream: () => Promise<void>
   onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void
   onSubmitInput: (rawInput: string) => Promise<SubmitPlannerAssistantInputResult>
 }) {
-  const { composerText, commandSuggestions, handleCommandAction, quickActionCommands, setComposerText } =
-    usePlannerAssistantCommandActions({
-      hasActivities,
-      setStreamError,
-      onRequestInlineAction,
-    })
+  const [commandMenuForcedOpen, setCommandMenuForcedOpen] = useState(false)
+  const commandSuggestions = useMemo(
+    () => getAvailableCommandSuggestions(draft.trimStart().startsWith('/') ? draft : '/', hasActivities),
+    [draft, hasActivities],
+  )
+
+  const isCommandMenuVisible =
+    commandMenuForcedOpen || draft.trimStart().startsWith('/')
+
+  const handleCommandAction = useCallback(
+    (command: PlannerAssistantCommandDefinition) => {
+      setStreamError(null)
+      setCommandMenuForcedOpen(false)
+      setDraft('')
+      onRequestInlineAction(command.name as PlannerAssistantInlineCommand)
+    },
+    [onRequestInlineAction, setDraft, setStreamError],
+  )
 
   const submitComposer = useCallback(async () => {
-    const result = await onSubmitInput(composerText)
-    if (result === 'sent' || result === 'inline') {
-      setComposerText('')
+    const submission = draft
+    if (!submission.trim()) {
+      return
     }
-  }, [composerText, onSubmitInput, setComposerText])
+
+    setDraft('')
+    setCommandMenuForcedOpen(false)
+    setStreamError(null)
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+    })
+    const result = await onSubmitInput(submission)
+
+    if (result === 'invalid' || result === 'noop') {
+      setDraft(submission)
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus()
+      })
+    }
+  }, [draft, onSubmitInput, setDraft, setStreamError, textareaRef])
 
   return (
-    <div className="flex flex-col gap-2.5 border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
-        {quickActionCommands.map((command) => (
-          <Button
-            key={command.name}
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-7 shrink-0 rounded-full px-3 text-[0.74rem]"
-            onClick={() => handleCommandAction(command)}
-          >
-            {command.name === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
-            {command.name === 'reset' ? <Trash2 data-icon="inline-start" /> : null}
-            {command.chipLabel}
-          </Button>
-        ))}
-      </div>
-
+    <div className="border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
       {streamError ? (
-        <div className="rounded-[14px] border border-[rgba(196,95,79,0.18)] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.75rem] text-[rgba(196,95,79,1)]">
+        <div className="mb-2 rounded-[14px] border border-[rgba(196,95,79,0.18)] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.75rem] text-[rgba(196,95,79,1)]">
           {streamError}
         </div>
       ) : null}
 
-      <ComposerPrimitive.Root
-        className="rounded-[18px] border border-black/8 bg-white"
-        onSubmit={(event) => {
-          event.preventDefault()
-          void submitComposer()
-        }}
-      >
-        <ComposerPrimitive.Input
-          ref={textareaRef}
-          submitMode="none"
-          minRows={1}
-          maxRows={6}
-          placeholder="Ask about this trip or type /generate…"
-          className="min-h-[56px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[0.84rem] leading-6 outline-none focus-visible:ring-0"
-          onChange={() => {
-            if (streamError) {
-              setStreamError(null)
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
-              return
-            }
-            if (event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) {
-              return
-            }
-            event.preventDefault()
-            event.currentTarget.form?.requestSubmit()
-          }}
-        />
-
+      <div className="relative">
         <AnimatePresence>
-          {composerText.trimStart().startsWith('/') ? (
+          {isCommandMenuVisible ? (
             <motion.div
-              initial={{ opacity: 0, y: 6 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
-              className="px-2 pb-2"
+              exit={{ opacity: 0, y: 8 }}
+              className="absolute inset-x-0 bottom-full z-10 mb-2"
             >
-              <Command className="overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(252,252,251,0.96)]">
+              <Command className="overflow-hidden rounded-[20px] border border-black/8 bg-white shadow-[0_18px_45px_-32px_rgba(15,23,42,0.26)]">
                 <CommandList className="max-h-[13rem] p-1.5">
                   <CommandEmpty>No matching commands.</CommandEmpty>
                   <CommandGroup heading="Commands">
@@ -1157,39 +1104,61 @@ function PlannerAssistantComposer({
           ) : null}
         </AnimatePresence>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/6 px-3 py-2">
-          <p className="text-[0.71rem] text-[var(--color-text-muted)]">
-            Enter sends. Cmd/Ctrl + Enter or Shift + Enter adds a new line.
-          </p>
-          <div className="flex items-center gap-2">
-            {isStreaming ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-full px-3.5 text-[0.76rem]"
-                onClick={() => void cancelCurrentStream()}
-              >
-                <X data-icon="inline-start" />
-                Cancel
-              </Button>
-            ) : null}
-            <Button
-              type="submit"
-              size="sm"
-              className="h-8 rounded-full px-3.5 text-[0.76rem]"
-              disabled={isStreaming || !composerText.trim()}
-            >
-              {isStreaming ? (
-                <Loader2 data-icon="inline-start" className="animate-spin" />
-              ) : (
-                <Send data-icon="inline-start" />
-              )}
-              Send
-            </Button>
+        <PromptInput
+          value={draft}
+          onValueChange={(value) => {
+            if (streamError) {
+              setStreamError(null)
+            }
+            if (!value.trimStart().startsWith('/')) {
+              setCommandMenuForcedOpen(false)
+            }
+            setDraft(value)
+          }}
+          onSubmit={() => void submitComposer()}
+          textareaRef={textareaRef}
+          className="rounded-[24px] border-black/8 bg-white p-0"
+        >
+          <PromptInputTextarea
+            placeholder="Ask about this trip or type /generate…"
+            className="min-h-[104px] px-4 py-3 text-[0.9rem] leading-7"
+          />
+          <div className="flex items-center justify-between px-3 pb-3">
+            <PromptInputActions className="gap-1.5">
+              <PromptInputAction tooltip="Commands">
+                <Button
+                  type="button"
+                  size="icon"
+                  className="size-8 rounded-full border border-black/8 bg-[rgba(15,23,42,0.05)] text-[var(--color-text)] shadow-none hover:bg-[rgba(15,23,42,0.09)]"
+                  onClick={() => {
+                    setCommandMenuForcedOpen(true)
+                    textareaRef.current?.focus()
+                  }}
+                >
+                  <Slash className="size-4" />
+                </Button>
+              </PromptInputAction>
+            </PromptInputActions>
+            <PromptInputActions className="gap-1.5">
+              <PromptInputAction tooltip={isStreaming ? 'Sending' : 'Send'}>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="size-8 rounded-full bg-[#111827] text-white hover:bg-[#0f172a]"
+                  disabled={isStreaming || !draft.trim()}
+                  onClick={() => void submitComposer()}
+                >
+                  {isStreaming ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <ArrowUp className="size-4" />
+                  )}
+                </Button>
+              </PromptInputAction>
+            </PromptInputActions>
           </div>
-        </div>
-      </ComposerPrimitive.Root>
+        </PromptInput>
+      </div>
     </div>
   )
 }
@@ -1262,11 +1231,13 @@ export function PlannerAssistantPanel({
   onSubmitInlineAction,
   isPlannerActionPending,
   onOpenChange,
+  onSelectSuggestedPlace,
 }: PlannerAssistantPanelProps) {
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
   const { data, isLoading } = useAssistantThread(tripId)
   const [inlineAction, setInlineAction] = useState<PlannerGenerationAction | null>(null)
+  const [draft, setDraft] = useState('')
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -1293,13 +1264,6 @@ export function PlannerAssistantPanel({
       ),
     )
   }, [messages])
-  const hasLiveActivity =
-    isStreaming ||
-    runningJobIds.length > 0 ||
-    messages.some(
-      (message) => message.role === 'assistant' && message.status === 'running',
-    )
-
   useEffect(() => {
     if (!requestedInlineAction) {
       handledRequestedInlineActionRef.current = null
@@ -1325,6 +1289,21 @@ export function PlannerAssistantPanel({
     }, 180)
     return () => window.clearTimeout(timeoutId)
   }, [isOpen])
+
+  useEffect(() => {
+    if (isMobile || !isOpen) {
+      return
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onOpenChange(false)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMobile, isOpen, onOpenChange])
 
   useEffect(() => {
     const controllerMap = jobStreamControllersRef.current
@@ -1555,6 +1534,13 @@ export function PlannerAssistantPanel({
     [isStreaming, startStream],
   )
 
+  const selectSuggestedPlace = useCallback(
+    (place: PlannerAssistantSuggestedPlace) => {
+      onSelectSuggestedPlace?.(place)
+    },
+    [onSelectSuggestedPlace],
+  )
+
   const runtime = useExternalStoreRuntime<AssistantMessage>({
     messages,
     isRunning: isStreaming,
@@ -1566,108 +1552,128 @@ export function PlannerAssistantPanel({
     onCancel: cancelCurrentStream,
   })
 
-  return (
-    <PlannerAssistantContext.Provider value={{ confirmToolCall }}>
-      <Sheet open={isOpen} onOpenChange={onOpenChange}>
-        <SheetContent
-          side={isMobile ? 'bottom' : 'right'}
-          className={cn(
-            'z-[55] flex w-full flex-col gap-0 overflow-hidden border-black/8 bg-[#fcfcfb] p-0',
-            isMobile
-              ? 'h-[min(88vh,48rem)] rounded-t-[28px] border-x-0 border-b-0'
-              : 'max-w-[26rem] border-l sm:max-w-[26rem]',
-          )}
-        >
-          <SheetHeader className="border-b border-black/6 px-3 py-3 text-left">
-            <div className="flex items-center gap-3">
-              <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
-                <Bot className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <SheetTitle className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-                  Planner Assistant
-                </SheetTitle>
-                <SheetDescription className="mt-0.5 flex items-center gap-1.5 text-[0.74rem] text-[var(--color-text-muted)]">
-                  <MapPin className="size-3.5" />
-                  <span>{destination || 'Current trip'}</span>
-                </SheetDescription>
-              </div>
-              {hasLiveActivity ? (
-                <div className="flex items-center gap-2 self-center text-[0.72rem] text-[var(--color-text-muted)]">
-                  <span className="size-2 rounded-full bg-[var(--color-success)]" />
-                  <span>Live</span>
-                </div>
-              ) : null}
+  const assistantSurface = (
+    <>
+      <div className="border-b border-black/6 px-3 py-3 text-left">
+        <div className="flex items-center gap-3">
+          <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+            <Bot className="size-4" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+              Planner Assistant
+            </h2>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[0.74rem] text-[var(--color-text-muted)]">
+              <MapPin className="size-3.5" />
+              <span>{destination || 'Current trip'}</span>
+            </p>
+          </div>
+          {!isMobile ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-10 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="size-4" />
+              <span className="sr-only">Close assistant</span>
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <AssistantRuntimeProvider runtime={runtime}>
+        <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
+          {isLoading ? (
+            <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-[0.8rem] text-[var(--color-text-muted)]">
+              <Loader2 className="mr-2 size-4 animate-spin text-[var(--color-primary)]" />
+              <span>Loading assistant thread…</span>
             </div>
-          </SheetHeader>
+          ) : (
+            <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <ThreadPrimitive.Viewport
+                autoScroll
+                className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-3"
+              >
+                <ThreadPrimitive.Empty>
+                  <PlannerAssistantEmptyState
+                    destination={destination}
+                    hasActivities={hasActivities}
+                  />
+                </ThreadPrimitive.Empty>
 
-          <AssistantRuntimeProvider runtime={runtime}>
-            <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
-              {isLoading ? (
-                <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-[0.8rem] text-[var(--color-text-muted)]">
-                  <Loader2 className="mr-2 size-4 animate-spin text-[var(--color-primary)]" />
-                  <span>Loading assistant thread…</span>
-                </div>
-              ) : (
-                <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <ThreadPrimitive.Viewport
-                    autoScroll
-                    className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-3"
-                  >
-                    <ThreadPrimitive.Empty>
-                      <PlannerAssistantEmptyState
-                        destination={destination}
-                        hasActivities={hasActivities}
-                        setStreamError={setStreamError}
-                        onRequestInlineAction={(action) => {
-                          setInlineAction(action)
-                          onOpenChange(true)
-                        }}
-                      />
-                    </ThreadPrimitive.Empty>
+                <ThreadPrimitive.Messages
+                  components={{
+                    UserMessage,
+                    AssistantMessage: AssistantMessageView,
+                  }}
+                />
 
-                    <ThreadPrimitive.Messages
-                      components={{
-                        UserMessage,
-                        AssistantMessage: AssistantMessageView,
-                      }}
+                {inlineAction ? (
+                  <div className="pb-2.5">
+                    <PlannerGenerationInlineCard
+                      key={inlineAction}
+                      action={inlineAction}
+                      days={days}
+                      isSubmitting={isPlannerActionPending}
+                      onCancel={handleCancelInlineAction}
+                      onSubmit={handleSubmitInlineAction}
                     />
+                  </div>
+                ) : null}
+              </ThreadPrimitive.Viewport>
+              <PlannerAssistantComposer
+                hasActivities={hasActivities}
+                draft={draft}
+                setDraft={setDraft}
+                isStreaming={isStreaming}
+                streamError={streamError}
+                setStreamError={setStreamError}
+                textareaRef={textareaRef}
+                onRequestInlineAction={(action) => {
+                  setInlineAction(action)
+                  onOpenChange(true)
+                }}
+                onSubmitInput={handleSubmitInput}
+              />
+            </ThreadPrimitive.Root>
+          )}
+        </div>
+      </AssistantRuntimeProvider>
+    </>
+  )
 
-                    {inlineAction ? (
-                      <div className="pb-2.5">
-                        <PlannerGenerationInlineCard
-                          key={inlineAction}
-                          action={inlineAction}
-                          days={days}
-                          isSubmitting={isPlannerActionPending}
-                          onCancel={handleCancelInlineAction}
-                          onSubmit={handleSubmitInlineAction}
-                        />
-                      </div>
-                    ) : null}
-
-                    <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto bg-[#fcfcfb] pb-0 pt-2">
-                      <PlannerAssistantComposer
-                        hasActivities={hasActivities}
-                        isStreaming={isStreaming}
-                        streamError={streamError}
-                        setStreamError={setStreamError}
-                        textareaRef={textareaRef}
-                        cancelCurrentStream={cancelCurrentStream}
-                        onRequestInlineAction={(action) => {
-                          setInlineAction(action)
-                          onOpenChange(true)
-                        }}
-                        onSubmitInput={handleSubmitInput}
-                      />
-                    </ThreadPrimitive.ViewportFooter>
-                  </ThreadPrimitive.Viewport>
-                </ThreadPrimitive.Root>
-              )}
-            </div>
-          </AssistantRuntimeProvider>
-        </SheetContent>
-      </Sheet>
+  return (
+    <PlannerAssistantContext.Provider value={{ confirmToolCall, selectSuggestedPlace }}>
+      {isMobile ? (
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+          <SheetContent
+            side="bottom"
+            className="flex w-full flex-col gap-0 overflow-hidden border-black/8 bg-[#fcfcfb] p-0 h-[min(88vh,48rem)] rounded-t-[28px] border-x-0 border-b-0"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Planner Assistant</SheetTitle>
+              <SheetDescription>{destination || 'Current trip'}</SheetDescription>
+            </SheetHeader>
+            {assistantSurface}
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <AnimatePresence>
+          {isOpen ? (
+            <motion.aside
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
+              className="absolute inset-y-0 left-0 z-40 flex w-[46%] min-w-[380px] max-w-full flex-col overflow-hidden border-r border-black/8 bg-[#fcfcfb] shadow-[24px_0_72px_-42px_rgba(32,56,83,0.18)]"
+            >
+              {assistantSurface}
+            </motion.aside>
+          ) : null}
+        </AnimatePresence>
+      )}
     </PlannerAssistantContext.Provider>
   )
 }

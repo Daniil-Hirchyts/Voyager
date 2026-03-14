@@ -377,15 +377,42 @@ async def _load_trip_snapshot(
 
 async def _build_place_payload(arguments: dict[str, Any]) -> tuple[uuid.UUID | None, dict[str, Any] | None]:
     place_id_raw = _string(arguments.get("place_id"))
+    inferred_external_id: str | None = None
     if place_id_raw:
-        return uuid.UUID(place_id_raw), None
+        try:
+            return uuid.UUID(place_id_raw), None
+        except ValueError:
+            inferred_external_id = place_id_raw
 
     place_name = _string(arguments.get("place_name"))
     place_address = _string(arguments.get("place_address"))
-    place_external_id = _string(arguments.get("place_external_id"))
+    place_external_id = _string(arguments.get("place_external_id")) or inferred_external_id
     place_category = _string(arguments.get("place_category"))
     place_lat = _float(arguments.get("place_lat"))
     place_lon = _float(arguments.get("place_lon"))
+
+    if place_external_id and (
+        not place_name
+        or place_address is None
+        or place_category is None
+        or place_lat is None
+        or place_lon is None
+    ):
+        try:
+            details = await lookup_google_place(place_external_id)
+        except GoogleMapsError as exc:
+            raise ServiceUnavailableError(
+                "GOOGLE_MAPS_ERROR",
+                "Google place lookup failed",
+                {"error": str(exc), "place_external_id": place_external_id},
+            ) from exc
+        if details is not None:
+            place_name = place_name or details.name or details.formatted_address or place_external_id
+            place_address = place_address or details.formatted_address
+            place_category = place_category or details.category
+            place_lat = place_lat if place_lat is not None else details.lat
+            place_lon = place_lon if place_lon is not None else details.lng
+
     if not place_name:
         return None, None
     payload = PlaceCreateRequest(
@@ -647,6 +674,7 @@ def _system_prompt() -> str:
         "Help the user understand and edit a trip itinerary. "
         "Use tools whenever you need current trip data or when the user requests a mutation. "
         "If the user asks about places, options, or ideas, inspect the trip context and search places before answering. "
+        "Always call search_places before recommending specific new venues so the UI can show grounded place cards. "
         "Never invent activity ids, day ids, or place ids. "
         "For destructive actions, still call the tool; the system will request confirmation. "
         "When a tool already completed the user's request, answer briefly and concretely."

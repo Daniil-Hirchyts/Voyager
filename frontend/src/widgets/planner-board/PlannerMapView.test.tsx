@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
@@ -7,7 +8,10 @@ import { config } from '@/app/config'
 import { DEFAULT_VOYAGER_PREFERENCES } from '@/entities/user/preferences'
 import type { RoutePreviewInput } from '@/shared/api/types'
 import { ActivityMapDetailSheet, PlannerMapView } from './PlannerMapView'
-import type { PlannerRecommendationsController } from './usePlannerRecommendations'
+import type {
+  PlannerRecommendationEntry,
+  PlannerRecommendationsController,
+} from './usePlannerRecommendations'
 import {
   buildActivityDiscoveryItem,
   buildPlace,
@@ -119,6 +123,7 @@ describe('PlannerMapView', () => {
           }),
           score: null,
           rationale: null,
+          matchedPlace: null,
         },
       ],
     }
@@ -150,12 +155,239 @@ describe('PlannerMapView', () => {
     expect(screen.getByTestId('planner-recommendations-section')).toHaveTextContent(
       'Recommendations',
     )
+    expect(screen.getByTestId('planner-recommendations-section')).toHaveTextContent(
+      '1 suggestion',
+    )
     expect(screen.getByText('Night walk at Trevi Fountain')).toBeInTheDocument()
 
     const filesSection = screen.getByTestId('planner-files-section')
     await user.click(within(filesSection).getByRole('button', { name: /Files/i }))
 
     expect(await screen.findByText('Trip uploads')).toBeInTheDocument()
+  })
+
+  it('renders every recommendation in the compact carousel instead of truncating after four', async () => {
+    const trip = buildTrip({
+      title: 'Trip to Barcelona',
+      destination_text: 'Barcelona, Spain',
+    })
+    const recommendations = {
+      ...buildRecommendationsController(),
+      enabled: true,
+      discoverEntries: Array.from({ length: 6 }, (_, index) => ({
+        key: `discover:barcelona-${index + 1}`,
+        source: 'discover' as const,
+        item: buildActivityDiscoveryItem({
+          id: `discover-barcelona-${index + 1}`,
+          provider_ref: `barcelona-${index + 1}`,
+          title: `Barcelona pick ${index + 1}`,
+          address_text: `Address ${index + 1}`,
+        }),
+        score: null,
+        rationale: null,
+        matchedPlace: null,
+      })),
+    }
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerMapView
+          trip={trip}
+          tripId={trip.id}
+          tripVersion={trip.version}
+          days={[buildPlannerDay()]}
+          inboxActivities={[]}
+          selectedActivityId={null}
+          selectedPlaceId={null}
+          recommendations={recommendations}
+          selectedRecommendation={null}
+          onAddActivity={() => {}}
+          onSelectActivityId={() => {}}
+          onSelectPlaceId={() => {}}
+          onSelectRecommendation={() => {}}
+          onClearMapSelection={() => {}}
+        />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText('Barcelona pick 1')).toBeInTheDocument()
+    expect(screen.getByTestId('planner-recommendations-section')).toHaveTextContent(
+      '6 suggestions',
+    )
+    expect(screen.getByText('Barcelona pick 6')).toBeInTheDocument()
+  })
+
+  it('opens the map selection when a recommendation card is clicked', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({
+      title: 'Trip to Rome',
+      destination_text: 'Rome, Italy',
+    })
+    const onSelectRecommendation = vi.fn()
+    const onClearMapSelection = vi.fn()
+    const recommendations = {
+      ...buildRecommendationsController(),
+      enabled: true,
+      discoverEntries: [
+        {
+          key: 'discover:rome-1',
+          source: 'discover' as const,
+          item: buildActivityDiscoveryItem({
+            id: 'discover-rome-1',
+            title: 'Night walk at Trevi Fountain',
+            address_text: 'Trevi Fountain, Rome',
+          }),
+          score: null,
+          rationale: null,
+          matchedPlace: null,
+        },
+      ],
+    }
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerMapView
+          trip={trip}
+          tripId={trip.id}
+          tripVersion={trip.version}
+          days={[buildPlannerDay()]}
+          inboxActivities={[]}
+          selectedActivityId={null}
+          selectedPlaceId={null}
+          recommendations={recommendations}
+          selectedRecommendation={null}
+          onAddActivity={() => {}}
+          onSelectActivityId={() => {}}
+          onSelectPlaceId={() => {}}
+          onSelectRecommendation={onSelectRecommendation}
+          onClearMapSelection={onClearMapSelection}
+        />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByText('Night walk at Trevi Fountain'))
+
+    expect(onClearMapSelection).toHaveBeenCalledTimes(1)
+    expect(onSelectRecommendation).toHaveBeenCalledWith(recommendations.discoverEntries[0])
+  })
+
+  it('does not reopen a recommendations drawer on desktop after closing recommendation details', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({
+      title: 'Trip to Rome',
+      destination_text: 'Rome, Italy',
+    })
+    const recommendations = {
+      ...buildRecommendationsController(),
+      enabled: true,
+      discoverEntries: [
+        {
+          key: 'discover:rome-1',
+          source: 'discover' as const,
+          item: buildActivityDiscoveryItem({
+            id: 'discover-rome-1',
+            title: 'Night walk at Trevi Fountain',
+            address_text: 'Trevi Fountain, Rome',
+          }),
+          score: null,
+          rationale: null,
+          matchedPlace: null,
+        },
+      ],
+    }
+
+    function Harness() {
+      const [selectedRecommendation, setSelectedRecommendation] =
+        useState<PlannerRecommendationEntry | null>(null)
+
+      return (
+        <PlannerMapView
+          trip={trip}
+          tripId={trip.id}
+          tripVersion={trip.version}
+          days={[buildPlannerDay()]}
+          inboxActivities={[]}
+          selectedActivityId={null}
+          selectedPlaceId={null}
+          recommendations={recommendations}
+          selectedRecommendation={selectedRecommendation}
+          onAddActivity={() => {}}
+          onSelectActivityId={() => {}}
+          onSelectPlaceId={() => {}}
+          onSelectRecommendation={setSelectedRecommendation}
+          onClearMapSelection={() => {}}
+        />
+      )
+    }
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <Harness />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByText('Night walk at Trevi Fountain'))
+    expect(await screen.findByTestId('planner-map-detail-sheet')).toBeInTheDocument()
+    expect(screen.queryByText(/ADD THIS RECOMMENDATION/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Close place details' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Close place details' }))
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-map-detail-sheet')).not.toBeInTheDocument()
+    })
+    expect(screen.queryByTestId('planner-recommendations-sheet')).not.toBeInTheDocument()
+  })
+
+  it('shows recommendations in the layers filters', async () => {
+    const user = userEvent.setup()
+    const trip = buildTrip({
+      title: 'Trip to Barcelona',
+      destination_text: 'Barcelona, Spain',
+    })
+    const recommendations = {
+      ...buildRecommendationsController(),
+      enabled: true,
+      discoverEntries: [
+        {
+          key: 'discover:barcelona-1',
+          source: 'discover' as const,
+          item: buildActivityDiscoveryItem({
+            id: 'discover-barcelona-1',
+            title: 'Casa Batllo',
+            address_text: 'Passeig de Gracia, 43, Barcelona',
+          }),
+          score: null,
+          rationale: null,
+          matchedPlace: null,
+        },
+      ],
+    }
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerMapView
+          trip={trip}
+          tripId={trip.id}
+          tripVersion={trip.version}
+          days={[buildPlannerDay()]}
+          inboxActivities={[]}
+          selectedActivityId={null}
+          selectedPlaceId={null}
+          recommendations={recommendations}
+          selectedRecommendation={null}
+          onAddActivity={() => {}}
+          onSelectActivityId={() => {}}
+          onSelectPlaceId={() => {}}
+          onSelectRecommendation={() => {}}
+          onClearMapSelection={() => {}}
+        />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByTestId('planner-map-layers-trigger'))
+
+    expect(await screen.findByText('Recommendations')).toBeInTheDocument()
   })
 
   it('splits travel and accommodation into standalone sections above the itinerary', async () => {

@@ -17,7 +17,11 @@ export function resolvePhotoUrl(
 ) {
   if (!photo) return null
   if (variant === 'thumb') {
-    return resolveMediaUrl(photo.display_thumbnail_url || photo.display_url || photo.thumbnail_url || photo.image_url)
+    return resolveMediaUrl(
+      photo.thumbnail_url || photo.image_url || photo.display_thumbnail_url || photo.display_url,
+    )
   }
-  return resolveMediaUrl(photo.display_url || photo.image_url || photo.thumbnail_url)
+  return resolveMediaUrl(
+    photo.image_url || photo.display_url || photo.thumbnail_url || photo.display_thumbnail_url,
+  )
 }

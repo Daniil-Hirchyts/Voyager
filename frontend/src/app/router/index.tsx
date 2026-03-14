@@ -7,6 +7,7 @@ import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { RouteTransition } from '@/shared/layouts/route-transition'
+import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 // Public pages
 const LandingPage = lazy(() => import('@/pages/public/landing'))
@@ -36,7 +37,7 @@ function PageLoader() {
   return (
     <div className="voyager-page flex min-h-[100dvh] items-center justify-center animate-in fade-in duration-300">
       <div className="voyager-panel flex items-center gap-3 px-5 py-4 text-sm font-medium text-[var(--color-text-muted)]">
-        <div className="size-5 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+        <VoyagerLoader className="size-5 text-[var(--color-primary)]" />
         Loading workspace
       </div>
     </div>

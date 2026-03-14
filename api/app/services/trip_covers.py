@@ -70,8 +70,8 @@ def _cover_photo_from_place_photo(
     summary = PlacePhotoRepository._summary(photo)
     return TripCoverPhoto(
         source="place_photo",
-        url=summary.display_url or summary.image_url,
-        thumbnail_url=summary.display_thumbnail_url or summary.thumbnail_url,
+        url=summary.image_url or summary.display_url,
+        thumbnail_url=summary.thumbnail_url or summary.display_thumbnail_url or summary.image_url or summary.display_url,
         photo_id=photo.id,
         place_id=place_id,
         attribution_text=summary.attribution_text,
@@ -86,8 +86,8 @@ def _cover_photo_from_place_photo_summary(
 ) -> TripCoverPhoto:
     return TripCoverPhoto(
         source="place_photo",
-        url=photo.display_url or photo.image_url,
-        thumbnail_url=photo.display_thumbnail_url or photo.thumbnail_url,
+        url=photo.image_url or photo.display_url,
+        thumbnail_url=photo.thumbnail_url or photo.display_thumbnail_url or photo.image_url or photo.display_url,
         photo_id=photo.id,
         place_id=place_id,
         attribution_text=photo.attribution_text,

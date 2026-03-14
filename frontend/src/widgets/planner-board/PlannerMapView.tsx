@@ -154,7 +154,6 @@ import {
   CompactCarouselActions,
   CompactRefreshButton,
   PlannerRecommendationsCompactSection,
-  PlannerRecommendationDetailPanel,
   PlannerRecommendationsPanel,
 } from './PlannerRecommendations'
 import {
@@ -285,6 +284,8 @@ type PreviewPlan = {
 
 const FLOATING_ICON_BUTTON_CLASS =
   'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] shadow-[0_20px_44px_-20px_rgba(32,56,83,0.38)] backdrop-blur transition-colors hover:bg-white'
+const RECOMMENDATION_MARKER_COLOR = '#0F9D8A'
+const SAVED_RECOMMENDATION_MARKER_COLOR = '#F97316'
 
 const QUICK_CATEGORIES: QuickCategory[] = [
   { id: 'food', label: 'Food', query: 'restaurants', category: 'restaurant' },
@@ -677,6 +678,58 @@ function toGoogleSearchItem(place: GooglePlaceCandidate): SearchResultItem {
   }
 }
 
+function toRecommendationSearchItem(entry: PlannerRecommendationEntry): SearchResultItem {
+  if (entry.matchedPlace) {
+    return {
+      kind: 'google',
+      id: entry.matchedPlace.place_id,
+      placeId: null,
+      name: entry.matchedPlace.name || entry.item.title,
+      addressText: entry.matchedPlace.address_text ?? entry.item.address_text,
+      category: entry.matchedPlace.category ?? entry.item.entity_type,
+      lat: entry.matchedPlace.lat ?? entry.item.lat,
+      lon: entry.matchedPlace.lon ?? entry.item.lon,
+      metadata: {
+        ...(entry.matchedPlace.metadata ?? {}),
+        recommendation_key: entry.key,
+      },
+    }
+  }
+
+  return {
+    kind: 'saved',
+    id: entry.key,
+    placeId: null,
+    name: entry.item.title,
+    addressText: entry.item.address_text,
+    category: entry.item.entity_type,
+    lat: entry.item.lat,
+    lon: entry.item.lon,
+    metadata: {
+      recommendation_key: entry.key,
+    },
+  }
+}
+
+function isRecommendationSearchItem(item: SearchResultItem | null) {
+  const recommendationKey = item?.metadata?.recommendation_key
+  return typeof recommendationKey === 'string' && recommendationKey.trim().length > 0
+}
+
+function recommendationCoordinates(entry: PlannerRecommendationEntry | null) {
+  if (!entry) {
+    return null
+  }
+
+  const lat = entry.matchedPlace?.lat ?? entry.item.lat
+  const lon = entry.matchedPlace?.lon ?? entry.item.lon
+  if (lat == null || lon == null) {
+    return null
+  }
+
+  return { lat, lon }
+}
+
 function inferActivityCategory(item: SearchResultItem): PlannerActivity['category'] {
   const category = (item.category ?? '').toLowerCase()
   const haystack = `${item.name} ${item.addressText ?? ''} ${category}`.toLowerCase()
@@ -1011,11 +1064,11 @@ function PlannerTripHeroCard({
             {onOpenGeneration ? (
               <Button
                 type="button"
-                size="sm"
-                className="h-8 rounded-full px-3.5"
+                variant="outline"
+                className="h-7 rounded-full bg-white px-2.5 text-[0.7rem] font-semibold shadow-sm transition-all hover:bg-white/90 hover:shadow-md active:scale-95"
                 onClick={onOpenGeneration}
               >
-                <Sparkles data-icon="inline-start" />
+                <Sparkles className="size-3" />
                 Generate
               </Button>
             ) : null}
@@ -2856,7 +2909,7 @@ export function PlannerMapView({
   )
   const [visibleDayIds, setVisibleDayIds] = useState<Set<string>>(initialVisibleDayIds)
   const [visibleGroups, setVisibleGroups] = useState<Set<PlannerMapLayerGroup>>(
-    new Set(['visit', 'eat', 'activity', 'hotel', 'travel']),
+    new Set(['visit', 'eat', 'activity', 'hotel', 'travel', 'recommendation']),
   )
   const [isPlannerStoreHydrated, setIsPlannerStoreHydrated] = useState(() =>
     usePlannerStore.persist.hasHydrated(),
@@ -2940,6 +2993,10 @@ export function PlannerMapView({
     selectedSearchItem?.kind === 'google'
       ? selectedSearchItem.id
       : resolveGooglePlaceId(savedPlaceQuery.data)
+  const selectedRecommendationCoordinates = useMemo(
+    () => recommendationCoordinates(selectedRecommendation),
+    [selectedRecommendation],
+  )
   const googlePlaceDetailQuery = useGooglePlaceDetail(selectedGooglePlaceId)
   const searchOrigin = useMemo(() => {
     if (selectedStop?.lat != null && selectedStop.lon != null) {
@@ -2948,10 +3005,10 @@ export function PlannerMapView({
         lon: selectedStop.lon,
       }
     }
-    if (selectedRecommendation?.item.lat != null && selectedRecommendation.item.lon != null) {
+    if (selectedRecommendationCoordinates) {
       return {
-        lat: selectedRecommendation.item.lat,
-        lon: selectedRecommendation.item.lon,
+        lat: selectedRecommendationCoordinates.lat,
+        lon: selectedRecommendationCoordinates.lon,
       }
     }
     if (selectedSearchItem?.lat != null && selectedSearchItem.lon != null) {
@@ -3007,8 +3064,7 @@ export function PlannerMapView({
     placeDetailQuery.data?.place.lon,
     savedPlaceQuery.data?.lat,
     savedPlaceQuery.data?.lon,
-    selectedRecommendation?.item.lat,
-    selectedRecommendation?.item.lon,
+    selectedRecommendationCoordinates,
     selectedSearchItem?.lat,
     selectedSearchItem?.lon,
     selectedStop?.lat,
@@ -3064,9 +3120,13 @@ export function PlannerMapView({
     [allTravelOverlays, visibleDayIds, visibleGroups],
   )
   const mapRecommendationEntries = useMemo(() => {
+    if (!visibleGroups.has('recommendation')) {
+      return []
+    }
+
     const seen = new Set<string>()
     return recommendations.discoverEntries
-      .filter((entry) => entry.item.lat != null && entry.item.lon != null)
+      .filter((entry) => recommendationCoordinates(entry) != null)
       .filter((entry) => {
         const key = `${entry.item.provider}:${entry.item.provider_ref}`
         if (seen.has(key)) {
@@ -3076,7 +3136,7 @@ export function PlannerMapView({
         return true
       })
       .slice(0, 12)
-  }, [recommendations.discoverEntries])
+  }, [recommendations.discoverEntries, visibleGroups])
   const allSearchResults = useMemo(() => {
     const localItems = (localSearchQuery.data?.items ?? []).map(toSavedSearchItem)
     const googleItems = (googleSearchQuery.data?.items ?? []).map(toGoogleSearchItem)
@@ -3163,6 +3223,7 @@ export function PlannerMapView({
       return
     }
     if (
+      isMobile &&
       recommendations.enabled &&
       !selectedActivityId &&
       !selectedPlaceId &&
@@ -3172,6 +3233,7 @@ export function PlannerMapView({
       setDetailOpen(true)
     }
   }, [
+    isMobile,
     onSelectActivityId,
     recommendations.enabled,
     recommendationsDismissed,
@@ -3229,9 +3291,12 @@ export function PlannerMapView({
         zoom: 13,
       }
     }
-    if (selectedRecommendation?.item.lat != null && selectedRecommendation.item.lon != null) {
+    if (selectedRecommendationCoordinates) {
       return {
-        point: withOffset(selectedRecommendation.item.lat, selectedRecommendation.item.lon),
+        point: withOffset(
+          selectedRecommendationCoordinates.lat,
+          selectedRecommendationCoordinates.lon,
+        ),
         zoom: 13,
       }
     }
@@ -3286,8 +3351,7 @@ export function PlannerMapView({
     savedPlaceQuery.data?.lon,
     placeDetailQuery.data?.place.lat,
     placeDetailQuery.data?.place.lon,
-    selectedRecommendation?.item.lat,
-    selectedRecommendation?.item.lon,
+    selectedRecommendationCoordinates,
     selectedSearchItem?.lat,
     selectedSearchItem?.lon,
     selectedStop?.lat,
@@ -3295,6 +3359,7 @@ export function PlannerMapView({
   ])
   const hasPlaceSelection = Boolean(selectedStop || selectedSearchItem || selectedDetailPlaceId)
   const showRecommendationSheet =
+    isMobile &&
     recommendations.enabled &&
     !hasPlaceSelection &&
     !selectedRecommendation &&
@@ -3461,9 +3526,11 @@ export function PlannerMapView({
       return
     }
     onClearMapSelection()
-    setSelectedSearchItem(null)
+    onSelectPlaceId(null)
+    setSelectedSearchItem(toRecommendationSearchItem(entry))
     onSelectRecommendation(entry)
-    setRecommendationsDismissed(false)
+    setRecommendationsDismissed(true)
+    setSearchOpen(false)
     setPreferredDetailTab('about')
     setDetailOpen(true)
   }
@@ -3549,6 +3616,22 @@ export function PlannerMapView({
   }
 
   const handleAddToTrip = async (destinationId: string) => {
+    if (selectedRecommendation) {
+      setAddingToTrip(true)
+      try {
+        const saved = await recommendations.addEntryToDestination(
+          selectedRecommendation,
+          destinationId,
+        )
+        if (saved) {
+          clearSelection()
+        }
+      } finally {
+        setAddingToTrip(false)
+      }
+      return
+    }
+
     const candidate =
       selectedSearchItem ??
       (placeDetailQuery.data
@@ -3802,22 +3885,11 @@ export function PlannerMapView({
     ''
 
   const detailPanelTitle =
-    selectedRecommendation?.item.title ??
     activeSelectionTitle(selectedStop, selectedSearchItem, resolvedDetail)
   const detailPanelDescription =
-    selectedRecommendation?.item.address_text ??
     activeSelectionSubtitle(selectedStop, selectedSearchItem, resolvedDetail) ??
     'Map place detail'
-  const detailPanelContent = selectedRecommendation ? (
-    <PlannerRecommendationDetailPanel
-      tripId={tripId}
-      locale="en-US"
-      entry={selectedRecommendation}
-      recommendations={recommendations}
-      onBack={() => onSelectRecommendation(null)}
-      onClose={clearSelection}
-    />
-  ) : hasPlaceSelection ? (
+  const detailPanelContent = hasPlaceSelection ? (
     <DetailSheetContent
       tripId={tripId}
       detail={resolvedDetail}
@@ -3967,7 +4039,11 @@ export function PlannerMapView({
                       />
                     </AccordionTrigger>
                     <AccordionContent className="pb-3.5 pt-0">
-                      <PlannerRecommendationsCompactSection recommendations={recommendations} />
+                      <PlannerRecommendationsCompactSection
+                        recommendations={recommendations}
+                        onSelectEntry={handleRecommendationSelection}
+                        selectedEntryKey={selectedRecommendation?.key ?? null}
+                      />
                     </AccordionContent>
                   </Carousel>
                 </AccordionItem>
@@ -4231,7 +4307,9 @@ export function PlannerMapView({
               </VoyagerMarker>
             ))}
 
-            {selectedSearchItem?.lat != null && selectedSearchItem.lon != null ? (
+            {selectedSearchItem?.lat != null &&
+            selectedSearchItem.lon != null &&
+            !isRecommendationSearchItem(selectedSearchItem) ? (
               <VoyagerMarker
                 position={{ lat: selectedSearchItem.lat, lng: selectedSearchItem.lon }}
                 title={selectedSearchItem.name}
@@ -4248,16 +4326,27 @@ export function PlannerMapView({
               ? mapRecommendationEntries.map((entry) => (
                   <VoyagerMarker
                     key={entry.key}
-                    position={{ lat: entry.item.lat!, lng: entry.item.lon! }}
+                    position={{
+                      lat: recommendationCoordinates(entry)!.lat,
+                      lng: recommendationCoordinates(entry)!.lon,
+                    }}
                     title={entry.item.title}
-                    color={entry.source === 'saved_fit' ? '#F97316' : '#7C5AE0'}
+                    color={
+                      entry.source === 'saved_fit'
+                        ? SAVED_RECOMMENDATION_MARKER_COLOR
+                        : RECOMMENDATION_MARKER_COLOR
+                    }
                     selected={selectedRecommendation?.key === entry.key}
                     zIndex={selectedRecommendation?.key === entry.key ? 5 : 1}
                     onClick={() => handleRecommendationSelection(entry)}
                   >
                     <PlannerMapPin
                       label={entry.source === 'saved_fit' ? 'S' : 'R'}
-                      color={entry.source === 'saved_fit' ? '#F97316' : '#7C5AE0'}
+                      color={
+                        entry.source === 'saved_fit'
+                          ? SAVED_RECOMMENDATION_MARKER_COLOR
+                          : RECOMMENDATION_MARKER_COLOR
+                      }
                       selected={selectedRecommendation?.key === entry.key}
                     />
                   </VoyagerMarker>
@@ -4369,6 +4458,7 @@ export function PlannerMapView({
                               ['visit', 'Visits', Landmark],
                               ['eat', 'Eat', Utensils],
                               ['activity', 'Activities', Sparkles],
+                              ['recommendation', 'Recommendations', Compass],
                               ['hotel', 'Hotels', BedDouble],
                               ['travel', 'Travel', Route],
                             ] as const).map(([key, label, Icon]) => (
@@ -4512,35 +4602,35 @@ export function PlannerMapView({
         </AnimatePresence>
       </section>
 
-      <Sheet
-        open={detailOpen && showRecommendationSheet}
-        onOpenChange={(open) => {
-          setDetailOpen(open)
-          if (!open) {
-            setRecommendationsDismissed(true)
-            clearSelection()
-          }
-        }}
-      >
-        <SheetContent
-          side={isMobile ? 'bottom' : 'right'}
-          hideCloseButton
-          className={
-            isMobile
-              ? 'flex h-[82dvh] flex-col overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-[#F3F5F7] p-0 sm:max-w-none'
-              : 'flex h-full w-full max-w-[28rem] flex-col overflow-hidden bg-[#F3F5F7] p-0 sm:max-w-[28rem]'
-          }
+      {isMobile ? (
+        <Sheet
+          open={detailOpen && showRecommendationSheet}
+          onOpenChange={(open) => {
+            setDetailOpen(open)
+            if (!open) {
+              setRecommendationsDismissed(true)
+              clearSelection()
+            }
+          }}
         >
-          <SheetHeader className="sr-only">
-            <SheetTitle>Recommendations</SheetTitle>
-            <SheetDescription>Map recommendations</SheetDescription>
-          </SheetHeader>
-          <PlannerRecommendationsPanel
-            recommendations={recommendations}
-            showCloseButton
-          />
-        </SheetContent>
-      </Sheet>
+          <SheetContent
+            side="bottom"
+            hideCloseButton
+            className="flex h-[82dvh] flex-col overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-[#F3F5F7] p-0 sm:max-w-none"
+          >
+            <SheetHeader className="sr-only">
+              <SheetTitle>Recommendations</SheetTitle>
+              <SheetDescription>Map recommendations</SheetDescription>
+            </SheetHeader>
+            <PlannerRecommendationsPanel
+              recommendations={recommendations}
+              showCloseButton
+              onSelectEntry={handleRecommendationSelection}
+              selectedEntryKey={selectedRecommendation?.key ?? null}
+            />
+          </SheetContent>
+        </Sheet>
+      ) : null}
 
       {isMobile ? (
         <Sheet

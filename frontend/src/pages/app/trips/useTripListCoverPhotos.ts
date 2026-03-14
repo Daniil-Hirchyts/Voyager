@@ -17,7 +17,12 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
         trips.map((trip) => [
           trip.id,
           {
-            url: resolveMediaUrl(trip.coverPhoto?.url ?? null),
+            url: resolveMediaUrl(
+              trip.coverPhoto?.thumbnailUrl ??
+                trip.coverPhoto?.url ??
+                trip.coverPreference?.fallbackImageUrl ??
+                null,
+            ),
             isFallback: trip.coverPhoto?.isFallback ?? true,
           } satisfies TripCardCover,
         ]),

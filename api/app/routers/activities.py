@@ -661,6 +661,13 @@ async def save_activity_to_shortlist(
     if replay:
         return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
 
+    raw_payload = payload.raw_payload if isinstance(payload.raw_payload, dict) else {}
+    google_place_id = raw_payload.get("google_place_id")
+    resolved_google_place_id = (
+        google_place_id.strip()
+        if isinstance(google_place_id, str) and google_place_id.strip()
+        else None
+    )
     resolved_lat = payload.lat
     resolved_lon = payload.lon
     resolved_address_text = payload.address_text
@@ -685,14 +692,25 @@ async def save_activity_to_shortlist(
     if resolved_lat is not None or resolved_lon is not None or resolved_address_text:
         place = await PlaceRepository.get_or_create_external_place(
             db,
-            source=f"tripadvisor_{payload.entity_type.value}",
-            external_id=payload.provider_ref,
+            source="google_places" if resolved_google_place_id else f"tripadvisor_{payload.entity_type.value}",
+            external_id=resolved_google_place_id or payload.provider_ref,
             name=payload.title,
             category=payload.entity_type.value,
             address_text=resolved_address_text,
             lat=resolved_lat,
             lon=resolved_lon,
-            metadata={"provider": payload.provider, "detail_url": payload.detail_url},
+            metadata={
+                "provider": payload.provider,
+                "detail_url": payload.detail_url,
+                **(
+                    {
+                        "google_place_id": resolved_google_place_id,
+                        "tripadvisor_provider_ref": payload.provider_ref,
+                    }
+                    if resolved_google_place_id
+                    else {}
+                ),
+            },
         )
         place_id = place.id
 

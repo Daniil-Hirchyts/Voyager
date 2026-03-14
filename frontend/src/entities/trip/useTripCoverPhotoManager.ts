@@ -144,6 +144,42 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   const coverPlace = coverPlaceQuery.data
   const coverPhotosData = coverPhotosQuery.data
   const coverPhotosLoading = coverPhotosQuery.isLoading
+  const buildCoverPreferenceDraft = (
+    current: TripCoverPreference | null | undefined,
+  ): TripCoverPreference => ({
+    placeId:
+      current?.placeId ??
+      trip?.coverPreference?.placeId ??
+      resolvedPlaceId ??
+      null,
+    placeLabel:
+      current?.placeLabel ??
+      trip?.coverPreference?.placeLabel ??
+      coverPlace?.address_text ??
+      coverPlace?.name ??
+      inferredDestination?.label ??
+      trip?.destination_text ??
+      null,
+    placeLat:
+      current?.placeLat ??
+      trip?.coverPreference?.placeLat ??
+      coverPlace?.lat ??
+      inferredDestination?.lat ??
+      null,
+    placeLng:
+      current?.placeLng ??
+      trip?.coverPreference?.placeLng ??
+      coverPlace?.lon ??
+      inferredDestination?.lon ??
+      null,
+    photoId: current?.photoId ?? trip?.coverPreference?.photoId ?? null,
+    assetId: current?.assetId ?? trip?.coverPreference?.assetId ?? null,
+    fallbackImageUrl:
+      current?.fallbackImageUrl ??
+      trip?.coverPreference?.fallbackImageUrl ??
+      (trip?.coverPhoto?.isFallback ? trip.coverPhoto.url : null) ??
+      null,
+  })
   const uploadedPhotoCandidates = useMemo(
     () =>
       (uploadedAssetsQuery.data?.items ?? [])
@@ -265,12 +301,14 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     () => [...uploadedPhotoCandidates, ...destinationPhotoCandidates],
     [destinationPhotoCandidates, uploadedPhotoCandidates],
   )
+  const preferredAssetId = coverPreference?.assetId ?? trip?.coverPhoto?.assetId ?? null
+  const preferredPhotoId = coverPreference?.photoId ?? trip?.coverPhoto?.photoId ?? null
 
   const selectedCoverPhoto = useMemo(() => {
-    if (coverPreference?.assetId) {
+    if (preferredAssetId) {
       const uploadedCandidate = coverPhotoCandidates.find(
         (photo) =>
-          photo.id === coverPreference.assetId &&
+          photo.id === preferredAssetId &&
           photo.candidateSource === 'uploaded',
       )
       if (uploadedCandidate) {
@@ -278,10 +316,10 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
       }
     }
 
-    if (coverPreference?.photoId) {
+    if (preferredPhotoId) {
       const destinationCandidate = coverPhotoCandidates.find(
         (photo) =>
-          photo.id === coverPreference.photoId &&
+          photo.id === preferredPhotoId &&
           photo.candidateSource === 'destination',
       )
       if (destinationCandidate) {
@@ -297,9 +335,9 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     )
   }, [
     coverPhotoCandidates,
-    coverPreference?.assetId,
-    coverPreference?.photoId,
     destinationPhotoCandidates,
+    preferredAssetId,
+    preferredPhotoId,
     uploadedPhotoCandidates,
   ])
 
@@ -385,7 +423,12 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   const coverPhotoUrl =
     resolvePhotoUrl(selectedCoverPhoto, 'full') ||
     resolvePhotoUrl(selectedCoverPhoto, 'thumb') ||
-    resolveMediaUrl(trip?.coverPhoto?.url ?? null)
+    resolveMediaUrl(
+      trip?.coverPhoto?.url ??
+        trip?.coverPhoto?.thumbnailUrl ??
+        trip?.coverPreference?.fallbackImageUrl ??
+        null,
+    )
   const isCoverPhotoBusy =
     coverPhotosLoading ||
     isRefreshingCoverPhotos ||
@@ -399,15 +442,7 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     candidateSource: CoverPhotoCandidateSource = 'destination',
   ) {
     setCoverPreference((current) => {
-      const next = {
-        placeId: current?.placeId ?? null,
-        placeLabel: current?.placeLabel ?? null,
-        placeLat: current?.placeLat ?? null,
-        placeLng: current?.placeLng ?? null,
-        photoId: current?.photoId ?? null,
-        assetId: current?.assetId ?? null,
-        fallbackImageUrl: current?.fallbackImageUrl ?? null,
-      }
+      const next = buildCoverPreferenceDraft(current)
 
       if (candidateSource === 'uploaded') {
         return { ...next, assetId: candidateId, photoId: null }
@@ -418,11 +453,17 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   }
 
   async function commitPhotoSelection() {
-    if (!tripId || !coverPreference || areCoverPreferencesEqual(coverPreference, trip?.coverPreference)) {
+    const nextCoverPreference = buildCoverPreferenceDraft(coverPreference)
+
+    if (
+      !tripId ||
+      areCoverPreferencesEqual(nextCoverPreference, trip?.coverPreference)
+    ) {
       return
     }
 
-    await patchCoverPreference.mutateAsync(coverPreference)
+    setCoverPreference(nextCoverPreference)
+    await patchCoverPreference.mutateAsync(nextCoverPreference)
   }
 
   async function handleCoverPhotoRefresh() {

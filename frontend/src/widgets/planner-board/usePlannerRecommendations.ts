@@ -10,6 +10,8 @@ import {
   useSavedActivities,
 } from '@/entities/activity-discovery/queries'
 import { createPlannerActivity } from '@/entities/activity/api'
+import { searchGooglePlaces } from '@/entities/place/api'
+import { placeKeys } from '@/entities/place/queries'
 import {
   readVoyagerPreferences,
   type VoyagerPreferences,
@@ -18,10 +20,15 @@ import { useProfile } from '@/entities/user/queries'
 import { plannerKeys } from '@/entities/planner/queries'
 import type {
   ActivityDiscoveryItem,
+  GooglePlaceCandidate,
   PlannerActivity,
   PlannerDay,
   Trip,
 } from '@/shared/api/types'
+import {
+  buildRecommendationPlaceQueries,
+  selectBestRecommendationPlaceMatch,
+} from './recommendation-place-match'
 
 export type PlannerRecommendationSource = 'discover' | 'saved_fit'
 
@@ -31,6 +38,7 @@ export interface PlannerRecommendationEntry {
   item: ActivityDiscoveryItem
   score: number | null
   rationale: string | null
+  matchedPlace: GooglePlaceCandidate | null
 }
 
 export interface PlannerRecommendationDayOption {
@@ -79,6 +87,7 @@ function buildEntry(
   extras?: {
     score?: number | null
     rationale?: string | null
+    matchedPlace?: GooglePlaceCandidate | null
   },
 ): PlannerRecommendationEntry {
   return {
@@ -87,30 +96,36 @@ function buildEntry(
     item,
     score: extras?.score ?? null,
     rationale: extras?.rationale ?? null,
+    matchedPlace: extras?.matchedPlace ?? null,
   }
 }
 
 function buildShortlistSavePayload(
-  item: ActivityDiscoveryItem,
+  entry: PlannerRecommendationEntry,
   currency: string | null,
 ) {
+  const googlePlaceId = entry.matchedPlace?.place_id?.trim() || null
+  const addressText = entry.matchedPlace?.address_text ?? entry.item.address_text
+  const lat = entry.matchedPlace?.lat ?? entry.item.lat
+  const lon = entry.matchedPlace?.lon ?? entry.item.lon
+
   return {
-    entity_type: item.entity_type,
-    provider: item.provider,
-    provider_ref: item.provider_ref,
-    title: item.title,
-    summary: item.summary,
-    rating: item.rating,
-    review_count: item.review_count,
-    price_label: item.price_label,
-    image_url: item.image_url,
-    detail_url: item.detail_url,
-    address_text: item.address_text,
-    lat: item.lat,
-    lon: item.lon,
-    status_text: item.status_text,
+    entity_type: entry.item.entity_type,
+    provider: entry.item.provider,
+    provider_ref: entry.item.provider_ref,
+    title: entry.item.title,
+    summary: entry.item.summary,
+    rating: entry.item.rating,
+    review_count: entry.item.review_count,
+    price_label: entry.item.price_label,
+    image_url: entry.item.image_url,
+    detail_url: entry.item.detail_url,
+    address_text: addressText,
+    lat,
+    lon,
+    status_text: entry.item.status_text,
     currency,
-    raw_payload: {},
+    raw_payload: googlePlaceId ? { google_place_id: googlePlaceId } : {},
   }
 }
 
@@ -139,6 +154,9 @@ export function usePlannerRecommendations({
   const preferences = readVoyagerPreferences(profile)
   const [targetDayId, setTargetDayId] = useState(days[0]?.id ?? '')
   const [addingKey, setAddingKey] = useState<string | null>(null)
+  const [matchedPlacesByKey, setMatchedPlacesByKey] = useState<
+    Record<string, GooglePlaceCandidate | null>
+  >({})
 
   useEffect(() => {
     if (!days.length) {
@@ -229,13 +247,93 @@ export function usePlannerRecommendations({
   const saveMutation = useSaveActivityToShortlist(tripId)
   const attachMutation = useAttachSavedActivityToDay(tripId)
 
+  useEffect(() => {
+    let cancelled = false
+
+    const items = discoverQuery.data?.items ?? []
+    if (!enabled || !items.length) {
+      setMatchedPlacesByKey({})
+      return
+    }
+
+    void (async () => {
+      const matches = await Promise.all(
+        items.map(async (item) => {
+          const key = `discover:${item.snapshot_id ?? item.provider_ref}`
+          const queries = buildRecommendationPlaceQueries({
+            title: item.title,
+            addressText: item.address_text,
+            destinationText: trip?.destination_text ?? null,
+            lat: item.lat,
+            lon: item.lon,
+          })
+
+          let matchedPlace: GooglePlaceCandidate | null = null
+          for (const query of queries) {
+            const params = {
+              q: query,
+              limit: 5,
+              lat: item.lat ?? undefined,
+              lon: item.lon ?? undefined,
+              radius_m:
+                item.lat != null && item.lon != null
+                  ? 2500
+                  : undefined,
+            }
+            let response: Awaited<ReturnType<typeof searchGooglePlaces>>
+            try {
+              response = await queryClient.fetchQuery({
+                queryKey: placeKeys.googleSearch(params),
+                queryFn: () => searchGooglePlaces(params),
+                staleTime: 5 * 60 * 1000,
+              })
+            } catch {
+              matchedPlace = null
+              break
+            }
+            matchedPlace = selectBestRecommendationPlaceMatch(
+              {
+                title: item.title,
+                addressText: item.address_text,
+                destinationText: trip?.destination_text ?? null,
+                lat: item.lat,
+                lon: item.lon,
+              },
+              response.items,
+            )
+            if (matchedPlace) {
+              break
+            }
+          }
+
+          return [key, matchedPlace] as const
+        }),
+      )
+
+      if (cancelled) {
+        return
+      }
+
+      setMatchedPlacesByKey(Object.fromEntries(matches))
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [discoverQuery.data?.items, enabled, queryClient, trip?.destination_text])
+
   const discoverEntries = useMemo(
     () =>
       (discoverQuery.data?.items ?? [])
         .filter((item) => !savedProviderRefs.has(item.provider_ref))
         .filter((item) => !item.snapshot_id || !attachedSnapshotIds.has(item.snapshot_id))
-        .map((item) => buildEntry(item, 'discover')),
-    [attachedSnapshotIds, discoverQuery.data?.items, savedProviderRefs],
+        .map((item) =>
+          buildEntry(item, 'discover', {
+            matchedPlace:
+              matchedPlacesByKey[`discover:${item.snapshot_id ?? item.provider_ref}`] ?? null,
+          }),
+        ),
+    [attachedSnapshotIds, discoverQuery.data?.items, matchedPlacesByKey, savedProviderRefs],
   )
 
   async function persistEntry(entry: PlannerRecommendationEntry) {
@@ -247,7 +345,7 @@ export function usePlannerRecommendations({
     try {
       return await saveMutation.mutateAsync({
         data: buildShortlistSavePayload(
-          entry.item,
+          entry,
           trip?.budget_currency || 'USD',
         ),
         idempotencyKey: crypto.randomUUID(),

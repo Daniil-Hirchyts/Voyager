@@ -238,6 +238,49 @@ def test_saved_activity_attach_recommend_optimize_and_apply(api_client, headers_
     assert any(item["event_snapshot_id"] == saved_attraction["snapshot_id"] for item in activities)
 
 
+def test_saved_activity_uses_google_place_id_when_provided(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase6 google place linkage trip")
+
+    response = api_client.post(
+        f"/trips/{trip['id']}/activities/save",
+        headers=headers_user1 | {"Idempotency-Key": f"p6-save-google-{uuid.uuid4()}"},
+        json={
+            "entity_type": "attraction",
+            "provider": "tripadvisor",
+            "provider_ref": f"tripadvisor-google-{uuid.uuid4()}",
+            "title": "Basilica de la Sagrada Familia",
+            "summary": "A canonical place linkage test.",
+            "rating": 4.8,
+            "review_count": 1200,
+            "price_label": "$$",
+            "image_url": "https://images.example.com/activity.jpg",
+            "detail_url": "https://tripadvisor.com/example",
+            "address_text": "C/ de Mallorca, 401, L'Eixample, 08013 Barcelona, Spain",
+            "lat": 41.4036,
+            "lon": 2.1744,
+            "status_text": "Open now",
+            "currency": "EUR",
+            "raw_payload": {
+                "google_place_id": "ChIJM3RR83jKvJURRbA_5OGjCwQ",
+            },
+        },
+    )
+    assert response.status_code == 201
+
+    saved = response.json()
+    assert saved["place_id"] is not None
+
+    place_response = api_client.get(
+        f"/places/{saved['place_id']}",
+        headers=headers_user1,
+    )
+    assert place_response.status_code == 200
+    place = place_response.json()
+    assert place["source"] == "google_places"
+    assert place["external_id"] == "ChIJM3RR83jKvJURRbA_5OGjCwQ"
+    assert place["metadata"]["google_place_id"] == "ChIJM3RR83jKvJURRbA_5OGjCwQ"
+
+
 def test_moving_and_deleting_attached_activities_sync_shortlist_day(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, title="Phase6 shortlist sync trip")
     first_day = _list_days(api_client, headers_user1, trip["id"])[0]

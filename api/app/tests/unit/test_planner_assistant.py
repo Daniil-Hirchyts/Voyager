@@ -260,6 +260,46 @@ async def test_stream_assistant_messages_routes_command_requests(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_build_place_payload_accepts_google_place_id_in_place_id(monkeypatch):
+    async def _fake_lookup_google_place(place_id: str):
+        assert place_id == "google-place-123"
+        return SimpleNamespace(
+            place_id=place_id,
+            name="Louvre Pyramid",
+            formatted_address="75001 Paris, France",
+            category="cultural_landmark",
+            country="FR",
+            region="IDF",
+            lat=48.8606,
+            lng=2.3376,
+            timezone="Europe/Paris",
+            metadata={},
+        )
+
+    monkeypatch.setattr(
+        planner_assistant,
+        "lookup_google_place",
+        _fake_lookup_google_place,
+    )
+
+    place_id, payload = await planner_assistant._build_place_payload(
+        {
+            "place_id": "google-place-123",
+        }
+    )
+
+    assert place_id is None
+    assert payload is not None
+    assert payload["source"] == "google_places"
+    assert payload["external_id"] == "google-place-123"
+    assert payload["name"] == "Louvre Pyramid"
+    assert payload["address_text"] == "75001 Paris, France"
+    assert payload["category"] == "cultural_landmark"
+    assert payload["lat"] == 48.8606
+    assert payload["lon"] == 2.3376
+
+
+@pytest.mark.anyio
 async def test_handle_user_turn_blocks_unsupported_tool_calls(monkeypatch):
     thread_id = uuid4()
     emitted = []

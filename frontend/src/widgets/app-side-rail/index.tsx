@@ -51,7 +51,7 @@ const BTN_ACTIVE = cn(BTN_RAIL, 'text-[var(--color-cta)] data-[checked=true]:tex
 const BTN_STANDALONE = cn(BTN, 'hover:bg-[#ECEEF0] hover:text-[#1D2430]')
 const BTN_ASSISTANT = cn(
   BTN,
-  'relative border border-black/10 bg-white text-[#1D2430] shadow-[0_12px_28px_-18px_rgba(32,56,83,0.35)] hover:bg-white hover:text-[#111827]',
+  'relative rounded-full border border-black/10 bg-white text-[#1D2430] shadow-[0_4px_12px_-4px_rgba(0,0,0,0.1)] transition-all duration-300 hover:border-black/15 hover:shadow-[0_8px_16px_-6px_rgba(0,0,0,0.12)] hover:scale-105 active:scale-95',
 )
 const RAIL_HOVER_TRANSITION = {
   type: 'spring',
@@ -220,7 +220,7 @@ function AppSideRail() {
 
   return (
     <aside
-      className="flex h-full w-[56px] shrink-0 flex-col items-center border-r border-black/[0.07] bg-white py-3"
+      className="relative z-[60] flex h-full w-[56px] shrink-0 flex-col items-center border-r border-black/[0.07] bg-white py-3"
       data-testid="app-side-rail"
     >
       {/* Logo */}
@@ -268,12 +268,12 @@ function AppSideRail() {
             <RailTooltip label="Open assistant">
               <div className="relative">
                 <GlowEffect
-                  colors={['#fb923c', '#34d399', '#38bdf8', '#facc15']}
-                  mode="colorShift"
-                  blur="soft"
-                  duration={3.2}
-                  scale={0.94}
-                  className="rounded-[16px] opacity-90"
+                  colors={['#818cf8', '#38bdf8', '#fb923c']}
+                  mode="breathe"
+                  blur="medium"
+                  duration={4}
+                  scale={1.1}
+                  className="rounded-full opacity-45"
                 />
                 <button
                   data-id="planner-assistant"
@@ -282,7 +282,7 @@ function AppSideRail() {
                   onClick={plannerInstruments.onOpenAssistant}
                   className={BTN_ASSISTANT}
                 >
-                  <Bot className="size-[1rem]" />
+                  <Bot className="size-[1.05rem]" />
                 </button>
               </div>
             </RailTooltip>

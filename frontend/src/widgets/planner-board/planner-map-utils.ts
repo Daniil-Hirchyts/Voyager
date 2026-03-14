@@ -13,7 +13,13 @@ import {
   type PlannerTravelSummary,
 } from './travel-estimates'
 
-export type PlannerMapLayerGroup = 'visit' | 'eat' | 'activity' | 'hotel' | 'travel'
+export type PlannerMapLayerGroup =
+  | 'visit'
+  | 'eat'
+  | 'activity'
+  | 'hotel'
+  | 'travel'
+  | 'recommendation'
 
 export type PlannerMapStop = {
   activity: PlannerActivity

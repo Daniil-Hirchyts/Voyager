@@ -6,6 +6,8 @@ import React, {
   useLayoutEffect,
   useRef,
   useState,
+  type MutableRefObject,
+  type RefObject,
 } from 'react'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -23,7 +25,7 @@ type PromptInputContextValue = {
   maxHeight: number | string
   onSubmit?: () => void
   disabled?: boolean
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>
+  textareaRef: RefObject<HTMLTextAreaElement | null>
 }
 
 const PromptInputContext = createContext<PromptInputContextValue>({
@@ -33,7 +35,7 @@ const PromptInputContext = createContext<PromptInputContextValue>({
   maxHeight: 240,
   onSubmit: undefined,
   disabled: false,
-  textareaRef: React.createRef<HTMLTextAreaElement>(),
+  textareaRef: { current: null } as MutableRefObject<HTMLTextAreaElement | null>,
 })
 
 function usePromptInput() {
@@ -49,8 +51,19 @@ export type PromptInputProps = {
   children: React.ReactNode
   className?: string
   disabled?: boolean
-  textareaRef?: React.RefObject<HTMLTextAreaElement | null>
+  textareaRef?: RefObject<HTMLTextAreaElement | null>
 } & React.ComponentProps<'div'>
+
+function assignTextareaRef(
+  ref: RefObject<HTMLTextAreaElement | null> | undefined,
+  element: HTMLTextAreaElement | null,
+) {
+  if (!ref) {
+    return
+  }
+
+  ;(ref as MutableRefObject<HTMLTextAreaElement | null>).current = element
+}
 
 export function PromptInput({
   className,
@@ -139,7 +152,7 @@ export function PromptInputTextarea({
   }
 
   const handleRef = (element: HTMLTextAreaElement | null) => {
-    textareaRef.current = element
+    assignTextareaRef(textareaRef, element)
     adjustHeight(element)
   }
 

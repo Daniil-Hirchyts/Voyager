@@ -91,6 +91,10 @@ function extractTags(detail: ActivityDiscoveryDetail | undefined) {
   )
 }
 
+function recommendationAddress(entry: PlannerRecommendationEntry) {
+  return entry.matchedPlace?.address_text ?? entry.item.address_text
+}
+
 function AddDestinationMenu({
   entry,
   recommendations,
@@ -116,6 +120,9 @@ function AddDestinationMenu({
             className,
           )}
           disabled={isAdding}
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
         >
           {isAdding ? <VoyagerLoader className="h-3.5 w-3.5 " /> : null}
           Add
@@ -222,7 +229,12 @@ function DestinationMenuItem({
   onSelect: () => void
 }) {
   return (
-    <DropdownMenuItem onClick={onSelect}>
+    <DropdownMenuItem
+      onClick={(event) => {
+        event.stopPropagation()
+        onSelect()
+      }}
+    >
       <div className="flex flex-col gap-0.5">
         <span className="font-medium text-[var(--color-text)]">{destination.shortLabel}</span>
         <span className="text-xs text-[var(--color-text-muted)]">{destination.description}</span>
@@ -234,12 +246,25 @@ function DestinationMenuItem({
 function RecommendationCard({
   entry,
   recommendations,
+  selected = false,
+  onSelect,
 }: {
   entry: PlannerRecommendationEntry
   recommendations: PlannerRecommendationsController
+  selected?: boolean
+  onSelect?: (entry: PlannerRecommendationEntry) => void
 }) {
   return (
-    <article className="overflow-hidden rounded-[22px] border border-black/8 bg-white p-3 shadow-[0_18px_48px_-34px_rgba(15,23,42,0.22)]">
+    <article
+      className={cn(
+        'overflow-hidden rounded-[22px] border bg-white p-3 shadow-[0_18px_48px_-34px_rgba(15,23,42,0.22)] transition-colors',
+        onSelect && 'cursor-pointer',
+        selected
+          ? 'border-[var(--color-text)]/22 ring-1 ring-[var(--color-text)]/10'
+          : 'border-black/8',
+      )}
+      onClick={() => onSelect?.(entry)}
+    >
       <div className="flex gap-3">
         {entry.item.image_url ? (
           <PhotoViewerProvider>
@@ -248,6 +273,9 @@ function RecommendationCard({
                 type="button"
                 className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-[18px] text-left"
                 aria-label={`Preview ${entry.item.title}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                }}
               >
                 <img
                   src={entry.item.image_url}
@@ -276,10 +304,10 @@ function RecommendationCard({
             ) : null}
           </div>
 
-          {entry.item.address_text ? (
+          {recommendationAddress(entry) ? (
             <p className="mt-2 line-clamp-2 flex items-start gap-2 text-[0.82rem] leading-5 text-[var(--color-text-muted)]">
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <span>{entry.item.address_text}</span>
+              <span>{recommendationAddress(entry)}</span>
             </p>
           ) : null}
 
@@ -305,9 +333,13 @@ function RecommendationCard({
 function CompactRecommendationCard({
   entry,
   recommendations,
+  selected = false,
+  onSelect,
 }: {
   entry: PlannerRecommendationEntry
   recommendations: PlannerRecommendationsController
+  selected?: boolean
+  onSelect?: (entry: PlannerRecommendationEntry) => void
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const entityLabel = entry.item.entity_type
@@ -331,7 +363,16 @@ function CompactRecommendationCard({
   } as const
 
   return (
-    <article className="relative h-[204px] overflow-hidden rounded-[18px] border border-black/8 bg-white shadow-[0_14px_30px_-26px_rgba(15,23,42,0.18)]">
+    <article
+      className={cn(
+        'relative h-[204px] overflow-hidden rounded-[18px] border bg-white shadow-[0_14px_30px_-26px_rgba(15,23,42,0.18)] transition-colors',
+        onSelect && 'cursor-pointer',
+        selected
+          ? 'border-[var(--color-text)]/24 ring-1 ring-[var(--color-text)]/10'
+          : 'border-black/8',
+      )}
+      onClick={() => onSelect?.(entry)}
+    >
       <motion.div
         className="absolute inset-0"
         animate={isOpen ? 'expanded' : 'collapsed'}
@@ -395,10 +436,10 @@ function CompactRecommendationCard({
               />
             </div>
 
-            {entry.item.address_text ? (
+            {recommendationAddress(entry) ? (
               <p className="mt-1 line-clamp-1 flex items-center gap-1 text-[0.68rem] text-[var(--color-text-muted)]">
                 <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{entry.item.address_text}</span>
+                <span className="truncate">{recommendationAddress(entry)}</span>
               </p>
             ) : null}
           </button>
@@ -433,11 +474,15 @@ function RecommendationSection({
   description,
   entries,
   recommendations,
+  onSelectEntry,
+  selectedEntryKey,
 }: {
   title: string
   description: string
   entries: PlannerRecommendationEntry[]
   recommendations: PlannerRecommendationsController
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
+  selectedEntryKey?: string | null
 }) {
   return (
     <section className="space-y-3">
@@ -461,6 +506,8 @@ function RecommendationSection({
               key={entry.key}
               entry={entry}
               recommendations={recommendations}
+              selected={selectedEntryKey === entry.key}
+              onSelect={onSelectEntry}
             />
           ))}
         </div>
@@ -471,10 +518,14 @@ function RecommendationSection({
 
 export function PlannerRecommendationsCompactSection({
   recommendations,
-  maxItems = 4,
+  maxItems = Infinity,
+  onSelectEntry,
+  selectedEntryKey,
 }: {
   recommendations: PlannerRecommendationsController
   maxItems?: number
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
+  selectedEntryKey?: string | null
 }) {
   const visibleEntries = recommendations.discoverEntries.slice(0, maxItems)
 
@@ -511,6 +562,8 @@ export function PlannerRecommendationsCompactSection({
               <CompactRecommendationCard
                 entry={entry}
                 recommendations={recommendations}
+                selected={selectedEntryKey === entry.key}
+                onSelect={onSelectEntry}
               />
             </CarouselItem>
           ))}
@@ -527,9 +580,13 @@ export function PlannerRecommendationsCompactSection({
 export function PlannerRecommendationsPanel({
   recommendations,
   showCloseButton = false,
+  onSelectEntry,
+  selectedEntryKey,
 }: {
   recommendations: PlannerRecommendationsController
   showCloseButton?: boolean
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
+  selectedEntryKey?: string | null
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-[#F3F5F7]" data-testid="planner-recommendations-sheet">
@@ -594,6 +651,8 @@ export function PlannerRecommendationsPanel({
             description="Fresh attractions that are not already on the planner."
             entries={recommendations.discoverEntries}
             recommendations={recommendations}
+            onSelectEntry={onSelectEntry}
+            selectedEntryKey={selectedEntryKey}
           />
         )}
       </div>
@@ -745,9 +804,9 @@ export function PlannerRecommendationDetailPanel({
               <h2 className="mt-3 text-[1.2rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
                 {detail?.title ?? entry.item.title}
               </h2>
-              {detail?.address_text || entry.item.address_text ? (
+              {detail?.address_text || recommendationAddress(entry) ? (
                 <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
-                  {detail?.address_text || entry.item.address_text}
+                  {detail?.address_text || recommendationAddress(entry)}
                 </p>
               ) : null}
             </div>
