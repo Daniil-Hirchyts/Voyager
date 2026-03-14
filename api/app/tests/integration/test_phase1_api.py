@@ -205,6 +205,75 @@ def test_trip_route_travel_mode_roundtrip(api_client, headers_user1):
     assert fetched.json()["route_travel_mode"] == "TRANSIT"
 
 
+def test_trip_cover_preference_fallback_roundtrip(api_client, headers_user1):
+    idem_key = f"cover-pref-trip-{uuid.uuid4()}"
+    created = api_client.post(
+        "/trips",
+        headers=headers_user1 | {"Idempotency-Key": idem_key},
+        json={
+            "title": "Kyoto cover trip",
+            "destination_text": "Kyoto, Japan",
+            "start_date": "2026-04-18",
+            "end_date": "2026-04-24",
+            "budget_amount": 2400,
+            "budget_currency": "USD",
+            "trip_type": "culture",
+        },
+    )
+    assert created.status_code == 201
+    trip = created.json()
+
+    patch_payload = {
+        "place_id": None,
+        "place_label": "Kyoto, Japan",
+        "place_lat": 35.0116,
+        "place_lng": 135.7681,
+        "photo_id": None,
+        "asset_id": None,
+        "fallback_image_url": "/images/trips/kyoto-lantern-week.jpg",
+    }
+    patched = api_client.patch(
+        f"/trips/{trip['id']}/cover-preference",
+        headers=headers_user1,
+        json=patch_payload,
+    )
+    assert patched.status_code == 200
+    patched_body = patched.json()
+
+    assert patched_body["version"] == trip["version"]
+    assert patched_body["cover_preference"] == patch_payload
+    assert patched_body["cover_photo"] == {
+        "source": "fallback",
+        "url": "/images/trips/kyoto-lantern-week.jpg",
+        "thumbnail_url": "/images/trips/kyoto-lantern-week.jpg",
+        "asset_id": None,
+        "photo_id": None,
+        "place_id": None,
+        "attribution_text": "Kyoto, Japan",
+        "is_fallback": True,
+    }
+
+    fetched = api_client.get(f"/trips/{trip['id']}", headers=headers_user1)
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+    assert fetched_body["version"] == trip["version"]
+    assert fetched_body["cover_preference"] == patch_payload
+    assert fetched_body["cover_photo"] == patched_body["cover_photo"]
+
+    listed = api_client.get("/trips", headers=headers_user1)
+    assert listed.status_code == 200
+    listed_item = next(item for item in listed.json()["items"] if item["id"] == trip["id"])
+    assert listed_item["cover_preference"] == patch_payload
+    assert listed_item["cover_photo"] == patched_body["cover_photo"]
+
+    planner = api_client.get(f"/trips/{trip['id']}/planner", headers=headers_user1)
+    assert planner.status_code == 200
+    planner_trip = planner.json()["trip"]
+    assert planner_trip["version"] == trip["version"]
+    assert planner_trip["cover_preference"] == patch_payload
+    assert planner_trip["cover_photo"] == patched_body["cover_photo"]
+
+
 def test_reorder_and_move_activity(api_client, headers_user1):
     trip_key = f"reorder-trip-{uuid.uuid4()}"
     activity_key_prefix = f"reorder-act-{uuid.uuid4()}"

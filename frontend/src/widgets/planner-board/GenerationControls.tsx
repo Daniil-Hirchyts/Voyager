@@ -1,344 +1,215 @@
-import { useState, useRef, useEffect } from 'react'
+import { useMemo, useRef } from 'react'
 import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Sparkles, RefreshCw, Trash2, MoreHorizontal } from 'lucide-react'
+import { Sparkles, Trash2 } from 'lucide-react'
+import type { Day } from '@/shared/api/types'
 import { cn } from '@/shared/lib/cn'
-import { AiLoadingText } from '@/components/ui/ai-loading-text'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
-import type { Day } from '@/shared/api/types'
-import { VoyagerLoader } from '@/widgets/app-shell/logo'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
 
-const schema = z.object({
+const plannerGenerationSchema = z.object({
   mode: z.enum(['replace', 'merge', 'append']),
   day_ids: z.array(z.string()).optional(),
   seed: z.number().int().optional(),
 })
 
-type FormValues = z.infer<typeof schema>
+export type PlannerGenerationAction = 'generate' | 'reset'
+export type PlannerGenerationFormValues = z.infer<typeof plannerGenerationSchema>
 
-interface Props {
+type PlannerGenerationInlineCardProps = {
+  action: PlannerGenerationAction
   days: Day[]
-  hasActivities: boolean
-  onGenerate: (data: FormValues, idempotencyKey: string) => Promise<void>
-  onRegenerate: (data: FormValues, idempotencyKey: string) => Promise<void>
-  onReset: (dayIds: string[] | undefined, idempotencyKey: string) => Promise<void>
-  isGenerating?: boolean
-  jobStatus?: string | null
-  compact?: boolean
-  /** When provided, controls the dialog open state externally (bypasses the DropdownMenu trigger) */
-  controlledOpen?: boolean
-  controlledAction?: 'generate' | 'regenerate' | 'reset'
-  onControlledOpenChange?: (open: boolean) => void
+  isSubmitting?: boolean
+  onCancel: () => void
+  onSubmit: (
+    action: PlannerGenerationAction,
+    values: PlannerGenerationFormValues,
+    idempotencyKey: string,
+  ) => Promise<void>
 }
 
-const MODE_LABELS: Record<string, { label: string; desc: string }> = {
-  replace: { label: 'Replace', desc: 'Replace all existing activities in selected days' },
-  merge: { label: 'Merge', desc: 'Merge new activities with existing ones' },
-  append: { label: 'Append', desc: 'Add new activities without removing existing ones' },
+const MODE_LABELS: Record<
+  PlannerGenerationFormValues['mode'],
+  { label: string; description: string }
+> = {
+  replace: {
+    label: 'Replace',
+    description: 'Replace generated activities in the selected days.',
+  },
+  merge: {
+    label: 'Merge',
+    description: 'Blend new suggestions with the current itinerary.',
+  },
+  append: {
+    label: 'Append',
+    description: 'Add more generated activities without removing the current ones.',
+  },
 }
 
-function GenerationForm({
+export function PlannerGenerationInlineCard({
   action,
-  mode,
   days,
-  dayIds,
-  register,
-  handleSubmit,
+  isSubmitting = false,
+  onCancel,
   onSubmit,
-  setValue,
-}: {
-  action: 'generate' | 'regenerate' | 'reset'
-  mode: string
-  days: Day[]
-  dayIds: string[]
-  register: ReturnType<typeof useForm<FormValues>>['register']
-  handleSubmit: ReturnType<typeof useForm<FormValues>>['handleSubmit']
-  onSubmit: (values: FormValues) => Promise<void>
-  setValue: ReturnType<typeof useForm<FormValues>>['setValue']
-}) {
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 px-5 py-5">
-      {action !== 'reset' && (
-        <div>
-          <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-            Mode
-          </label>
-          <div className="space-y-2">
-            {(['replace', 'merge', 'append'] as const).map((m) => (
-              <label
-                key={m}
-                className={cn(
-                  'flex cursor-pointer items-start gap-3 rounded-[10px] border border-black/8 p-3 transition-colors',
-                  mode === m
-                    ? 'border-[rgba(0,0,0,0.14)] bg-[var(--color-secondary-surface)]'
-                    : 'bg-white hover:bg-[var(--color-secondary-surface)]',
-                )}
-              >
-                <input
-                  type="radio"
-                  value={m}
-                  {...register('mode')}
-                  className="mt-0.5"
-                />
-                <div>
-                  <p className="text-sm font-medium text-[var(--color-text)]">
-                    {MODE_LABELS[m].label}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-muted)]">{MODE_LABELS[m].desc}</p>
-                </div>
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {days.length > 0 && (
-        <div>
-          <label className="mb-2 block text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-            Scope to specific days (optional)
-          </label>
-          <div className="max-h-36 space-y-1.5 overflow-y-auto pr-1">
-            {days.map((day, i) => (
-              <label
-                key={day.id}
-                htmlFor={`gen-day-${day.id}`}
-                className="flex cursor-pointer items-center gap-2 rounded-[8px] px-1 py-1 text-sm text-[var(--color-text)]"
-              >
-                <Checkbox
-                  id={`gen-day-${day.id}`}
-                  checked={dayIds.includes(day.id)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      setValue('day_ids', [...dayIds, day.id])
-                    } else {
-                      setValue('day_ids', dayIds.filter((id) => id !== day.id))
-                    }
-                  }}
-                />
-                Day {i + 1}{day.date && ` — ${day.date}`}
-              </label>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {action === 'reset' && (
-        <p className="text-sm text-[var(--color-text-muted)]">
-          This will remove all generated activities from the selected days. Manually
-          added activities will be preserved.
-        </p>
-      )}
-    </form>
-  )
-}
-
-export function GenerationControls({
-  days,
-  hasActivities,
-  onGenerate,
-  onRegenerate,
-  onReset,
-  isGenerating,
-  jobStatus,
-  compact = false,
-  controlledOpen,
-  controlledAction,
-  onControlledOpenChange,
-}: Props) {
-  const isMobile = useIsMobile()
-  const isControlled = controlledOpen !== undefined
-  const [open, setOpen] = useState(false)
-  const [action, setAction] = useState<'generate' | 'regenerate' | 'reset'>('generate')
-  const genKeyRef = useRef(crypto.randomUUID())
-  const resetKeyRef = useRef(crypto.randomUUID())
-
-  const { register, handleSubmit, watch, setValue } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: { mode: 'replace' },
+}: PlannerGenerationInlineCardProps) {
+  const submissionKeyRef = useRef(crypto.randomUUID())
+  const { register, handleSubmit, watch, setValue } = useForm<PlannerGenerationFormValues>({
+    resolver: zodResolver(plannerGenerationSchema),
+    defaultValues: {
+      mode: action === 'reset' ? 'replace' : 'replace',
+      day_ids: [],
+    },
   })
 
   const mode = watch('mode')
   const dayIds = watch('day_ids') ?? []
+  const selectedDayCount = dayIds.length > 0 ? dayIds.length : days.length
 
-  const dialogOpen = isControlled ? (controlledOpen ?? false) : open
-  const setDialogOpen = (v: boolean) => {
-    if (isControlled) {
-      onControlledOpenChange?.(v)
-    } else {
-      setOpen(v)
+  const submitLabel = useMemo(() => {
+    if (action === 'reset') {
+      return 'Queue reset'
     }
+    return selectedDayCount === 1 ? 'Generate 1 day' : `Generate ${selectedDayCount} days`
+  }, [action, selectedDayCount])
+
+  const handleDaySelection = (dayId: string, checked: boolean) => {
+    if (checked) {
+      setValue('day_ids', [...dayIds, dayId], { shouldDirty: true })
+      return
+    }
+    setValue(
+      'day_ids',
+      dayIds.filter((id) => id !== dayId),
+      { shouldDirty: true },
+    )
   }
 
-  // When controlled, let the caller choose which action the dialog opens on.
-  useEffect(() => {
-    if (isControlled && controlledOpen) {
-      setAction(controlledAction ?? 'generate')
-      genKeyRef.current = crypto.randomUUID()
-      resetKeyRef.current = crypto.randomUUID()
-    }
-  }, [controlledAction, isControlled, controlledOpen])
-
-  const openDialog = (act: typeof action) => {
-    setAction(act)
-    genKeyRef.current = crypto.randomUUID()
-    resetKeyRef.current = crypto.randomUUID()
-    setOpen(true)
-  }
-
-  const onSubmit = async (values: FormValues) => {
-    if (action === 'generate') {
-      await onGenerate(values, genKeyRef.current)
-    } else if (action === 'regenerate') {
-      await onRegenerate(values, genKeyRef.current)
-    } else {
-      await onReset(values.day_ids, resetKeyRef.current)
-    }
-    setDialogOpen(false)
-  }
-
-  const isRunning = isGenerating || jobStatus === 'PENDING' || jobStatus === 'RUNNING'
-  const generationStatusCopy =
-    jobStatus === 'RUNNING' ? 'Planning your itinerary...' : 'Preparing your itinerary...'
-  const buttonClassName = compact ? 'h-8 w-8 p-0 rounded-[8px] shadow-none hover:shadow-none' : undefined
-  const statusClassName = compact
-    ? 'inline-flex h-8 items-center gap-2 rounded-[8px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 text-[0.84rem] text-[var(--color-text-muted)]'
-    : 'flex items-center gap-2 rounded-[10px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2 text-sm text-[var(--color-text-muted)]'
+  const handleFormSubmit = handleSubmit(async (values) => {
+    await onSubmit(action, values, submissionKeyRef.current)
+    submissionKeyRef.current = crypto.randomUUID()
+  })
 
   return (
-    <>
-      {!isControlled && <div className="flex flex-wrap items-center gap-2">
-        {isRunning ? (
-          <div className={statusClassName}>
-            <VoyagerLoader className="h-4 w-4 " />
-            <AiLoadingText announce>{generationStatusCopy}</AiLoadingText>
+    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
+            {action === 'generate' ? 'Itinerary setup' : 'Reset generated itinerary'}
+          </p>
+          <h3 className="mt-1 text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+            {action === 'generate'
+              ? 'Choose how the assistant should build the itinerary.'
+              : 'Pick the days that should be cleared.'}
+          </h3>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 rounded-full px-3 text-[0.76rem]"
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+      </div>
+
+      <form onSubmit={handleFormSubmit} className="mt-3 flex flex-col gap-3">
+        {action === 'generate' ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Mode</p>
+            <div className="grid gap-2">
+              {(['replace', 'merge', 'append'] as const).map((option) => (
+                <label
+                  key={option}
+                  className={cn(
+                    'flex cursor-pointer items-start gap-3 rounded-[14px] border px-3 py-2.5 transition-colors',
+                    mode === option
+                      ? 'border-black/14 bg-[rgba(244,246,248,0.7)]'
+                      : 'border-black/8 bg-white hover:bg-[rgba(244,246,248,0.45)]',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    value={option}
+                    {...register('mode')}
+                    className="mt-0.5"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[0.82rem] font-medium text-[var(--color-text)]">
+                      {MODE_LABELS[option].label}
+                    </p>
+                    <p className="mt-1 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                      {MODE_LABELS[option].description}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
         ) : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size={compact ? 'icon' : 'default'} className={cn(buttonClassName, 'bg-white')}>
-                {compact ? <MoreHorizontal className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
-                {!compact && <span className="ml-2">Actions</span>}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => openDialog('generate')} className="cursor-pointer">
-                <Sparkles className="mr-2 h-4 w-4 text-[var(--color-text-muted)]" />
-                <span>Generate</span>
-              </DropdownMenuItem>
-              {hasActivities && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => openDialog('reset')} className="cursor-pointer text-[rgba(196,95,79,1)] focus:text-[rgba(196,95,79,1)] focus:bg-[rgba(196,95,79,0.06)]">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    <span>Reset</span>
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <p className="rounded-[14px] border border-[rgba(196,95,79,0.16)] bg-[rgba(196,95,79,0.05)] px-3 py-2.5 text-[0.77rem] leading-6 text-[var(--color-text)]">
+            Reset only removes generated activities from the selected days. Manual edits stay in place.
+          </p>
         )}
 
-        {jobStatus === 'SUCCEEDED' && (
-          <span className="text-[0.78rem] font-medium text-[var(--color-text-muted)]" aria-live="polite">
-            Updated
-          </span>
-        )}
-        {jobStatus === 'FAILED' && (
-          <span className="text-[0.78rem] font-medium text-[var(--color-text-muted)]" aria-live="polite">
-            Failed
-          </span>
-        )}
-      </div>}
+        {days.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
+              Days
+            </p>
+            <div className="max-h-44 overflow-y-auto rounded-[14px] border border-black/8 bg-[rgba(244,246,248,0.28)] p-2">
+              <div className="flex flex-col gap-1">
+                {days.map((day, index) => (
+                  <label
+                    key={day.id}
+                    htmlFor={`assistant-generation-day-${day.id}`}
+                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-[0.8rem] text-[var(--color-text)] transition-colors hover:bg-white"
+                  >
+                    <Checkbox
+                      id={`assistant-generation-day-${day.id}`}
+                      checked={dayIds.includes(day.id)}
+                      onCheckedChange={(checked) => handleDaySelection(day.id, checked === true)}
+                    />
+                    <span className="min-w-0 truncate">
+                      Day {index + 1}
+                      {day.date ? ` · ${day.date}` : ''}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <p className="text-[0.72rem] text-[var(--color-text-muted)]">
+              Leave empty to apply to every day in the trip.
+            </p>
+          </div>
+        ) : null}
 
-      {isMobile ? (
-        <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-          <SheetContent
-            side="bottom"
-            className="flex h-auto max-h-[90dvh] flex-col overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none"
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-full px-3.5 text-[0.76rem]"
+            onClick={onCancel}
+            disabled={isSubmitting}
           >
-            <SheetHeader className="shrink-0 border-b border-black/5 px-5 py-4">
-              <SheetTitle className="font-medium tracking-normal text-left">
-                {action === 'generate' && 'Generate Itinerary'}
-                {action === 'regenerate' && 'Regenerate Itinerary'}
-                {action === 'reset' && 'Reset Itinerary'}
-              </SheetTitle>
-              <SheetDescription className="sr-only">
-                {action === 'generate' ? 'Configure itinerary generation options' : action === 'reset' ? 'Reset generated activities' : 'Regenerate itinerary'}
-              </SheetDescription>
-            </SheetHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <GenerationForm
-                action={action}
-                mode={mode}
-                days={days}
-                dayIds={dayIds}
-                register={register}
-                handleSubmit={handleSubmit}
-                onSubmit={onSubmit}
-                setValue={setValue}
-              />
-            </div>
-            <div className="shrink-0 border-t border-black/5 flex gap-2 px-5 py-4">
-              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                variant={action === 'reset' ? 'destructive' : 'default'}
-                className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
-              >
-                {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
-                {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
-                {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
-              </Button>
-            </div>
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-[34rem] rounded-[12px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)] backdrop-blur-none">
-            <DialogHeader>
-              <DialogTitle className="font-medium tracking-normal">
-                {action === 'generate' && 'Generate Itinerary'}
-                {action === 'regenerate' && 'Regenerate Itinerary'}
-                {action === 'reset' && 'Reset Itinerary'}
-              </DialogTitle>
-            </DialogHeader>
-            <GenerationForm
-              action={action}
-              mode={mode}
-              days={days}
-              dayIds={dayIds}
-              register={register}
-              handleSubmit={handleSubmit}
-              onSubmit={onSubmit}
-              setValue={setValue}
-            />
-            <DialogFooter>
-              <Button variant="outline" type="button" onClick={() => setDialogOpen(false)} className="h-10 flex-1 rounded-[8px] shadow-none">
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSubmit(onSubmit)}
-                variant={action === 'reset' ? 'destructive' : 'default'}
-                className="h-10 flex-1 rounded-[8px] shadow-none hover:shadow-none"
-              >
-                {action === 'generate' && <><Sparkles className="w-4 h-4 mr-2" /> Generate</>}
-                {action === 'regenerate' && <><RefreshCw className="w-4 h-4 mr-2" /> Regenerate</>}
-                {action === 'reset' && <><Trash2 className="w-4 h-4 mr-2" /> Reset</>}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            size="sm"
+            variant={action === 'reset' ? 'destructive' : 'default'}
+            className="h-8 rounded-full px-3.5 text-[0.76rem]"
+            disabled={isSubmitting}
+          >
+            {action === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
+            {action === 'reset' ? <Trash2 data-icon="inline-start" /> : null}
+            {submitLabel}
+          </Button>
+        </div>
+      </form>
+    </div>
   )
 }

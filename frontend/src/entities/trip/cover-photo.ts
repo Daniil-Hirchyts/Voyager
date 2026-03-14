@@ -1,3 +1,6 @@
+import type { TripCoverPreference } from '@/shared/api/types'
+import { isBackendPlaceId } from '@/entities/place/destination'
+
 export type TripCoverPhotoPreference = {
   placeId?: string | null
   placeLabel?: string | null
@@ -62,4 +65,29 @@ export function mergeTripCoverPhotoPreference(
 ) {
   const current = readTripCoverPhotoPreference(tripId) ?? {}
   writeTripCoverPhotoPreference(tripId, { ...current, ...patch })
+}
+
+export function toTripCoverPreferencePatch(
+  value: TripCoverPhotoPreference | null | undefined,
+): Partial<TripCoverPreference> | null {
+  if (!value) {
+    return null
+  }
+
+  const placeId = isBackendPlaceId(value.placeId) ? value.placeId ?? null : null
+  const patch: Partial<TripCoverPreference> = {
+    placeId,
+    placeLabel: value.placeLabel ?? null,
+    placeLat: value.placeLat ?? null,
+    placeLng: value.placeLng ?? null,
+    photoId: placeId ? (value.photoId ?? null) : null,
+    assetId: value.assetId ?? null,
+    fallbackImageUrl: value.googlePhotoUrl ?? null,
+  }
+
+  if (!Object.values(patch).some((item) => item != null)) {
+    return null
+  }
+
+  return patch
 }

@@ -19,6 +19,38 @@ import {
   buildTripAsset,
   listResponse,
 } from '@/test/fixtures/api'
+import type { Trip } from '@/shared/api/types'
+
+function toTripPayload(trip: Trip) {
+  const { coverPreference, coverPhoto, ...rest } = trip
+
+  return {
+    ...rest,
+    cover_preference: coverPreference
+      ? {
+          place_id: coverPreference.placeId,
+          place_label: coverPreference.placeLabel,
+          place_lat: coverPreference.placeLat,
+          place_lng: coverPreference.placeLng,
+          photo_id: coverPreference.photoId,
+          asset_id: coverPreference.assetId,
+          fallback_image_url: coverPreference.fallbackImageUrl,
+        }
+      : null,
+    cover_photo: coverPhoto
+      ? {
+          source: coverPhoto.source,
+          url: coverPhoto.url,
+          thumbnail_url: coverPhoto.thumbnailUrl,
+          asset_id: coverPhoto.assetId,
+          photo_id: coverPhoto.photoId,
+          place_id: coverPhoto.placeId,
+          attribution_text: coverPhoto.attributionText,
+          is_fallback: coverPhoto.isFallback,
+        }
+      : null,
+  }
+}
 
 async function selectDateFromPicker(
   user: ReturnType<typeof userEvent.setup>,
@@ -213,6 +245,60 @@ describe('PlannerBoard', () => {
     expect(screen.queryByText('Untimed')).not.toBeInTheDocument()
     expect(screen.getByText('Inbox')).toBeInTheDocument()
     expect(offersRequestCount).toBe(0)
+  })
+
+  it('renders public trip cover assets in the planner hero', async () => {
+    const trip = buildTrip({
+      id: 'trip-kyoto-hero',
+      title: 'Trip to Kyoto',
+      destination_text: 'Kyoto, Japan',
+      coverPreference: {
+        placeId: '11111111-1111-4111-8111-111111111111',
+        placeLabel: 'Kyoto, Japan',
+        placeLat: 35.0116,
+        placeLng: 135.7681,
+        photoId: null,
+        assetId: null,
+        fallbackImageUrl: '/images/trips/kyoto-lantern-week.jpg',
+      },
+      coverPhoto: {
+        source: 'fallback',
+        url: '/images/trips/kyoto-lantern-week.jpg',
+        thumbnailUrl: '/images/trips/kyoto-lantern-week.jpg',
+        assetId: null,
+        photoId: null,
+        placeId: '11111111-1111-4111-8111-111111111111',
+        attributionText: 'Kyoto, Japan',
+        isFallback: true,
+      },
+    })
+    const planner = buildPlannerResponse({ trip })
+
+    server.use(
+      http.get('http://localhost:8000/trips/:tripId/planner', () =>
+        HttpResponse.json({
+          ...planner,
+          trip: toTripPayload(trip),
+        }),
+      ),
+      http.get('http://localhost:8000/places/:placeId/photos', () =>
+        HttpResponse.json({
+          total: 0,
+          items: [],
+        }),
+      ),
+    )
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerBoard tripId={trip.id} />
+      </MemoryRouter>,
+    )
+
+    const hero = await screen.findByTestId('planner-trip-hero')
+    const heroImage = within(hero).getByRole('img', { name: 'Kyoto, Japan' })
+
+    expect(heroImage.getAttribute('src')).toBe('/images/trips/kyoto-lantern-week.jpg')
   })
 
   it('renders travel estimates between consecutive day activities', async () => {

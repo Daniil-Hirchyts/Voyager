@@ -10,6 +10,18 @@ import {
 } from '@/entities/assistant/api'
 import { streamJobProgress } from '@/entities/job/api'
 
+const defaultDays = [
+  {
+    id: 'day-1',
+    trip_id: 'trip-1',
+    day_index: 0,
+    date: '2026-03-14',
+    notes: null,
+    created_at: '2026-03-14T08:00:00.000Z',
+    updated_at: '2026-03-14T08:00:00.000Z',
+  },
+]
+
 vi.mock('@/entities/assistant/api', () => ({
   getAssistantThread: vi.fn(),
   mirrorAssistantJob: vi.fn(),
@@ -48,6 +60,24 @@ function buildAssistantThread(
   }
 }
 
+function renderPlannerAssistantPanel(overrides: Partial<React.ComponentProps<typeof PlannerAssistantPanel>> = {}) {
+  return renderWithQueryClient(
+    <PlannerAssistantPanel
+      tripId="trip-1"
+      destination="Paris, France"
+      days={defaultDays}
+      hasActivities
+      isOpen
+      requestedInlineAction={null}
+      onRequestedInlineActionHandled={() => {}}
+      onSubmitInlineAction={vi.fn().mockResolvedValue(undefined)}
+      isPlannerActionPending={false}
+      onOpenChange={() => {}}
+      {...overrides}
+    />,
+  )
+}
+
 describe('PlannerAssistantPanel', () => {
   beforeEach(() => {
     vi.mocked(getAssistantThread).mockReset()
@@ -75,16 +105,7 @@ describe('PlannerAssistantPanel', () => {
       ]),
     )
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     expect(await screen.findByText('Planner Assistant')).toBeInTheDocument()
     expect(await screen.findByText('Generate · replace · 2 days')).toBeInTheDocument()
@@ -116,16 +137,7 @@ describe('PlannerAssistantPanel', () => {
       },
     )
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     await screen.findByText('Planner Assistant')
     await user.type(screen.getByPlaceholderText(/ask about this trip/i), 'Move the museum to the afternoon')
@@ -159,16 +171,7 @@ describe('PlannerAssistantPanel', () => {
     )
     vi.mocked(streamAssistantMessages).mockResolvedValue()
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     await screen.findByText('Delete Activity')
     await user.click(screen.getByRole('button', { name: 'Confirm' }))
@@ -200,16 +203,7 @@ describe('PlannerAssistantPanel', () => {
       ]),
     )
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     expect(await screen.findByText('Move the museum to day two')).toBeInTheDocument()
   })
@@ -219,16 +213,7 @@ describe('PlannerAssistantPanel', () => {
     vi.mocked(getAssistantThread).mockResolvedValue(buildAssistantThread())
     vi.mocked(streamAssistantMessages).mockResolvedValue()
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     const composer = await screen.findByPlaceholderText(/ask about this trip/i)
     await user.type(composer, 'Move the museum')
@@ -252,29 +237,18 @@ describe('PlannerAssistantPanel', () => {
     expect(streamAssistantMessages).not.toHaveBeenCalled()
   })
 
-  it('opens the generation dialog for slash generate instead of streaming', async () => {
+  it('opens the inline generation form for slash generate instead of streaming', async () => {
     const user = userEvent.setup()
-    const onRequestGenerationDialog = vi.fn()
     vi.mocked(getAssistantThread).mockResolvedValue(buildAssistantThread())
+    const onSubmitInlineAction = vi.fn().mockResolvedValue(undefined)
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={onRequestGenerationDialog}
-      />,
-    )
+    renderPlannerAssistantPanel({ onSubmitInlineAction })
 
     const composer = await screen.findByPlaceholderText(/ask about this trip/i)
     await user.type(composer, '/generate')
     await user.keyboard('{Enter}')
 
-    await waitFor(() => {
-      expect(onRequestGenerationDialog).toHaveBeenCalledWith('generate')
-    })
+    expect(await screen.findByText(/choose how the assistant should build the itinerary/i)).toBeInTheDocument()
     expect(streamAssistantMessages).not.toHaveBeenCalled()
   })
 
@@ -302,16 +276,7 @@ describe('PlannerAssistantPanel', () => {
     )
     vi.mocked(streamJobProgress).mockResolvedValue()
 
-    renderWithQueryClient(
-      <PlannerAssistantPanel
-        tripId="trip-1"
-        destination="Paris, France"
-        hasActivities
-        isOpen
-        onOpenChange={() => {}}
-        onRequestGenerationDialog={() => {}}
-      />,
-    )
+    renderPlannerAssistantPanel()
 
     await screen.findByText('Generate · replace · 2 days')
 

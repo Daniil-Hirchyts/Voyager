@@ -101,6 +101,7 @@ class Trip(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     budget_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     trip_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     route_travel_mode: Mapped[str] = mapped_column(String(16), nullable=False, default="WALK")
+    cover_preference_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, index=True)
     last_generated_at: Mapped[datetime_value | None] = mapped_column(
         DateTime(timezone=True), nullable=True

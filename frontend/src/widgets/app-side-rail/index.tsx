@@ -12,7 +12,6 @@ import {
   Plus,
   Share2,
   SlidersHorizontal,
-  Sparkles,
   Settings2,
   Bot,
 } from 'lucide-react'
@@ -30,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { GlowEffect } from '@/components/ui/glow-effect'
 import { cn } from '@/shared/lib/cn'
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store'
 import { RouteTransition } from '@/shared/layouts/route-transition'
@@ -49,6 +49,10 @@ const BTN = 'flex size-9 items-center justify-center rounded-[12px] text-[#52607
 const BTN_RAIL = cn(BTN, 'hover:text-[#1D2430] data-[checked=true]:text-[#1D2430]')
 const BTN_ACTIVE = cn(BTN_RAIL, 'text-[var(--color-cta)] data-[checked=true]:text-[var(--color-cta)]')
 const BTN_STANDALONE = cn(BTN, 'hover:bg-[#ECEEF0] hover:text-[#1D2430]')
+const BTN_ASSISTANT = cn(
+  BTN,
+  'relative border border-black/10 bg-white text-[#1D2430] shadow-[0_12px_28px_-18px_rgba(32,56,83,0.35)] hover:bg-white hover:text-[#111827]',
+)
 const RAIL_HOVER_TRANSITION = {
   type: 'spring',
   bounce: 0.2,
@@ -260,27 +264,31 @@ function AppSideRail() {
       {isPlannerPage && plannerInstruments ? (
         <>
           <Divider />
+          <div className="relative z-[60] flex flex-col items-center py-1.5">
+            <RailTooltip label="Open assistant">
+              <div className="relative">
+                <GlowEffect
+                  colors={['#fb923c', '#34d399', '#38bdf8', '#facc15']}
+                  mode="colorShift"
+                  blur="soft"
+                  duration={3.2}
+                  scale={0.94}
+                  className="rounded-[16px] opacity-90"
+                />
+                <button
+                  data-id="planner-assistant"
+                  type="button"
+                  aria-label="Open planner assistant"
+                  onClick={plannerInstruments.onOpenAssistant}
+                  className={BTN_ASSISTANT}
+                >
+                  <Bot className="size-[1rem]" />
+                </button>
+              </div>
+            </RailTooltip>
+          </div>
+
           <RailAnimatedColumn>
-            <RailActionButton
-              data-id="planner-assistant"
-              tooltip="Open assistant"
-              type="button"
-              aria-label="Open planner assistant"
-              onClick={plannerInstruments.onOpenAssistant}
-              className={BTN_RAIL}
-            >
-              <Bot className="size-[1rem]" />
-            </RailActionButton>
-            <RailActionButton
-              data-id="generate-itinerary"
-              tooltip="Generate itinerary"
-              type="button"
-              aria-label="Generate itinerary"
-              onClick={plannerInstruments.onGenerate}
-              className={BTN_RAIL}
-            >
-              <Sparkles className="size-[1rem]" />
-            </RailActionButton>
             <RailActionButton
               data-id="share-trip"
               tooltip="Collaboration & Share"

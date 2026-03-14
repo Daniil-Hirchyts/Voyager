@@ -1,29 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useJob } from '@/entities/job/queries'
-import {
-  createPlace,
-  type DestinationAutocompleteItem,
-} from '@/entities/place/api'
+import { createPlace, type DestinationAutocompleteItem } from '@/entities/place/api'
 import {
   buildPlaceCreateInputFromDestinationSuggestion,
   isBackendPlaceId,
 } from '@/entities/place/destination'
-import {
-  useDestinationAutocomplete,
-  usePlace,
-} from '@/entities/place/queries'
+import { useDestinationAutocomplete, usePlace } from '@/entities/place/queries'
 import { refreshPlacePhotos } from '@/entities/photo/api'
 import { usePlacePhotos } from '@/entities/photo/queries'
+import { usePatchTripCoverPreference } from '@/entities/trip/queries'
 import { useTripAssets } from '@/entities/trip-asset/queries'
-import {
-  mergeTripCoverPhotoPreference,
-  readTripCoverPhotoPreference,
-  type TripCoverPhotoPreference,
-} from './cover-photo'
-import type { PlacePhotoSummary, Trip, TripAssetResponse } from '@/shared/api/types'
+import { useTripCoverPreferenceMigration } from './useTripCoverPreferenceMigration'
+import type {
+  PlacePhotoSummary,
+  Trip,
+  TripAssetResponse,
+  TripCoverPreference,
+} from '@/shared/api/types'
 import { getJobResultErrors, isJobRunning, isJobSuccessful, isJobTerminal } from '@/shared/lib/jobs'
-import { resolvePhotoUrl } from '@/shared/lib/media'
+import { resolveMediaUrl, resolvePhotoUrl } from '@/shared/lib/media'
 
 type CoverPhotoCandidateSource = 'destination' | 'uploaded'
 
@@ -95,15 +91,37 @@ function getCoverPhotoRefreshErrorMessage(job: {
   return providerMessage || 'City photos could not be loaded right now.'
 }
 
+function areCoverPreferencesEqual(
+  left: TripCoverPreference | null | undefined,
+  right: TripCoverPreference | null | undefined,
+) {
+  return (
+    (left?.placeId ?? null) === (right?.placeId ?? null) &&
+    (left?.placeLabel ?? null) === (right?.placeLabel ?? null) &&
+    (left?.placeLat ?? null) === (right?.placeLat ?? null) &&
+    (left?.placeLng ?? null) === (right?.placeLng ?? null) &&
+    (left?.photoId ?? null) === (right?.photoId ?? null) &&
+    (left?.assetId ?? null) === (right?.assetId ?? null) &&
+    (left?.fallbackImageUrl ?? null) === (right?.fallbackImageUrl ?? null)
+  )
+}
+
 export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip | null | undefined) {
-  const [coverPreference, setCoverPreference] = useState<TripCoverPhotoPreference | null>(() =>
-    readTripCoverPhotoPreference(tripId),
+  useTripCoverPreferenceMigration(trip ? [trip] : [])
+
+  const [coverPreference, setCoverPreference] = useState<TripCoverPreference | null>(
+    () => trip?.coverPreference ?? null,
   )
   const [coverRefreshJobId, setCoverRefreshJobId] = useState<string | null>(null)
   const [isRefreshingCoverPhotos, setIsRefreshingCoverPhotos] = useState(false)
   const [coverPhotoRefreshError, setCoverPhotoRefreshError] = useState<string | null>(null)
   const autoRefreshAttemptedRef = useRef(false)
   const placeProvisioningAttemptedRef = useRef(false)
+  const patchCoverPreference = usePatchTripCoverPreference(tripId ?? '')
+
+  useEffect(() => {
+    setCoverPreference(trip?.coverPreference ?? null)
+  }, [trip?.coverPreference])
 
   const destinationLookup = trip?.destination_text.trim() ?? ''
   const storedBackendPlaceId = isBackendPlaceId(coverPreference?.placeId)
@@ -134,25 +152,8 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
         .filter((item): item is CoverPhotoCandidate => Boolean(item)),
     [uploadedAssetsQuery.data?.items],
   )
-  const uploadedAssetIds = useMemo(
-    () => new Set(uploadedPhotoCandidates.map((item) => item.id)),
-    [uploadedPhotoCandidates],
-  )
   const isCoverRefreshRunning = isJobRunning(coverRefreshJob?.status)
   const isCoverRefreshSuccessful = isJobSuccessful(coverRefreshJob?.status)
-
-  useEffect(() => {
-    setCoverPreference(readTripCoverPhotoPreference(tripId))
-
-    const handleStorageChange = (event: StorageEvent) => {
-      if (tripId && event.key === `voyager.trip-cover:${tripId}`) {
-        setCoverPreference(readTripCoverPhotoPreference(tripId))
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    return () => window.removeEventListener('storage', handleStorageChange)
-  }, [tripId])
 
   useEffect(() => {
     autoRefreshAttemptedRef.current = false
@@ -167,23 +168,26 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
       return
     }
 
-    if (storedBackendPlaceId && coverPreference?.placeLabel) {
+    const nextPreference: TripCoverPreference = {
+      placeId: inferredDestination.id,
+      placeLabel: coverPreference?.placeLabel ?? inferredDestination.label,
+      placeLat: coverPreference?.placeLat ?? inferredDestination.lat ?? null,
+      placeLng: coverPreference?.placeLng ?? inferredDestination.lon ?? null,
+      photoId: coverPreference?.photoId ?? null,
+      assetId: coverPreference?.assetId ?? null,
+      fallbackImageUrl: coverPreference?.fallbackImageUrl ?? null,
+    }
+
+    if (areCoverPreferencesEqual(coverPreference, nextPreference)) {
       return
     }
 
-    const nextPreference = {
-      placeId: inferredDestination.id,
-      placeLabel: coverPreference?.placeLabel ?? inferredDestination.label,
-      placeLat: inferredDestination.lat ?? null,
-      placeLng: inferredDestination.lon ?? null,
-    }
-
-    mergeTripCoverPhotoPreference(tripId, nextPreference)
-    setCoverPreference((current) => ({ ...(current ?? {}), ...nextPreference }))
+    setCoverPreference(nextPreference)
+    void patchCoverPreference.mutateAsync(nextPreference).catch(() => undefined)
   }, [
-    coverPreference?.placeLabel,
+    coverPreference,
     inferredDestination,
-    storedBackendPlaceId,
+    patchCoverPreference,
     tripId,
   ])
 
@@ -206,22 +210,31 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
       ),
       `trip-cover-place-${tripId}`,
     )
-      .then((place) => {
-        const nextPreference = {
+      .then(async (place) => {
+        const nextPreference: TripCoverPreference = {
           placeId: place.id,
           placeLabel: inferredDestination.label,
           placeLat: place.lat ?? inferredDestination.lat ?? null,
           placeLng: place.lon ?? inferredDestination.lon ?? null,
           photoId: null,
+          assetId: coverPreference?.assetId ?? null,
+          fallbackImageUrl: coverPreference?.fallbackImageUrl ?? null,
         }
 
-        mergeTripCoverPhotoPreference(tripId, nextPreference)
-        setCoverPreference((current) => ({ ...(current ?? {}), ...nextPreference }))
+        setCoverPreference(nextPreference)
+        await patchCoverPreference.mutateAsync(nextPreference)
       })
       .catch(() => {
         placeProvisioningAttemptedRef.current = false
       })
-  }, [inferredDestination, storedBackendPlaceId, tripId])
+  }, [
+    coverPreference?.assetId,
+    coverPreference?.fallbackImageUrl,
+    inferredDestination,
+    patchCoverPreference,
+    storedBackendPlaceId,
+    tripId,
+  ])
 
   const destinationPhotoCandidates = useMemo<CoverPhotoCandidate[]>(() => {
     const candidates: CoverPhotoCandidate[] = []
@@ -254,10 +267,6 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
   )
 
   const selectedCoverPhoto = useMemo(() => {
-    if (coverPhotoCandidates.length === 0) {
-      return null
-    }
-
     if (coverPreference?.assetId) {
       const uploadedCandidate = coverPhotoCandidates.find(
         (photo) =>
@@ -357,104 +366,63 @@ export function useTripCoverPhotoManager(tripId: string | undefined, trip: Trip 
     void coverPhotosQuery.refetch()
   }, [coverPhotosQuery, coverPlaceQuery, coverRefreshJob, coverRefreshJobId, isCoverRefreshSuccessful])
 
-  useEffect(() => {
-    if (
-      !tripId ||
-      !coverPlace ||
-      (coverPreference?.placeLat != null && coverPreference?.placeLng != null)
-    ) {
-      return
-    }
-
-    const nextPreference = {
-      placeLat: coverPlace.lat ?? null,
-      placeLng: coverPlace.lon ?? null,
-    }
-
-    mergeTripCoverPhotoPreference(tripId, nextPreference)
-    setCoverPreference((current) => ({ ...(current ?? {}), ...nextPreference }))
-  }, [coverPlace, coverPreference?.placeLat, coverPreference?.placeLng, tripId])
-
-  useEffect(() => {
-    if (!tripId || !selectedCoverPhoto) {
-      return
-    }
-    if (coverPreference?.assetId || coverPreference?.photoId) {
-      return
-    }
-
-    if (selectedCoverPhoto.candidateSource === 'uploaded') {
-      mergeTripCoverPhotoPreference(tripId, { assetId: selectedCoverPhoto.id, photoId: null })
-      setCoverPreference((current) => ({
-        ...(current ?? {}),
-        assetId: selectedCoverPhoto.id,
-        photoId: null,
-      }))
-      return
-    }
-
-    mergeTripCoverPhotoPreference(tripId, { photoId: selectedCoverPhoto.id, assetId: null })
-    setCoverPreference((current) => ({
-      ...(current ?? {}),
-      photoId: selectedCoverPhoto.id,
-      assetId: null,
-    }))
-  }, [coverPreference?.assetId, coverPreference?.photoId, selectedCoverPhoto, tripId])
-
-  useEffect(() => {
-    if (!tripId || !coverPreference?.assetId || uploadedAssetsQuery.isLoading) {
-      return
-    }
-    if (uploadedAssetIds.has(coverPreference.assetId)) {
-      return
-    }
-
-    mergeTripCoverPhotoPreference(tripId, { assetId: null })
-    setCoverPreference((current) =>
-      current ? { ...current, assetId: null } : current,
-    )
-  }, [coverPreference?.assetId, tripId, uploadedAssetIds, uploadedAssetsQuery.isLoading])
-
   const photoAttributionLabel =
     selectedCoverPhoto?.candidateSource === 'uploaded'
       ? selectedCoverPhoto.originalFilename ?? 'Uploaded cover photo'
-      : coverPreference?.placeLabel ?? inferredDestination?.label ?? trip?.destination_text ?? null
+      : coverPreference?.placeLabel ??
+        trip?.coverPreference?.placeLabel ??
+        trip?.destination_text ??
+        null
   const photoAttributionText =
     selectedCoverPhoto?.candidateSource === 'uploaded'
       ? photoAttributionLabel
-      : [photoAttributionLabel, selectedCoverPhoto?.attribution_text]
+      : [photoAttributionLabel, selectedCoverPhoto?.attribution_text ?? trip?.coverPhoto?.attributionText]
           .filter((part): part is string => Boolean(part))
           .filter((part, index, parts) =>
             parts.findIndex((candidate) => candidate.toLowerCase() === part.toLowerCase()) === index,
           )
           .join(' · ')
-  const coverPhotoUrl = resolvePhotoUrl(selectedCoverPhoto, 'full')
+  const coverPhotoUrl =
+    resolvePhotoUrl(selectedCoverPhoto, 'full') ||
+    resolvePhotoUrl(selectedCoverPhoto, 'thumb') ||
+    resolveMediaUrl(trip?.coverPhoto?.url ?? null)
   const isCoverPhotoBusy =
-    coverPhotosLoading || isRefreshingCoverPhotos || isCoverRefreshRunning || uploadedAssetsQuery.isLoading
+    coverPhotosLoading ||
+    isRefreshingCoverPhotos ||
+    isCoverRefreshRunning ||
+    uploadedAssetsQuery.isLoading ||
+    patchCoverPreference.isPending
   const coverPhotoEmptyMessage = coverPhotoRefreshError ?? 'No city photo or uploaded cover photo is available yet.'
 
   function handlePhotoSelection(
     candidateId: string,
     candidateSource: CoverPhotoCandidateSource = 'destination',
   ) {
-    if (!tripId) {
+    setCoverPreference((current) => {
+      const next = {
+        placeId: current?.placeId ?? null,
+        placeLabel: current?.placeLabel ?? null,
+        placeLat: current?.placeLat ?? null,
+        placeLng: current?.placeLng ?? null,
+        photoId: current?.photoId ?? null,
+        assetId: current?.assetId ?? null,
+        fallbackImageUrl: current?.fallbackImageUrl ?? null,
+      }
+
+      if (candidateSource === 'uploaded') {
+        return { ...next, assetId: candidateId, photoId: null }
+      }
+
+      return { ...next, assetId: null, photoId: candidateId }
+    })
+  }
+
+  async function commitPhotoSelection() {
+    if (!tripId || !coverPreference || areCoverPreferencesEqual(coverPreference, trip?.coverPreference)) {
       return
     }
 
-    const patch =
-      candidateSource === 'uploaded'
-        ? { assetId: candidateId, photoId: null }
-        : { assetId: null, photoId: candidateId }
-
-    setCoverPreference((current) => ({ ...(current ?? {}), ...patch }))
-  }
-
-  function commitPhotoSelection() {
-    if (!tripId || !coverPreference) return
-    mergeTripCoverPhotoPreference(tripId, {
-      assetId: coverPreference.assetId,
-      photoId: coverPreference.photoId,
-    })
+    await patchCoverPreference.mutateAsync(coverPreference)
   }
 
   async function handleCoverPhotoRefresh() {

@@ -39,6 +39,8 @@ export function buildTrip(overrides: Partial<Trip> = {}): Trip {
     current_user_role: 'owner',
     collaborator_count: 0,
     version: 3,
+    coverPreference: null,
+    coverPhoto: null,
     created_at: NOW,
     updated_at: NOW,
     ...overrides,

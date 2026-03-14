@@ -3,6 +3,8 @@ import type { PlacePhotoSummary } from '@/shared/api/types'
 
 export function resolveMediaUrl(url: string | null | undefined) {
   if (!url) return null
+  if (/^(data:|blob:)/.test(url)) return url
+  if (/^\/(images|favicon\.ico)/.test(url)) return url
   return buildApiUrl(url)
 }
 

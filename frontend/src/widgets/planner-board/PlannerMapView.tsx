@@ -216,6 +216,18 @@ interface Props {
   onDeleteActivity?: (activityId: string) => void
   onRegisterSectionOpener?: (opener: (sectionKey: string) => void) => void
   onOpenCollaboration?: () => void
+  onOpenGeneration?: () => void
+  assistantSuggestedPlace?: PlannerAssistantSuggestedPlace | null
+  onAssistantSuggestedPlaceHandled?: () => void
+}
+
+export type PlannerAssistantSuggestedPlace = {
+  placeId: string
+  name: string
+  addressText: string | null
+  category: string | null
+  lat: number | null
+  lon: number | null
 }
 
 type SearchResultItem = {
@@ -888,11 +900,13 @@ function PlannerTripHeroCard({
   tripId,
   coverPhotoUrl,
   onOpenCollaboration,
+  onOpenGeneration,
 }: {
   trip: Trip
   tripId: string
   coverPhotoUrl: string | null
   onOpenCollaboration?: () => void
+  onOpenGeneration?: () => void
 }) {
   const tripTypeLabel = formatTripTypeLabel(trip.trip_type)
   const dateLabel = formatTripDateRangeLabel(trip.start_date, trip.end_date)
@@ -990,9 +1004,22 @@ function PlannerTripHeroCard({
         </div>
 
         <div className="-mt-6 relative mx-3 mb-3 rounded-[20px] border border-white/80 bg-white/94 px-4 py-3.5 shadow-[0_18px_46px_-34px_rgba(15,23,42,0.28)] backdrop-blur">
-          <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
-            Trip overview
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.2em] text-[var(--color-text-muted)]">
+              Trip overview
+            </p>
+            {onOpenGeneration ? (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-full px-3.5"
+                onClick={onOpenGeneration}
+              >
+                <Sparkles data-icon="inline-start" />
+                Generate
+              </Button>
+            ) : null}
+          </div>
           <h1 className="mt-1.5 text-[1.55rem] font-semibold leading-none tracking-[-0.05em] text-[var(--color-text)]">
             {trip.title}
           </h1>
@@ -2749,6 +2776,9 @@ export function PlannerMapView({
   onDeleteActivity,
   onRegisterSectionOpener,
   onOpenCollaboration,
+  onOpenGeneration,
+  assistantSuggestedPlace = null,
+  onAssistantSuggestedPlaceHandled,
 }: Props) {
   const isMobile = useIsMobile()
   const { mobilePlannerView } = useSideRailStore()
@@ -2845,6 +2875,7 @@ export function PlannerMapView({
   const [searchText, setSearchText] = useState('')
   const [activeQuickCategory, setActiveQuickCategory] = useState<QuickCategory | null>(null)
   const [selectedSearchItem, setSelectedSearchItem] = useState<SearchResultItem | null>(null)
+  const handledAssistantSuggestedPlaceRef = useRef<string | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const mapContainerRef = useRef<HTMLElement | null>(null)
   const detailSheetRef = useRef<HTMLDivElement | null>(null)
@@ -3379,6 +3410,51 @@ export function PlannerMapView({
     setSearchOpen(false)
   }
 
+  useEffect(() => {
+    if (!assistantSuggestedPlace) {
+      handledAssistantSuggestedPlaceRef.current = null
+      return
+    }
+
+    const selectionKey = [
+      assistantSuggestedPlace.placeId,
+      assistantSuggestedPlace.lat ?? '',
+      assistantSuggestedPlace.lon ?? '',
+    ].join(':')
+
+    if (handledAssistantSuggestedPlaceRef.current === selectionKey) {
+      return
+    }
+
+    handledAssistantSuggestedPlaceRef.current = selectionKey
+    onSelectRecommendation(null)
+    onClearMapSelection()
+    onSelectPlaceId(null)
+    setSelectedSearchItem({
+      kind: 'google',
+      id: assistantSuggestedPlace.placeId,
+      placeId: null,
+      name: assistantSuggestedPlace.name,
+      addressText: assistantSuggestedPlace.addressText,
+      category: assistantSuggestedPlace.category,
+      lat: assistantSuggestedPlace.lat,
+      lon: assistantSuggestedPlace.lon,
+      metadata: {},
+    })
+    setPreferredDetailTab('about')
+    setDetailOpen(true)
+    startTransition(() => {
+      setSearchOpen(false)
+    })
+    onAssistantSuggestedPlaceHandled?.()
+  }, [
+    assistantSuggestedPlace,
+    onAssistantSuggestedPlaceHandled,
+    onClearMapSelection,
+    onSelectPlaceId,
+    onSelectRecommendation,
+  ])
+
   const handleRecommendationSelection = (entry: PlannerRecommendationEntry) => {
     if (selectedRecommendation?.key === entry.key) {
       clearSelection()
@@ -3813,7 +3889,13 @@ export function PlannerMapView({
         <div className={cn('min-h-0 min-w-0 flex-col', mobilePlannerView === 'map' ? 'hidden lg:flex' : 'flex')}>
           <div data-planner-scroll className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex flex-col gap-3 p-2 pb-8">
-              <PlannerTripHeroCard trip={trip} coverPhotoUrl={heroPhotoUrl} tripId={tripId} onOpenCollaboration={onOpenCollaboration} />
+              <PlannerTripHeroCard
+                trip={trip}
+                coverPhotoUrl={heroPhotoUrl}
+                tripId={tripId}
+                onOpenCollaboration={onOpenCollaboration}
+                onOpenGeneration={onOpenGeneration}
+              />
 
               <div className="px-1 pt-1">
                 <p className="text-[0.72rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-muted)]">

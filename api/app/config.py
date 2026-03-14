@@ -107,6 +107,22 @@ class Settings(BaseSettings):
     rate_limit_itinerary_provider_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )
+    rate_limit_assistant_turns_per_min: int = Field(
+        default=40,
+        alias="VOYAGER_RATE_LIMIT_ASSISTANT_TURNS_PER_MIN",
+    )
+    assistant_max_input_chars: int = Field(
+        default=4000,
+        alias="VOYAGER_ASSISTANT_MAX_INPUT_CHARS",
+    )
+    assistant_max_history_messages: int = Field(
+        default=40,
+        alias="VOYAGER_ASSISTANT_MAX_HISTORY_MESSAGES",
+    )
+    assistant_max_response_tokens: int = Field(
+        default=700,
+        alias="VOYAGER_ASSISTANT_MAX_RESPONSE_TOKENS",
+    )
 
     activities_tripadvisor_api_key: str | None = Field(
         default=None,

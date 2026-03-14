@@ -14,7 +14,6 @@ type PlannerInstruments = {
   onOpenAssistant: () => void
   onOpenSettings: () => void
   onShare: () => void
-  onGenerate: () => void
   days: DayAnchor[]
   onScrollToDay: (dayId: string) => void
   onScrollToSection: (section: PlannerSectionAnchor) => void

@@ -9,11 +9,8 @@ import {
 } from 'react'
 import {
   AssistantRuntimeProvider,
-  ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useAui,
-  useAuiState,
   useExternalStoreRuntime,
   useMessage,
 } from '@assistant-ui/react'
@@ -21,30 +18,20 @@ import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
 import {
+  ArrowUp,
   Bot,
   Check,
   ChevronRight,
   Clock3,
-  LayoutList,
   Loader2,
   MapPin,
-  Search,
-  Send,
+  Slash,
   Sparkles,
   Trash2,
   WandSparkles,
-  X,
   XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Command,
   CommandEmpty,
@@ -59,6 +46,13 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { Markdown } from '@/components/ui/markdown'
+import {
+  PromptInput,
+  PromptInputAction,
+  PromptInputActions,
+  PromptInputTextarea,
+} from '@/components/ui/prompt-input'
 import { mirrorAssistantJob, streamAssistantMessages } from '@/entities/assistant/api'
 import {
   appendAssistantJobProgressEvent,
@@ -67,9 +61,9 @@ import {
 import { assistantKeys, useAssistantThread } from '@/entities/assistant/queries'
 import { streamJobProgress } from '@/entities/job/api'
 import { plannerKeys } from '@/entities/planner/queries'
+import { useGooglePlaceDetail } from '@/entities/place/queries'
 import { isApiError } from '@/shared/api/client'
 import type {
-  AssistantCommandInput,
   AssistantDataPart,
   AssistantMessage,
   AssistantMessagePart,
@@ -77,31 +71,55 @@ import type {
   AssistantToolCallPart,
   AssistantTextPart,
   JobProgressEvent,
+  Day,
 } from '@/shared/api/types'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { cn } from '@/shared/lib/cn'
-import { usePlannerStore } from '@/shared/stores/planner.store'
+import { resolveMediaUrl } from '@/shared/lib/media'
 import {
   PLANNER_ASSISTANT_COMMANDS,
-  formatPlannerAssistantCommandText,
   getPlannerAssistantCommandSuggestions,
   parsePlannerAssistantCommand,
   type PlannerAssistantCommandDefinition,
-  type PlannerAssistantDialogCommand,
-  type PlannerAssistantDirectCommand,
+  type PlannerAssistantInlineCommand,
 } from './commands'
+import {
+  PlannerGenerationInlineCard,
+  type PlannerGenerationAction,
+  type PlannerGenerationFormValues,
+} from '@/widgets/planner-board/GenerationControls'
 
 type PlannerAssistantContextValue = {
   confirmToolCall: (messageId: string, toolCallId: string, confirmed: boolean) => Promise<void>
+  selectSuggestedPlace: (place: PlannerAssistantSuggestedPlace) => void
 }
 
 type PlannerAssistantPanelProps = {
   tripId: string
   destination: string
+  days: Day[]
   hasActivities: boolean
   isOpen: boolean
+  requestedInlineAction: PlannerGenerationAction | null
+  onRequestedInlineActionHandled: () => void
+  onSubmitInlineAction: (
+    action: PlannerGenerationAction,
+    values: PlannerGenerationFormValues,
+    idempotencyKey: string,
+  ) => Promise<void>
+  isPlannerActionPending: boolean
   onOpenChange: (open: boolean) => void
-  onRequestGenerationDialog: (action: PlannerAssistantDialogCommand) => void
+  onSelectSuggestedPlace?: (place: PlannerAssistantSuggestedPlace) => void
+}
+
+export type PlannerAssistantSuggestedPlace = {
+  placeId: string
+  name: string
+  label: string | null
+  addressText: string | null
+  category: string | null
+  lat: number | null
+  lon: number | null
 }
 
 type JobTimelineRow =
@@ -130,21 +148,7 @@ type JobTimelineRow =
       summary?: Record<string, unknown>
     }
 
-type LauncherPosition = {
-  x: number
-  y: number
-}
-
 const PlannerAssistantContext = createContext<PlannerAssistantContextValue | null>(null)
-
-const LAUNCHER_MARGIN_DESKTOP = 24
-const LAUNCHER_MARGIN_MOBILE = 16
-const LAUNCHER_WIDTH_DESKTOP = 56
-const LAUNCHER_HEIGHT_DESKTOP = 56
-const LAUNCHER_WIDTH_MOBILE = 56
-const LAUNCHER_HEIGHT_MOBILE = 56
-const ASSISTANT_PANEL_WIDTH_DESKTOP = 528
-const ASSISTANT_PANEL_HEIGHT_MOBILE = 832
 
 function usePlannerAssistantContext() {
   const ctx = useContext(PlannerAssistantContext)
@@ -282,12 +286,172 @@ function removeAssistantMessage(
   })
 }
 
-function previewJson(value: unknown) {
-  try {
-    return JSON.stringify(value, null, 2)
-  } catch {
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+  return value as Record<string, unknown>
+}
+
+function asString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function pluralize(count: number, label: string) {
+  return `${count} ${label}${count === 1 ? '' : 's'}`
+}
+
+function dayScopeLabel(dayIds: unknown) {
+  if (!Array.isArray(dayIds) || dayIds.length === 0) {
+    return 'the whole trip'
+  }
+  return pluralize(dayIds.length, 'day')
+}
+
+function summaryValueLabel(value: unknown): string | null {
+  if (value == null) {
+    return null
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    return trimmed.length > 0 ? trimmed : null
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') {
     return String(value)
   }
+  if (Array.isArray(value)) {
+    return pluralize(value.length, 'item')
+  }
+  if (typeof value === 'object') {
+    return pluralize(Object.keys(value as Record<string, unknown>).length, 'field')
+  }
+  return null
+}
+
+function summarizeToolUsage(
+  toolName: string,
+  args: Record<string, unknown>,
+  result?: Record<string, unknown>,
+  options?: {
+    pending?: boolean
+    isError?: boolean
+  },
+) {
+  const pending = Boolean(options?.pending)
+  const isError = Boolean(options?.isError)
+
+  if (toolName === 'read_trip_snapshot') {
+    const dayCount = Array.isArray(result?.days) ? result.days.length : null
+    return dayCount != null
+      ? `Loaded the latest trip context for ${pluralize(dayCount, 'day')}.`
+      : 'Loaded the latest trip context.'
+  }
+
+  if (toolName === 'search_places') {
+    const query = asString(args.query)
+    const itemCount = Array.isArray(result?.items) ? result.items.length : null
+    if (isError) {
+      return query ? `Place search for "${query}" failed.` : 'Place search failed.'
+    }
+    if (itemCount != null) {
+      return query
+        ? `Found ${pluralize(itemCount, 'place')} for "${query}".`
+        : `Found ${pluralize(itemCount, 'place')}.`
+    }
+    return query ? `Searching places for "${query}".` : 'Searching places.'
+  }
+
+  if (toolName === 'create_activity') {
+    const activity = asRecord(result?.activity)
+    const title =
+      asString(activity?.title) ?? asString(args.title) ?? 'the activity'
+    return pending ? `Preparing ${title}.` : `Added ${title} to the itinerary.`
+  }
+
+  if (toolName === 'update_activity') {
+    const activity = asRecord(result?.activity)
+    const title =
+      asString(activity?.title) ?? asString(args.title) ?? 'the activity'
+    return pending ? `Updating ${title}.` : `Updated ${title}.`
+  }
+
+  if (toolName === 'move_activity') {
+    const activity = asRecord(result?.activity)
+    const title = asString(activity?.title)
+    return title ? `Moved ${title}.` : 'Moved the activity to a new slot.'
+  }
+
+  if (toolName === 'delete_activity') {
+    if (pending) {
+      return 'Ready to remove this activity from the itinerary.'
+    }
+    return isError ? 'Could not delete the activity.' : 'Deleted the activity from the itinerary.'
+  }
+
+  if (toolName === 'generate_itinerary') {
+    const mode = asString(args.mode) ?? asString(result?.mode) ?? 'replace'
+    return pending
+      ? `Ready to generate in ${mode} mode for ${dayScopeLabel(args.day_ids)}.`
+      : 'Queued itinerary generation and attached live progress below.'
+  }
+
+  if (toolName === 'reset_itinerary') {
+    return pending
+      ? `Ready to clear generated activities from ${dayScopeLabel(args.day_ids)}.`
+      : 'Queued itinerary reset and attached live progress below.'
+  }
+
+  return isError
+    ? `${formatToolLabel(toolName)} failed.`
+    : pending
+      ? `${formatToolLabel(toolName)} is ready to run.`
+      : `${formatToolLabel(toolName)} completed.`
+}
+
+function summarizeTimelineTool(row: Extract<JobTimelineRow, { kind: 'tool' }>) {
+  const query = asString(row.args.query)
+  const result = row.result
+
+  if (row.toolName === 'google_places_search') {
+    const count = Array.isArray(result?.items) ? result.items.length : null
+    if (count != null) {
+      return query
+        ? `Found ${pluralize(count, 'place')} for "${query}".`
+        : `Found ${pluralize(count, 'place')}.`
+    }
+    return query ? `Searching for "${query}".` : 'Searching places.'
+  }
+
+  if (row.toolName === 'google_place_details') {
+    const place = asRecord(result?.place)
+    const candidate = asRecord(result?.candidate)
+    const placeName =
+      asString(place?.name) ??
+      asString(candidate?.name)
+    return placeName ? `Loaded details for ${placeName}.` : 'Loading place details.'
+  }
+
+  if (row.toolName.includes('photo')) {
+    return row.result ? 'Added photos to the shortlisted places.' : 'Collecting place photos.'
+  }
+
+  if (row.toolName.includes('ground')) {
+    return row.result
+      ? 'Grounded the suggestions against trip constraints.'
+      : 'Grounding suggestions against the trip context.'
+  }
+
+  if (row.toolName.includes('apply')) {
+    return row.result ? 'Applied the generated itinerary changes.' : 'Applying itinerary changes.'
+  }
+
+  return summarizeToolUsage(row.toolName, row.args, row.result, {
+    isError: row.isError,
+  })
 }
 
 function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
@@ -381,196 +545,161 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
 
 function buildSummaryEntries(summary: Record<string, unknown> | undefined) {
   if (!summary) return []
-  return Object.entries(summary).filter(([, value]) => {
-    if (value == null) return false
-    if (typeof value === 'string') return value.trim().length > 0
-    if (Array.isArray(value)) return value.length > 0
-    if (typeof value === 'object') return Object.keys(value).length > 0
-    return true
+  return Object.entries(summary).flatMap(([key, value]) => {
+    const label = summaryValueLabel(value)
+    return label ? [[key, label] as const] : []
   })
 }
 
-function getLauncherDimensions(isMobile: boolean) {
-  return {
-    width: isMobile ? LAUNCHER_WIDTH_MOBILE : LAUNCHER_WIDTH_DESKTOP,
-    height: isMobile ? LAUNCHER_HEIGHT_MOBILE : LAUNCHER_HEIGHT_DESKTOP,
-    margin: isMobile ? LAUNCHER_MARGIN_MOBILE : LAUNCHER_MARGIN_DESKTOP,
-  }
-}
-
-function clampLauncherPosition(
-  position: LauncherPosition,
-  isMobile: boolean,
-): LauncherPosition {
-  if (typeof window === 'undefined') {
-    return position
-  }
-
-  const { width, height, margin } = getLauncherDimensions(isMobile)
-  return {
-    x: Math.min(
-      Math.max(position.x, margin),
-      Math.max(margin, window.innerWidth - width - margin),
-    ),
-    y: Math.min(
-      Math.max(position.y, margin),
-      Math.max(margin, window.innerHeight - height - margin),
-    ),
-  }
-}
-
-function getDefaultLauncherPosition(isMobile: boolean): LauncherPosition {
-  if (typeof window === 'undefined') {
-    return { x: 24, y: 24 }
-  }
-
-  const { width, height, margin } = getLauncherDimensions(isMobile)
-  return clampLauncherPosition(
-    {
-      x: window.innerWidth - width - margin,
-      y:
-        window.innerHeight -
-        height -
-        (isMobile ? margin + 56 : margin),
-    },
-    isMobile,
+function toneChipClasses(tone: 'neutral' | 'success' | 'warning' | 'danger') {
+  return cn(
+    'inline-flex items-center rounded-full px-2 py-0.5 text-[0.66rem] font-medium',
+    tone === 'success' && 'bg-[rgba(34,197,94,0.12)] text-[rgba(21,128,61,1)]',
+    tone === 'warning' && 'bg-[rgba(245,158,11,0.12)] text-[rgba(180,83,9,1)]',
+    tone === 'danger' && 'bg-[rgba(196,95,79,0.12)] text-[rgba(185,71,54,1)]',
+    tone === 'neutral' && 'bg-[rgba(15,23,42,0.06)] text-[var(--color-text-muted)]',
   )
 }
 
-function resolveLauncherDisplayPosition(
-  position: LauncherPosition,
-  isMobile: boolean,
-  isOpen: boolean,
-): LauncherPosition {
-  if (typeof window === 'undefined' || !isOpen) {
-    return position
-  }
+type SubmitPlannerAssistantInputResult = 'sent' | 'inline' | 'invalid' | 'noop'
 
-  const { width, height, margin } = getLauncherDimensions(isMobile)
-
-  if (isMobile) {
-    const sheetHeight = Math.min(window.innerHeight * 0.88, ASSISTANT_PANEL_HEIGHT_MOBILE)
-    const visibleBottom = Math.max(margin, window.innerHeight - sheetHeight - 12)
-    return {
-      x: Math.min(
-        Math.max(position.x, margin),
-        Math.max(margin, window.innerWidth - width - margin),
-      ),
-      y: Math.min(
-        Math.max(position.y, margin),
-        Math.max(margin, visibleBottom - height),
-      ),
+function getAvailableCommandSuggestions(
+  draft: string,
+  hasActivities: boolean,
+): PlannerAssistantCommandDefinition[] {
+  return getPlannerAssistantCommandSuggestions(draft).filter((command) => {
+    if (!hasActivities && command.name === 'reset') {
+      return false
     }
-  }
-
-  const visibleRight = window.innerWidth - ASSISTANT_PANEL_WIDTH_DESKTOP - 12
-  return {
-    x: Math.min(
-      Math.max(position.x, margin),
-      Math.max(margin, visibleRight - width),
-    ),
-    y: Math.min(
-      Math.max(position.y, margin),
-      Math.max(margin, window.innerHeight - height - margin),
-    ),
-  }
-}
-
-type SubmitPlannerAssistantInputResult = 'sent' | 'dialog' | 'invalid' | 'noop'
-
-type PlannerAssistantCommandActionsOptions = {
-  hasActivities: boolean
-  focusComposer: () => void
-  setStreamError: (error: string | null) => void
-  onRequestGenerationDialog: (action: PlannerAssistantDialogCommand) => void
-  handleDirectCommand: (
-    commandName: PlannerAssistantDirectCommand,
-    args: AssistantCommandInput['args'],
-    displayText: string,
-  ) => Promise<void>
-}
-
-function getQuickActionCommands(hasActivities: boolean) {
-  return PLANNER_ASSISTANT_COMMANDS.filter((command) => {
-    if (!command.chipLabel) return false
-    if (command.name === 'regenerate') return false
-    if (!hasActivities && command.name === 'reset') return false
     return true
   })
 }
 
-function getEmptyStateActions(hasActivities: boolean) {
-  return getQuickActionCommands(hasActivities)
-    .filter((command) => ['generate', 'snapshot', 'search_places'].includes(command.name))
-    .slice(0, 4)
+const MESSAGE_MARKDOWN_COMPONENTS = {
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <p className="m-0 leading-7 text-[var(--color-text)]">{children}</p>
+  ),
+  strong: ({ children }: { children?: React.ReactNode }) => (
+    <strong className="font-semibold text-[var(--color-text)]">{children}</strong>
+  ),
+  em: ({ children }: { children?: React.ReactNode }) => (
+    <em className="italic text-[var(--color-text)]">{children}</em>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <ol className="m-0 flex list-decimal flex-col gap-2 pl-5">{children}</ol>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <ul className="m-0 flex list-disc flex-col gap-2 pl-5">{children}</ul>
+  ),
+  li: ({ children }: { children?: React.ReactNode }) => (
+    <li className="pl-0.5 text-[var(--color-text)] marker:text-[var(--color-text-muted)]">
+      {children}
+    </li>
+  ),
+  a: ({
+    children,
+    href,
+  }: {
+    children?: React.ReactNode
+    href?: string
+  }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="font-medium text-[var(--color-primary)] underline underline-offset-4"
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children }: { children?: React.ReactNode }) => (
+    <blockquote className="m-0 border-l-2 border-black/10 pl-3 text-[var(--color-text-muted)]">
+      {children}
+    </blockquote>
+  ),
 }
 
-function usePlannerAssistantCommandActions({
-  hasActivities,
-  focusComposer,
-  setStreamError,
-  onRequestGenerationDialog,
-  handleDirectCommand,
-}: PlannerAssistantCommandActionsOptions) {
-  const aui = useAui()
-  const composerText = useAuiState((state) => (state.composer.isEditing ? state.composer.text : ''))
+function extractSuggestedPlaces(result: Record<string, unknown> | null): PlannerAssistantSuggestedPlace[] {
+  const items = Array.isArray(result?.items) ? result.items : []
+  return items.flatMap((item) => {
+    const record = asRecord(item)
+    const placeId = asString(record?.place_id)
+    const name = asString(record?.name)
+    if (!placeId || !name) {
+      return []
+    }
+    return [
+      {
+        placeId,
+        name,
+        label: asString(record?.label),
+        addressText: asString(record?.address_text),
+        category: asString(record?.category),
+        lat: typeof record?.lat === 'number' ? record.lat : null,
+        lon: typeof record?.lon === 'number' ? record.lon : null,
+      },
+    ]
+  })
+}
 
-  const setComposerText = useCallback(
-    (text: string) => {
-      aui.composer().setText(text)
-    },
-    [aui],
+function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }) {
+  const { selectSuggestedPlace } = usePlannerAssistantContext()
+  const detailQuery = useGooglePlaceDetail(place.placeId)
+  const heroPhoto = detailQuery.data?.photos?.[0] ?? null
+  const heroPhotoUrl = resolveMediaUrl(heroPhoto?.thumbnail_url ?? heroPhoto?.image_url ?? null)
+
+  return (
+    <button
+      type="button"
+      onClick={() => selectSuggestedPlace(place)}
+      className="group flex w-full items-stretch overflow-hidden rounded-[18px] border border-black/8 bg-[#faf8f4] text-left transition-colors hover:border-black/12 hover:bg-white"
+    >
+      <div className="relative aspect-[1.08] w-[5.8rem] shrink-0 overflow-hidden bg-[linear-gradient(135deg,#ece7df_0%,#f7f1e8_100%)]">
+        {heroPhotoUrl ? (
+          <img
+            src={heroPhotoUrl}
+            alt={place.name}
+            className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center text-[var(--color-text-muted)]">
+            <MapPin className="size-4" />
+          </div>
+        )}
+      </div>
+      <div className="min-w-0 flex-1 px-3 py-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[0.82rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+              {place.name}
+            </p>
+            {place.category ? (
+              <p className="mt-0.5 text-[0.68rem] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                {place.category.replace(/_/g, ' ')}
+              </p>
+            ) : null}
+          </div>
+          <span className="shrink-0 rounded-full bg-black/[0.05] px-2 py-1 text-[0.65rem] font-medium text-[var(--color-text-muted)]">
+            Map
+          </span>
+        </div>
+        <p className="mt-2 line-clamp-2 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+          {place.addressText ?? place.label ?? 'Open this place on the map.'}
+        </p>
+      </div>
+    </button>
   )
-
-  const commandSuggestions = useMemo(() => {
-    return getPlannerAssistantCommandSuggestions(composerText).filter((command) => {
-      if (!hasActivities && command.name === 'reset') {
-        return false
-      }
-      return true
-    })
-  }, [composerText, hasActivities])
-
-  const handleCommandAction = useCallback(
-    (command: PlannerAssistantCommandDefinition) => {
-      setStreamError(null)
-      if (command.kind === 'dialog') {
-        setComposerText('')
-        onRequestGenerationDialog(command.name as PlannerAssistantDialogCommand)
-        return
-      }
-
-      if (command.name === 'snapshot') {
-        setComposerText('')
-        void handleDirectCommand('snapshot', {}, '/snapshot')
-        return
-      }
-
-      setComposerText(command.template ?? formatPlannerAssistantCommandText(command.name))
-      focusComposer()
-    },
-    [
-      focusComposer,
-      handleDirectCommand,
-      onRequestGenerationDialog,
-      setComposerText,
-      setStreamError,
-    ],
-  )
-
-  return {
-    composerText,
-    commandSuggestions,
-    handleCommandAction,
-    quickActionCommands: getQuickActionCommands(hasActivities),
-    setComposerText,
-  }
 }
 
 function TextBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-black/8 bg-white px-4 py-3 text-[0.86rem] leading-6 text-[var(--color-text)] shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-      <p className="whitespace-pre-wrap">{text}</p>
+    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
+      <Markdown
+        className="flex flex-col gap-3 text-[0.84rem] leading-7 [&_code]:rounded-[6px] [&_code]:bg-black/[0.04] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.78rem]"
+        components={MESSAGE_MARKDOWN_COMPONENTS}
+      >
+        {text}
+      </Markdown>
     </div>
   )
 }
@@ -590,126 +719,96 @@ function PlannerResultCard({ part }: { part: AssistantDataPart }) {
   const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null
 
   return (
-    <Card
-      variant="solid"
-      className="overflow-hidden rounded-2xl border-black/8 bg-white"
-    >
-      <CardHeader className="gap-2 border-b border-black/6 px-4 py-3">
-        <div className="flex items-center gap-2 text-[0.68rem] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-          <WandSparkles className="size-3.5 text-[var(--color-primary)]" />
-          <span>{formatToolLabel(operation)}</span>
+    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+          <WandSparkles className="size-3.5" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {title ? (
-            <CardTitle className="text-[0.95rem]">{title}</CardTitle>
-          ) : (
-            <CardTitle className="text-[0.95rem]">
-              Planner operation completed
-            </CardTitle>
-          )}
-          {placeName ? <Badge variant="secondary">{placeName}</Badge> : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">
+              {title || 'Planner update completed'}
+            </p>
+            <span className={toneChipClasses('success')}>{formatToolLabel(operation)}</span>
+          </div>
+          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+            {jobId
+              ? `Job ${jobId.slice(0, 8)} is mirrored in this thread.`
+              : placeName
+                ? `Updated around ${placeName}.`
+                : 'The planner state was updated and the board will refresh automatically.'}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent className="px-4 py-3">
-        {jobId ? (
-          <CardDescription className="text-[0.76rem]">
-            Job <span className="font-medium text-[var(--color-text)]">{jobId.slice(0, 8)}</span>{' '}
-            is mirrored into this thread.
-          </CardDescription>
-        ) : (
-          <CardDescription className="text-[0.76rem]">
-            The planner state was updated and the board will refresh automatically.
-          </CardDescription>
-        )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId: string }) {
   const { confirmToolCall } = usePlannerAssistantContext()
   const pending = Boolean(part.interrupt)
-  const resultPreview = part.result ? previewJson(part.result) : null
-  const argsPreview =
-    part.argsText && part.argsText.trim().length > 0
-      ? part.argsText
-      : previewJson(part.args ?? {})
+  const result = asRecord(part.result)
+  const suggestedPlaces = part.toolName === 'search_places' ? extractSuggestedPlaces(result) : []
+  const stateLabel = pending ? 'Awaiting confirmation' : part.isError ? 'Failed' : part.result ? 'Complete' : 'Running'
+  const stateTone = pending ? 'warning' : part.isError ? 'danger' : part.result ? 'success' : 'neutral'
+  const summary = summarizeToolUsage(part.toolName, part.args ?? {}, result ?? undefined, {
+    pending,
+    isError: part.isError,
+  })
 
   return (
-    <Card
-      variant="solid"
-      className="overflow-hidden rounded-2xl border-black/8 bg-white"
-    >
-      <CardHeader className="gap-3 px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 flex size-8 items-center justify-center rounded-xl border border-black/6 bg-[rgba(47,111,115,0.06)] text-[var(--color-primary)]">
-            {part.isError ? <XCircle className="size-4" /> : <Sparkles className="size-4" />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="text-[0.9rem]">{formatToolLabel(part.toolName)}</CardTitle>
-            <CardDescription className="mt-1 text-[0.75rem]">
-              {pending ? 'Waiting for confirmation.' : 'Tool orchestration record.'}
-            </CardDescription>
-          </div>
-          <Badge variant={pending ? 'warning' : part.isError ? 'danger' : 'neutral'}>
-            {pending ? 'Confirm' : part.isError ? 'Error' : part.result ? 'Done' : 'Running'}
-          </Badge>
+    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+          {part.isError ? <XCircle className="size-3.5" /> : <Sparkles className="size-3.5" />}
         </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 px-4 py-3">
-        <div className="rounded-xl border border-black/6 bg-[rgba(244,246,248,0.52)] px-3 py-3">
-          <p className="text-[0.68rem] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-            Args
-          </p>
-          <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[0.72rem] leading-5 text-[var(--color-text)]">
-            {argsPreview}
-          </pre>
-        </div>
-        {resultPreview ? (
-          <div className="rounded-xl border border-black/6 bg-[rgba(244,246,248,0.52)] px-3 py-3">
-            <p className="text-[0.68rem] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-              Result
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">
+              {formatToolLabel(part.toolName)}
             </p>
-            <pre
-              className={cn(
-                'mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[0.72rem] leading-5',
-                part.isError
-                  ? 'text-[rgba(196,95,79,1)]'
-                  : 'text-[var(--color-text)]',
-              )}
-            >
-              {resultPreview}
-            </pre>
+            <span className={toneChipClasses(stateTone)}>{stateLabel}</span>
           </div>
-        ) : null}
-        {pending ? (
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 rounded-full px-4"
-              onClick={() => void confirmToolCall(messageId, part.toolCallId, true)}
-            >
-              Confirm
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 rounded-full px-4"
-              onClick={() => void confirmToolCall(messageId, part.toolCallId, false)}
-            >
-              Cancel
-            </Button>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+            {summary}
+          </p>
+        </div>
+      </div>
+
+      {suggestedPlaces.length > 0 ? (
+        <div className="mt-3 flex flex-col gap-2">
+          {suggestedPlaces.map((place) => (
+            <SuggestedPlaceCard key={place.placeId} place={place} />
+          ))}
+        </div>
+      ) : null}
+
+      {pending ? (
+        <div className="mt-3 flex gap-2">
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-full px-4"
+            onClick={() => void confirmToolCall(messageId, part.toolCallId, true)}
+          >
+            Confirm
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-full px-4"
+            onClick={() => void confirmToolCall(messageId, part.toolCallId, false)}
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
 function JobProgressCard({ part }: { part: AssistantDataPart }) {
-  const action = String(part.data.action ?? 'generate')
   const requestText = String(part.data.request_text ?? 'Planner job')
   const jobStatus = String(part.data.job_status ?? 'PENDING')
   const rows = buildTimelineRows(Array.isArray(part.data.events) ? part.data.events : [])
@@ -725,173 +824,135 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
   )
   const latestActiveRow = [...rows].reverse().find((row) => row.kind !== 'done')
 
+  const jobTone =
+    jobStatus === 'SUCCEEDED' ? 'success' : jobStatus === 'FAILED' ? 'danger' : 'warning'
+
   return (
-    <Card
-      variant="solid"
-      className="overflow-hidden rounded-2xl border-black/8 bg-white"
-    >
-      <CardHeader className="gap-3 border-b border-black/6 px-4 py-3">
-        <div className="flex items-start gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-black/6 bg-[rgba(47,111,115,0.08)] text-[var(--color-primary)]">
-            {jobStatus === 'SUCCEEDED' ? (
-              <Check className="size-4.5" />
-            ) : jobStatus === 'FAILED' ? (
-              <XCircle className="size-4.5" />
-            ) : (
-              <Loader2 className="size-4.5 animate-spin" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-[0.72rem] uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-                {formatToolLabel(action)}
-              </p>
-              <Badge
-                variant={
-                  jobStatus === 'SUCCEEDED'
-                    ? 'success'
-                    : jobStatus === 'FAILED'
-                      ? 'danger'
-                      : 'warning'
-                }
-              >
-                {jobStatus}
-              </Badge>
-            </div>
-            <CardTitle className="mt-1 text-[0.98rem]">{requestText}</CardTitle>
-            <CardDescription className="mt-1 text-[0.76rem]">
-              {latestActiveRow?.kind === 'step'
-                ? latestActiveRow.name
-                : latestActiveRow?.kind === 'tool'
-                  ? `Running ${formatToolLabel(latestActiveRow.toolName)}`
-                  : 'Queued and waiting for worker pickup.'}
-            </CardDescription>
-          </div>
+    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+          {jobStatus === 'SUCCEEDED' ? (
+            <Check className="size-4" />
+          ) : jobStatus === 'FAILED' ? (
+            <XCircle className="size-4" />
+          ) : (
+            <Loader2 className="size-4 animate-spin" />
+          )}
         </div>
-      </CardHeader>
-
-      <CardContent className="flex flex-col gap-3 px-4 py-3">
-        {rows.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-xl border border-black/6 bg-[rgba(244,246,248,0.52)] px-3 py-3 text-[0.78rem] text-[var(--color-text-muted)]">
-            <Clock3 className="size-3.5" />
-            <span>Queued and waiting for worker pickup.</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">{requestText}</p>
+            <span className={toneChipClasses(jobTone)}>{jobStatus}</span>
           </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {Object.entries(groupedRows).map(([phase, phaseRows]) => (
-              <div key={phase} className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-black/6" />
-                  <p className="text-[0.66rem] uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
-                    {phase.replace(/_/g, ' ')}
-                  </p>
-                  <div className="h-px flex-1 bg-black/6" />
-                </div>
-                <div className="flex flex-col gap-2">
-                  {phaseRows.map((row) => {
-                    if (row.kind === 'step') {
-                      return (
-                        <div
-                          key={row.eventId}
-                          className="flex items-start gap-2 rounded-xl border border-black/6 bg-[rgba(244,246,248,0.42)] px-3 py-3"
-                        >
-                          <ChevronRight className="mt-[2px] size-3.5 text-[var(--color-primary)]" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[0.82rem] text-[var(--color-text)]">{row.name}</p>
-                            {row.detail ? (
-                              <p className="mt-1 text-[0.74rem] text-[var(--color-text-muted)]">
-                                {row.detail}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-                      )
-                    }
+          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+            {latestActiveRow?.kind === 'step'
+              ? latestActiveRow.name
+              : latestActiveRow?.kind === 'tool'
+                ? `Running ${formatToolLabel(latestActiveRow.toolName)}`
+                : 'Queued and waiting for worker pickup.'}
+          </p>
+        </div>
+      </div>
 
-                    if (row.kind === 'tool') {
-                      return (
-                        <div
-                          key={row.eventId}
-                          className="rounded-xl border border-black/6 bg-[rgba(244,246,248,0.42)] px-3 py-3"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-[0.8rem] font-medium text-[var(--color-text)]">
-                              {formatToolLabel(row.toolName)}
-                            </p>
-                            {row.callId ? (
-                              <Badge variant="outline" className="font-mono normal-case tracking-normal">
-                                {row.callId.slice(0, 8)}
-                              </Badge>
-                            ) : null}
-                            {row.result ? (
-                              <Badge variant={row.isError ? 'danger' : 'success'}>
-                                {row.isError ? 'Error' : 'Done'}
-                              </Badge>
-                            ) : (
-                              <Badge variant="warning">Running</Badge>
-                            )}
-                          </div>
-                          {Object.keys(row.args).length > 0 ? (
-                            <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[0.7rem] leading-5 text-[var(--color-text-muted)]">
-                              {previewJson(row.args)}
-                            </pre>
-                          ) : null}
-                          {row.result ? (
-                            <pre
-                              className={cn(
-                                'mt-2 overflow-x-auto whitespace-pre-wrap break-words text-[0.7rem] leading-5',
-                                row.isError
-                                  ? 'text-[rgba(196,95,79,1)]'
-                                  : 'text-[var(--color-text-muted)]',
-                              )}
-                            >
-                              {previewJson(row.result)}
-                            </pre>
-                          ) : null}
-                        </div>
-                      )
-                    }
-
+      {rows.length === 0 ? (
+        <div className="mt-3 flex items-center gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5 text-[0.76rem] text-[var(--color-text-muted)]">
+          <Clock3 className="size-3.5" />
+          <span>Queued and waiting for worker pickup.</span>
+        </div>
+      ) : (
+        <div className="mt-3 space-y-3">
+          {Object.entries(groupedRows).map(([phase, phaseRows]) => (
+            <div key={phase} className="space-y-1.5">
+              <p className="text-[0.67rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                {phase.replace(/_/g, ' ')}
+              </p>
+              <div className="space-y-1.5">
+                {phaseRows.map((row) => {
+                  if (row.kind === 'step') {
                     return (
                       <div
                         key={row.eventId}
-                        className="flex items-center gap-2 rounded-xl border border-black/6 bg-[rgba(244,246,248,0.42)] px-3 py-3 text-[0.8rem] text-[var(--color-text)]"
+                        className="flex items-start gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5"
                       >
-                        {row.status === 'SUCCEEDED' ? (
-                          <Check className="size-3.5 text-[var(--color-success)]" />
-                        ) : (
-                          <XCircle className="size-3.5 text-[rgba(196,95,79,1)]" />
-                        )}
-                        <span>
-                          {row.status === 'SUCCEEDED'
-                            ? 'Planner updated successfully.'
-                            : 'Generation finished with an error.'}
-                        </span>
+                        <ChevronRight className="mt-0.5 size-3.5 text-[var(--color-primary)]" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[0.78rem] font-medium text-[var(--color-text)]">
+                            {row.name}
+                          </p>
+                          {row.detail ? (
+                            <p className="mt-0.5 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
+                              {row.detail}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
                     )
-                  })}
-                </div>
+                  }
+
+                  if (row.kind === 'tool') {
+                    const toolTone = row.result ? (row.isError ? 'danger' : 'success') : 'warning'
+                    return (
+                      <div
+                        key={row.eventId}
+                        className="rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-[var(--color-text)]">
+                            {formatToolLabel(row.toolName)}
+                          </span>
+                          <span className={toneChipClasses(toolTone)}>
+                            {row.result ? (row.isError ? 'Error' : 'Done') : 'Running'}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
+                          {summarizeTimelineTool(row)}
+                        </p>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div
+                      key={row.eventId}
+                      className="flex items-center gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5 text-[0.78rem] text-[var(--color-text)]"
+                    >
+                      {row.status === 'SUCCEEDED' ? (
+                        <Check className="size-3.5 text-[var(--color-success)]" />
+                      ) : (
+                        <XCircle className="size-3.5 text-[rgba(196,95,79,1)]" />
+                      )}
+                      <span>
+                        {row.status === 'SUCCEEDED'
+                          ? 'Planner updated successfully.'
+                          : 'Generation finished with an error.'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {summaryEntries.length > 0 ? (
+        <div className="mt-3 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5">
+          <p className="text-[0.67rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            Summary
+          </p>
+          <div className="mt-2 space-y-1.5">
+            {summaryEntries.map(([key, value]) => (
+              <div key={key} className="flex gap-2 text-[0.74rem] leading-5">
+                <span className="min-w-[6.5rem] text-[var(--color-text-muted)]">
+                  {formatToolLabel(key)}
+                </span>
+                <span className="flex-1 break-words text-[var(--color-text)]">{value}</span>
               </div>
             ))}
           </div>
-        )}
-
-        {summaryEntries.length > 0 ? (
-          <div className="rounded-xl border border-black/6 bg-[rgba(244,246,248,0.42)] px-4 py-3">
-            <p className="text-[0.68rem] uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
-              Summary
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {summaryEntries.map(([key, value]) => (
-                <Badge key={key} variant="secondary" className="normal-case tracking-normal">
-                  {formatToolLabel(key)}: {typeof value === 'object' ? previewJson(value) : String(value)}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </CardContent>
-    </Card>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -907,48 +968,40 @@ function EmptyThreadState({
   const emptyActions = getEmptyStateActions(hasActivities)
 
   return (
-    <div className="flex min-h-[16rem] flex-col justify-center gap-4 pb-4">
-      <Card variant="solid" className="overflow-hidden rounded-[24px] border-black/8 bg-white">
-        <CardHeader className="gap-3 px-5 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-full border border-black/8 bg-[rgba(47,111,115,0.08)] text-[var(--color-primary)]">
-              <Bot className="size-4.5" />
-            </div>
-            <div>
-              <CardTitle className="text-[0.98rem]">Planner Assistant</CardTitle>
-              <CardDescription className="mt-1 text-[0.78rem]">
-                Live planner chat, tool orchestration, and itinerary job progress in one thread.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 px-5 py-5">
-          <div className="rounded-xl border border-black/6 bg-[rgba(244,246,248,0.42)] px-4 py-4">
-            <p className="text-[0.8rem] leading-6 text-[var(--color-text)]">
-              Ask for itinerary edits, inspect the current plan, or queue generation for{' '}
-              <span className="font-medium">{destination || 'this trip'}</span>. Mirrored jobs and
-              tool history stay here after reload.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {emptyActions.map((command) => (
-              <Button
-                key={command.name}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 rounded-full px-3.5"
-                onClick={() => onRunAction(command)}
-              >
-                {command.name === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
-                {command.name === 'snapshot' ? <LayoutList data-icon="inline-start" /> : null}
-                {command.name === 'search_places' ? <Search data-icon="inline-start" /> : null}
-                {command.chipLabel}
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+    <div className="flex min-h-[12rem] flex-col justify-center gap-4 px-1 pb-3 pt-1">
+      <div className="flex items-start gap-3">
+        <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+          <Bot className="size-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+            Planner Assistant
+          </p>
+          <p className="mt-1 text-[0.8rem] leading-6 text-[var(--color-text-muted)]">
+            Ask for itinerary edits, inspect the plan, or queue generation for{' '}
+            <span className="font-medium text-[var(--color-text)]">
+              {destination || 'this trip'}
+            </span>
+            .
+          </p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {emptyActions.map((command) => (
+          <Button
+            key={command.name}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 rounded-full px-3 text-[0.74rem]"
+            onClick={() => onRunAction(command)}
+          >
+            {command.name === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
+            {command.name === 'reset' ? <Trash2 data-icon="inline-start" /> : null}
+            {command.chipLabel}
+          </Button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -956,28 +1009,18 @@ function EmptyThreadState({
 function PlannerAssistantEmptyState({
   destination,
   hasActivities,
-  focusComposer,
   setStreamError,
-  onRequestGenerationDialog,
-  handleDirectCommand,
+  onRequestInlineAction,
 }: {
   destination: string
   hasActivities: boolean
-  focusComposer: () => void
   setStreamError: (error: string | null) => void
-  onRequestGenerationDialog: (action: PlannerAssistantDialogCommand) => void
-  handleDirectCommand: (
-    commandName: PlannerAssistantDirectCommand,
-    args: AssistantCommandInput['args'],
-    displayText: string,
-  ) => Promise<void>
+  onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void
 }) {
   const { handleCommandAction } = usePlannerAssistantCommandActions({
     hasActivities,
-    focusComposer,
     setStreamError,
-    onRequestGenerationDialog,
-    handleDirectCommand,
+    onRequestInlineAction,
   })
 
   return (
@@ -994,73 +1037,61 @@ function PlannerAssistantComposer({
   isStreaming,
   streamError,
   setStreamError,
-  focusComposer,
   textareaRef,
   cancelCurrentStream,
-  handleDirectCommand,
-  onRequestGenerationDialog,
+  onRequestInlineAction,
   onSubmitInput,
 }: {
   hasActivities: boolean
   isStreaming: boolean
   streamError: string | null
   setStreamError: (error: string | null) => void
-  focusComposer: () => void
   textareaRef: { current: HTMLTextAreaElement | null }
   cancelCurrentStream: () => Promise<void>
-  handleDirectCommand: (
-    commandName: PlannerAssistantDirectCommand,
-    args: AssistantCommandInput['args'],
-    displayText: string,
-  ) => Promise<void>
-  onRequestGenerationDialog: (action: PlannerAssistantDialogCommand) => void
+  onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void
   onSubmitInput: (rawInput: string) => Promise<SubmitPlannerAssistantInputResult>
 }) {
   const { composerText, commandSuggestions, handleCommandAction, quickActionCommands, setComposerText } =
     usePlannerAssistantCommandActions({
       hasActivities,
-      focusComposer,
       setStreamError,
-      onRequestGenerationDialog,
-      handleDirectCommand,
+      onRequestInlineAction,
     })
 
   const submitComposer = useCallback(async () => {
     const result = await onSubmitInput(composerText)
-    if (result === 'sent' || result === 'dialog') {
+    if (result === 'sent' || result === 'inline') {
       setComposerText('')
     }
   }, [composerText, onSubmitInput, setComposerText])
 
   return (
-    <div className="flex flex-col gap-3 border-t border-black/6 bg-[rgba(252,252,251,0.96)] px-4 py-3 backdrop-blur-sm">
-      <div className="flex gap-2 overflow-x-auto pb-1">
+    <div className="flex flex-col gap-2.5 border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
         {quickActionCommands.map((command) => (
           <Button
             key={command.name}
             type="button"
             variant="outline"
             size="sm"
-            className="h-8 shrink-0 rounded-full px-3.5"
+            className="h-7 shrink-0 rounded-full px-3 text-[0.74rem]"
             onClick={() => handleCommandAction(command)}
           >
             {command.name === 'generate' ? <Sparkles data-icon="inline-start" /> : null}
             {command.name === 'reset' ? <Trash2 data-icon="inline-start" /> : null}
-            {command.name === 'snapshot' ? <LayoutList data-icon="inline-start" /> : null}
-            {command.name === 'search_places' ? <Search data-icon="inline-start" /> : null}
             {command.chipLabel}
           </Button>
         ))}
       </div>
 
       {streamError ? (
-        <div className="rounded-xl border border-[rgba(196,95,79,0.18)] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.76rem] text-[rgba(196,95,79,1)]">
+        <div className="rounded-[14px] border border-[rgba(196,95,79,0.18)] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.75rem] text-[rgba(196,95,79,1)]">
           {streamError}
         </div>
       ) : null}
 
       <ComposerPrimitive.Root
-        className="rounded-2xl border border-black/8 bg-white shadow-[0_12px_32px_rgba(15,23,42,0.05)]"
+        className="rounded-[18px] border border-black/8 bg-white"
         onSubmit={(event) => {
           event.preventDefault()
           void submitComposer()
@@ -1069,10 +1100,10 @@ function PlannerAssistantComposer({
         <ComposerPrimitive.Input
           ref={textareaRef}
           submitMode="none"
-          minRows={2}
-          maxRows={8}
-          placeholder="Ask about this trip, type / for commands, or queue itinerary work…"
-          className="min-h-[76px] w-full resize-none border-0 bg-transparent px-3.5 py-3 text-[0.88rem] leading-6 outline-none focus-visible:ring-0"
+          minRows={1}
+          maxRows={6}
+          placeholder="Ask about this trip or type /generate…"
+          className="min-h-[56px] w-full resize-none border-0 bg-transparent px-3 py-2.5 text-[0.84rem] leading-6 outline-none focus-visible:ring-0"
           onChange={() => {
             if (streamError) {
               setStreamError(null)
@@ -1099,7 +1130,7 @@ function PlannerAssistantComposer({
               className="px-2 pb-2"
             >
               <Command className="overflow-hidden rounded-[18px] border border-black/8 bg-[rgba(252,252,251,0.96)]">
-                <CommandList className="max-h-[13rem] p-2">
+                <CommandList className="max-h-[13rem] p-1.5">
                   <CommandEmpty>No matching commands.</CommandEmpty>
                   <CommandGroup heading="Commands">
                     {commandSuggestions.map((command) => (
@@ -1107,23 +1138,15 @@ function PlannerAssistantComposer({
                         key={command.name}
                         value={command.name}
                         onSelect={() => handleCommandAction(command)}
-                        className="items-start rounded-[14px] px-3 py-3"
+                        className="items-start rounded-[14px] px-3 py-2.5"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-[var(--color-text)]">
-                              /{command.name}
-                            </span>
-                            <Badge variant="outline">{command.kind}</Badge>
-                          </div>
-                          <p className="mt-1 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                          <span className="font-medium text-[0.8rem] text-[var(--color-text)]">
+                            /{command.name}
+                          </span>
+                          <p className="mt-1 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
                             {command.description}
                           </p>
-                          {command.template ? (
-                            <p className="mt-1 truncate font-mono text-[0.68rem] text-[var(--color-text-muted)]">
-                              {command.template}
-                            </p>
-                          ) : null}
                         </div>
                       </CommandItem>
                     ))}
@@ -1134,8 +1157,8 @@ function PlannerAssistantComposer({
           ) : null}
         </AnimatePresence>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/6 px-3.5 py-2.5">
-          <p className="text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-black/6 px-3 py-2">
+          <p className="text-[0.71rem] text-[var(--color-text-muted)]">
             Enter sends. Cmd/Ctrl + Enter or Shift + Enter adds a new line.
           </p>
           <div className="flex items-center gap-2">
@@ -1144,7 +1167,7 @@ function PlannerAssistantComposer({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-full px-3.5"
+                className="h-8 rounded-full px-3.5 text-[0.76rem]"
                 onClick={() => void cancelCurrentStream()}
               >
                 <X data-icon="inline-start" />
@@ -1154,7 +1177,7 @@ function PlannerAssistantComposer({
             <Button
               type="submit"
               size="sm"
-              className="h-8 rounded-full px-3.5"
+              className="h-8 rounded-full px-3.5 text-[0.76rem]"
               disabled={isStreaming || !composerText.trim()}
             >
               {isStreaming ? (
@@ -1179,9 +1202,9 @@ function UserMessage() {
     .join('\n')
 
   return (
-    <MessagePrimitive.Root className="flex justify-end pb-3">
-      <div className="max-w-[84%] rounded-2xl rounded-br-[10px] bg-[var(--color-primary)] px-4 py-3 text-white shadow-[0_12px_24px_rgba(47,111,115,0.18)]">
-        <p className="whitespace-pre-wrap text-[0.84rem] leading-6">{text}</p>
+    <MessagePrimitive.Root className="flex justify-end pb-2.5">
+      <div className="max-w-[86%] rounded-[18px] rounded-br-[8px] bg-[#111827] px-3 py-2.5 text-white">
+        <p className="whitespace-pre-wrap text-[0.83rem] leading-6">{text}</p>
       </div>
     </MessagePrimitive.Root>
   )
@@ -1193,17 +1216,15 @@ function AssistantMessageView() {
   const messageId = state.id
 
   return (
-    <MessagePrimitive.Root className="pb-3">
-      <div className="mb-2 flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-        <span className="flex size-7 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
-          <Bot className="size-3.5" />
-        </span>
-        <span>Voyager Assistant</span>
+    <MessagePrimitive.Root className="flex gap-2 pb-2.5">
+      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
         {state.status?.type === 'running' ? (
-          <Loader2 className="size-3 animate-spin text-[var(--color-primary)]" />
-        ) : null}
-      </div>
-      <div className="flex flex-col gap-2.5">
+          <Loader2 className="size-3 animate-spin" />
+        ) : (
+          <Bot className="size-3.5" />
+        )}
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">
         {parts.map((part, index) => {
           if (isTextPart(part)) {
             return <TextBlock key={`${messageId}-text-${index}`} text={part.text} />
@@ -1230,91 +1251,28 @@ function AssistantMessageView() {
   )
 }
 
-function FloatingAssistantLauncher({
-  isMobile,
-  isOpen,
-  hasLiveActivity,
-  position,
-  onOpenChange,
-  onPositionChange,
-}: {
-  isMobile: boolean
-  isOpen: boolean
-  hasLiveActivity: boolean
-  position: LauncherPosition
-  onOpenChange: (open: boolean) => void
-  onPositionChange: (position: LauncherPosition) => void
-}) {
-  return (
-    <motion.button
-      type="button"
-      drag
-      dragMomentum={false}
-      dragElastic={0.12}
-      whileHover={{ scale: 1.04 }}
-      whileTap={{ scale: 0.96 }}
-      animate={{ x: 0, y: 0, opacity: 1 }}
-      initial={{ opacity: 0, y: 12 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-      className={cn(
-        'fixed z-[60] flex size-14 items-center justify-center rounded-full border border-[rgba(28,44,53,0.12)] bg-[linear-gradient(145deg,rgba(255,255,255,0.98)_0%,rgba(241,247,246,0.94)_100%)] text-[var(--color-text)] shadow-[0_26px_60px_-28px_rgba(24,36,42,0.48)] backdrop-blur-xl',
-        isOpen && 'shadow-[0_30px_70px_-26px_rgba(47,111,115,0.5)] ring-2 ring-[rgba(47,111,115,0.18)]',
-      )}
-      style={{
-        left: position.x,
-        top: position.y,
-      }}
-      onDragEnd={(_event, info) => {
-        onPositionChange(
-          clampLauncherPosition(
-            {
-              x: position.x + info.offset.x,
-              y: position.y + info.offset.y,
-            },
-            isMobile,
-          ),
-        )
-      }}
-      onClick={() => onOpenChange(!isOpen)}
-      aria-label={isOpen ? 'Close planner assistant' : 'Open planner assistant'}
-    >
-      <div className="relative flex size-10 items-center justify-center rounded-full bg-[linear-gradient(135deg,var(--color-primary)_0%,#6d9394_100%)] text-white shadow-[0_18px_40px_-22px_rgba(47,111,115,0.82)]">
-        <Bot className="size-5" />
-        <AnimatePresence>
-          {hasLiveActivity ? (
-            <motion.span
-              initial={{ scale: 0.5, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              className="absolute -right-1 -top-1 flex size-3.5 rounded-full border-2 border-white bg-[var(--color-success)]"
-            />
-          ) : null}
-        </AnimatePresence>
-      </div>
-    </motion.button>
-  )
-}
-
 export function PlannerAssistantPanel({
   tripId,
   destination,
+  days,
   hasActivities,
   isOpen,
+  requestedInlineAction,
+  onRequestedInlineActionHandled,
+  onSubmitInlineAction,
+  isPlannerActionPending,
   onOpenChange,
-  onRequestGenerationDialog,
 }: PlannerAssistantPanelProps) {
   const queryClient = useQueryClient()
   const isMobile = useIsMobile()
   const { data, isLoading } = useAssistantThread(tripId)
-  const assistantLauncherPosition = usePlannerStore((state) => state.assistantLauncherPosition)
-  const setAssistantLauncherPosition = usePlannerStore(
-    (state) => state.setAssistantLauncherPosition,
-  )
+  const [inlineAction, setInlineAction] = useState<PlannerGenerationAction | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamError, setStreamError] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const jobStreamControllersRef = useRef(new Map<string, AbortController>())
   const ignoredJobResumeIdsRef = useRef(new Set<string>())
+  const handledRequestedInlineActionRef = useRef<PlannerGenerationAction | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const messages = data?.messages ?? []
@@ -1341,37 +1299,22 @@ export function PlannerAssistantPanel({
     messages.some(
       (message) => message.role === 'assistant' && message.status === 'running',
     )
-  const launcherPosition =
-    assistantLauncherPosition ?? getDefaultLauncherPosition(isMobile)
-  const launcherDisplayPosition = resolveLauncherDisplayPosition(
-    launcherPosition,
-    isMobile,
-    isOpen,
-  )
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    if (!requestedInlineAction) {
+      handledRequestedInlineActionRef.current = null
       return
     }
-
-    const syncLauncherPosition = () => {
-      const nextPosition = clampLauncherPosition(
-        assistantLauncherPosition ?? getDefaultLauncherPosition(isMobile),
-        isMobile,
-      )
-      if (
-        !assistantLauncherPosition ||
-        nextPosition.x !== assistantLauncherPosition.x ||
-        nextPosition.y !== assistantLauncherPosition.y
-      ) {
-        setAssistantLauncherPosition(nextPosition)
-      }
+    if (handledRequestedInlineActionRef.current === requestedInlineAction) {
+      return
     }
-
-    syncLauncherPosition()
-    window.addEventListener('resize', syncLauncherPosition)
-    return () => window.removeEventListener('resize', syncLauncherPosition)
-  }, [assistantLauncherPosition, isMobile, setAssistantLauncherPosition])
+    handledRequestedInlineActionRef.current = requestedInlineAction
+    setInlineAction(requestedInlineAction)
+    if (!isOpen) {
+      onOpenChange(true)
+    }
+    onRequestedInlineActionHandled()
+  }, [isOpen, onOpenChange, onRequestedInlineActionHandled, requestedInlineAction])
 
   useEffect(() => {
     if (!isOpen) {
@@ -1450,21 +1393,6 @@ export function PlannerAssistantPanel({
       }
       jobStreamControllersRef.current.clear()
     }
-  }, [])
-
-  const focusComposer = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-    window.requestAnimationFrame(() => {
-      const element = textareaRef.current
-      if (!element) {
-        return
-      }
-      element.focus()
-      const end = element.value.length
-      element.setSelectionRange(end, end)
-    })
   }, [])
 
   const cancelCurrentStream = useCallback(async () => {
@@ -1554,50 +1482,6 @@ export function PlannerAssistantPanel({
     [data?.id, isStreaming, onOpenChange, queryClient, startStream, tripId],
   )
 
-  const handleDirectCommand = useCallback(
-    async (
-      commandName: PlannerAssistantDirectCommand,
-      args: AssistantCommandInput['args'],
-      displayText: string,
-    ) => {
-      if (isStreaming) {
-        return
-      }
-
-      const clientMessageId = crypto.randomUUID()
-      const optimisticMessage: AssistantMessage = {
-        id: clientMessageId,
-        thread_id: data?.id ?? `thread-${tripId}`,
-        role: 'user',
-        status: 'complete',
-        parts: [{ type: 'text', text: displayText }],
-        metadata: {
-          kind: 'command',
-          command_name: commandName,
-          command_args: args,
-        },
-        source_job_id: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }
-
-      upsertAssistantMessages(queryClient, tripId, [optimisticMessage])
-      onOpenChange(true)
-
-      await startStream(
-        {
-          client_message_id: clientMessageId,
-          command: {
-            name: commandName,
-            args,
-          },
-        },
-        clientMessageId,
-      )
-    },
-    [data?.id, isStreaming, onOpenChange, queryClient, startStream, tripId],
-  )
-
   const handleSubmitInput = useCallback(
     async (rawInput: string): Promise<SubmitPlannerAssistantInputResult> => {
       const trimmed = rawInput.trim()
@@ -1623,17 +1507,36 @@ export function PlannerAssistantPanel({
         return 'invalid'
       }
 
-      if (parsed.type === 'dialog') {
+      if (parsed.type === 'inline') {
         setStreamError(null)
-        onRequestGenerationDialog(parsed.name)
-        return 'dialog'
+        setInlineAction(parsed.name)
+        onOpenChange(true)
+        return 'inline'
       }
 
-      setStreamError(null)
-      await handleDirectCommand(parsed.name, parsed.args, parsed.displayText)
-      return 'sent'
+      return 'noop'
     },
-    [handleDirectCommand, handleTextTurn, isStreaming, onRequestGenerationDialog],
+    [handleTextTurn, isStreaming, onOpenChange],
+  )
+
+  const handleCancelInlineAction = useCallback(() => {
+    setInlineAction(null)
+  }, [])
+
+  const handleSubmitInlineAction = useCallback(
+    async (
+      action: PlannerGenerationAction,
+      values: PlannerGenerationFormValues,
+      idempotencyKey: string,
+    ) => {
+      try {
+        await onSubmitInlineAction(action, values, idempotencyKey)
+        setInlineAction(null)
+      } catch {
+        // planner mutations already surface toast errors upstream
+      }
+    },
+    [onSubmitInlineAction],
   )
 
   const confirmToolCall = useCallback(
@@ -1665,35 +1568,26 @@ export function PlannerAssistantPanel({
 
   return (
     <PlannerAssistantContext.Provider value={{ confirmToolCall }}>
-      <FloatingAssistantLauncher
-        isMobile={isMobile}
-        isOpen={isOpen}
-        hasLiveActivity={hasLiveActivity}
-        position={launcherDisplayPosition}
-        onOpenChange={onOpenChange}
-        onPositionChange={setAssistantLauncherPosition}
-      />
-
       <Sheet open={isOpen} onOpenChange={onOpenChange}>
         <SheetContent
           side={isMobile ? 'bottom' : 'right'}
           className={cn(
-            'flex w-full flex-col gap-0 border-black/8 bg-[#fcfcfb] p-0',
+            'z-[55] flex w-full flex-col gap-0 overflow-hidden border-black/8 bg-[#fcfcfb] p-0',
             isMobile
-              ? 'h-[min(88vh,52rem)] rounded-t-[28px] border-x-0 border-b-0'
-              : 'max-w-[33rem] border-l sm:max-w-[33rem]',
+              ? 'h-[min(88vh,48rem)] rounded-t-[28px] border-x-0 border-b-0'
+              : 'max-w-[26rem] border-l sm:max-w-[26rem]',
           )}
         >
-          <SheetHeader className="border-b border-black/6 px-4 py-3 text-left">
+          <SheetHeader className="border-b border-black/6 px-3 py-3 text-left">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-full border border-black/8 bg-[rgba(47,111,115,0.08)] text-[var(--color-primary)]">
-                <Bot className="size-4.5" />
+              <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+                <Bot className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <SheetTitle className="text-left text-[0.95rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                <SheetTitle className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
                   Planner Assistant
                 </SheetTitle>
-                <SheetDescription className="mt-0.5 flex items-center gap-1.5 text-[0.76rem] text-[var(--color-text-muted)]">
+                <SheetDescription className="mt-0.5 flex items-center gap-1.5 text-[0.74rem] text-[var(--color-text-muted)]">
                   <MapPin className="size-3.5" />
                   <span>{destination || 'Current trip'}</span>
                 </SheetDescription>
@@ -1708,26 +1602,27 @@ export function PlannerAssistantPanel({
           </SheetHeader>
 
           <AssistantRuntimeProvider runtime={runtime}>
-            <div className="min-h-0 flex flex-1 flex-col">
+            <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
               {isLoading ? (
-                <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-[0.82rem] text-[var(--color-text-muted)]">
+                <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-[0.8rem] text-[var(--color-text-muted)]">
                   <Loader2 className="mr-2 size-4 animate-spin text-[var(--color-primary)]" />
                   <span>Loading assistant thread…</span>
                 </div>
               ) : (
-                <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col">
+                <ThreadPrimitive.Root className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                   <ThreadPrimitive.Viewport
                     autoScroll
-                    className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-4"
+                    className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pt-3"
                   >
                     <ThreadPrimitive.Empty>
                       <PlannerAssistantEmptyState
                         destination={destination}
                         hasActivities={hasActivities}
-                        focusComposer={focusComposer}
                         setStreamError={setStreamError}
-                        onRequestGenerationDialog={onRequestGenerationDialog}
-                        handleDirectCommand={handleDirectCommand}
+                        onRequestInlineAction={(action) => {
+                          setInlineAction(action)
+                          onOpenChange(true)
+                        }}
                       />
                     </ThreadPrimitive.Empty>
 
@@ -1738,31 +1633,31 @@ export function PlannerAssistantPanel({
                       }}
                     />
 
-                    <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto bg-[rgba(252,252,251,0.96)] pb-0 pt-3 backdrop-blur-sm">
-                      <div className="mb-3 flex justify-center">
-                        <ThreadPrimitive.ScrollToBottom asChild>
-                          <Button
-                            type="button"
-                            variant="icon"
-                            size="sm"
-                            className="size-8 rounded-full"
-                            aria-label="Scroll to latest messages"
-                          >
-                            <ChevronRight className="rotate-90" />
-                          </Button>
-                        </ThreadPrimitive.ScrollToBottom>
+                    {inlineAction ? (
+                      <div className="pb-2.5">
+                        <PlannerGenerationInlineCard
+                          key={inlineAction}
+                          action={inlineAction}
+                          days={days}
+                          isSubmitting={isPlannerActionPending}
+                          onCancel={handleCancelInlineAction}
+                          onSubmit={handleSubmitInlineAction}
+                        />
                       </div>
+                    ) : null}
 
+                    <ThreadPrimitive.ViewportFooter className="sticky bottom-0 mt-auto bg-[#fcfcfb] pb-0 pt-2">
                       <PlannerAssistantComposer
                         hasActivities={hasActivities}
                         isStreaming={isStreaming}
                         streamError={streamError}
                         setStreamError={setStreamError}
-                        focusComposer={focusComposer}
                         textareaRef={textareaRef}
                         cancelCurrentStream={cancelCurrentStream}
-                        handleDirectCommand={handleDirectCommand}
-                        onRequestGenerationDialog={onRequestGenerationDialog}
+                        onRequestInlineAction={(action) => {
+                          setInlineAction(action)
+                          onOpenChange(true)
+                        }}
                         onSubmitInput={handleSubmitInput}
                       />
                     </ThreadPrimitive.ViewportFooter>

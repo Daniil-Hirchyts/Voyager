@@ -1,10 +1,5 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
-import {
-  getJob,
-  generateItinerary,
-  regenerateItinerary,
-  resetItinerary,
-} from './api'
+import { getJob, generateItinerary, resetItinerary } from './api'
 
 export const jobKeys = {
   detail: (jobId: string) => ['job', jobId] as const,
@@ -35,20 +30,6 @@ export function useGenerateItinerary(tripId: string) {
       tripVersion: number
       idempotencyKey: string
     }) => generateItinerary(tripId, data, tripVersion, idempotencyKey),
-  })
-}
-
-export function useRegenerateItinerary(tripId: string) {
-  return useMutation({
-    mutationFn: ({
-      data,
-      tripVersion,
-      idempotencyKey,
-    }: {
-      data: Parameters<typeof regenerateItinerary>[1]
-      tripVersion: number
-      idempotencyKey: string
-    }) => regenerateItinerary(tripId, data, tripVersion, idempotencyKey),
   })
 }
 

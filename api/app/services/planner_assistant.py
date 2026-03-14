@@ -39,6 +39,16 @@ STREAM_EVENT_DONE = "done"
 STREAM_EVENT_ERROR = "error"
 MAX_TOOL_TURNS = 8
 DESTRUCTIVE_TOOLS = {"delete_activity", "reset_itinerary", "replace_itinerary"}
+ALLOWED_TOOL_NAMES = {
+    "read_trip_snapshot",
+    "search_places",
+    "create_activity",
+    "update_activity",
+    "move_activity",
+    "delete_activity",
+    "generate_itinerary",
+    "reset_itinerary",
+}
 DIRECT_COMMAND_TOOL_MAP = {
     "snapshot": "read_trip_snapshot",
     "search_places": "search_places",
@@ -205,6 +215,24 @@ def _message_to_openrouter(message: AssistantMessage) -> dict[str, Any] | None:
 
 def _tool_result_content(payload: dict[str, Any]) -> str:
     return json.dumps(_jsonable(payload), separators=(",", ":"), ensure_ascii=True)
+
+
+def _trim_provider_history(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    settings = get_settings()
+    max_messages = max(4, settings.assistant_max_history_messages)
+    if len(history) <= max_messages:
+        return history
+
+    system_message = history[0] if history and history[0].get("role") == "system" else None
+    trimmed = history[-max_messages:]
+    if system_message is None:
+        return trimmed
+    return [system_message, *trimmed[-(max_messages - 1) :]]
+
+
+def _validate_tool_name(tool_name: str) -> None:
+    if tool_name not in ALLOWED_TOOL_NAMES:
+        raise ValidationApiError(f"Unsupported tool {tool_name}")
 
 
 def _tool_call_part(
@@ -598,23 +626,6 @@ def _tool_definitions() -> list[dict[str, Any]]:
         {
             "type": "function",
             "function": {
-                "name": "regenerate_itinerary",
-                "description": "Queue itinerary regeneration. Replace mode requires confirmation.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "mode": {"type": "string", "enum": ["replace", "merge", "append"]},
-                        "day_ids": {"type": ["array", "null"], "items": {"type": "string"}},
-                        "seed": {"type": ["integer", "null"]},
-                    },
-                    "required": ["mode"],
-                    "additionalProperties": False,
-                },
-            },
-        },
-        {
-            "type": "function",
-            "function": {
                 "name": "reset_itinerary",
                 "description": "Queue reset of generated itinerary items for the selected days. This always requires confirmation.",
                 "parameters": {
@@ -635,6 +646,7 @@ def _system_prompt() -> str:
         "You are Voyager's planner assistant. "
         "Help the user understand and edit a trip itinerary. "
         "Use tools whenever you need current trip data or when the user requests a mutation. "
+        "If the user asks about places, options, or ideas, inspect the trip context and search places before answering. "
         "Never invent activity ids, day ids, or place ids. "
         "For destructive actions, still call the tool; the system will request confirmation. "
         "When a tool already completed the user's request, answer briefly and concretely."
@@ -667,6 +679,7 @@ async def _call_openrouter(
                 "messages": history,
                 "tools": _tool_definitions(),
                 "tool_choice": "auto",
+                "max_tokens": max(64, settings.assistant_max_response_tokens),
             }
             try:
                 response = await client.post(endpoint, headers=headers, json=payload)
@@ -830,29 +843,6 @@ async def _execute_tool_call(
         )
         return {"job_id": str(job.id), "status": job.status.value, "mode": mode}, mirrored
 
-    if tool_name == "regenerate_itinerary":
-        mode = _string(arguments.get("mode")) or "replace"
-        job = await _queue_itinerary_job(
-            db,
-            redis=redis,
-            user_id=user_id,
-            trip_id=trip_id,
-            job_type="itinerary.regenerate",
-            mode=mode,
-            day_ids=[str(item) for item in arguments.get("day_ids") or []] or None,
-            seed=_int(arguments.get("seed")),
-        )
-        mirrored = await _create_job_progress_message(
-            db,
-            user_id=user_id,
-            trip_id=trip_id,
-            thread_id=thread_id,
-            job_id=job.id,
-            request_text=request_text,
-            action="regenerate",
-        )
-        return {"job_id": str(job.id), "status": job.status.value, "mode": mode}, mirrored
-
     if tool_name == "reset_itinerary":
         raw_day_ids = arguments.get("day_ids")
         if not isinstance(raw_day_ids, list) or not raw_day_ids:
@@ -919,7 +909,7 @@ def _format_tool_summary(tool_name: str, result: dict[str, Any]) -> str:
         return f"Updated {title}."
     if tool_name == "delete_activity":
         return "Deleted the activity."
-    if tool_name in {"generate_itinerary", "regenerate_itinerary", "reset_itinerary"}:
+    if tool_name in {"generate_itinerary", "reset_itinerary"}:
         return "Queued the planner job and added its live progress below."
     return "Completed the requested tool action."
 
@@ -1112,6 +1102,12 @@ class PlannerAssistantSession:
         request_text = text.strip()
         if not request_text:
             raise ValidationApiError("text is required")
+        settings = get_settings()
+        if len(request_text) > settings.assistant_max_input_chars:
+            raise ValidationApiError(
+                "text is too long",
+                {"max_chars": settings.assistant_max_input_chars},
+            )
 
         thread, history = await AssistantRepository.get_thread_with_messages(
             self._db,
@@ -1137,6 +1133,7 @@ class PlannerAssistantSession:
             if payload is not None:
                 provider_history.append(payload)
         provider_history.append({"role": "user", "content": request_text})
+        provider_history = _trim_provider_history(provider_history)
 
         for _ in range(MAX_TOOL_TURNS):
             provider_message = await _call_openrouter(history=provider_history)
@@ -1159,13 +1156,52 @@ class PlannerAssistantSession:
                     tool_name = _string(function.get("name")) or "tool"
                     args = _decode_tool_arguments(function.get("arguments"))
 
+                    if tool_name not in ALLOWED_TOOL_NAMES:
+                        blocked_result = {
+                            "error": {
+                                "message": f"Tool '{tool_name}' is not allowed",
+                            }
+                        }
+                        parts = list(assistant_message.parts_json or [])
+                        parts.append(
+                            _tool_call_part(
+                                tool_call_id=call_id,
+                                tool_name=tool_name,
+                                args=args,
+                                result=blocked_result,
+                                is_error=True,
+                            )
+                        )
+                        parts.append(
+                            {
+                                "type": "text",
+                                "text": f"Blocked unsupported tool request: {tool_name}.",
+                            }
+                        )
+                        await AssistantRepository.update_message(
+                            self._db,
+                            assistant_message,
+                            status="running",
+                            parts=parts,
+                        )
+                        await self._emit(assistant_message_to_response(assistant_message))
+                        provider_history.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": call_id,
+                                "name": tool_name,
+                                "content": _tool_result_content(blocked_result),
+                            }
+                        )
+                        continue
+
                     if tool_name in DESTRUCTIVE_TOOLS or (
-                        tool_name in {"generate_itinerary", "regenerate_itinerary"}
+                        tool_name == "generate_itinerary"
                         and str(args.get("mode") or "").lower() == "replace"
                     ):
                         interrupt_payload, confirmation_text = _pending_confirmation_payload(
                             tool_name="replace_itinerary"
-                            if tool_name in {"generate_itinerary", "regenerate_itinerary"}
+                            if tool_name == "generate_itinerary"
                             and str(args.get("mode") or "").lower() == "replace"
                             else tool_name,
                             tool_call_id=call_id,
@@ -1286,6 +1322,12 @@ class PlannerAssistantSession:
             raise ValidationApiError(f"Unsupported assistant command: {command_name}")
 
         request_text = _format_command_request_text(normalized_name, args)
+        settings = get_settings()
+        if len(request_text) > settings.assistant_max_input_chars:
+            raise ValidationApiError(
+                "command payload is too long",
+                {"max_chars": settings.assistant_max_input_chars},
+            )
         user_message = await AssistantRepository.create_message(
             self._db,
             thread_id=self._thread_id,
@@ -1358,6 +1400,12 @@ class PlannerAssistantSession:
         if not isinstance(payload, dict):
             raise ValidationApiError("Invalid confirmation payload")
         tool_name = _string(payload.get("tool_name")) or _string(tool_part.get("toolName")) or "tool"
+        resolved_tool_name = (
+            _string(tool_part.get("toolName")) or "generate_itinerary"
+            if tool_name == "replace_itinerary"
+            else tool_name
+        )
+        _validate_tool_name(resolved_tool_name)
         args = payload.get("args") if isinstance(payload.get("args"), dict) else {}
 
         if not confirmed:
@@ -1390,7 +1438,7 @@ class PlannerAssistantSession:
                 user_id=self._user_id,
                 trip_id=self._trip_id,
                 thread_id=message.thread_id,
-                tool_name=tool_name if tool_name != "replace_itinerary" else (_string(tool_part.get("toolName")) or "generate_itinerary"),
+                tool_name=resolved_tool_name,
                 arguments=args,
                 request_text="Confirmed assistant action",
             )
@@ -1447,6 +1495,14 @@ async def stream_assistant_messages(
         )
 
     async def run() -> None:
+        settings = get_settings()
+        await limit_user_request(
+            redis,
+            str(user_id),
+            "assistant:turn",
+            settings.rate_limit_assistant_turns_per_min,
+            window_seconds=60,
+        )
         thread = await AssistantRepository.get_or_create_thread(db, user_id=user_id, trip_id=trip_id)
         session = PlannerAssistantSession(
             db=db,

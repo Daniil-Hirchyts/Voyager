@@ -23,6 +23,7 @@ from app.db.repositories import (
     AuditRepository,
     EventRepository,
     JobRepository,
+    PlaceRepository,
     PlacePhotoRepository,
     TripAssetRepository,
     TripRepository,
@@ -50,18 +51,24 @@ from app.models.trips import (
     PlannerActivityResponse,
     PlannerDayResponse,
     PlannerPlaceSummary,
+    TripCoverPhoto,
+    TripCoverPreference,
+    TripCoverPreferencePatchRequest,
     TripCreateRequest,
     TripGenerateRequest,
     TripListResponse,
     TripPatchRequest,
     TripPlannerResponse,
-    TripRegenerateRequest,
     TripResetItineraryRequest,
     TripResponse,
 )
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import parse_if_match, payload_fingerprint
 from app.security.dependencies import AuthContext, get_auth_context
+from app.services.trip_covers import (
+    parse_trip_cover_preference,
+    resolve_trip_cover_payloads,
+)
 from app.services.trip_assets import (
     build_trip_asset_object_key,
     build_trip_asset_thumbnail_key,
@@ -85,6 +92,8 @@ def _trip_response(
     *,
     current_user_role: str = "owner",
     collaborator_count: int = 0,
+    cover_preference: TripCoverPreference | None = None,
+    cover_photo: TripCoverPhoto | None = None,
 ) -> TripResponse:
     return TripResponse(
         id=trip.id,
@@ -100,9 +109,22 @@ def _trip_response(
         current_user_role=current_user_role,
         collaborator_count=collaborator_count,
         version=trip.version,
+        cover_preference=cover_preference,
+        cover_photo=cover_photo,
         created_at=trip.created_at,
         updated_at=trip.updated_at,
     )
+
+
+async def _trip_cover_payload_map(db: AsyncSession, trips) -> dict[uuid.UUID, tuple[TripCoverPreference | None, TripCoverPhoto | None]]:
+    return await resolve_trip_cover_payloads(db, trips)
+
+
+def _trip_cover_payload_for(
+    trip,
+    cover_payloads: dict[uuid.UUID, tuple[TripCoverPreference | None, TripCoverPhoto | None]],
+) -> tuple[TripCoverPreference | None, TripCoverPhoto | None]:
+    return cover_payloads.get(trip.id, (None, None))
 
 
 def _planner_place_summary(place, *, photo_count: int = 0, primary_photo=None) -> PlannerPlaceSummary:
@@ -363,6 +385,7 @@ async def list_trips(
         return TripListResponse.model_validate(cached)
 
     total, items = await TripRepository.list_trips(db, auth.user_id, limit=limit, offset=offset)
+    cover_payloads = await _trip_cover_payload_map(db, [item.trip for item in items])
     response = TripListResponse(
         total=total,
         limit=limit,
@@ -372,6 +395,8 @@ async def list_trips(
                 item.trip,
                 current_user_role=item.current_user_role.value,
                 collaborator_count=item.collaborator_count,
+                cover_preference=_trip_cover_payload_for(item.trip, cover_payloads)[0],
+                cover_photo=_trip_cover_payload_for(item.trip, cover_payloads)[1],
             )
             for item in items
         ],
@@ -395,10 +420,14 @@ async def get_trip(
         return TripResponse.model_validate(cached)
 
     summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    cover_payloads = await _trip_cover_payload_map(db, [summary.trip])
+    cover_preference, cover_photo = _trip_cover_payload_for(summary.trip, cover_payloads)
     response = _trip_response(
         summary.trip,
         current_user_role=summary.current_user_role.value,
         collaborator_count=summary.collaborator_count,
+        cover_preference=cover_preference,
+        cover_photo=cover_photo,
     )
     await cache_set_json(
         redis, cache_key, response.model_dump(mode="json"), get_settings().trip_cache_ttl_sec
@@ -414,6 +443,8 @@ async def get_trip_planner(
 ) -> TripPlannerResponse:
     summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
     trip = summary.trip
+    cover_payloads = await _trip_cover_payload_map(db, [trip])
+    cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
     days = await TripRepository.list_days(db, auth.user_id, trip_id)
     activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
 
@@ -449,6 +480,8 @@ async def get_trip_planner(
             trip,
             current_user_role=summary.current_user_role.value,
             collaborator_count=summary.collaborator_count,
+            cover_preference=cover_preference,
+            cover_photo=cover_photo,
         ),
         inbox_activities=inbox_activities,
         days=[
@@ -593,12 +626,86 @@ async def patch_trip(
     expected_version = parse_if_match(if_match)
     trip = await TripRepository.patch_trip(db, auth.user_id, trip_id, expected_version, payload)
     summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    cover_payloads = await _trip_cover_payload_map(db, [trip])
+    cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
     return _trip_response(
         trip,
         current_user_role=summary.current_user_role.value,
         collaborator_count=summary.collaborator_count,
+        cover_preference=cover_preference,
+        cover_photo=cover_photo,
+    )
+
+
+async def _validate_trip_cover_preference_patch(
+    *,
+    db: AsyncSession,
+    trip,
+    auth: AuthContext,
+    payload: TripCoverPreferencePatchRequest,
+) -> None:
+    if payload.asset_id is not None and payload.photo_id is not None:
+        raise ValidationApiError("asset_id and photo_id cannot both be set")
+
+    if payload.asset_id is not None:
+        asset = await TripAssetRepository.get_trip_asset(
+            db,
+            asset_id=payload.asset_id,
+            user_id=auth.user_id,
+        )
+        if asset.trip_id != trip.id:
+            raise ValidationApiError("asset_id must belong to the trip")
+        if asset.kind != "photo":
+            raise ValidationApiError("asset_id must reference a photo asset")
+
+    current_cover_preference = parse_trip_cover_preference(trip.cover_preference_json)
+    resolved_place_id = payload.place_id
+    if resolved_place_id is None and "place_id" not in payload.model_fields_set:
+        resolved_place_id = current_cover_preference.place_id if current_cover_preference else None
+
+    if payload.place_id is not None:
+        await PlaceRepository.get_place(db, payload.place_id)
+
+    if payload.photo_id is not None:
+        photo = await PlacePhotoRepository.get_photo(db, photo_id=payload.photo_id)
+        if resolved_place_id is None or photo.place_id != resolved_place_id:
+            raise ValidationApiError("photo_id must belong to place_id")
+
+
+@router.patch("/{trip_id}/cover-preference", response_model=TripResponse)
+async def patch_trip_cover_preference(
+    trip_id: uuid.UUID,
+    payload: TripCoverPreferencePatchRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+    redis: Redis = Depends(get_redis),
+) -> TripResponse:
+    trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
+    await _validate_trip_cover_preference_patch(
+        db=db,
+        trip=trip,
+        auth=auth,
+        payload=payload,
+    )
+    trip = await TripRepository.patch_cover_preference(
+        db,
+        user_id=auth.user_id,
+        trip_id=trip_id,
+        payload=payload,
+    )
+    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    cover_payloads = await _trip_cover_payload_map(db, [trip])
+    cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
+    await cache_delete_prefix(redis, "trip:get:")
+    await cache_delete_prefix(redis, "trip:list:")
+    return _trip_response(
+        trip,
+        current_user_role=summary.current_user_role.value,
+        collaborator_count=summary.collaborator_count,
+        cover_preference=cover_preference,
+        cover_photo=cover_photo,
     )
 
 
@@ -660,8 +767,12 @@ async def duplicate_trip(
         user_id=auth.user_id,
         trip_id=trip_id,
     )
+    source_cover_preference = parse_trip_cover_preference(
+        (await TripRepository.get_trip(db, auth.user_id, trip_id)).cover_preference_json
+    )
     duplication = await TripRepository.duplicate_trip_with_maps(db, auth.user_id, trip_id)
     copied_assets: list[tuple[str, str | None]] = []
+    duplicated_asset_ids: dict[uuid.UUID, uuid.UUID] = {}
     try:
         for source_asset in source_assets:
             duplicated_asset_id = uuid.uuid4()
@@ -711,6 +822,7 @@ async def duplicate_trip(
                 image_width=source_asset.image_width,
                 image_height=source_asset.image_height,
             )
+            duplicated_asset_ids[source_asset.id] = duplicated_asset_id
     except Exception as exc:
         for object_key, thumbnail_object_key in copied_assets:
             try:
@@ -725,7 +837,24 @@ async def duplicate_trip(
             raise _storage_unavailable(exc) from exc
         raise
 
-    response = _trip_response(duplication.trip, current_user_role="owner", collaborator_count=0)
+    if source_cover_preference and source_cover_preference.asset_id in duplicated_asset_ids:
+        await TripRepository.remap_cover_asset_reference(
+            db,
+            trip_id=duplication.trip.id,
+            source_asset_id=source_cover_preference.asset_id,
+            target_asset_id=duplicated_asset_ids[source_cover_preference.asset_id],
+        )
+        await db.refresh(duplication.trip)
+
+    cover_payloads = await _trip_cover_payload_map(db, [duplication.trip])
+    cover_preference, cover_photo = _trip_cover_payload_for(duplication.trip, cover_payloads)
+    response = _trip_response(
+        duplication.trip,
+        current_user_role="owner",
+        collaborator_count=0,
+        cover_preference=cover_preference,
+        cover_photo=cover_photo,
+    )
     await cache_delete_prefix(redis, "trip:asset:")
     await cache_delete_prefix(redis, "trip:get:")
     await cache_delete_prefix(redis, "trip:list:")
@@ -898,79 +1027,6 @@ async def generate_trip_itinerary(
             user_id=str(auth.user_id),
             method="POST",
             path=f"/trips/{trip_id}/generate",
-            idempotency_key=idempotency_key,
-            fingerprint=fingerprint,
-            status_code=202,
-            response_body=response.model_dump(mode="json"),
-        )
-    return response
-
-
-@router.post("/{trip_id}/regenerate", response_model=JobAcceptedResponse, status_code=202)
-async def regenerate_trip_itinerary(
-    trip_id: uuid.UUID,
-    payload: TripRegenerateRequest,
-    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
-    if_match: str | None = Header(default=None, alias="If-Match"),
-    auth: AuthContext = Depends(get_auth_context),
-    db: AsyncSession = Depends(get_db_session),
-    redis: Redis = Depends(get_redis),
-) -> JobAcceptedResponse | JSONResponse:
-    settings = get_settings()
-    await limit_user_request(
-        redis,
-        str(auth.user_id),
-        "itinerary:submit",
-        settings.rate_limit_generate_per_hour,
-        window_seconds=3600,
-    )
-
-    expected_version = parse_if_match(if_match)
-    fingerprint = payload_fingerprint(
-        payload.model_dump(mode="json")
-        | {"trip_id": str(trip_id), "expected_trip_version": expected_version}
-    )
-    idem = IdempotencyService(redis)
-    replay = await idem.check_or_replay(
-        user_id=str(auth.user_id),
-        method="POST",
-        path=f"/trips/{trip_id}/regenerate",
-        idempotency_key=idempotency_key,
-        fingerprint=fingerprint,
-    )
-    if replay:
-        return JSONResponse(status_code=replay["status_code"], content=replay["response_body"])
-
-    trip = await TripRepository.get_trip(db, auth.user_id, trip_id)
-    if trip.version != expected_version:
-        raise ConflictError(
-            code="CONFLICT_VERSION_MISMATCH",
-            message="Trip version mismatch",
-            details={"latest_version": trip.version},
-        )
-    await _assert_scope_days(db, user_id=auth.user_id, trip_id=trip_id, day_ids=payload.day_ids)
-
-    job = await JobRepository.create_job(
-        db,
-        auth.user_id,
-        job_type="itinerary.regenerate",
-        payload={
-            "trip_id": str(trip_id),
-            "user_id": str(auth.user_id),
-            "mode": payload.mode.value,
-            "day_ids": [str(day_id) for day_id in payload.day_ids] if payload.day_ids else None,
-            "constraints": payload.constraints,
-            "seed": payload.seed,
-            "expected_trip_version": expected_version,
-        },
-        max_attempts=settings.job_max_attempts,
-    )
-    response = _job_accepted(job.id)
-    if idempotency_key:
-        await idem.store_response(
-            user_id=str(auth.user_id),
-            method="POST",
-            path=f"/trips/{trip_id}/regenerate",
             idempotency_key=idempotency_key,
             fingerprint=fingerprint,
             status_code=202,

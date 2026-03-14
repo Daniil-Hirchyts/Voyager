@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AssistantMessageResponse(BaseModel):
@@ -39,6 +39,19 @@ class AssistantMessageStreamRequest(BaseModel):
     text: str | None = None
     confirmation: AssistantConfirmationRequest | None = None
     command: AssistantCommandRequest | None = None
+
+    @model_validator(mode="after")
+    def validate_single_action(self) -> "AssistantMessageStreamRequest":
+        actions = [
+            self.text is not None,
+            self.confirmation is not None,
+            self.command is not None,
+        ]
+        if sum(actions) != 1:
+            raise ValueError("Provide exactly one of text, confirmation, or command")
+        if self.text is not None and len(self.text.strip()) == 0:
+            raise ValueError("text must not be empty")
+        return self
 
 
 class AssistantMirrorJobRequest(BaseModel):

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_helpers import cache_delete_prefix
 from app.config import get_settings
-from app.db.repositories import AuditRepository, TripAssetRepository
+from app.db.repositories import AuditRepository, TripAssetRepository, TripRepository
 from app.db.session import get_db_session, get_redis
 from app.errors import ServiceUnavailableError, ValidationApiError
 from app.models.assets import TripAssetListResponse, TripAssetResponse
@@ -217,6 +217,11 @@ async def delete_trip_asset(
         db,
         asset_id=asset_id,
         user_id=auth.user_id,
+    )
+    await TripRepository.clear_cover_asset_reference(
+        db,
+        trip_id=item.trip_id,
+        asset_id=item.id,
     )
     await AuditRepository.create_entry(
         db,

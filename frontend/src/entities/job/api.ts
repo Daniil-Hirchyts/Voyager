@@ -4,7 +4,6 @@ import type {
   JobAcceptedResponse,
   JobProgressEvent,
   TripGenerateInput,
-  TripRegenerateInput,
   TripResetInput,
 } from '@/shared/api/types'
 
@@ -60,19 +59,6 @@ export async function generateItinerary(
   idempotencyKey: string,
 ): Promise<JobAcceptedResponse> {
   return requestJson<JobAcceptedResponse>(`/trips/${tripId}/generate`, {
-    method: 'POST',
-    headers: { 'If-Match': String(tripVersion), 'Idempotency-Key': idempotencyKey },
-    body: JSON.stringify(data),
-  })
-}
-
-export async function regenerateItinerary(
-  tripId: string,
-  data: TripRegenerateInput,
-  tripVersion: number,
-  idempotencyKey: string,
-): Promise<JobAcceptedResponse> {
-  return requestJson<JobAcceptedResponse>(`/trips/${tripId}/regenerate`, {
     method: 'POST',
     headers: { 'If-Match': String(tripVersion), 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),

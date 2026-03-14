@@ -6,6 +6,27 @@ export type UserProfilePatchInput = components['schemas']['UserProfilePatchReque
 
 export type TripAccessRole = 'owner' | 'editor'
 
+export interface TripCoverPreference {
+  placeId: string | null
+  placeLabel: string | null
+  placeLat: number | null
+  placeLng: number | null
+  photoId: string | null
+  assetId: string | null
+  fallbackImageUrl: string | null
+}
+
+export interface TripCoverPhoto {
+  source: string
+  url: string
+  thumbnailUrl: string | null
+  assetId: string | null
+  photoId: string | null
+  placeId: string | null
+  attributionText: string | null
+  isFallback: boolean
+}
+
 export interface Trip {
   id: string
   user_id: string
@@ -20,6 +41,8 @@ export interface Trip {
   current_user_role: TripAccessRole
   collaborator_count: number
   version: number
+  coverPreference: TripCoverPreference | null
+  coverPhoto: TripCoverPhoto | null
   created_at: string
   updated_at: string
 }
@@ -37,7 +60,6 @@ export type TripCreateInput = components['schemas']['TripCreateRequest'] & {
 export type TripUpdateInput = components['schemas']['TripPatchRequest']
 export type GenerationMode = components['schemas']['GenerationMode']
 export type TripGenerateInput = components['schemas']['TripGenerateRequest']
-export type TripRegenerateInput = components['schemas']['TripRegenerateRequest']
 export type TripResetInput = components['schemas']['TripResetItineraryRequest']
 
 export interface TripCollaborator {

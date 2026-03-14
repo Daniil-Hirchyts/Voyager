@@ -43,6 +43,7 @@ from app.models.trips import (
     ActivityPatchRequest,
     ActivityReorderRequest,
     DayPatchRequest,
+    TripCoverPreferencePatchRequest,
     TripCreateRequest,
     TripPatchRequest,
 )
@@ -284,6 +285,10 @@ class UserRepository:
 
 class TripRepository:
     @staticmethod
+    def _cover_preference_json(value: Any) -> dict[str, Any]:
+        return dict(value) if isinstance(value, dict) else {}
+
+    @staticmethod
     def _collaborator_count_expr():
         return (
             select(func.count(TripCollaborator.id))
@@ -344,6 +349,7 @@ class TripRepository:
             budget_currency=payload.budget_currency,
             trip_type=payload.trip_type,
             route_travel_mode=payload.route_travel_mode,
+            cover_preference_json={},
             version=1,
         )
         db.add(trip)
@@ -562,6 +568,76 @@ class TripRepository:
         return trip
 
     @staticmethod
+    async def patch_cover_preference(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+        payload: TripCoverPreferencePatchRequest,
+    ) -> Trip:
+        trip = await TripRepository.get_trip(db, user_id, trip_id)
+        current = TripRepository._cover_preference_json(trip.cover_preference_json)
+        patch_data = payload.model_dump(mode="json", exclude_unset=True)
+        merged = current | patch_data
+
+        if "place_id" in patch_data:
+            next_place_id = patch_data.get("place_id")
+            if next_place_id is None or next_place_id != current.get("place_id"):
+                merged["photo_id"] = None
+
+        if patch_data.get("asset_id") is not None:
+            merged["photo_id"] = None
+
+        if patch_data.get("photo_id") is not None:
+            merged["asset_id"] = None
+
+        trip.cover_preference_json = {
+            key: value for key, value in merged.items() if value is not None
+        }
+        await db.flush()
+        await db.refresh(trip)
+        return trip
+
+    @staticmethod
+    async def clear_cover_asset_reference(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        asset_id: uuid.UUID,
+    ) -> None:
+        trip = await db.get(Trip, trip_id)
+        if trip is None:
+            return
+
+        current = TripRepository._cover_preference_json(trip.cover_preference_json)
+        if current.get("asset_id") != str(asset_id):
+            return
+
+        current.pop("asset_id", None)
+        trip.cover_preference_json = current
+        await db.flush()
+
+    @staticmethod
+    async def remap_cover_asset_reference(
+        db: AsyncSession,
+        *,
+        trip_id: uuid.UUID,
+        source_asset_id: uuid.UUID,
+        target_asset_id: uuid.UUID,
+    ) -> None:
+        trip = await db.get(Trip, trip_id)
+        if trip is None:
+            return
+
+        current = TripRepository._cover_preference_json(trip.cover_preference_json)
+        if current.get("asset_id") != str(source_asset_id):
+            return
+
+        current["asset_id"] = str(target_asset_id)
+        trip.cover_preference_json = current
+        await db.flush()
+
+    @staticmethod
     async def delete_trip(db: AsyncSession, user_id: uuid.UUID, trip_id: uuid.UUID) -> None:
         trip = await TripRepository.get_trip(db, user_id, trip_id)
         await db.delete(trip)
@@ -583,6 +659,7 @@ class TripRepository:
             budget_currency=source.budget_currency,
             trip_type=source.trip_type,
             route_travel_mode=source.route_travel_mode,
+            cover_preference_json=TripRepository._cover_preference_json(source.cover_preference_json),
             version=1,
         )
         db.add(duplicate)

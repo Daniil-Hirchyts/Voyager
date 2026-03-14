@@ -122,6 +122,7 @@ describe('TripsPage', () => {
     ]
     let createdTripId = 'trip-created-kyoto'
     let capturedTripBody: Record<string, unknown> | null = null
+    let capturedCoverPatchBody: Record<string, unknown> | null = null
 
     server.use(
       http.get('http://localhost:8000/trips', ({ request }) => {
@@ -171,6 +172,16 @@ describe('TripsPage', () => {
           { status: 201 },
         )
       }),
+      http.patch('http://localhost:8000/trips/:tripId/cover-preference', async ({ request }) => {
+        capturedCoverPatchBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(
+          buildTrip({
+            id: createdTripId,
+            title: 'Trip to Kyoto',
+            destination_text: 'Kyoto, Japan',
+          }),
+        )
+      }),
     )
 
     renderPage()
@@ -202,8 +213,13 @@ describe('TripsPage', () => {
       expect(screen.getByRole('heading', { name: /trip to kyoto/i })).toBeInTheDocument()
     })
 
-    const storedCover = window.localStorage.getItem(`voyager.trip-cover:${createdTripId}`)
-    expect(storedCover).toContain('/images/trips/kyoto-lantern-week.jpg')
-    expect(storedCover).toContain('place-seeded-1')
+    expect(capturedCoverPatchBody).toMatchObject({
+      place_id: 'place-seeded-1',
+      place_label: 'Kyoto, Japan',
+      place_lat: 35.0116,
+      place_lng: 135.7681,
+      photo_id: null,
+      fallback_image_url: '/images/trips/kyoto-lantern-week.jpg',
+    })
   })
 })

@@ -2,11 +2,6 @@ import { create } from 'zustand'
 import { persist, type PersistStorage, type StateStorage, type StorageValue } from 'zustand/middleware'
 import type { PlannerGenerationReport } from '@/shared/api/types'
 
-type AssistantLauncherPosition = {
-  x: number
-  y: number
-}
-
 interface PlannerStore {
   pendingJobIds: Record<string, string>
   setPendingJobId: (tripId: string, jobId: string) => void
@@ -18,9 +13,6 @@ interface PlannerStore {
 
   assistantPanelOpenByTrip: Record<string, boolean>
   setAssistantPanelOpen: (tripId: string, isOpen: boolean) => void
-
-  assistantLauncherPosition: AssistantLauncherPosition | null
-  setAssistantLauncherPosition: (position: AssistantLauncherPosition) => void
 
   expandedActivityId: string | null
   setExpandedActivityId: (id: string | null) => void
@@ -38,7 +30,6 @@ const plannerStoreInitialState = {
   pendingJobIds: {},
   generationReports: {},
   assistantPanelOpenByTrip: {},
-  assistantLauncherPosition: null,
   expandedActivityId: null,
   activityDrafts: {},
   mapDayAccordionStateByTrip: {},
@@ -47,16 +38,12 @@ const plannerStoreInitialState = {
   | 'pendingJobIds'
   | 'generationReports'
   | 'assistantPanelOpenByTrip'
-  | 'assistantLauncherPosition'
   | 'expandedActivityId'
   | 'activityDrafts'
   | 'mapDayAccordionStateByTrip'
 >
 
-type PlannerStorePersistedState = Pick<
-  PlannerStore,
-  'mapDayAccordionStateByTrip' | 'assistantLauncherPosition'
->
+type PlannerStorePersistedState = Pick<PlannerStore, 'mapDayAccordionStateByTrip'>
 
 const plannerStoreMemoryStorage = new Map<string, string>()
 
@@ -140,7 +127,6 @@ export const usePlannerStore = create<PlannerStore>()(
         set((s) => ({
           assistantPanelOpenByTrip: { ...s.assistantPanelOpenByTrip, [tripId]: isOpen },
         })),
-      setAssistantLauncherPosition: (position) => set({ assistantLauncherPosition: position }),
 
       setExpandedActivityId: (id) => set({ expandedActivityId: id }),
 
@@ -169,7 +155,6 @@ export const usePlannerStore = create<PlannerStore>()(
       storage: plannerStoreStorage,
       partialize: (state) => ({
         mapDayAccordionStateByTrip: state.mapDayAccordionStateByTrip,
-        assistantLauncherPosition: state.assistantLauncherPosition,
       }),
     },
   ),

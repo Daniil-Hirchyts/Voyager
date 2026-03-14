@@ -226,21 +226,35 @@ export function TripSettingsMenu({
       return
     }
 
+    const nextTripData = {
+      title: form.title.trim(),
+      destination_text: form.destination_text.trim(),
+      start_date: form.start_date,
+      end_date: form.end_date,
+      budget_amount: form.budget_amount ? Number(form.budget_amount) : null,
+      budget_currency: form.budget_currency,
+      trip_type: form.trip_type,
+      route_travel_mode: form.route_travel_mode,
+    }
+    const hasTripChanges =
+      nextTripData.title !== trip.title ||
+      nextTripData.destination_text !== trip.destination_text ||
+      nextTripData.start_date !== trip.start_date ||
+      nextTripData.end_date !== trip.end_date ||
+      (nextTripData.budget_amount != null ? String(nextTripData.budget_amount) : null) !==
+        (trip.budget_amount ?? null) ||
+      nextTripData.budget_currency !== trip.budget_currency ||
+      nextTripData.trip_type !== trip.trip_type ||
+      nextTripData.route_travel_mode !== trip.route_travel_mode
+
     try {
-      commitPhotoSelection()
-      await patchTrip.mutateAsync({
-        version: trip.version,
-        data: {
-          title: form.title.trim(),
-          destination_text: form.destination_text.trim(),
-          start_date: form.start_date,
-          end_date: form.end_date,
-          budget_amount: form.budget_amount ? Number(form.budget_amount) : null,
-          budget_currency: form.budget_currency,
-          trip_type: form.trip_type,
-          route_travel_mode: form.route_travel_mode,
-        },
-      })
+      await commitPhotoSelection()
+      if (hasTripChanges) {
+        await patchTrip.mutateAsync({
+          version: trip.version,
+          data: nextTripData,
+        })
+      }
       toast.success('Trip settings saved')
       onOpenChange(false)
     } catch {

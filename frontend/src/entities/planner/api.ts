@@ -1,5 +1,6 @@
 import { requestJson } from '@/shared/api/client'
 import type { PlannerActivity, PlannerResponse } from '@/shared/api/types'
+import { normalizeTrip } from '@/entities/trip/api'
 
 function normalizeActivity(activity: PlannerActivity): PlannerActivity {
   return {
@@ -17,6 +18,7 @@ export async function getPlanner(tripId: string): Promise<PlannerResponse> {
 
   return {
     ...planner,
+    trip: normalizeTrip(planner.trip),
     legacy_inbox_mode: false,
     inbox_activities: Array.isArray(planner.inbox_activities)
       ? planner.inbox_activities.map(normalizeActivity)

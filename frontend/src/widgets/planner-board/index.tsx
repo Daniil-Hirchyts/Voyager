@@ -26,7 +26,6 @@ import { config } from "@/app/config";
 import {
   useGenerateItinerary,
   useJob,
-  useRegenerateItinerary,
   useResetItinerary,
 } from "@/entities/job/queries";
 import { getPlanner } from "@/entities/planner/api";
@@ -45,9 +44,11 @@ import { useSideRailStore, type DayAnchor } from "@/shared/stores/side-rail.stor
 import { PLANNER_MAP_DAY_COLORS } from "./planner-map-utils";
 import type {
   ActivityCreateInput,
+  Day,
   PlannerActivity,
   PlannerGenerationReport,
   PlannerResponse,
+  TripCoverPreference,
   TripGenerateInput,
 } from "@/shared/api/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -59,12 +60,19 @@ import {
   plannerActivityBucket,
   type PlannerActivityBucket,
 } from "./activity-buckets";
-import { GenerationControls } from "./GenerationControls";
+import {
+  type PlannerGenerationAction,
+  type PlannerGenerationFormValues,
+} from "./GenerationControls";
 import {
   mirrorPlannerJobToAssistant,
   PlannerAssistantPanel,
 } from "@/widgets/planner-assistant";
-import { ActivityMapDetailSheet, PlannerMapView } from "./PlannerMapView";
+import {
+  ActivityMapDetailSheet,
+  PlannerMapView,
+  type PlannerAssistantSuggestedPlace,
+} from "./PlannerMapView";
 import type { PlannerRecommendationEntry } from "./usePlannerRecommendations";
 import { usePlannerRecommendations } from "./usePlannerRecommendations";
 import { TripSettingsMenu } from "./TripSettingsMenu";
@@ -495,8 +503,9 @@ function findDayLabel(
 function parsePlannerMapSeed(
   searchParams: URLSearchParams,
   tripId: string,
+  coverPreference: TripCoverPreference | null = null,
 ): PlannerMapSeed {
-  const coverPreference = readTripCoverPhotoPreference(tripId);
+  const legacyCoverPreference = readTripCoverPhotoPreference(tripId);
   const activityId = searchParams.get("activityId")?.trim() || null;
   const placeId = searchParams.get("placeId")?.trim() || null;
   const lat = Number(searchParams.get("lat"));
@@ -509,6 +518,11 @@ function parsePlannerMapSeed(
           typeof coverPreference?.placeLng === "number" &&
           Number.isFinite(coverPreference.placeLng)
         ? { lat: coverPreference.placeLat, lng: coverPreference.placeLng }
+        : typeof legacyCoverPreference?.placeLat === "number" &&
+            Number.isFinite(legacyCoverPreference.placeLat) &&
+            typeof legacyCoverPreference?.placeLng === "number" &&
+            Number.isFinite(legacyCoverPreference.placeLng)
+          ? { lat: legacyCoverPreference.placeLat, lng: legacyCoverPreference.placeLng }
         : null;
 
   return {
@@ -522,10 +536,6 @@ export default function PlannerBoard({ tripId }: Props) {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
-  const plannerMapSeed = useMemo(
-    () => parsePlannerMapSeed(searchParams, tripId),
-    [searchParams, tripId],
-  );
   const [editorState, setEditorState] = useState<EditorState>(null);
   const [detailsActivityId, setDetailsActivityId] = useState<string | null>(
     null,
@@ -534,10 +544,10 @@ export default function PlannerBoard({ tripId }: Props) {
     useState<PlannerRecommendationEntry | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [collaborationMenuOpen, setCollaborationMenuOpen] = useState(false);
-  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
-  const [generateDialogAction, setGenerateDialogAction] = useState<
-    "generate" | "regenerate" | "reset"
-  >("generate");
+  const [assistantInlineAction, setAssistantInlineAction] =
+    useState<PlannerGenerationAction | null>(null);
+  const [assistantSuggestedPlace, setAssistantSuggestedPlace] =
+    useState<PlannerAssistantSuggestedPlace | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const setPlannerInstruments = useSideRailStore((s) => s.setPlannerInstruments);
@@ -545,7 +555,6 @@ export default function PlannerBoard({ tripId }: Props) {
     pendingJobIds,
     setPendingJobId,
     clearPendingJobId,
-    generationReports,
     setGenerationReport,
     clearGenerationReport,
     assistantPanelOpenByTrip,
@@ -565,6 +574,10 @@ export default function PlannerBoard({ tripId }: Props) {
     "auth" | "trip" | null
   >(null);
   const { data: planner, isLoading, isError, error } = usePlanner(tripId);
+  const plannerMapSeed = useMemo(
+    () => parsePlannerMapSeed(searchParams, tripId, planner?.trip.coverPreference ?? null),
+    [planner?.trip.coverPreference, searchParams, tripId],
+  );
   const plannerError = isApiError(error) ? error : null;
   const plannerLoadRecoveryMode =
     plannerLoadRecovery ??
@@ -660,10 +673,6 @@ export default function PlannerBoard({ tripId }: Props) {
       onOpenAssistant: () => setAssistantPanelOpen(tripId, true),
       onOpenSettings: () => setSettingsMenuOpen(true),
       onShare: () => setCollaborationMenuOpen(true),
-      onGenerate: () => {
-        setGenerateDialogAction("generate");
-        setGenerateDialogOpen(true);
-      },
       days,
       onScrollToDay,
       onScrollToSection,
@@ -672,7 +681,6 @@ export default function PlannerBoard({ tripId }: Props) {
   }, [plannerDays, setAssistantPanelOpen, setPlannerInstruments, tripId]);
 
   const pendingJobId = pendingJobIds[tripId] ?? null;
-  const latestReport = generationReports[tripId];
   const assistantPanelOpen = assistantPanelOpenByTrip[tripId] ?? false;
   const currentJob = useJob(pendingJobId);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
@@ -690,7 +698,6 @@ export default function PlannerBoard({ tripId }: Props) {
   );
 
   const generateMutation = useGenerateItinerary(tripId);
-  const regenerateMutation = useRegenerateItinerary(tripId);
   const resetMutation = useResetItinerary(tripId);
 
   const allActivities = useMemo(
@@ -812,6 +819,7 @@ export default function PlannerBoard({ tripId }: Props) {
     const activity = findActivity(planner, activityId);
     setSelectedActivityId(activityId);
     setSelectedPlaceId(activityId ? (activity?.place_id ?? selectedPlaceId) : null);
+    setAssistantSuggestedPlace(null);
   };
 
   const openCreateDrawer = (
@@ -965,12 +973,7 @@ export default function PlannerBoard({ tripId }: Props) {
   };
 
   const submitGeneration = async (
-    action: "generate" | "regenerate",
-    data: {
-      mode: "replace" | "merge" | "append";
-      day_ids?: string[];
-      seed?: number;
-    },
+    data: PlannerGenerationFormValues,
     idempotencyKey: string,
   ) => {
     if (!planner) {
@@ -985,9 +988,7 @@ export default function PlannerBoard({ tripId }: Props) {
     };
 
     clearGenerationReport(tripId);
-    const mutation =
-      action === "generate" ? generateMutation : regenerateMutation;
-    const accepted = await mutation.mutateAsync({
+    const accepted = await generateMutation.mutateAsync({
       data: payload,
       tripVersion: planner.trip.version,
       idempotencyKey,
@@ -998,17 +999,13 @@ export default function PlannerBoard({ tripId }: Props) {
   };
 
   const handleGenerate = async (
-    data: {
-      mode: "replace" | "merge" | "append";
-      day_ids?: string[];
-      seed?: number;
-    },
+    data: PlannerGenerationFormValues,
     idempotencyKey: string,
   ) => {
     const scopeDays = data.day_ids?.length ? data.day_ids.length : (planner?.days.length ?? 0);
     const requestText = `Generate · ${data.mode} · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
     try {
-      const jobId = await submitGeneration("generate", data, idempotencyKey);
+      const jobId = await submitGeneration(data, idempotencyKey);
       if (!jobId) {
         return;
       }
@@ -1029,42 +1026,6 @@ export default function PlannerBoard({ tripId }: Props) {
         toast.error("Trip changed. Refresh the planner and try again.");
       } else {
         toast.error("Failed to queue planner generation");
-      }
-    }
-  };
-
-  const handleRegenerate = async (
-    data: {
-      mode: "replace" | "merge" | "append";
-      day_ids?: string[];
-      seed?: number;
-    },
-    idempotencyKey: string,
-  ) => {
-    const scopeDays = data.day_ids?.length ? data.day_ids.length : (planner?.days.length ?? 0);
-    const requestText = `Regenerate · ${data.mode} · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
-    try {
-      const jobId = await submitGeneration("regenerate", data, idempotencyKey);
-      if (!jobId) {
-        return;
-      }
-      try {
-        await mirrorPlannerJobToAssistant(qc, {
-          tripId,
-          jobId,
-          requestText,
-          action: "regenerate",
-        });
-        setAssistantPanelOpen(tripId, true);
-      } catch {
-        toast.error("Planner regeneration queued, but assistant progress could not be opened");
-      }
-      toast.success("Planner regeneration queued");
-    } catch (error) {
-      if (isConflict(error)) {
-        toast.error("Trip changed. Refresh the planner and try again.");
-      } else {
-        toast.error("Failed to queue planner regeneration");
       }
     }
   };
@@ -1112,6 +1073,35 @@ export default function PlannerBoard({ tripId }: Props) {
       }
     }
   };
+
+  const handleAssistantInlineActionSubmit = async (
+    action: PlannerGenerationAction,
+    values: PlannerGenerationFormValues,
+    idempotencyKey: string,
+  ) => {
+    if (action === "generate") {
+      await handleGenerate(values, idempotencyKey);
+      return;
+    }
+
+    await handleReset(values.day_ids, idempotencyKey);
+  };
+
+  const handleRequestedInlineActionHandled = useCallback(() => {
+    setAssistantInlineAction(null);
+  }, []);
+
+  const handleAssistantPanelOpenChange = useCallback(
+    (open: boolean) => {
+      setAssistantPanelOpen(tripId, open);
+    },
+    [setAssistantPanelOpen, tripId],
+  );
+
+  const handleOpenGenerationInline = useCallback(() => {
+    setAssistantInlineAction("generate");
+    setAssistantPanelOpen(tripId, true);
+  }, [setAssistantPanelOpen, tripId]);
 
   const handleDragStart = (event: DragStartEvent) => {
     if (planner) {
@@ -1360,6 +1350,9 @@ export default function PlannerBoard({ tripId }: Props) {
               onDeleteActivity={handleDeleteActivity}
               onRegisterSectionOpener={(opener) => { openRailSectionRef.current = opener }}
               onOpenCollaboration={() => setCollaborationMenuOpen(true)}
+              onOpenGeneration={handleOpenGenerationInline}
+              assistantSuggestedPlace={assistantSuggestedPlace}
+              onAssistantSuggestedPlaceHandled={() => setAssistantSuggestedPlace(null)}
             />
           </div>
 
@@ -1415,36 +1408,25 @@ export default function PlannerBoard({ tripId }: Props) {
         hasActivities={hasActivities}
         onReset={handleReset}
       />
-
-      <GenerationControls
-        days={planner?.days ?? []}
-        hasActivities={hasActivities ?? false}
-        onGenerate={handleGenerate}
-        onRegenerate={handleRegenerate}
-        onReset={handleReset}
-        isGenerating={
-          generateMutation.isPending ||
-          regenerateMutation.isPending ||
-          resetMutation.isPending
-        }
-        jobStatus={currentJob.data?.status ?? latestReport?.status ?? null}
-        controlledOpen={generateDialogOpen}
-        controlledAction={generateDialogAction}
-        onControlledOpenChange={setGenerateDialogOpen}
-      />
-
       <PlannerAssistantPanel
         tripId={tripId}
         destination={planner.trip.destination_text ?? ""}
+        days={planner.days as Day[]}
         hasActivities={hasActivities}
         isOpen={assistantPanelOpen}
-        onRequestGenerationDialog={(action) => {
-          setGenerateDialogAction(action);
-          setGenerateDialogOpen(true);
-          setAssistantPanelOpen(tripId, true);
-        }}
-        onOpenChange={(open) => {
-          setAssistantPanelOpen(tripId, open);
+        requestedInlineAction={assistantInlineAction}
+        onRequestedInlineActionHandled={handleRequestedInlineActionHandled}
+        onSubmitInlineAction={handleAssistantInlineActionSubmit}
+        isPlannerActionPending={
+          generateMutation.isPending ||
+          resetMutation.isPending
+        }
+        onOpenChange={handleAssistantPanelOpenChange}
+        onSelectSuggestedPlace={(place) => {
+          setSelectedActivityId(null);
+          setSelectedPlaceId(null);
+          setSelectedRecommendation(null);
+          setAssistantSuggestedPlace(place);
         }}
       />
     </div>

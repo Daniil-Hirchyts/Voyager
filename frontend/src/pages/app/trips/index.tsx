@@ -2,9 +2,8 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useSearchParams } from 'react-router-dom'
 import { tripKeys, useTrips } from '@/entities/trip/queries'
-import { createTrip } from '@/entities/trip/api'
+import { createTrip, patchTripCoverPreference } from '@/entities/trip/api'
 import { createPlace } from '@/entities/place/api'
-import { mergeTripCoverPhotoPreference } from '@/entities/trip/cover-photo'
 import {
   ArrowUpRight,
   CalendarDays,
@@ -504,13 +503,13 @@ export default function TripsPage() {
         placeId = null
       }
 
-      mergeTripCoverPhotoPreference(trip.id, {
+      await patchTripCoverPreference(trip.id, {
         placeId,
         placeLabel: destination.destinationText,
         placeLat: destination.lat,
         placeLng: destination.lon,
         photoId: null,
-        googlePhotoUrl: destination.imageUrl,
+        fallbackImageUrl: destination.imageUrl,
       })
 
       const next = new URLSearchParams(searchParams)
@@ -576,15 +575,16 @@ export default function TripsPage() {
             <SectionIntro
               eyebrow="Recently planned and upcoming"
               title="Trips worth opening again"
+              action={(
+                <div className="hidden md:flex">
+                  <CarouselNavigation
+                    alwaysShow={true}
+                    className="relative left-auto top-auto inline-flex w-fit translate-y-0 justify-start gap-2 px-0"
+                    classNameButton="h-9 w-9 p-0 flex items-center justify-center bg-white shadow-sm border border-[#dce6ef]"
+                  />
+                </div>
+              )}
             />
-
-            <div className="mt-3 hidden md:flex md:justify-center lg:justify-end">
-              <CarouselNavigation
-                alwaysShow={true}
-                className="relative left-auto top-auto inline-flex w-fit translate-y-0 justify-start gap-2 px-0"
-                classNameButton="h-9 w-9 p-0 flex items-center justify-center bg-white shadow-sm border border-[#dce6ef]"
-              />
-            </div>
           </div>
 
           {error && (

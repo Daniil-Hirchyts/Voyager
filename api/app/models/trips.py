@@ -3,7 +3,7 @@ from decimal import Decimal
 from enum import StrEnum
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.models.places import PlacePhotoSummary
 from app.models.routing import RouteTravelMode
@@ -31,6 +31,41 @@ class TripPatchRequest(BaseModel):
     route_travel_mode: RouteTravelMode | None = None
 
 
+class TripCoverPreference(BaseModel):
+    place_id: UUID | None = None
+    place_label: str | None = None
+    place_lat: float | None = None
+    place_lng: float | None = None
+    photo_id: UUID | None = None
+    asset_id: UUID | None = None
+    fallback_image_url: str | None = None
+
+    @field_validator("place_label", "fallback_image_url", mode="before")
+    @classmethod
+    def _normalize_optional_text(cls, value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            return normalized or None
+        return value
+
+
+class TripCoverPreferencePatchRequest(TripCoverPreference):
+    pass
+
+
+class TripCoverPhoto(BaseModel):
+    source: str
+    url: str
+    thumbnail_url: str | None = None
+    asset_id: UUID | None = None
+    photo_id: UUID | None = None
+    place_id: UUID | None = None
+    attribution_text: str | None = None
+    is_fallback: bool = False
+
+
 class TripAccessRole(StrEnum):
     OWNER = "owner"
     EDITOR = "editor"
@@ -50,6 +85,8 @@ class TripResponse(BaseModel):
     current_user_role: TripAccessRole
     collaborator_count: int
     version: int
+    cover_preference: TripCoverPreference | None = None
+    cover_photo: TripCoverPhoto | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -218,13 +255,6 @@ class GenerationMode(StrEnum):
 
 class TripGenerateRequest(BaseModel):
     mode: GenerationMode
-    day_ids: list[UUID] | None = None
-    constraints: dict = Field(default_factory=dict)
-    seed: int | None = None
-
-
-class TripRegenerateRequest(BaseModel):
-    mode: GenerationMode = GenerationMode.REPLACE
     day_ids: list[UUID] | None = None
     constraints: dict = Field(default_factory=dict)
     seed: int | None = None

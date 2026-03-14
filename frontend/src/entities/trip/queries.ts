@@ -1,6 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getTrips, getTrip, createTrip, patchTrip, deleteTrip, duplicateTrip } from './api'
-import type { TripCreateInput, TripUpdateInput } from '@/shared/api/types'
+import {
+  createTrip,
+  deleteTrip,
+  duplicateTrip,
+  getTrip,
+  getTrips,
+  patchTrip,
+  patchTripCoverPreference,
+} from './api'
+import type { TripCoverPreference, TripCreateInput, TripUpdateInput } from '@/shared/api/types'
 import { plannerKeys } from '@/entities/planner/queries'
 import type { TripListParams } from './api'
 
@@ -77,5 +85,17 @@ export function useDuplicateTrip() {
       idempotencyKey: string
     }) => duplicateTrip(tripId, idempotencyKey),
     onSuccess: () => qc.invalidateQueries({ queryKey: tripKeys.all }),
+  })
+}
+
+export function usePatchTripCoverPreference(tripId: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Partial<TripCoverPreference>) => patchTripCoverPreference(tripId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) })
+      qc.invalidateQueries({ queryKey: tripKeys.all })
+      qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+    },
   })
 }

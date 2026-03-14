@@ -49,12 +49,15 @@ import {
 } from '@/components/ui/select'
 import {
   createPlace,
+  getGooglePlaceDetail,
   type DestinationAutocompleteItem,
 } from '@/entities/place/api'
-import { buildPlaceCreateInputFromDestinationSuggestion } from '@/entities/place/destination'
+import {
+  buildPlaceCreateInputFromDestinationSuggestion,
+  isBackendPlaceId,
+} from '@/entities/place/destination'
 import { useDestinationAutocomplete } from '@/entities/place/queries'
-import { createTrip } from '@/entities/trip/api'
-import { mergeTripCoverPhotoPreference } from '@/entities/trip/cover-photo'
+import { createTrip, patchTripCoverPreference } from '@/entities/trip/api'
 import { tripKeys } from '@/entities/trip/queries'
 import { isApiError } from '@/shared/api/client'
 import { CURRENCY_OPTIONS } from '@/shared/lib/currencies'
@@ -414,6 +417,7 @@ export default function TripCreatePage() {
       ),
     onSuccess: async (trip) => {
       let destinationPlaceId: string | null = null
+      let fallbackImageUrl: string | null = null
       if (selectedDestinationSuggestion) {
         try {
           const place = await createPlace(
@@ -422,13 +426,24 @@ export default function TripCreatePage() {
           )
           destinationPlaceId = place.id
         } catch { destinationPlaceId = null }
+
+        if (!isBackendPlaceId(selectedDestinationSuggestion.id)) {
+          try {
+            const detail = await getGooglePlaceDetail(selectedDestinationSuggestion.id)
+            fallbackImageUrl = detail.photos?.[0]?.image_url ?? null
+          } catch {
+            fallbackImageUrl = null
+          }
+        }
       }
-      mergeTripCoverPhotoPreference(trip.id, {
+
+      await patchTripCoverPreference(trip.id, {
         placeId: destinationPlaceId,
         placeLabel: selectedDestinationSuggestion?.label ?? form.getValues('destination_text') ?? null,
         placeLat: selectedDestinationSuggestion?.lat ?? null,
         placeLng: selectedDestinationSuggestion?.lon ?? null,
         photoId: null,
+        fallbackImageUrl,
       })
       queryClient.invalidateQueries({ queryKey: tripKeys.all })
       const plannerSearchParams = new URLSearchParams()

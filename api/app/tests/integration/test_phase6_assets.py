@@ -38,6 +38,16 @@ def _list_days(api_client, headers, trip_id: str) -> list[dict]:
     return response.json()["items"]
 
 
+def _upload_trip_photo_asset(api_client, headers, trip_id: str) -> dict:
+    response = api_client.post(
+        f"/trips/{trip_id}/assets",
+        headers=headers,
+        files={"file": ("cover-photo.png", PNG_1X1, "image/png")},
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
 def test_trip_and_activity_asset_uploads_round_trip(api_client, headers_user1):
     trip = _create_trip(api_client, headers_user1, title="Phase6 assets")
     day_id = _list_days(api_client, headers_user1, trip["id"])[0]["id"]
@@ -98,3 +108,65 @@ def test_trip_and_activity_asset_uploads_round_trip(api_client, headers_user1):
     )
     assert list_trip_assets_after_delete.status_code == 200
     assert list_trip_assets_after_delete.json()["total"] == 0
+
+
+def test_duplicate_trip_remaps_selected_cover_asset(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase6 duplicate cover")
+    photo_asset = _upload_trip_photo_asset(api_client, headers_user1, trip["id"])
+
+    patch = api_client.patch(
+        f"/trips/{trip['id']}/cover-preference",
+        headers=headers_user1,
+        json={"asset_id": photo_asset["id"]},
+    )
+    assert patch.status_code == 200
+    assert patch.json()["cover_preference"]["asset_id"] == photo_asset["id"]
+    assert patch.json()["cover_photo"]["asset_id"] == photo_asset["id"]
+
+    duplicate = api_client.post(
+        f"/trips/{trip['id']}/duplicate",
+        headers=headers_user1 | {"Idempotency-Key": f"p6-duplicate-{uuid.uuid4()}"},
+    )
+    assert duplicate.status_code == 201
+    duplicate_body = duplicate.json()
+
+    assert duplicate_body["id"] != trip["id"]
+    assert duplicate_body["cover_preference"]["asset_id"] != photo_asset["id"]
+    assert duplicate_body["cover_photo"]["source"] == "uploaded"
+    assert (
+        duplicate_body["cover_photo"]["asset_id"]
+        == duplicate_body["cover_preference"]["asset_id"]
+    )
+
+    duplicate_assets = api_client.get(
+        f"/trips/{duplicate_body['id']}/assets",
+        headers=headers_user1,
+    )
+    assert duplicate_assets.status_code == 200
+    assert duplicate_assets.json()["total"] == 1
+    assert duplicate_assets.json()["items"][0]["id"] == duplicate_body["cover_preference"]["asset_id"]
+
+
+def test_deleting_selected_cover_asset_clears_cover_preference(api_client, headers_user1):
+    trip = _create_trip(api_client, headers_user1, title="Phase6 clear cover")
+    photo_asset = _upload_trip_photo_asset(api_client, headers_user1, trip["id"])
+
+    patch = api_client.patch(
+        f"/trips/{trip['id']}/cover-preference",
+        headers=headers_user1,
+        json={"asset_id": photo_asset["id"]},
+    )
+    assert patch.status_code == 200
+    assert patch.json()["cover_photo"]["asset_id"] == photo_asset["id"]
+
+    delete_response = api_client.delete(
+        f"/assets/{photo_asset['id']}",
+        headers=headers_user1,
+    )
+    assert delete_response.status_code == 204
+
+    fetched = api_client.get(f"/trips/{trip['id']}", headers=headers_user1)
+    assert fetched.status_code == 200
+    fetched_body = fetched.json()
+    assert fetched_body["cover_preference"] is None
+    assert fetched_body["cover_photo"] is None
