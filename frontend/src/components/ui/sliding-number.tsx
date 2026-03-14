@@ -34,12 +34,12 @@ function Digit({
   }, [animatedValue, valueRoundedToPlace])
 
   return (
-    <div className="relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums">
-      <div className="invisible">0</div>
+    <span className="relative inline-block w-[1ch] overflow-x-visible overflow-y-clip leading-none tabular-nums">
+      <span className="invisible">0</span>
       {Array.from({ length: 10 }, (_, index) => (
         <AnimatedDigit key={index} mv={animatedValue} number={index} />
       ))}
-    </div>
+    </span>
   )
 }
 

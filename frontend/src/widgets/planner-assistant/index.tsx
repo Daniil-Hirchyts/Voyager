@@ -24,15 +24,36 @@ import {
   Check,
   ChevronRight,
   Clock3,
+  History,
   Loader2,
   MapPin,
+  MessageSquarePlus,
+  MoreHorizontal,
+  Pencil,
+  Radio,
+  Search,
   Slash,
   Sparkles,
+  Trash2,
   WandSparkles,
   X,
   XCircle,
 } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtItem,
+  ChainOfThoughtStep,
+  ChainOfThoughtTrigger,
+} from '@/components/ui/chain-of-thought'
 import {
   Command,
   CommandEmpty,
@@ -120,6 +141,13 @@ export type PlannerAssistantSuggestedPlace = {
   category: string | null
   lat: number | null
   lon: number | null
+}
+
+type SavedConversation = {
+  id: string
+  name: string
+  messages: AssistantMessage[]
+  savedAt: string
 }
 
 type JobTimelineRow =
@@ -575,6 +603,49 @@ function getAvailableCommandSuggestions(
   })
 }
 
+const MAX_INPUT_LENGTH = 2000
+const SUBMIT_COOLDOWN_MS = 1500
+
+const CONVERSATIONS_STORAGE_KEY = (tripId: string) => `assistant-conversations-${tripId}`
+
+function loadSavedConversations(tripId: string): SavedConversation[] {
+  try {
+    const raw = localStorage.getItem(CONVERSATIONS_STORAGE_KEY(tripId))
+    if (!raw) return []
+    return JSON.parse(raw) as SavedConversation[]
+  } catch {
+    return []
+  }
+}
+
+function persistSavedConversations(tripId: string, convs: SavedConversation[]) {
+  try {
+    localStorage.setItem(CONVERSATIONS_STORAGE_KEY(tripId), JSON.stringify(convs))
+  } catch {
+    // localStorage may be full or unavailable — fail silently
+  }
+}
+
+const HIDDEN_IDS_KEY = (tripId: string) => `assistant-hidden-ids-${tripId}`
+
+function loadHiddenIds(tripId: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_IDS_KEY(tripId))
+    if (!raw) return new Set()
+    return new Set(JSON.parse(raw) as string[])
+  } catch {
+    return new Set()
+  }
+}
+
+function persistHiddenIds(tripId: string, ids: Set<string>) {
+  try {
+    localStorage.setItem(HIDDEN_IDS_KEY(tripId), JSON.stringify([...ids]))
+  } catch {
+    // fail silently
+  }
+}
+
 const MESSAGE_MARKDOWN_COMPONENTS = {
   p: ({ children }: { children?: ReactNode }) => (
     <p className="m-0 leading-7 text-[var(--color-text)]">{children}</p>
@@ -755,6 +826,9 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
     pending,
     isError: part.isError,
   })
+  const errorDetail = part.isError
+    ? (asString(result?.error) ?? asString(result?.message) ?? asString(result?.detail) ?? null)
+    : null
 
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
@@ -783,6 +857,12 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
         </div>
       ) : null}
 
+      {errorDetail ? (
+        <div className="mt-3 rounded-[14px] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.74rem] leading-5 text-[rgba(185,71,54,1)]">
+          {errorDetail}
+        </div>
+      ) : null}
+
       {pending ? (
         <div className="mt-3 flex gap-2">
           <Button
@@ -808,29 +888,51 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
   )
 }
 
+function jobRowIcon(row: JobTimelineRow) {
+  if (row.kind === 'done') {
+    return row.status === 'SUCCEEDED' ? (
+      <Check className="size-3.5" />
+    ) : (
+      <XCircle className="size-3.5" />
+    )
+  }
+  if (row.kind === 'tool') {
+    const name = row.toolName.toLowerCase()
+    if (name.includes('search') || name.includes('places')) return <Search className="size-3.5" />
+    if (name.includes('apply') || name.includes('create') || name.includes('update'))
+      return <WandSparkles className="size-3.5" />
+  }
+  return <ChevronRight className="size-3.5" />
+}
+
 function JobProgressCard({ part }: { part: AssistantDataPart }) {
   const requestText = String(part.data.request_text ?? 'Planner job')
   const jobStatus = String(part.data.job_status ?? 'PENDING')
   const rows = buildTimelineRows(Array.isArray(part.data.events) ? part.data.events : [])
-  const groupedRows = rows.reduce<Record<string, JobTimelineRow[]>>((accumulator, row) => {
-    const key = row.phase ?? 'queued'
-    accumulator[key] = [...(accumulator[key] ?? []), row]
-    return accumulator
-  }, {})
   const summaryEntries = buildSummaryEntries(
     part.data.summary && typeof part.data.summary === 'object'
       ? (part.data.summary as Record<string, unknown>)
       : undefined,
   )
-  const latestActiveRow = [...rows].reverse().find((row) => row.kind !== 'done')
+  const isRunning = jobStatus !== 'SUCCEEDED' && jobStatus !== 'FAILED'
+  const lastRow = rows.length > 0 ? rows[rows.length - 1] : null
+  const currentActivityRow =
+    isRunning && lastRow && lastRow.kind !== 'done' ? lastRow : null
 
   const jobTone =
     jobStatus === 'SUCCEEDED' ? 'success' : jobStatus === 'FAILED' ? 'danger' : 'warning'
 
+  const activeRowLabel =
+    currentActivityRow?.kind === 'step'
+      ? currentActivityRow.name
+      : currentActivityRow?.kind === 'tool'
+        ? `${formatToolLabel(currentActivityRow.toolName)}…`
+        : null
+
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           {jobStatus === 'SUCCEEDED' ? (
             <Check className="size-4" />
           ) : jobStatus === 'FAILED' ? (
@@ -842,15 +944,20 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">{requestText}</p>
-            <span className={toneChipClasses(jobTone)}>{jobStatus}</span>
+            <span className={toneChipClasses(jobTone)}>
+              {isRunning ? 'In progress' : jobStatus}
+            </span>
           </div>
-          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
-            {latestActiveRow?.kind === 'step'
-              ? latestActiveRow.name
-              : latestActiveRow?.kind === 'tool'
-                ? `Running ${formatToolLabel(latestActiveRow.toolName)}`
-                : 'Queued and waiting for worker pickup.'}
-          </p>
+          {activeRowLabel ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[0.75rem] leading-5 text-[var(--color-primary)]">
+              <span className="inline-block size-1.5 animate-pulse rounded-full bg-[var(--color-primary)]" />
+              {activeRowLabel}
+            </p>
+          ) : rows.length === 0 ? (
+            <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
+              Queued and waiting for worker pickup.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -860,78 +967,100 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
           <span>Queued and waiting for worker pickup.</span>
         </div>
       ) : (
-        <div className="mt-3 space-y-3">
-          {Object.entries(groupedRows).map(([phase, phaseRows]) => (
-            <div key={phase} className="space-y-1.5">
-              <p className="text-[0.67rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-                {phase.replace(/_/g, ' ')}
-              </p>
-              <div className="space-y-1.5">
-                {phaseRows.map((row) => {
-                  if (row.kind === 'step') {
-                    return (
-                      <div
-                        key={row.eventId}
-                        className="flex items-start gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5"
-                      >
-                        <ChevronRight className="mt-0.5 size-3.5 text-[var(--color-primary)]" />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[0.78rem] font-medium text-[var(--color-text)]">
-                            {row.name}
-                          </p>
-                          {row.detail ? (
-                            <p className="mt-0.5 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
-                              {row.detail}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  if (row.kind === 'tool') {
-                    const toolTone = row.result ? (row.isError ? 'danger' : 'success') : 'warning'
-                    return (
-                      <div
-                        key={row.eventId}
-                        className="rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="min-w-0 flex-1 truncate text-[0.78rem] font-medium text-[var(--color-text)]">
-                            {formatToolLabel(row.toolName)}
-                          </span>
-                          <span className={toneChipClasses(toolTone)}>
-                            {row.result ? (row.isError ? 'Error' : 'Done') : 'Running'}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
-                          {summarizeTimelineTool(row)}
-                        </p>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div
-                      key={row.eventId}
-                      className="flex items-center gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5 text-[0.78rem] text-[var(--color-text)]"
-                    >
-                      {row.status === 'SUCCEEDED' ? (
-                        <Check className="size-3.5 text-[var(--color-success)]" />
-                      ) : (
-                        <XCircle className="size-3.5 text-[rgba(196,95,79,1)]" />
+        <div className="mt-3 rounded-[14px] bg-[rgba(244,246,248,0.55)] px-3 py-2.5">
+          <ChainOfThought>
+            {rows.map((row) => {
+              if (row.kind === 'done') {
+                return (
+                  <ChainOfThoughtStep key={row.eventId}>
+                    <ChainOfThoughtTrigger
+                      leftIcon={jobRowIcon(row)}
+                      className={cn(
+                        'py-1 text-[0.78rem] font-medium',
+                        row.status === 'SUCCEEDED'
+                          ? 'text-[rgba(21,128,61,1)]'
+                          : 'text-[rgba(196,95,79,1)]',
                       )}
-                      <span>
-                        {row.status === 'SUCCEEDED'
-                          ? 'Planner updated successfully.'
-                          : 'Generation finished with an error.'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+                      swapIconOnHover={false}
+                    >
+                      {row.status === 'SUCCEEDED'
+                        ? 'Completed successfully'
+                        : 'Finished with an error'}
+                    </ChainOfThoughtTrigger>
+                  </ChainOfThoughtStep>
+                )
+              }
+
+              if (row.kind === 'step') {
+                const isActive = isRunning && row === currentActivityRow
+                const detail = row.detail
+                return (
+                  <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
+                    <ChainOfThoughtTrigger
+                      leftIcon={jobRowIcon(row)}
+                      className={cn(
+                        'py-1 text-[0.78rem] font-medium',
+                        isActive
+                          ? 'text-[var(--color-primary)]'
+                          : 'text-[var(--color-text)]',
+                      )}
+                    >
+                      {row.name}
+                    </ChainOfThoughtTrigger>
+                    {detail ? (
+                      <ChainOfThoughtContent>
+                        <ChainOfThoughtItem className="text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                          {detail}
+                        </ChainOfThoughtItem>
+                      </ChainOfThoughtContent>
+                    ) : null}
+                  </ChainOfThoughtStep>
+                )
+              }
+
+              // tool row
+              const isActive = isRunning && row === currentActivityRow
+              const isComplete = Boolean(row.result)
+              const toolStatusLabel = isComplete
+                ? row.isError
+                  ? 'Error'
+                  : 'Done'
+                : isActive
+                  ? 'Running'
+                  : 'Pending'
+              const toolTone = isComplete
+                ? row.isError
+                  ? 'danger'
+                  : 'success'
+                : isActive
+                  ? 'warning'
+                  : 'neutral'
+              const toolSummary = summarizeTimelineTool(row)
+              return (
+                <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
+                  <ChainOfThoughtTrigger
+                    leftIcon={jobRowIcon(row)}
+                    className={cn(
+                      'py-1 text-[0.78rem] font-medium',
+                      isActive
+                        ? 'text-[var(--color-primary)]'
+                        : 'text-[var(--color-text)]',
+                    )}
+                  >
+                    <span className="flex items-center gap-2">
+                      {formatToolLabel(row.toolName)}
+                      <span className={toneChipClasses(toolTone)}>{toolStatusLabel}</span>
+                    </span>
+                  </ChainOfThoughtTrigger>
+                  <ChainOfThoughtContent>
+                    <ChainOfThoughtItem className="text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                      {toolSummary}
+                    </ChainOfThoughtItem>
+                  </ChainOfThoughtContent>
+                </ChainOfThoughtStep>
+              )
+            })}
+          </ChainOfThought>
         </div>
       )}
 
@@ -1139,23 +1268,37 @@ function PlannerAssistantComposer({
                 </Button>
               </PromptInputAction>
             </PromptInputActions>
-            <PromptInputActions className="gap-1.5">
-              <PromptInputAction tooltip={isStreaming ? 'Sending' : 'Send'}>
-                <Button
-                  type="button"
-                  size="icon"
-                  className="size-8 rounded-full bg-[#111827] text-white hover:bg-[#0f172a]"
-                  disabled={isStreaming || !draft.trim()}
-                  onClick={() => void submitComposer()}
-                >
-                  {isStreaming ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <ArrowUp className="size-4" />
+            <div className="flex items-center gap-2">
+              {draft.length > MAX_INPUT_LENGTH * 0.8 ? (
+                <span
+                  className={cn(
+                    'text-[0.68rem] tabular-nums',
+                    draft.length > MAX_INPUT_LENGTH
+                      ? 'text-[rgba(196,95,79,1)]'
+                      : 'text-[var(--color-text-muted)]',
                   )}
-                </Button>
-              </PromptInputAction>
-            </PromptInputActions>
+                >
+                  {draft.length}/{MAX_INPUT_LENGTH}
+                </span>
+              ) : null}
+              <PromptInputActions className="gap-1.5">
+                <PromptInputAction tooltip={isStreaming ? 'Sending' : 'Send'}>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="size-8 rounded-full bg-[#111827] text-white hover:bg-[#0f172a]"
+                    disabled={isStreaming || !draft.trim() || draft.length > MAX_INPUT_LENGTH}
+                    onClick={() => void submitComposer()}
+                  >
+                    {isStreaming ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <ArrowUp className="size-4" />
+                    )}
+                  </Button>
+                </PromptInputAction>
+              </PromptInputActions>
+            </div>
           </div>
         </PromptInput>
       </div>
@@ -1245,12 +1388,36 @@ export function PlannerAssistantPanel({
   const ignoredJobResumeIdsRef = useRef(new Set<string>())
   const handledRequestedInlineActionRef = useRef<PlannerGenerationAction | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const lastSubmitTimeRef = useRef(0)
+  const [discussionName, setDiscussionName] = useState(
+    () => localStorage.getItem(`assistant-discussion-${tripId}`) ?? '',
+  )
+  const [isRenamingDiscussion, setIsRenamingDiscussion] = useState(false)
+  const [renameInputValue, setRenameInputValue] = useState('')
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(
+    () => loadSavedConversations(tripId),
+  )
+  const [viewingConvId, setViewingConvId] = useState<string | null>(null)
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(
+    () => loadHiddenIds(tripId),
+  )
 
-  const messages = data?.messages ?? []
+  const liveMessages = data?.messages ?? []
+  // Filter out messages that belong to a previously archived conversation.
+  // We cannot clear the React Query cache (staleTime: 0 causes immediate refetch
+  // from the backend), so we track hidden IDs in localStorage instead.
+  const currentLiveMessages = useMemo(
+    () => liveMessages.filter((m) => !hiddenMessageIds.has(m.id)),
+    [liveMessages, hiddenMessageIds],
+  )
+  const displayMessages =
+    viewingConvId !== null
+      ? (savedConversations.find((c) => c.id === viewingConvId)?.messages ?? [])
+      : currentLiveMessages
   const runningJobIds = useMemo(() => {
     return Array.from(
       new Set(
-        messages.flatMap((message) => {
+        currentLiveMessages.flatMap((message) => {
           if (
             message.role !== 'assistant' ||
             message.status !== 'running' ||
@@ -1263,7 +1430,7 @@ export function PlannerAssistantPanel({
         }),
       ),
     )
-  }, [messages])
+  }, [currentLiveMessages])
   useEffect(() => {
     if (!requestedInlineAction) {
       handledRequestedInlineActionRef.current = null
@@ -1308,11 +1475,11 @@ export function PlannerAssistantPanel({
   useEffect(() => {
     const controllerMap = jobStreamControllersRef.current
     const activeJobIds = new Set(runningJobIds)
-    for (const ignoredJobId of [...ignoredJobResumeIdsRef.current]) {
-      if (!activeJobIds.has(ignoredJobId)) {
-        ignoredJobResumeIdsRef.current.delete(ignoredJobId)
-      }
-    }
+    // Note: intentionally NOT cleaning up ignoredJobResumeIdsRef here.
+    // After a 'done' event, invalidateQueries causes the thread to refetch
+    // which may temporarily restore 'running' status from the backend before
+    // the server-side update propagates. Cleaning up the ignored set during
+    // this window causes the stream to restart, creating an infinite loop.
 
     for (const [jobId, controller] of controllerMap.entries()) {
       if (!activeJobIds.has(jobId)) {
@@ -1339,8 +1506,15 @@ export function PlannerAssistantPanel({
           if (event.type === 'done') {
             ignoredJobResumeIdsRef.current.add(jobId)
             controller.abort()
-            void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) })
+            // Invalidate planner immediately to show new activities
             void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+            // Delay thread invalidation: the backend may not have committed the
+            // updated message status yet, so an immediate refetch would overwrite
+            // the local 'complete' status we just applied above and make the card
+            // appear frozen (spinner never stops). Give the backend a few seconds.
+            window.setTimeout(() => {
+              void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) })
+            }, 4000)
           }
         },
         controller.signal,
@@ -1434,13 +1608,47 @@ export function PlannerAssistantPanel({
         return
       }
 
+      // Rate limit: prevent rapid successive messages
+      const now = Date.now()
+      if (now - lastSubmitTimeRef.current < SUBMIT_COOLDOWN_MS) {
+        setStreamError('Please wait a moment before sending another message.')
+        return
+      }
+
+      // Length limit
+      if (trimmed.length > MAX_INPUT_LENGTH) {
+        setStreamError(`Message is too long. Please keep it under ${MAX_INPUT_LENGTH} characters.`)
+        return
+      }
+
+      // Strip null bytes and dangerous control characters (basic injection protection)
+      const sanitized = trimmed
+        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+        .trim()
+      if (!sanitized) {
+        return
+      }
+
+      // Warn on obvious prompt injection patterns
+      const injectionPatterns = [
+        /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+        /you\s+are\s+now\s+a/i,
+        /disregard\s+(all\s+)?(previous|prior)/i,
+        /system\s*:\s*[^\n]{0,100}/i,
+      ]
+      if (injectionPatterns.some((p) => p.test(sanitized))) {
+        setStreamError('This message contains patterns that are not allowed. Please rephrase your request.')
+        return
+      }
+
+      lastSubmitTimeRef.current = now
       const clientMessageId = crypto.randomUUID()
       const optimisticMessage: AssistantMessage = {
         id: clientMessageId,
         thread_id: data?.id ?? `thread-${tripId}`,
         role: 'user',
         status: 'complete',
-        parts: [{ type: 'text', text: trimmed }],
+        parts: [{ type: 'text', text: sanitized }],
         metadata: { kind: 'chat' },
         source_job_id: null,
         created_at: new Date().toISOString(),
@@ -1453,7 +1661,7 @@ export function PlannerAssistantPanel({
       await startStream(
         {
           client_message_id: clientMessageId,
-          text: trimmed,
+          text: sanitized,
         },
         clientMessageId,
       )
@@ -1542,8 +1750,8 @@ export function PlannerAssistantPanel({
   )
 
   const runtime = useExternalStoreRuntime<AssistantMessage>({
-    messages,
-    isRunning: isStreaming,
+    messages: displayMessages,
+    isRunning: isStreaming && viewingConvId === null,
     convertMessage: toThreadMessage,
     onNew: async (message) => {
       const text = extractAppendText(message)
@@ -1552,36 +1760,233 @@ export function PlannerAssistantPanel({
     onCancel: cancelCurrentStream,
   })
 
+  const handleRenameDiscussion = useCallback(
+    (name: string) => {
+      const trimmedName = name.trim()
+      setDiscussionName(trimmedName)
+      if (trimmedName) {
+        localStorage.setItem(`assistant-discussion-${tripId}`, trimmedName)
+      } else {
+        localStorage.removeItem(`assistant-discussion-${tripId}`)
+      }
+      setIsRenamingDiscussion(false)
+    },
+    [tripId],
+  )
+
+  const handleClearConversation = useCallback(() => {
+    if (currentLiveMessages.length === 0) return
+    const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)])
+    setHiddenMessageIds(newHiddenIds)
+    persistHiddenIds(tripId, newHiddenIds)
+  }, [currentLiveMessages, hiddenMessageIds, tripId])
+
+  const handleNewConversation = useCallback(() => {
+    if (currentLiveMessages.length > 0) {
+      const conv: SavedConversation = {
+        id: crypto.randomUUID(),
+        name:
+          discussionName ||
+          new Date().toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        messages: currentLiveMessages,
+        savedAt: new Date().toISOString(),
+      }
+      const updated = [conv, ...savedConversations]
+      setSavedConversations(updated)
+      persistSavedConversations(tripId, updated)
+      // Hide current messages from the live view — cannot clear React Query cache
+      // because staleTime: 0 causes an immediate refetch that restores them.
+      const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)])
+      setHiddenMessageIds(newHiddenIds)
+      persistHiddenIds(tripId, newHiddenIds)
+    }
+    setViewingConvId(null)
+    setDiscussionName('')
+    localStorage.removeItem(`assistant-discussion-${tripId}`)
+  }, [currentLiveMessages, discussionName, savedConversations, hiddenMessageIds, tripId])
+
+  const handleSwitchConversation = useCallback((convId: string | null) => {
+    setViewingConvId(convId)
+  }, [])
+
+  const handleDeleteSavedConversation = useCallback(
+    (convId: string) => {
+      const updated = savedConversations.filter((c) => c.id !== convId)
+      setSavedConversations(updated)
+      persistSavedConversations(tripId, updated)
+      if (viewingConvId === convId) {
+        setViewingConvId(null)
+      }
+    },
+    [savedConversations, viewingConvId, tripId],
+  )
+
   const assistantSurface = (
     <>
       <div className="border-b border-black/6 px-3 py-3 text-left">
         <div className="flex items-center gap-3">
-          <div className="flex size-8 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+          <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
             <Bot className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
-              Planner Assistant
-            </h2>
+            {viewingConvId !== null ? (
+              <h2 className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text-muted)]">
+                {savedConversations.find((c) => c.id === viewingConvId)?.name ?? 'Archived'}
+              </h2>
+            ) : isRenamingDiscussion ? (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleRenameDiscussion(renameInputValue)
+                }}
+                className="flex items-center gap-1"
+              >
+                <input
+                  autoFocus
+                  value={renameInputValue}
+                  onChange={(e) => setRenameInputValue(e.target.value)}
+                  onBlur={() => handleRenameDiscussion(renameInputValue)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      setIsRenamingDiscussion(false)
+                    }
+                  }}
+                  placeholder="Conversation name…"
+                  className="min-w-0 flex-1 rounded-[8px] border border-black/10 bg-white px-2 py-0.5 text-[0.84rem] font-semibold tracking-[-0.02em] text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                />
+              </form>
+            ) : (
+              <h2 className="text-left text-[0.92rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                {discussionName || 'Planner Assistant'}
+              </h2>
+            )}
             <p className="mt-0.5 flex items-center gap-1.5 text-[0.74rem] text-[var(--color-text-muted)]">
               <MapPin className="size-3.5" />
               <span>{destination || 'Current trip'}</span>
             </p>
           </div>
-          {!isMobile ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="size-10 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
-              onClick={() => onOpenChange(false)}
-            >
-              <X className="size-4" />
-              <span className="sr-only">Close assistant</span>
-            </Button>
-          ) : null}
+          <div className="flex shrink-0 items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="size-8 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
+                >
+                  <MoreHorizontal className="size-4" />
+                  <span className="sr-only">Conversation options</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[210px]">
+                <DropdownMenuItem onClick={handleNewConversation}>
+                  <MessageSquarePlus className="mr-2 size-3.5" />
+                  New conversation
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => handleSwitchConversation(null)}
+                  className={cn(
+                    'flex items-center',
+                    viewingConvId === null && 'text-[var(--color-primary)]',
+                  )}
+                >
+                  <Radio className="mr-2 size-3.5 shrink-0" />
+                  <span className="flex-1 truncate">Live thread</span>
+                  {viewingConvId === null && <Check className="ml-2 size-3.5 shrink-0" />}
+                </DropdownMenuItem>
+                {savedConversations.length > 0 ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <p className="px-2 py-1.5 text-[0.67rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      Saved
+                    </p>
+                    {savedConversations.map((conv) => (
+                      <DropdownMenuItem
+                        key={conv.id}
+                        onClick={() => handleSwitchConversation(conv.id)}
+                        className={cn(
+                          'flex items-center',
+                          viewingConvId === conv.id && 'text-[var(--color-primary)]',
+                        )}
+                      >
+                        <History className="mr-2 size-3.5 shrink-0" />
+                        <span className="flex-1 truncate">{conv.name}</span>
+                        {viewingConvId === conv.id ? (
+                          <Check className="ml-2 size-3.5 shrink-0" />
+                        ) : (
+                          <button
+                            type="button"
+                            className="ml-2 shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:bg-black/8 hover:text-[rgba(196,95,79,1)]"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteSavedConversation(conv.id)
+                            }}
+                          >
+                            <X className="size-3" />
+                          </button>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                ) : null}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setRenameInputValue(discussionName)
+                    setIsRenamingDiscussion(true)
+                  }}
+                  disabled={viewingConvId !== null}
+                >
+                  <Pencil className="mr-2 size-3.5" />
+                  Rename conversation
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="text-[rgba(196,95,79,1)] focus:text-[rgba(196,95,79,1)]"
+                  onClick={handleClearConversation}
+                  disabled={viewingConvId !== null}
+                >
+                  <Trash2 className="mr-2 size-3.5" />
+                  Clear messages
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {!isMobile ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-8 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
+                onClick={() => onOpenChange(false)}
+              >
+                <X className="size-4" />
+                <span className="sr-only">Close assistant</span>
+              </Button>
+            ) : null}
+          </div>
         </div>
       </div>
+
+      {viewingConvId !== null ? (
+        <div className="flex items-center justify-between border-b border-amber-200/50 bg-amber-50/60 px-3 py-2">
+          <div className="flex items-center gap-1.5 text-[0.73rem] text-amber-700/90">
+            <History className="size-3.5" />
+            <span>Viewing archived conversation</span>
+          </div>
+          <button
+            type="button"
+            className="text-[0.73rem] font-medium text-[var(--color-primary)] hover:underline"
+            onClick={() => handleSwitchConversation(null)}
+          >
+            Return to live
+          </button>
+        </div>
+      ) : null}
 
       <AssistantRuntimeProvider runtime={runtime}>
         <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
@@ -1623,20 +2028,32 @@ export function PlannerAssistantPanel({
                   </div>
                 ) : null}
               </ThreadPrimitive.Viewport>
-              <PlannerAssistantComposer
-                hasActivities={hasActivities}
-                draft={draft}
-                setDraft={setDraft}
-                isStreaming={isStreaming}
-                streamError={streamError}
-                setStreamError={setStreamError}
-                textareaRef={textareaRef}
-                onRequestInlineAction={(action) => {
-                  setInlineAction(action)
-                  onOpenChange(true)
-                }}
-                onSubmitInput={handleSubmitInput}
-              />
+              {viewingConvId !== null ? (
+                <div className="border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
+                  <button
+                    type="button"
+                    className="w-full rounded-[24px] border border-black/8 bg-white px-4 py-3 text-[0.84rem] text-[var(--color-text-muted)] transition-colors hover:bg-[#faf8f4]"
+                    onClick={() => handleSwitchConversation(null)}
+                  >
+                    Return to live thread to send messages
+                  </button>
+                </div>
+              ) : (
+                <PlannerAssistantComposer
+                  hasActivities={hasActivities}
+                  draft={draft}
+                  setDraft={setDraft}
+                  isStreaming={isStreaming}
+                  streamError={streamError}
+                  setStreamError={setStreamError}
+                  textareaRef={textareaRef}
+                  onRequestInlineAction={(action) => {
+                    setInlineAction(action)
+                    onOpenChange(true)
+                  }}
+                  onSubmitInput={handleSubmitInput}
+                />
+              )}
             </ThreadPrimitive.Root>
           )}
         </div>

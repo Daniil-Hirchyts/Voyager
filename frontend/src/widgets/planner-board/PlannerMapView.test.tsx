@@ -271,6 +271,38 @@ describe('PlannerMapView', () => {
     expect(onSelectRecommendation).toHaveBeenCalledWith(recommendations.discoverEntries[0])
   })
 
+  it('does not auto-open place details when only a place id is preselected', async () => {
+    const trip = buildTrip({
+      title: 'Trip to Paris',
+      destination_text: 'Paris, France',
+    })
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <PlannerMapView
+          trip={trip}
+          tripId={trip.id}
+          tripVersion={trip.version}
+          days={[buildPlannerDay()]}
+          inboxActivities={[]}
+          selectedActivityId={null}
+          selectedPlaceId="place-seeded"
+          recommendations={buildRecommendationsController()}
+          selectedRecommendation={null}
+          onAddActivity={() => {}}
+          onSelectActivityId={() => {}}
+          onSelectPlaceId={() => {}}
+          onSelectRecommendation={() => {}}
+          onClearMapSelection={() => {}}
+        />
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('planner-map-detail-sheet')).not.toBeInTheDocument()
+    })
+  })
+
   it('does not reopen a recommendations drawer on desktop after closing recommendation details', async () => {
     const user = userEvent.setup()
     const trip = buildTrip({

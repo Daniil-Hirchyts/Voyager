@@ -60,6 +60,13 @@ DIRECT_COMMAND_TOOL_MAP = {
 
 
 def _jsonable(value: Any) -> Any:
+    # Pydantic models must be dumped to dict before further processing
+    try:
+        from pydantic import BaseModel as _BaseModel  # noqa: PLC0415
+        if isinstance(value, _BaseModel):
+            return _jsonable(value.model_dump())
+    except ImportError:
+        pass
     if isinstance(value, dict):
         return {str(key): _jsonable(item) for key, item in value.items()}
     if isinstance(value, list):

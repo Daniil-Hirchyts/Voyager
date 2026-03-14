@@ -925,26 +925,26 @@ function PlannerSidebarSectionTrigger({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex w-full items-center justify-between gap-3 pr-4">
-      <div className="flex min-w-0 items-center gap-2.5 text-left">
+    <span className="flex w-full items-center justify-between gap-3 pr-4">
+      <span className="flex min-w-0 items-center gap-2.5 text-left">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-[14px] bg-[var(--color-secondary-surface)] text-[var(--color-text)]">
           {icon}
         </span>
-        <div className="min-w-0">
-          <p className="text-[0.85rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+        <span className="min-w-0">
+          <span className="block text-[0.85rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
             {title}
-          </p>
-          <p className="mt-0.5 truncate text-[0.74rem] text-[var(--color-text-muted)]">
+          </span>
+          <span className="mt-0.5 block truncate text-[0.74rem] text-[var(--color-text-muted)]">
             {summary}
-          </p>
-        </div>
-      </div>
+          </span>
+        </span>
+      </span>
       {actions && (
-        <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        <span className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
           {actions}
-        </div>
+        </span>
       )}
-    </div>
+    </span>
   )
 }
 
@@ -3213,7 +3213,6 @@ export function PlannerMapView({
         onSelectActivityId(matchingStop.activity.id)
         return
       }
-      setDetailOpen(true)
     }
     if (selectedSearchItem) {
       setDetailOpen(true)
