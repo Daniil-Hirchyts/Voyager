@@ -10,8 +10,8 @@ from app.logging import attach_trace_filter, configure_logging
 from app.middleware import IpRateLimitMiddleware, TraceAndLoggingMiddleware
 from app.routers import (
     activities,
-    assistant,
     assets,
+    assistant,
     days,
     exports,
     health,

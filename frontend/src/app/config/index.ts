@@ -1,13 +1,28 @@
 const mapFeatureFlag = import.meta.env.VITE_ENABLE_MAP_UI
 const mapExperimentsFlag = import.meta.env.VITE_ENABLE_MAP_EXPERIMENTS
 const map3DFlag = import.meta.env.VITE_ENABLE_MAP_3D
+const browserOrigin =
+  typeof window === 'undefined' ? 'http://localhost:5173' : window.location.origin
+
+function resolveOidcUri(value: string | undefined, fallbackPath: string) {
+  if (!value) {
+    return `${browserOrigin}${fallbackPath}`
+  }
+
+  try {
+    const url = new URL(value, browserOrigin)
+    return `${browserOrigin}${url.pathname}${url.search}${url.hash}`
+  } catch {
+    return `${browserOrigin}${fallbackPath}`
+  }
+}
 
 export const config = {
   keycloak: {
     issuer: import.meta.env.VITE_KEYCLOAK_ISSUER,
     clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
-    redirectUri: import.meta.env.VITE_OIDC_REDIRECT_URI,
-    silentRedirectUri: import.meta.env.VITE_OIDC_SILENT_REDIRECT_URI,
+    redirectUri: resolveOidcUri(import.meta.env.VITE_OIDC_REDIRECT_URI, '/auth/callback'),
+    silentRedirectUri: resolveOidcUri(import.meta.env.VITE_OIDC_SILENT_REDIRECT_URI, '/auth/silent'),
   },
   api: {
     baseUrl: import.meta.env.VITE_API_BASE_URL || '/api',

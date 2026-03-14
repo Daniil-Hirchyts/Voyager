@@ -2027,10 +2027,8 @@ function DetailSheetContent({
   detail,
   fallbackItem,
   selectedStop,
-  selectedCountLabel: _selectedCountLabel,
   destinations,
   onAddToTrip,
-  onOpenExisting: _onOpenExisting,
   onToggleVisited,
   isTogglingVisited,
   isAdding,
@@ -2047,10 +2045,8 @@ function DetailSheetContent({
   detail: ResolvedPlaceDetail | null | undefined
   fallbackItem: SearchResultItem | null
   selectedStop: PlannerMapStop | null
-  selectedCountLabel: string | null
   destinations: PlannerRecommendationsController['destinations']
   onAddToTrip: (destinationId: string) => void
-  onOpenExisting: () => void
   onToggleVisited: () => void
   isTogglingVisited: boolean
   isAdding: boolean
@@ -2862,8 +2858,7 @@ export function PlannerMapView({
         return next
       })
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [onRegisterSectionOpener, tripId])
   const sections = useMemo(
     () => buildPlannerMapSections(days, inboxActivities),
     [days, inboxActivities],
@@ -3855,19 +3850,6 @@ export function PlannerMapView({
     setPreviewByDayId((current) => ({ ...current, [dayId]: null }))
   }
 
-  const openExistingSelection = () => {
-    const activityId =
-      selectedStop?.activity.id ?? placeDetailQuery.data?.related_activities[0]?.activity_id ?? null
-    if (!activityId) {
-      return
-    }
-    const stop = stopByActivityId.get(activityId)
-    if (!stop) {
-      return
-    }
-    handleStopSelection(stop)
-  }
-
   const selectedSection = selectedStop
     ? sections.find((section) => section.dayId === selectedStop.dayId) ?? null
     : null
@@ -3894,10 +3876,8 @@ export function PlannerMapView({
       detail={resolvedDetail}
       fallbackItem={selectedSearchItem}
       selectedStop={selectedStop}
-      selectedCountLabel={null}
       destinations={recommendations.destinations}
       onAddToTrip={(destinationId) => void handleAddToTrip(destinationId)}
-      onOpenExisting={openExistingSelection}
       onToggleVisited={() => void handleToggleVisited()}
       isTogglingVisited={togglingVisited}
       isAdding={addingToTrip}
@@ -4762,10 +4742,8 @@ export function ActivityMapDetailSheet({
             detail={resolvedDetail}
             fallbackItem={null}
             selectedStop={stop}
-            selectedCountLabel={null}
             destinations={[]}
             onAddToTrip={() => {}}
-            onOpenExisting={() => {}}
             onToggleVisited={handleToggleVisited}
             isTogglingVisited={isTogglingVisited}
             isAdding={false}

@@ -178,7 +178,7 @@ export function ActivityCardView({
   )
 }
 
-interface SortableProps extends Omit<BaseProps, 'dragHandleProps'> {}
+type SortableProps = Omit<BaseProps, 'dragHandleProps'>
 
 export function ActivityCard({
   activity,

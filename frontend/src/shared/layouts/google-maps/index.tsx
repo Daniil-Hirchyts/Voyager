@@ -355,6 +355,7 @@ export function VoyagerMap({ className, ...props }: React.ComponentProps<typeof 
         disableDefaultUI
         gestureHandling="greedy"
         mapId={config.map.mapId || undefined}
+        renderingType="RASTER"
         {...props}
       />
     </div>

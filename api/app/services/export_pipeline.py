@@ -997,7 +997,7 @@ async def execute_export_job(db: AsyncSession, job: Job) -> ExportExecutionResul
     try:
         trip = await TripRepository.get_trip(db, user_id, trip_id)
     except NotFoundError:
-        raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for export job")
+        raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for export job") from None
     if trip.version != expected_version:
         raise NonRetryableJobError(
             "CONFLICT_VERSION_MISMATCH",

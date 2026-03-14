@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from sqlalchemy import case, func, or_, select, text, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -1221,6 +1222,7 @@ class ActivityRepository:
             .values(trip_day_id=trip_day_id)
         )
 
+    @staticmethod
     async def list_day_activities(
         db: AsyncSession,
         user_id: uuid.UUID,

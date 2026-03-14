@@ -1,5 +1,6 @@
 import createClient from 'openapi-fetch'
 import { config } from '@/app/config'
+import type { paths } from '@/shared/api/generated/schema'
 
 let getToken: (() => string | undefined) | null = null
 let unauthorizedHandler: (() => void | Promise<void>) | null = null
@@ -46,8 +47,7 @@ export async function triggerUnauthorizedHandler() {
   return true
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const apiClient = createClient<Record<string, any>>({
+export const apiClient = createClient<paths>({
   baseUrl: config.api.baseUrl,
 })
 

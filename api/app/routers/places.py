@@ -43,9 +43,9 @@ from app.security.dependencies import (
 )
 from app.services.google_maps import (
     GoogleMapsNotConfiguredError,
+    GoogleMapsRequestError,
     fetch_google_place_detail,
     fetch_google_place_photo_asset,
-    GoogleMapsRequestError,
     geocode_address,
     lookup_google_place,
     resolve_time_zone,

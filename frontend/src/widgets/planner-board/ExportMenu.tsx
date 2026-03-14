@@ -38,7 +38,7 @@ const FORMAT_META: Record<ExportFormat, { label: string; icon: LucideIcon }> = {
 
 function inferFilename(response: Response, fallback: string) {
   const disposition = response.headers.get('Content-Disposition') || ''
-  const match = disposition.match(/filename=\"?([^\";]+)\"?/)
+  const match = disposition.match(/filename="?([^";]+)"?/)
   return match?.[1] || fallback
 }
 

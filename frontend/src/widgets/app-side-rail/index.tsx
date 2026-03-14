@@ -244,7 +244,7 @@ function AppSideRail() {
             tooltip="All trips"
             to="/app/trips"
             aria-label="All trips"
-            className={Boolean(tripsExactMatch) ? BTN_ACTIVE : BTN_RAIL}
+            className={tripsExactMatch ? BTN_ACTIVE : BTN_RAIL}
           >
             <LayoutGrid className="size-[1rem]" />
           </RailActionLink>
@@ -253,7 +253,7 @@ function AppSideRail() {
             tooltip="New trip"
             to="/app/trips/new"
             aria-label="New trip"
-            className={Boolean(newTripMatch) ? BTN_ACTIVE : BTN_RAIL}
+            className={newTripMatch ? BTN_ACTIVE : BTN_RAIL}
           >
             <Plus className="size-[1rem]" />
           </RailActionLink>

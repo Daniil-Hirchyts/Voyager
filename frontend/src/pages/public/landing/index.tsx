@@ -38,9 +38,9 @@ export default function LandingPage() {
 
     gsap.registerPlugin(ScrollTrigger)
     
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       // 1. Clouds Parallax & Floating
-      gsap.utils.toArray('.parallax-cloud').forEach((cloud: any, i) => {
+      gsap.utils.toArray<HTMLElement>('.parallax-cloud').forEach((cloud, i) => {
         // Continuous organic floating
         gsap.to(cloud, {
           y: () => (i % 2 === 0 ? -40 : 40),
@@ -104,7 +104,7 @@ export default function LandingPage() {
       )
 
       // 4. Section Fade ins (Faster)
-      gsap.utils.toArray('.fade-section').forEach((section: any) => {
+      gsap.utils.toArray<HTMLElement>('.fade-section').forEach((section) => {
         gsap.from(section, {
           opacity: 0,
           y: 40,
@@ -119,8 +119,8 @@ export default function LandingPage() {
       })
 
       // 5. Smooth Asymmetric Bento Scroll Reveal
-      const bentoCards = gsap.utils.toArray('.bento-card')
-      bentoCards.forEach((card: any, i) => {
+      const bentoCards = gsap.utils.toArray<HTMLElement>('.bento-card')
+      bentoCards.forEach((card, i) => {
         gsap.from(card, {
           y: 40,
           opacity: 0,

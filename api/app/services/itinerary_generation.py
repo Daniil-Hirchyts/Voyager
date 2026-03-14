@@ -112,7 +112,7 @@ async def _load_trip_for_job(db: AsyncSession, payload: dict[str, Any]) -> Trip:
     try:
         trip = await TripRepository.get_trip(db, uuid.UUID(user_id), uuid.UUID(trip_id))
     except NotFoundError:
-        raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for job payload")
+        raise NonRetryableJobError("RESOURCE_NOT_FOUND", "Trip not found for job payload") from None
     return trip
 
 
@@ -756,7 +756,7 @@ async def _resolve_candidates_for_scope(
         if progress:
             await progress.step(
                 "Grounding activities",
-                f"Resolving places via Google Maps",
+                "Resolving places via Google Maps",
                 phase="grounding",
             )
 

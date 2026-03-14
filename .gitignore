@@ -40,6 +40,7 @@ scripts/
 frontend/node_modules/
 frontend/dist/
 frontend/test-results/
+frontend/test_results.txt
 
 # Vite cache
 .vite/

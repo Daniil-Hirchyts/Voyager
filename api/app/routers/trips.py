@@ -23,8 +23,8 @@ from app.db.repositories import (
     AuditRepository,
     EventRepository,
     JobRepository,
-    PlaceRepository,
     PlacePhotoRepository,
+    PlaceRepository,
     TripAssetRepository,
     TripRepository,
 )
@@ -65,15 +65,15 @@ from app.models.trips import (
 from app.rate_limit.limiter import limit_user_request
 from app.routers.utils import parse_if_match, payload_fingerprint
 from app.security.dependencies import AuthContext, get_auth_context
-from app.services.trip_covers import (
-    parse_trip_cover_preference,
-    resolve_trip_cover_payloads,
-)
 from app.services.trip_assets import (
     build_trip_asset_object_key,
     build_trip_asset_thumbnail_key,
     copy_trip_asset_objects,
     delete_trip_asset_objects,
+)
+from app.services.trip_covers import (
+    parse_trip_cover_preference,
+    resolve_trip_cover_payloads,
 )
 
 router = APIRouter(prefix="/trips", tags=["trips"])

@@ -18,8 +18,8 @@ from app.models.trips import (
     TripInvitationCreateResponse,
     TripInvitationPreviewResponse,
     TripInvitationResponse,
-    TripSharingResponse,
     TripResponse,
+    TripSharingResponse,
 )
 from app.security.dependencies import AuthContext, get_auth_context
 from app.services.trip_collaboration import (
@@ -207,7 +207,7 @@ async def create_trip_invitation(
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> TripInvitationCreateResponse:
-    summary = await _load_owner_only_trip(db, auth=auth, trip_id=trip_id)
+    await _load_owner_only_trip(db, auth=auth, trip_id=trip_id)
     if payload.role != TripAccessRole.EDITOR:
         raise ValidationApiError("Only editor invitations are supported")
 

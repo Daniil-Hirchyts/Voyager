@@ -886,7 +886,8 @@ export default function PlannerBoard({ tripId }: Props) {
           );
         }
 
-        const { trip_day_id: _tripDayId, ...patchPayload } = data;
+        const patchPayload = { ...data };
+        delete patchPayload.trip_day_id;
         const updatedActivity = await patchActivity(editorActivity.id, {
           ...patchPayload,
           start_time:

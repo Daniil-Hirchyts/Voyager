@@ -1,7 +1,12 @@
 import { useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { plannerKeys } from '@/entities/planner/queries'
-import { readTripCoverPhotoPreference, toTripCoverPreferencePatch } from './cover-photo'
+import { isApiError } from '@/shared/api/client'
+import {
+  readTripCoverPhotoPreference,
+  removeTripCoverPhotoPreference,
+  toTripCoverPreferencePatch,
+} from './cover-photo'
 import { patchTripCoverPreference } from './api'
 import { tripKeys } from './queries'
 import type { Trip } from '@/shared/api/types'
@@ -31,7 +36,12 @@ export function useTripCoverPreferenceMigration(trips: Trip[]) {
           qc.invalidateQueries({ queryKey: tripKeys.all })
           qc.invalidateQueries({ queryKey: plannerKeys.detail(trip.id) })
         })
-        .catch(() => undefined)
+        .catch((error) => {
+          if (isApiError(error) && (error.status === 404 || error.status === 422)) {
+            migratedTripIds.add(trip.id)
+            removeTripCoverPhotoPreference(trip.id)
+          }
+        })
         .finally(() => {
           pendingTripIds.delete(trip.id)
         })

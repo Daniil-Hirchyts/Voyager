@@ -186,6 +186,21 @@ function usePlannerAssistantContext() {
   return ctx
 }
 
+function stripControlCharacters(value: string) {
+  return Array.from(value)
+    .filter((char) => {
+      const code = char.charCodeAt(0)
+      return !(
+        (code >= 0 && code <= 8) ||
+        code === 11 ||
+        code === 12 ||
+        (code >= 14 && code <= 31) ||
+        code === 127
+      )
+    })
+    .join('')
+}
+
 function statusToAssistantUi(status: AssistantMessage['status']) {
   if (status === 'running') return { type: 'running' as const }
   if (status === 'requires_action') {
@@ -1622,9 +1637,7 @@ export function PlannerAssistantPanel({
       }
 
       // Strip null bytes and dangerous control characters (basic injection protection)
-      const sanitized = trimmed
-        .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
-        .trim()
+      const sanitized = stripControlCharacters(trimmed).trim()
       if (!sanitized) {
         return
       }

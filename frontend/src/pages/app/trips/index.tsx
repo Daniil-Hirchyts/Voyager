@@ -389,9 +389,7 @@ function DestinationListCard({
   isAdding: boolean
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={cn(
         'group flex w-full items-center gap-3 rounded-[12px] border border-transparent px-3 py-2.5 text-left transition-colors lg:rounded-[14px] lg:px-3 lg:py-2.5',
         selected
@@ -399,41 +397,40 @@ function DestinationListCard({
           : 'border-transparent bg-white hover:bg-[#f9fbfd] lg:border-transparent lg:bg-transparent lg:hover:border-[#dbe4ec] lg:hover:bg-white',
       )}
     >
-      <div className="relative size-10 shrink-0 overflow-hidden rounded-[10px]">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `linear-gradient(135deg, ${destination.accentFrom} 0%, ${destination.accentTo} 100%)`,
-          }}
-        />
-        <img
-          src={destination.imageUrl}
-          alt={destination.name}
-          className="h-full w-full object-cover mix-blend-luminosity opacity-90"
-          loading="lazy"
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-[0.82rem] font-medium text-[var(--color-text)]">
-          {destination.name}
-        </p>
-        <p className="truncate text-[0.72rem] text-[#7a8796]">{destination.country}</p>
-      </div>
+      <button type="button" onClick={onSelect} aria-pressed={selected} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+        <div className="relative size-10 shrink-0 overflow-hidden rounded-[10px]">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `linear-gradient(135deg, ${destination.accentFrom} 0%, ${destination.accentTo} 100%)`,
+            }}
+          />
+          <img
+            src={destination.imageUrl}
+            alt={destination.name}
+            className="h-full w-full object-cover mix-blend-luminosity opacity-90"
+            loading="lazy"
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[0.82rem] font-medium text-[var(--color-text)]">
+            {destination.name}
+          </p>
+          <p className="truncate text-[0.72rem] text-[#7a8796]">{destination.country}</p>
+        </div>
+      </button>
       {selected && (
         <Button
           type="button"
           className="h-7 shrink-0 rounded-full px-3 text-[0.72rem]"
-          onClick={(e) => {
-            e.stopPropagation()
-            onAdd()
-          }}
+          onClick={onAdd}
           disabled={isAdding}
         >
           <Plus className="size-3" />
           {isAdding ? 'Adding…' : 'Add'}
         </Button>
       )}
-    </button>
+    </div>
   )
 }
 
@@ -537,7 +534,6 @@ export default function TripsPage() {
           src="/images/trips/trips-hero.jpg"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
           loading="eager"
           className="absolute inset-0 h-full w-full object-cover object-center opacity-50 mix-blend-luminosity"
         />

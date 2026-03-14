@@ -5,10 +5,10 @@ import contextlib
 import json
 import logging
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import httpx
 from redis.asyncio import Redis
@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import Activity, AssistantMessage, Job, Place, Trip, TripDay
+from app.db.models import Activity, AssistantMessage, Job, Place
 from app.db.repositories import (
     ActivityRepository,
     AssistantRepository,

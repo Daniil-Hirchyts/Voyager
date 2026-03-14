@@ -59,6 +59,20 @@ export function writeTripCoverPhotoPreference(
   }))
 }
 
+export function removeTripCoverPhotoPreference(tripId: string) {
+  if (!isBrowser()) {
+    return
+  }
+
+  const key = getTripCoverPhotoKey(tripId)
+  window.localStorage.removeItem(key)
+  window.dispatchEvent(new StorageEvent('storage', {
+    key,
+    newValue: null,
+    storageArea: window.localStorage,
+  }))
+}
+
 export function mergeTripCoverPhotoPreference(
   tripId: string,
   patch: TripCoverPhotoPreference,
