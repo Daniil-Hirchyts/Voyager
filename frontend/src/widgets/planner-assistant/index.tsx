@@ -1415,6 +1415,7 @@ export function PlannerAssistantPanel({
         (event: JobProgressEvent) => {
           appendAssistantJobProgressEvent(queryClient, tripId, jobId, event)
           if (event.type === 'done') {
+            ignoredJobResumeIdsRef.current.add(jobId)
             controller.abort()
             void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) })
             void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
