@@ -682,7 +682,7 @@ export default function TripCreatePage() {
 
               {/* ══ Step 2 — always in DOM ══ */}
               <div className={step !== 2 ? 'sr-only absolute pointer-events-none' : 'flex flex-col gap-4'}>
-                {/* Hidden inputs for test accessibility */}
+                {/* Hidden inputs keep date values in the form payload */}
                 <input type="text" className="sr-only" {...register('start_date')} aria-label="Select start date"
                   onChange={(e) => { register('start_date').onChange(e); setValue('start_date', e.target.value, { shouldDirty: true, shouldValidate: true }) }} />
                 <input type="text" className="sr-only" {...register('end_date')} aria-label="Select end date"

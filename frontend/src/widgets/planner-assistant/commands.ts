@@ -77,7 +77,13 @@ export function parsePlannerAssistantCommand(
     }
   }
 
-  const [, rawName] = match
+  const rawName = match[1]
+  if (!rawName) {
+    return {
+      type: 'invalid',
+      message: 'Unrecognized assistant command.',
+    }
+  }
   const definition = getPlannerAssistantCommandDefinition(rawName)
   if (!definition) {
     return {

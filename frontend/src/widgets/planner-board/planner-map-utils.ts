@@ -110,7 +110,9 @@ export function buildPlannerMapSections(
   })
 
   days.forEach((day, index) => {
-    const color = PLANNER_MAP_DAY_COLORS[index % PLANNER_MAP_DAY_COLORS.length]
+    const color =
+      PLANNER_MAP_DAY_COLORS[index % PLANNER_MAP_DAY_COLORS.length] ??
+      PLANNER_MAP_DAY_COLORS[0]
     const activities = [...day.activities].sort((left, right) => left.order_index - right.order_index)
     let markerNumber = 1
     sections.push({
@@ -153,6 +155,9 @@ export function buildPlannerMapLegPayload(
   const legs = sections.flatMap((section) =>
     section.activities.slice(1).flatMap((activity, index) => {
       const previousActivity = section.activities[index]
+      if (!previousActivity) {
+        return []
+      }
       const origin = activityCoordinates(previousActivity)
       const destination = activityCoordinates(activity)
       if (!origin || !destination) {
@@ -240,6 +245,9 @@ function routeDistance(
 ) {
   return orderedStops.slice(1).reduce((total, stop, index) => {
     const previous = orderedStops[index]
+    if (!previous) {
+      return total
+    }
     const estimate = estimateMap.get(routeEstimateKey(previous.activity.id, stop.activity.id))
     if (estimate?.duration_min != null) {
       return total + estimate.duration_min
@@ -267,10 +275,17 @@ export function optimizePlannerDayStops(
   )
 
   const remaining = [...markerStops]
-  const ordered: PlannerMapStop[] = [remaining.shift()!]
+  const firstStop = remaining.shift()
+  if (!firstStop) {
+    return markerStops.map((stop) => stop.activity.id)
+  }
+  const ordered: PlannerMapStop[] = [firstStop]
 
   while (remaining.length > 0) {
     const current = ordered[ordered.length - 1]
+    if (!current) {
+      break
+    }
     let bestIndex = 0
     let bestCost = Number.POSITIVE_INFINITY
 
@@ -289,7 +304,11 @@ export function optimizePlannerDayStops(
       }
     })
 
-    ordered.push(remaining.splice(bestIndex, 1)[0])
+    const [nextStop] = remaining.splice(bestIndex, 1)
+    if (!nextStop) {
+      continue
+    }
+    ordered.push(nextStop)
   }
 
   let best = [...ordered]

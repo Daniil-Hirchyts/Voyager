@@ -124,22 +124,28 @@ export function PlannerPreviewMap({
               <PlannerMapMarker title={primaryPoint.title} />
             </VoyagerMarker>
           ) : null}
-          {normalizedRoute.map((point, index) => (
-            <VoyagerMarker
-              key={`${point.title}-${index}`}
-              position={routeLatLngs[index]}
-              title={point.title}
-              label={
-                index === 0
-                  ? "Origin"
-                  : index === normalizedRoute.length - 1
-                    ? "Destination"
-                    : undefined
-              }
-              selected
-              zIndex={3}
-            />
-          ))}
+          {normalizedRoute.map((point, index) => {
+            const position = routeLatLngs[index];
+            if (!position) {
+              return null;
+            }
+            return (
+              <VoyagerMarker
+                key={`${point.title}-${index}`}
+                position={position}
+                title={point.title}
+                label={
+                  index === 0
+                    ? "Origin"
+                    : index === normalizedRoute.length - 1
+                      ? "Destination"
+                      : undefined
+                }
+                selected
+                zIndex={3}
+              />
+            );
+          })}
         </GoogleMapCanvas>
       </div>
     </div>

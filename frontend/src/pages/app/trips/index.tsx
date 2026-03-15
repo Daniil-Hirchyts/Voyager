@@ -671,57 +671,63 @@ export default function TripsPage() {
                   />
                 </div>
               ) : (
-                <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
-                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
-                      {activeDestination.region}
-                    </span>
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
-                      {activeDestination.bestFor}
-                    </span>
-                  </div>
-                  <h3 className="text-[1.28rem] font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
-                    {activeDestination.name}
-                  </h3>
-                  <p className="mt-1.5 text-[0.82rem] leading-5 text-[#556171] md:mt-2 md:text-[1rem] md:leading-7">
-                    {activeDestination.teaser}
-                  </p>
-                  
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
-                    <div className="rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 md:rounded-[16px] md:p-4">
-                      <CalendarDays className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Dates</p>
-                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTripDates(activeDestination.startDate, activeDestination.endDate)}</p>
+                activeDestination ? (
+                  <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
+                    <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
+                      <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
+                        {activeDestination.region}
+                      </span>
+                      <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.15em] text-[#6f7d8d] md:px-3 md:py-1 md:text-[0.65rem]">
+                        {activeDestination.bestFor}
+                      </span>
                     </div>
-                    <div className="rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 md:rounded-[16px] md:p-4">
-                      <Compass className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Budget</p>
-                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatBudget(activeDestination.budgetAmount, activeDestination.budgetCurrency)}</p>
-                    </div>
-                    <div className="col-span-2 rounded-[12px] bg-[#f8fafc] border border-[#e8eef4] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
-                      <Route className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Travel</p>
-                      <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTravelModeLabel(activeDestination.routeTravelMode)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 md:mt-8">
-                    <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8b97a7] md:mb-3">Highlights</p>
-                    <ul className="flex flex-wrap gap-1.5 md:gap-2">
-                      {activeDestination.highlights.map((highlight) => (
-                        <li key={highlight} className="rounded-full border border-[#dce5ed] bg-white px-2.5 py-1 text-[0.72rem] text-[#4d5c6c] shadow-sm md:px-3 md:py-1.5 md:text-[0.78rem]">
-                          {highlight}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  
-                  <div className="mt-4 border-t border-[#e8eef4] pt-4 md:mt-8 md:pt-8">
-                    <p className="pb-2 text-[0.8rem] leading-5 text-[#556171] overflow-hidden [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:pb-10 md:text-[0.92rem] md:leading-7 md:[display:block] md:[-webkit-line-clamp:unset]">
-                      {activeDestination.summary}
+                    <h3 className="text-[1.28rem] font-semibold leading-[1.08] tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
+                      {activeDestination.name}
+                    </h3>
+                    <p className="mt-1.5 text-[0.82rem] leading-5 text-[#556171] md:mt-2 md:text-[1rem] md:leading-7">
+                      {activeDestination.teaser}
                     </p>
+
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
+                      <div className="rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 md:rounded-[16px] md:p-4">
+                        <CalendarDays className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Dates</p>
+                        <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTripDates(activeDestination.startDate, activeDestination.endDate)}</p>
+                      </div>
+                      <div className="rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 md:rounded-[16px] md:p-4">
+                        <Compass className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Budget</p>
+                        <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatBudget(activeDestination.budgetAmount, activeDestination.budgetCurrency)}</p>
+                      </div>
+                      <div className="col-span-2 rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
+                        <Route className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-[#8b97a7]">Travel</p>
+                        <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">{formatTravelModeLabel(activeDestination.routeTravelMode)}</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 md:mt-8">
+                      <p className="mb-2 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-[#8b97a7] md:mb-3">Highlights</p>
+                      <ul className="flex flex-wrap gap-1.5 md:gap-2">
+                        {activeDestination.highlights.map((highlight) => (
+                          <li key={highlight} className="rounded-full border border-[#dce5ed] bg-white px-2.5 py-1 text-[0.72rem] text-[#4d5c6c] shadow-sm md:px-3 md:py-1.5 md:text-[0.78rem]">
+                            {highlight}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-4 border-t border-[#e8eef4] pt-4 md:mt-8 md:pt-8">
+                      <p className="overflow-hidden pb-2 text-[0.8rem] leading-5 text-[#556171] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:pb-10 md:text-[0.92rem] md:leading-7 md:[display:block] md:[-webkit-line-clamp:unset]">
+                        {activeDestination.summary}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
+                    <p className="text-sm text-[#556171]">No destination details are available right now.</p>
+                  </div>
+                )
               )}
             </div>
 

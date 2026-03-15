@@ -106,7 +106,8 @@ export function SlidingNumber({
   decimalSeparator = '.',
 }: SlidingNumberProps) {
   const absValue = Math.abs(value)
-  const [integerPart, decimalPart] = absValue.toString().split('.')
+  const [rawIntegerPart, decimalPart] = absValue.toString().split('.')
+  const integerPart = rawIntegerPart ?? '0'
   const integerValue = Number.parseInt(integerPart, 10)
   const resolvedMinimumDigits = Math.max(
     minimumDigits ?? (padStart && integerValue < 10 ? 2 : integerPart.length),
@@ -114,18 +115,20 @@ export function SlidingNumber({
   )
   const paddedInteger = integerPart.padStart(resolvedMinimumDigits, '0')
   const integerDigits = paddedInteger.split('')
-  const integerPlaces = integerDigits.map((_, index) => 10 ** (integerDigits.length - index - 1))
 
   return (
     <span className={cn('inline-flex items-center tabular-nums', className)}>
       {value < 0 ? '-' : null}
-      {integerDigits.map((_, index) => (
-        <Digit
-          key={`integer-${integerPlaces[index]}`}
-          value={integerValue}
-          place={integerPlaces[index]}
-        />
-      ))}
+      {integerDigits.map((_, index) => {
+        const place = 10 ** (integerDigits.length - index - 1)
+        return (
+          <Digit
+            key={`integer-${place}`}
+            value={integerValue}
+            place={place}
+          />
+        )
+      })}
       {decimalPart ? (
         <>
           <span>{decimalSeparator}</span>

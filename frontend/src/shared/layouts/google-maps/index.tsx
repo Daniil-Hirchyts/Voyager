@@ -220,7 +220,9 @@ export function fitBoundsForPoints(
   const bounds = new google.maps.LatLngBounds()
   points.forEach((point) => bounds.extend(point))
   if (points.length === 1) {
-    map.panTo(points[0])
+    const firstPoint = points[0]
+    if (!firstPoint) return
+    map.panTo(firstPoint)
     map.setZoom(options?.singlePointZoom ?? 13)
     return
   }

@@ -1,11 +1,20 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+_API_DIR = Path(__file__).resolve().parents[1]
+_REPO_DIR = _API_DIR.parent
+_ENV_FILES = (_REPO_DIR / ".env", _API_DIR / ".env")
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=tuple(str(path) for path in _ENV_FILES),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "Voyager API"
     env: str = Field(default="dev", alias="VOYAGER_ENV")

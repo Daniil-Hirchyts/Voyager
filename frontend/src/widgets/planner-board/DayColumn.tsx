@@ -53,6 +53,9 @@ export function DayColumn({
     ? {
         legs: activities.slice(1).flatMap((activity, index) => {
           const previousActivity = activities[index]
+          if (!previousActivity) {
+            return []
+          }
           const originLat = previousActivity.place?.lat
           const originLon = previousActivity.place?.lon
           const destinationLat = activity.place?.lat

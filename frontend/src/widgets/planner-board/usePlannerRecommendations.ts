@@ -164,8 +164,9 @@ export function usePlannerRecommendations({
       return
     }
 
-    if (!days.some((day) => day.id === targetDayId)) {
-      setTargetDayId(days[0].id)
+    const firstDay = days[0]
+    if (!days.some((day) => day.id === targetDayId) && firstDay) {
+      setTargetDayId(firstDay.id)
     }
   }, [days, targetDayId])
 

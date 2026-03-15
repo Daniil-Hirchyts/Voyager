@@ -12,8 +12,8 @@ import {
   AssistantRuntimeProvider,
   MessagePrimitive,
   ThreadPrimitive,
+  useAuiState,
   useExternalStoreRuntime,
-  useMessage,
 } from '@assistant-ui/react'
 import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react'
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
@@ -543,13 +543,14 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
       const rowIndex = callId ? toolIndexByCallId.get(callId) : undefined
       if (rowIndex !== undefined) {
         const row = rows[rowIndex]
-        if (row.kind === 'tool') {
-          row.result =
-            event.result && typeof event.result === 'object'
-              ? (event.result as Record<string, unknown>)
-              : {}
-          row.isError = Boolean(event.is_error)
+        if (!row || row.kind !== 'tool') {
+          continue
         }
+        row.result =
+          event.result && typeof event.result === 'object'
+            ? (event.result as Record<string, unknown>)
+            : {}
+        row.isError = Boolean(event.is_error)
         continue
       }
 
@@ -1322,7 +1323,7 @@ function PlannerAssistantComposer({
 }
 
 function UserMessage() {
-  const state = useMessage()
+  const state = useAuiState((s) => s.message)
   const text = state.content
     .filter((part) => part.type === 'text')
     .map((part) => part.text)
@@ -1338,7 +1339,7 @@ function UserMessage() {
 }
 
 function AssistantMessageView() {
-  const state = useMessage()
+  const state = useAuiState((s) => s.message)
   const parts = state.content as AssistantMessagePart[]
   const messageId = state.id
 

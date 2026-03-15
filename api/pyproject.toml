@@ -21,23 +21,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-  "pytest>=8.3.0",
-  "pytest-asyncio>=0.24.0",
   "ruff>=0.8.0",
-]
-
-[tool.pytest.ini_options]
-minversion = "8.0"
-addopts = "-q"
-testpaths = ["app/tests"]
-markers = [
-  "phase1: phase 1 integration coverage",
-  "phase2: phase 2 integration coverage",
-  "phase3: phase 3 integration coverage",
-  "phase5: phase 5 integration coverage",
-  "phase6: phase 6 integration coverage",
-  "phase7: phase 7 integration coverage",
-  "integration: integration tests",
 ]
 
 [tool.ruff]

@@ -253,9 +253,13 @@ function getBucketInsertionIndex(
     return activities.length;
   }
   if (targetIndex >= bucketIndices.length) {
-    return bucketIndices[bucketIndices.length - 1] + 1;
+    const lastBucketIndex = bucketIndices[bucketIndices.length - 1];
+    if (lastBucketIndex == null) {
+      return activities.length;
+    }
+    return lastBucketIndex + 1;
   }
-  return bucketIndices[targetIndex];
+  return bucketIndices[targetIndex] ?? activities.length;
 }
 
 function findActivityLocation(
@@ -271,6 +275,9 @@ function findActivityLocation(
   );
   if (inboxIndex >= 0) {
     const activity = planner.inbox_activities[inboxIndex];
+    if (!activity) {
+      return null;
+    }
     const bucket = plannerActivityBucket(activity);
     return {
       bucket,
@@ -288,6 +295,9 @@ function findActivityLocation(
     );
     if (index >= 0) {
       const activity = day.activities[index];
+      if (!activity) {
+        continue;
+      }
       const bucket = plannerActivityBucket(activity);
       return {
         bucket,
@@ -632,7 +642,9 @@ export default function PlannerBoard({ tripId }: Props) {
         dayId: day.id,
         label: String(i + 1),
         date: day.date,
-        color: PLANNER_MAP_DAY_COLORS[i % PLANNER_MAP_DAY_COLORS.length],
+        color:
+          PLANNER_MAP_DAY_COLORS[i % PLANNER_MAP_DAY_COLORS.length] ??
+          PLANNER_MAP_DAY_COLORS[0],
         isInbox: false,
       })),
     ]

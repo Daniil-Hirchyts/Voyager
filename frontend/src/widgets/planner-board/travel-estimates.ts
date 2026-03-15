@@ -62,30 +62,39 @@ export function buildPlannerTravelLegs(
   activities: PlannerActivity[],
   travelMode: RouteTravelMode = 'WALK',
 ): PlannerTravelLeg[] {
-  return activities.slice(1).map((activity, index) => {
-    const previousActivity = activities[index]
+  const legs: PlannerTravelLeg[] = []
+  for (let index = 1; index < activities.length; index += 1) {
+    const activity = activities[index]
+    const previousActivity = activities[index - 1]
+    if (!activity || !previousActivity) {
+      continue
+    }
+
     const origin = getActivityCoordinates(previousActivity)
     const destination = getActivityCoordinates(activity)
 
     if (!origin || !destination) {
-      return {
+      legs.push({
         fromActivityId: previousActivity.id,
         toActivityId: activity.id,
         distanceKm: null,
         durationMin: null,
-      }
+      })
+      continue
     }
 
     const distanceKm = haversineKm(origin.lat, origin.lon, destination.lat, destination.lon)
     const speedKmPerHour = ESTIMATED_TRAVEL_SPEED_KM_PER_HOUR[travelMode]
 
-    return {
+    legs.push({
       fromActivityId: previousActivity.id,
       toActivityId: activity.id,
       distanceKm,
       durationMin: Math.max(1, Math.round((distanceKm / speedKmPerHour) * 60)),
-    }
-  })
+    })
+  }
+
+  return legs
 }
 
 export function summarizePlannerTravelLegs(legs: PlannerTravelLeg[]): PlannerTravelSummary {

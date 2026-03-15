@@ -1787,7 +1787,7 @@ function PlannerMapDayAccordion({
                         isSelected={selectedStop?.activity.id === activity.id}
                         onToggleVisited={() => onToggleVisited(activity.id, activity.visited_at)}
                       />
-                      {leg ? (
+                      {leg && nextActivity ? (
                         <TravelConnector
                           durationMin={leg.durationMin}
                           distanceKm={leg.distanceKm}
@@ -2084,10 +2084,13 @@ function DetailSheetContent({
     detail?.place.address_text ?? fallbackItem?.addressText ?? selectedStop?.activity.place?.address_text
   const relatedActivities = detail?.related_activities ?? []
   const hasSingleRelatedActivity = relatedActivities.length === 1
+  const singleRelatedActivity =
+    hasSingleRelatedActivity ? relatedActivities[0] ?? null : null
   const canToggleVisited = Boolean(selectedStop || hasSingleRelatedActivity)
   const visitedAt =
     selectedStop?.activity.visited_at ??
-    (hasSingleRelatedActivity ? relatedActivities[0].visited_at : null)
+    singleRelatedActivity?.visited_at ??
+    null
   const isAdded = Boolean(selectedStop) || relatedActivities.length > 0
   const detailMeta = [detail?.status_text, detail?.price_label].filter(
     (item): item is string => Boolean(item),
@@ -3717,18 +3720,19 @@ export function PlannerMapView({
   }
 
   const handleToggleVisited = async () => {
+    const relatedActivities = placeDetailQuery.data?.related_activities ?? []
+    const singleRelatedActivity =
+      relatedActivities.length === 1 ? relatedActivities[0] ?? null : null
     const targetActivityId =
       selectedStop?.activity.id ??
-      (placeDetailQuery.data?.related_activities.length === 1
-        ? placeDetailQuery.data.related_activities[0].activity_id
-        : null)
+      singleRelatedActivity?.activity_id ??
+      null
     if (!targetActivityId) return
 
     const currentVisitedAt =
       selectedStop?.activity.visited_at ??
-      (placeDetailQuery.data?.related_activities.length === 1
-        ? placeDetailQuery.data.related_activities[0].visited_at
-        : null)
+      singleRelatedActivity?.visited_at ??
+      null
 
     const newVisitedAt = currentVisitedAt ? null : new Date().toISOString()
 
@@ -4160,20 +4164,36 @@ export function PlannerMapView({
 
             {routeSections.map(({ section, routeStops }) => {
               const isPrimaryRoute = section.dayId === primaryRouteSection?.dayId
+              const originStop = routeStops[0]
+              const destinationStop = routeStops[routeStops.length - 1]
+              if (
+                !originStop ||
+                !destinationStop ||
+                originStop.lat == null ||
+                originStop.lon == null ||
+                destinationStop.lat == null ||
+                destinationStop.lon == null
+              ) {
+                return null
+              }
               return (
                 <GoogleDirectionsRoute
                   key={section.dayId}
                   origin={{
-                    lat: routeStops[0].lat!,
-                    lng: routeStops[0].lon!,
+                    lat: originStop.lat,
+                    lng: originStop.lon,
                   }}
                   destination={{
-                    lat: routeStops[routeStops.length - 1].lat!,
-                    lng: routeStops[routeStops.length - 1].lon!,
+                    lat: destinationStop.lat,
+                    lng: destinationStop.lon,
                   }}
                   waypoints={routeStops
                     .slice(1, -1)
-                    .map((stop) => ({ lat: stop.lat!, lng: stop.lon! }))}
+                    .flatMap((stop) =>
+                      stop.lat != null && stop.lon != null
+                        ? [{ lat: stop.lat, lng: stop.lon }]
+                        : [],
+                    )}
                   travelMode={travelMode}
                   computeAlternatives={false}
                   strokeColor={section.color}

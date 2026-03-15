@@ -6,7 +6,6 @@
 	],
 	"settings": {
 		"files.exclude": {
-			"api/.pytest_cache/**/*": true,
 			"api/.venv/**/*": true,
 			"api/.ruff_cache/**/*": true,
 			".ruff_cache/**/*": true,
