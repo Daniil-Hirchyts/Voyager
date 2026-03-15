@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import uuid
@@ -34,14 +33,6 @@ SLOT_DEFAULT_DURATION: dict[str, int] = {
 MIN_TOOL_TURNS = 10
 MAX_TOOL_TURNS_PER_DAY = 12
 MAX_FINAL_OUTPUT_REPAIRS = 2
-
-
-def _trip_focus_label(trip: Trip) -> str:
-    if isinstance(trip.trip_type, str):
-        normalized = trip.trip_type.strip().replace("_", " ")
-        if normalized:
-            return normalized
-    return "local highlights"
 
 
 @dataclass
@@ -248,45 +239,6 @@ def _validate_candidate_diversity(
                 if prior_day_id is not None:
                     raise ValueError("LLM payload reused the same activity title across multiple days")
                 seen_titles[title_key] = day_id
-
-
-def _deterministic_mock_candidates(
-    *,
-    trip: Trip,
-    days: list[TripDay],
-    model: str,
-    seed: int | None,
-) -> dict[uuid.UUID, list[dict[str, Any]]]:
-    destination = trip.destination_text.split(",")[0].strip() or "destination"
-    focus_label = _trip_focus_label(trip)
-    seed_base = seed if seed is not None else 0
-
-    rows: dict[uuid.UUID, list[dict[str, Any]]] = {}
-    for day in days:
-        day_rows: list[dict[str, Any]] = []
-        for slot in SLOT_ORDER:
-            key = f"{model}:{trip.id}:{day.id}:{slot}:{seed_base}:{focus_label}"
-            digest = hashlib.sha256(key.encode("utf-8")).hexdigest()[:8]
-            place_name = f"{slot.title()} venue in {destination}"
-            address_text = f"{slot.title()} Mock Address {digest}, {destination}"
-            day_rows.append(
-                {
-                    "title": f"{slot.title()} plan in {destination} ({digest})",
-                    "description": (
-                        f"OpenRouter mocked {slot} plan for day {day.day_index + 1} "
-                        f"focused on {focus_label}."
-                    ),
-                    "start_time": SLOT_START_TIMES[slot],
-                    "duration_min": SLOT_DEFAULT_DURATION[slot],
-                    "tags_json": [slot, focus_label],
-                    "place_query": f"{place_name} {destination}",
-                    "google_place_id": f"mock-google-place:{day.id}:{slot}:{digest}",
-                    "place_name": place_name,
-                    "address_text": address_text,
-                }
-            )
-        rows[day.id] = day_rows
-    return rows
 
 
 def _system_prompt() -> str:
@@ -715,7 +667,6 @@ async def generate_with_openrouter(
             ],
         )
 
-    llm_mock_mode = str(constraints.get("llm_mock_mode", "")).strip().lower()
     errors: list[dict[str, Any]] = []
     redis = _get_redis_client()
     for model in models:
@@ -741,22 +692,13 @@ async def generate_with_openrouter(
             continue
 
         try:
-            if llm_mock_mode == "provider_error":
-                raise RuntimeError("INJECTED_PROVIDER_FAILURE")
-            if llm_mock_mode == "malformed":
-                raise ValueError("INJECTED_PROVIDER_MALFORMED_RESPONSE")
-            if llm_mock_mode == "success":
-                candidates = _deterministic_mock_candidates(
-                    trip=trip, days=days, model=model, seed=seed
-                )
-            else:
-                candidates = await _call_openrouter(
-                    model=model,
-                    trip=trip,
-                    days=days,
-                    seed=seed,
-                    progress=progress,
-                )
+            candidates = await _call_openrouter(
+                model=model,
+                trip=trip,
+                days=days,
+                seed=seed,
+                progress=progress,
+            )
         except httpx.TimeoutException:
             errors.append(
                 _sanitize_error(

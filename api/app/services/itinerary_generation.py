@@ -159,18 +159,13 @@ async def _resolve_scope_days(
     return [day_map[day_id] for day_id in selected_ids]
 
 
-def _fail_mode(payload: dict[str, Any], attempts: int) -> None:
-    constraints = payload.get("constraints") or {}
+def _read_constraints(payload: dict[str, Any]) -> dict[str, Any]:
+    constraints = payload.get("constraints")
+    if constraints is None:
+        return {}
     if not isinstance(constraints, dict):
         raise NonRetryableJobError("VALIDATION_ERROR", "constraints must be an object")
-
-    mode = constraints.get("force_fail")
-    if mode == "retry_once" and attempts == 1:
-        raise RetryableJobError("ITINERARY_TRANSIENT_FAILURE", "Injected transient failure")
-    if mode == "always_retry":
-        raise RetryableJobError("ITINERARY_TRANSIENT_FAILURE", "Injected transient failure")
-    if mode == "always_fail":
-        raise NonRetryableJobError("ITINERARY_PERMANENT_FAILURE", "Injected permanent failure")
+    return constraints
 
 
 async def _fetch_day_activities(db: AsyncSession, day_id: uuid.UUID) -> list[Activity]:
@@ -294,40 +289,6 @@ async def _resolve_google_place(
         ),
     )
     place_cache[details.place_id] = place
-    return place
-
-
-async def _resolve_mock_llm_candidate_place(
-    db: AsyncSession,
-    *,
-    candidate: dict[str, Any],
-    place_cache: dict[str, Place],
-) -> Place | None:
-    google_place_id = str(candidate.get("google_place_id") or "").strip()
-    address_text = str(candidate.get("address_text") or "").strip()
-    if not google_place_id or not address_text:
-        return None
-
-    cached = place_cache.get(google_place_id)
-    if cached is not None:
-        return cached
-
-    place_name = str(candidate.get("place_name") or "").strip() or address_text
-    place = await PlaceRepository.get_or_create_external_place(
-        db,
-        source="google_places",
-        external_id=google_place_id,
-        name=place_name,
-        category=None,
-        address_text=address_text,
-        lat=None,
-        lon=None,
-        metadata={
-            "google_place_id": google_place_id,
-            "mock_google_grounding": True,
-        },
-    )
-    place_cache[google_place_id] = place
     return place
 
 
@@ -592,7 +553,6 @@ async def _resolve_llm_candidates_for_scope(
     provider_errors: list[dict[str, Any]] = []
     unresolved_activity_count = 0
     resolved_candidates: dict[uuid.UUID, list[dict[str, Any]]] = {}
-    llm_mock_mode = str(constraints.get("llm_mock_mode", "")).strip().lower()
 
     for day in days:
         day_candidates = candidates_by_day.get(day.id, [])
@@ -614,18 +574,11 @@ async def _resolve_llm_candidates_for_scope(
                 unresolved_activity_count += 1
                 continue
             try:
-                if llm_mock_mode == "success":
-                    place = await _resolve_mock_llm_candidate_place(
-                        db,
-                        candidate=candidate,
-                        place_cache=place_cache,
-                    )
-                else:
-                    place = await _resolve_llm_candidate_place(
-                        db,
-                        candidate=candidate,
-                        place_cache=place_cache,
-                    )
+                place = await _resolve_llm_candidate_place(
+                    db,
+                    candidate=candidate,
+                    place_cache=place_cache,
+                )
             except GoogleMapsError as exc:
                 provider_errors.append(
                     {
@@ -1046,11 +999,10 @@ async def execute_itinerary_job(
             {"latest_version": trip.version, "expected_version": int(expected_version)},
         )
 
-    _fail_mode(payload, job.attempts)
-
     seed_raw = payload.get("seed")
     seed = int(seed_raw) if seed_raw is not None else None
     mode = payload.get("mode")
+    constraints = _read_constraints(payload)
 
     if job.job_type == "itinerary.reset":
         scope_days = await _resolve_scope_days(db, trip, payload, require_non_empty=True)
@@ -1071,9 +1023,6 @@ async def execute_itinerary_job(
         unresolved_activity_count = 0
     else:
         scope_days = await _resolve_scope_days(db, trip, payload, require_non_empty=False)
-        constraints = (
-            payload.get("constraints") if isinstance(payload.get("constraints"), dict) else {}
-        )
         if progress:
             await progress.step(
                 "Planning itinerary",
