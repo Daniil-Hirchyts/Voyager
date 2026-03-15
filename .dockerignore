@@ -1,0 +1,15 @@
+.git
+.gitignore
+
+.env
+.env.*
+
+frontend/node_modules
+frontend/dist
+frontend/dist_keycloak
+frontend/.vite
+
+api/.venv
+api/__pycache__
+**/__pycache__
+**/.pytest_cache

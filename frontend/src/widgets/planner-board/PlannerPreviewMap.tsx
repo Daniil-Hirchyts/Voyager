@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { config } from "@/app/config";
 import {
-  GoogleMapCanvas,
+  VoyagerMap,
   GooglePolyline,
   MapFitBounds,
   MapPanTo,
@@ -84,7 +84,7 @@ export function PlannerPreviewMap({
   return (
     <div className="overflow-hidden border border-black/8 bg-white">
       <div style={{ height: heightPx }}>
-        <GoogleMapCanvas
+        <VoyagerMap
           key={mapSignature}
           reuseMaps={false}
           defaultCenter={defaultCenter ?? { lat: 48.8566, lng: 2.3522 }}
@@ -146,7 +146,7 @@ export function PlannerPreviewMap({
               />
             );
           })}
-        </GoogleMapCanvas>
+        </VoyagerMap>
       </div>
     </div>
   );

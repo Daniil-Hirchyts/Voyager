@@ -8,7 +8,7 @@ interface StartKeycloakSignInOptions {
   setIntendedPath?: (path: string | null) => void
 }
 
-export function resolveIntendedPath(intendedPath?: string | null) {
+function resolveIntendedPath(intendedPath?: string | null) {
   return intendedPath || DEFAULT_INTENDED_PATH
 }
 

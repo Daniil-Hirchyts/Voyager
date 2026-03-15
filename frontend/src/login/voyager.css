@@ -1,0 +1,419 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap");
+@import "tailwindcss";
+
+/* ── Page foundation ── */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body.voyager-login-body {
+  min-height: 100svh;
+  font-family: "Outfit", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: #1d2430;
+  background:
+    radial-gradient(circle at 16% 12%, rgba(255, 255, 255, 0.8), transparent 22%),
+    radial-gradient(circle at 84% 18%, rgba(114, 174, 230, 0.2), transparent 20%),
+    radial-gradient(circle at 68% 80%, rgba(182, 214, 242, 0.4), transparent 24%),
+    linear-gradient(175deg, #d9e8f5 0%, #e6f1fb 40%, #edf5fc 100%);
+}
+
+/* ── Layout column resets ── */
+.col-xs-12,
+.col-sm-12,
+.col-md-10,
+.col-md-12,
+.col-lg-12,
+.kcFormOptionsClass,
+.kcInputWrapperClass,
+.kcFeedbackAreaClass,
+.kcFormButtonsClass,
+.kcFormAreaClass {
+  float: none !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
+/* ── Form groups ──
+   With doUseDefaultCss=false, keycloakify emits the key name as the CSS class
+   (e.g. "kcFormGroupClass" instead of "form-group"), so we target both. */
+.form-group,
+.kcFormGroupClass {
+  margin-bottom: 1rem;
+}
+
+/* ── Labels ── */
+.control-label,
+.pf-c-form__label,
+.kcLabelClass {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #1d2430;
+}
+
+.required {
+  color: #c45f4f;
+}
+
+/* ── Text inputs ──
+   Targets both the PF class (doUseDefaultCss=true) and the kc key name (doUseDefaultCss=false). */
+.pf-c-form-control,
+.form-control,
+.kcInputClass {
+  display: block !important;
+  width: 100% !important;
+  height: 2.5rem !important;
+  padding: 0 0.75rem !important;
+  border: 1.5px solid rgba(91, 123, 159, 0.22) !important;
+  border-radius: 10px !important;
+  font-family: "Outfit", system-ui, sans-serif !important;
+  font-size: 0.9rem !important;
+  color: #1d2430 !important;
+  background: #fff !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.pf-c-form-control::placeholder,
+.form-control::placeholder,
+.kcInputClass::placeholder {
+  color: #9aa4b0 !important;
+}
+
+.pf-c-form-control:focus,
+.form-control:focus,
+.kcInputClass:focus {
+  border-color: #1a1615 !important;
+  box-shadow: 0 0 0 3px rgba(114, 174, 230, 0.2) !important;
+}
+
+.pf-c-form-control[aria-invalid="true"],
+.form-control[aria-invalid="true"],
+.kcInputClass[aria-invalid="true"] {
+  border-color: rgba(196, 95, 79, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(196, 95, 79, 0.1) !important;
+}
+
+/* ── Password input group ── */
+.pf-c-input-group,
+.kcInputGroup {
+  display: grid !important;
+  grid-template-columns: 1fr auto !important;
+  border: 1.5px solid rgba(91, 123, 159, 0.22) !important;
+  border-radius: 10px !important;
+  background: #fff !important;
+  overflow: hidden !important;
+}
+
+.pf-c-input-group:focus-within,
+.kcInputGroup:focus-within {
+  border-color: #1a1615 !important;
+  box-shadow: 0 0 0 3px rgba(114, 174, 230, 0.2) !important;
+}
+
+.pf-c-input-group .pf-c-form-control,
+.pf-c-input-group .kcInputClass,
+.kcInputGroup .pf-c-form-control,
+.kcInputGroup .kcInputClass {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+}
+
+.pf-c-input-group .pf-c-button,
+.pf-c-input-group .kcFormPasswordVisibilityButtonClass,
+.kcInputGroup .pf-c-button,
+.kcInputGroup .kcFormPasswordVisibilityButtonClass {
+  display: inline-flex !important;
+  width: 2.5rem !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  border-left: 1px solid rgba(91, 123, 159, 0.14) !important;
+  background: transparent !important;
+  color: #7b8796 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  font-size: 0.88rem !important;
+  transition: color 0.15s !important;
+}
+
+.pf-c-input-group .pf-c-button:hover,
+.pf-c-input-group .kcFormPasswordVisibilityButtonClass:hover,
+.kcInputGroup .pf-c-button:hover,
+.kcInputGroup .kcFormPasswordVisibilityButtonClass:hover {
+  color: #1a1615 !important;
+}
+
+/* ── Error / helper text ── */
+.kc-feedback-text,
+.pf-m-error.required,
+.pf-c-form__helper-text,
+.kcInputErrorMessageClass,
+#input-error,
+[id^="input-error-"] {
+  display: block !important;
+  margin-top: 0.25rem !important;
+  font-size: 0.76rem !important;
+  color: #c45f4f !important;
+}
+
+/* ── Form options row (remember me + forgot password) ── */
+#kc-form-options {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 0.875rem !important;
+}
+
+#kc-form-options .checkbox label,
+#kc-form-options label {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+  font-size: 0.8rem !important;
+  color: #526072 !important;
+  cursor: pointer !important;
+}
+
+input[type="checkbox"] {
+  accent-color: #1a1615 !important;
+  cursor: pointer !important;
+}
+
+/* ── Submit button (DefaultPage-rendered) ── */
+#kc-form-buttons {
+  margin-top: 0.25rem !important;
+}
+
+#kc-form-buttons input[type="submit"],
+#kc-form-buttons button[type="submit"] {
+  display: flex !important;
+  width: 100% !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 2.5rem !important;
+  padding: 0 1.25rem !important;
+  border: none !important;
+  border-radius: 10px !important;
+  background: #1a1615 !important;
+  color: #fff !important;
+  font-family: "Outfit", system-ui, sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background 0.15s, transform 0.15s !important;
+  box-shadow: 0 4px 14px -4px rgba(26, 22, 21, 0.5) !important;
+  box-sizing: border-box !important;
+}
+
+#kc-form-buttons input[type="submit"]:hover,
+#kc-form-buttons button[type="submit"]:hover {
+  background: #2a2422 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ── Links ── */
+a {
+  color: #1a1615;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+a:hover {
+  color: #2a2422;
+}
+
+#kc-form-options a,
+#kc-registration a {
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+/* ── Alert messages ── */
+.pf-c-alert,
+.alert {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.5rem !important;
+  padding: 0.625rem 0.75rem !important;
+  border-radius: 10px !important;
+  font-size: 0.84rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.pf-c-alert__title {
+  margin: 0 !important;
+  font-weight: 500 !important;
+  line-height: 1.4 !important;
+}
+
+.alert-error,
+.pf-m-danger {
+  border: 1px solid rgba(196, 95, 79, 0.28) !important;
+  background: rgba(255, 243, 241, 0.95) !important;
+  color: #9d4336 !important;
+}
+
+.alert-warning,
+.pf-m-warning {
+  border: 1px solid rgba(185, 118, 35, 0.24) !important;
+  background: rgba(255, 250, 240, 0.95) !important;
+  color: #955f1d !important;
+}
+
+.alert-success,
+.pf-m-success {
+  border: 1px solid rgba(45, 124, 99, 0.2) !important;
+  background: rgba(240, 252, 247, 0.95) !important;
+  color: #2d7c63 !important;
+}
+
+.alert-info,
+.pf-m-info {
+  border: 1px solid rgba(79, 143, 200, 0.2) !important;
+  background: rgba(240, 247, 255, 0.95) !important;
+  color: #4f8fc8 !important;
+}
+
+/* ── Social providers ── */
+#kc-social-providers {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 1px solid rgba(97, 126, 158, 0.1);
+}
+
+#kc-social-providers h2 {
+  margin: 0 0 0.625rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #7b8796;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Both PF class and kc key name */
+.kc-social-links,
+.kcFormSocialAccountListClass {
+  display: grid !important;
+  gap: 0.5rem !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+.kc-social-item,
+.kcFormSocialAccountListButtonClass {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  height: 2.5rem !important;
+  padding: 0 0.875rem !important;
+  border: 1.5px solid rgba(91, 123, 159, 0.18) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #1d2430 !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  text-decoration: none !important;
+  transition: border-color 0.15s !important;
+}
+
+.kc-social-item:hover,
+.kcFormSocialAccountListButtonClass:hover {
+  border-color: rgba(91, 123, 159, 0.34) !important;
+  color: #1d2430 !important;
+}
+
+.kc-social-provider-name,
+.kcFormSocialAccountNameClass {
+  flex: 1 !important;
+  text-align: center !important;
+}
+
+/* ── Try another way ── */
+#try-another-way {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 2.5rem;
+  border: 1.5px dashed rgba(91, 123, 159, 0.24);
+  border-radius: 10px;
+  background: rgba(114, 174, 230, 0.08);
+  color: #1a1615;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* ── Register / info footers ── */
+#kc-registration,
+#kc-info-wrapper {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #526072;
+  margin-top: 0.75rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  body.voyager-login-body {
+    padding: 0;
+  }
+}
+
+hr {
+  display: none !important;
+}
+
+/* ── Password visibility icons ── */
+.kcFormPasswordVisibilityIconShow,
+.kcFormPasswordVisibilityIconHide {
+  display: inline-block !important;
+  width: 1.1rem !important;
+  height: 1.1rem !important;
+  background-size: contain !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  transition: opacity 0.15s !important;
+}
+
+.kcFormPasswordVisibilityIconShow {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b8796' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z'/%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3C/svg%3E") !important;
+}
+
+.kcFormPasswordVisibilityIconHide {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b8796' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/%3E%3Cline x1='1' y1='1' x2='23' y2='23'/%3E%3C/svg%3E") !important;
+}
+
+/* ── Entrance animation ── */
+@keyframes authCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.auth-card {
+  animation: authCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.auth-step {
+  animation: authFadeIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

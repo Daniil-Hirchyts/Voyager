@@ -137,7 +137,7 @@ import { useSideRailStore } from '@/shared/stores/side-rail.store'
 import {
   ControlPosition,
   GoogleDirectionsRoute,
-  GoogleMapCanvas,
+  VoyagerMap,
   GooglePolyline,
   type LatLngPoint,
   MapFitBounds,
@@ -4143,7 +4143,7 @@ export function PlannerMapView({
             </p>
           </div>
         ) : (
-          <GoogleMapCanvas
+          <VoyagerMap
             defaultCenter={{ lat: viewport.latitude, lng: viewport.longitude }}
             defaultZoom={viewport.zoom}
             style={{ width: '100%', height: '100%' }}
@@ -4553,7 +4553,7 @@ export function PlannerMapView({
                 </div>
               </VoyagerMapControl>
             ) : null}
-          </GoogleMapCanvas>
+          </VoyagerMap>
         )}
 
         {selectedSection && selectedSection.dayId !== 'inbox' ? (

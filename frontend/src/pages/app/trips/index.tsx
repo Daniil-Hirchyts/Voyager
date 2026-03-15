@@ -27,7 +27,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { isApiError } from '@/shared/api/client'
 import { cn } from '@/shared/lib/cn'
 import type { Trip } from '@/shared/api/types'
-import { GoogleMapCanvas, MapFitBounds, VoyagerMarker } from '@/shared/layouts/google-maps'
+import { VoyagerMap, MapFitBounds, VoyagerMarker } from '@/shared/layouts/google-maps'
 import { WorkspacePage } from '@/shared/layouts/workspace-shell'
 import { useTripListCoverPhotos, type TripCardCover } from './useTripListCoverPhotos'
 import {
@@ -303,7 +303,7 @@ function WorldExplorerMap({
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-[#dceaf2]">
-      <GoogleMapCanvas
+      <VoyagerMap
         defaultCenter={{ lat: 24, lng: 10 }}
         defaultZoom={2}
         minZoom={2}
@@ -361,7 +361,7 @@ function WorldExplorerMap({
             </VoyagerMarker>
           )
         })}
-      </GoogleMapCanvas>
+      </VoyagerMap>
 
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.02)_24%,rgba(14,29,44,0.08)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-[linear-gradient(180deg,rgba(220,234,242,0.0),rgba(220,234,242,0.82))]" />

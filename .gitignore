@@ -38,6 +38,7 @@ scripts/
 
 frontend/node_modules/
 frontend/dist/
+frontend/dist_keycloak/
 
 # Vite cache
 .vite/

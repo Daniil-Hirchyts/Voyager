@@ -51,7 +51,7 @@ import {
   ControlPosition,
   GoogleDirectionsRoute,
   GoogleMap3DPreview,
-  GoogleMapCanvas,
+  VoyagerMap,
   GooglePlacesExperimentPanel,
   MapBoundsSync,
   MapPanTo,
@@ -1190,7 +1190,7 @@ export default function MapWorkspace({ tripId }: Props) {
               </p>
             </div>
           ) : (
-            <GoogleMapCanvas
+            <VoyagerMap
               defaultCenter={{ lat: viewport.latitude, lng: viewport.longitude }}
               defaultZoom={viewport.zoom}
               style={{ width: '100%', height: '100%' }}
@@ -1305,7 +1305,7 @@ export default function MapWorkspace({ tripId }: Props) {
                   </div>
                 </VoyagerMapControl>
               ) : null}
-            </GoogleMapCanvas>
+            </VoyagerMap>
           )}
         </section>
 

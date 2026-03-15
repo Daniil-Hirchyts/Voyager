@@ -3,11 +3,9 @@ import {
   APIProvider,
   AdvancedMarker,
   ControlPosition,
-  InfoWindow,
   Map,
   MapControl,
   Marker,
-  StaticMap,
   useMap,
   useMapsLibrary,
 } from '@vis.gl/react-google-maps'
@@ -131,7 +129,7 @@ function collectGeometryPoints(geometry: Geometry, bucket: LatLngPoint[]) {
   }
 }
 
-function collectFeatureCollectionPoints(featureCollection: TripMapFeatureCollection | null | undefined) {
+export function featureCollectionToPoints(featureCollection: TripMapFeatureCollection | null | undefined) {
   const bucket: LatLngPoint[] = []
   for (const feature of featureCollection?.features ?? []) {
     if (feature.geometry) {
@@ -160,7 +158,7 @@ function polygonToPaths(coordinates: Position[][]) {
   return coordinates.map((ring) => lineStringToPath(ring))
 }
 
-function defaultFeatureCollection(): TripMapFeatureCollection {
+export function emptyFeatureCollection(): TripMapFeatureCollection {
   return {
     type: 'FeatureCollection',
     features: [],
@@ -240,7 +238,7 @@ export function summarizeFeatureCollection(
   featureCollection: TripMapFeatureCollection | null | undefined,
   geometryLib?: google.maps.GeometryLibrary | null,
 ): MapGeometrySummary {
-  const points = collectFeatureCollectionPoints(featureCollection)
+  const points = featureCollectionToPoints(featureCollection)
   let areaSquareMeters = 0
   let distanceMeters = 0
 
@@ -364,8 +362,6 @@ export function VoyagerMap({ className, ...props }: React.ComponentProps<typeof 
   )
 }
 
-export const GoogleMapCanvas = VoyagerMap
-export const VoyagerStaticMap = StaticMap
 export const VoyagerMapControl = MapControl
 
 export function buildCircleMarkerIcon(fillColor: string, scale = 8): google.maps.Symbol {
@@ -453,10 +449,6 @@ export function VoyagerMarker({
       }
     />
   )
-}
-
-export function VoyagerInfoWindow(props: React.ComponentProps<typeof InfoWindow>) {
-  return <InfoWindow {...props} />
 }
 
 export function GooglePolyline({
@@ -925,7 +917,7 @@ export function GoogleDatasetLayer({
   return null
 }
 
-function snapshotToFeatureCollection(snapshot: GeoJSONStoreFeatures[]): TripMapFeatureCollection {
+export function featureCollectionFromSnapshot(snapshot: GeoJSONStoreFeatures[]): TripMapFeatureCollection {
   return {
     type: 'FeatureCollection',
     features: snapshot as unknown as TripMapFeatureCollection['features'],
@@ -983,7 +975,7 @@ export function TerraDrawEditor({
     draw.setMode(modeMap[mode])
 
     const emit = () => {
-      const featureCollection = snapshotToFeatureCollection(draw.getSnapshot())
+      const featureCollection = featureCollectionFromSnapshot(draw.getSnapshot())
       latestValueRef.current = JSON.stringify(featureCollection)
       onChange?.(featureCollection, summarizeFeatureCollection(featureCollection, geometryLib))
     }
@@ -1268,18 +1260,6 @@ export function TripMapLayerRenderer({
       })}
     </>
   )
-}
-
-export function featureCollectionFromSnapshot(snapshot: GeoJSONStoreFeatures[]) {
-  return snapshotToFeatureCollection(snapshot)
-}
-
-export function emptyFeatureCollection() {
-  return defaultFeatureCollection()
-}
-
-export function featureCollectionToPoints(featureCollection: TripMapFeatureCollection | null | undefined) {
-  return collectFeatureCollectionPoints(featureCollection)
 }
 
 export { ControlPosition }
