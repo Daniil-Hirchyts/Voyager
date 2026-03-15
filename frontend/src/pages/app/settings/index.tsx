@@ -26,6 +26,7 @@ import {
   useUploadProfileAvatar,
 } from '@/entities/user/queries'
 import { WorkspacePage } from '@/shared/layouts/workspace-shell'
+import { Skeleton } from '@/components/ui/skeleton'
 
 const sectionClassName =
   'rounded-xl border border-black/5 bg-white p-6 shadow-sm'
@@ -155,6 +156,68 @@ export default function SettingsPage() {
     account.lastName.trim() !== (profile?.last_name ?? '')
   const avatarBusy = uploadAvatar.isPending || deleteAvatar.isPending
   const accountBusy = patchAccount.isPending || avatarBusy
+
+  if (isLoading) {
+    return (
+      <WorkspacePage className="gap-4">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-4 w-16 rounded-full" />
+            <Skeleton className="h-6 w-32" />
+          </div>
+          <Skeleton className="h-10 w-28 rounded-lg" />
+        </div>
+        <div className="grid gap-4 xl:grid-cols-2">
+          <div className={sectionClassName}>
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-10 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3.5 w-52" />
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-10 rounded-[14px]" />
+              <Skeleton className="h-10 rounded-[14px]" />
+              <Skeleton className="h-10 rounded-[14px] sm:col-span-2" />
+            </div>
+          </div>
+          <div className={sectionClassName}>
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-10 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-3.5 w-52" />
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4">
+              <Skeleton className="h-14 rounded-[16px]" />
+              <Skeleton className="h-14 rounded-[16px]" />
+            </div>
+          </div>
+          <div className={`${sectionClassName} xl:col-span-2`}>
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-10 rounded-full" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-3.5 w-36" />
+              </div>
+            </div>
+            <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+              <Skeleton className="h-48 rounded-lg" />
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Skeleton className="h-16 rounded-[14px]" />
+                  <Skeleton className="h-16 rounded-[14px]" />
+                </div>
+                <Skeleton className="h-20 rounded-lg" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </WorkspacePage>
+    )
+  }
 
   return (
     <WorkspacePage className="gap-4">

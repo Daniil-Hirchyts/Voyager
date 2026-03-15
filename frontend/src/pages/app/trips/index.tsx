@@ -26,6 +26,7 @@ import { ProgressiveBlur } from '@/components/ui/progressive-blur'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { isApiError } from '@/shared/api/client'
 import { cn } from '@/shared/lib/cn'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { Trip } from '@/shared/api/types'
 import { VoyagerMap, MapFitBounds, VoyagerMarker } from '@/shared/layouts/google-maps'
 import { WorkspacePage } from '@/shared/layouts/workspace-shell'
@@ -566,7 +567,7 @@ export default function TripsPage() {
 
       {(isLoading || error || trips.length > 0) && (
       <section id="board" className="mt-8 scroll-mt-6 md:mt-10 px-0">
-        <Carousel className="animate-in fade-in slide-in-from-bottom-4 duration-300 group/board">
+        <Carousel className="group/board">
           <div className="px-4">
             <SectionIntro
               eyebrow="Recently planned and upcoming"
@@ -587,6 +588,22 @@ export default function TripsPage() {
             <Alert variant="destructive" className="mt-6">
               <AlertDescription>Failed to load trips. Please refresh the page.</AlertDescription>
             </Alert>
+          )}
+
+          {isLoading && (
+            <CarouselContent className="mt-4 ml-0 py-2 sm:mt-6 sm:-ml-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CarouselItem key={i} className="pl-3 basis-[84%] sm:pl-4 sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                  <div className="overflow-hidden rounded-[20px] border border-white/70 bg-white">
+                    <Skeleton className="aspect-[16/9] w-full rounded-none" />
+                    <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
+                      <Skeleton className="h-3.5 w-28 rounded-full" />
+                      <Skeleton className="h-5 w-12 rounded-full" />
+                    </div>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
           )}
 
           {!isLoading && trips.length > 0 && (

@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider, Navigate, useLocation, useOutlet, useParams } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from 'react-router-dom'
 import { RequireAuth } from '@/app/auth/RequireAuth'
 import { ErrorBoundary } from 'react-error-boundary'
 import { lazy, Suspense } from 'react'
@@ -6,7 +6,6 @@ import { config } from '@/app/config'
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { RouteTransition } from '@/shared/layouts/route-transition'
 import { VoyagerLoader } from '@/widgets/app-shell/logo'
 
 // Public pages
@@ -35,7 +34,7 @@ function PageLoader() {
   if (!showLoading) return null
 
   return (
-    <div className="voyager-page flex min-h-[100dvh] items-center justify-center animate-in fade-in duration-300">
+    <div className="voyager-page flex min-h-[100dvh] items-center justify-center">
       <div className="voyager-panel flex items-center gap-3 px-5 py-4 text-sm font-medium text-[var(--color-text-muted)]">
         <VoyagerLoader className="size-5 text-[var(--color-primary)]" />
         Loading workspace
@@ -95,20 +94,9 @@ export function LegacyActivitiesRedirect() {
   return <Navigate to={tripId ? `/app/trips/${tripId}/plan` : '/app/trips'} replace />
 }
 
-function PublicRouteTransitionLayout() {
-  const location = useLocation()
-  const outlet = useOutlet()
-
-  return (
-    <RouteTransition pageKey={location.pathname} variant="public">
-      {outlet}
-    </RouteTransition>
-  )
-}
-
 const router = createBrowserRouter([
   {
-    element: <PublicRouteTransitionLayout />,
+    element: <Outlet />,
     children: [
       {
         index: true,

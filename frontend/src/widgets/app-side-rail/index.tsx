@@ -32,7 +32,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { GlowEffect } from '@/components/ui/glow-effect'
 import { cn } from '@/shared/lib/cn'
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store'
-import { RouteTransition } from '@/shared/layouts/route-transition'
 
 function getInitials(name: string) {
   return (
@@ -449,9 +448,9 @@ export function AppLayout() {
           )}
           data-testid="app-layout-content"
         >
-          <RouteTransition pageKey={location.pathname} variant="app" className="flex h-full min-h-0 flex-col">
+          <div className="flex h-full min-h-0 flex-col">
             <Outlet />
-          </RouteTransition>
+          </div>
         </main>
       </div>
     </TooltipProvider>
