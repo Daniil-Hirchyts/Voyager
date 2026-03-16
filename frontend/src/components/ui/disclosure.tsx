@@ -1,13 +1,6 @@
 'use client';
 import * as React from 'react';
-import {
-  AnimatePresence,
-  motion,
-  MotionConfig,
-  Transition,
-  Variant,
-  Variants,
-} from 'motion/react';
+import { AnimatePresence, motion, MotionConfig, Transition, Variant, Variants } from 'motion/react';
 import { createContext, useContext, useState, useId, useEffect } from 'react';
 import { cn } from '@/shared/lib/cn';
 
@@ -17,9 +10,7 @@ export type DisclosureContextType = {
   variants?: { expanded: Variant; collapsed: Variant };
 };
 
-const DisclosureContext = createContext<DisclosureContextType | undefined>(
-  undefined
-);
+const DisclosureContext = createContext<DisclosureContextType | undefined>(undefined);
 
 export type DisclosureProviderProps = {
   children: React.ReactNode;
@@ -89,11 +80,7 @@ export function Disclosure({
   return (
     <MotionConfig transition={transition}>
       <div className={className}>
-        <DisclosureProvider
-          open={openProp}
-          onOpenChange={onOpenChange}
-          variants={variants}
-        >
+        <DisclosureProvider open={openProp} onOpenChange={onOpenChange} variants={variants}>
           {React.Children.toArray(children)[0]}
           {React.Children.toArray(children)[1]}
         </DisclosureProvider>
@@ -126,10 +113,7 @@ export function DisclosureTrigger({
                   toggle();
                 }
               },
-              className: cn(
-                className,
-                (child as React.ReactElement).props.className
-              ),
+              className: cn(className, (child as React.ReactElement).props.className),
               ...(child as React.ReactElement).props,
             })
           : child;
@@ -170,9 +154,9 @@ export function DisclosureContent({
         {open && (
           <motion.div
             id={uniqueId}
-            initial='collapsed'
-            animate='expanded'
-            exit='collapsed'
+            initial="collapsed"
+            animate="expanded"
+            exit="collapsed"
             variants={combinedVariants}
           >
             {children}

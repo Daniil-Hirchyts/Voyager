@@ -1,6 +1,6 @@
-import { useMemo } from "react";
-import { format } from "date-fns";
-import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { useMemo } from 'react';
+import { format } from 'date-fns';
+import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 
 interface TimePickerProps {
   value?: string | null;
@@ -13,7 +13,7 @@ interface TimePickerProps {
 }
 
 function formatMinutes(value: number) {
-  return String(value).padStart(2, "0");
+  return String(value).padStart(2, '0');
 }
 
 function buildTimeOptions(intervalMinutes: number) {
@@ -26,11 +26,8 @@ function buildTimeOptions(intervalMinutes: number) {
       options.push({
         value,
         label: value,
-        description: format(date, "h:mm a"),
-        keywords: [
-          format(date, "ha").toLowerCase(),
-          format(date, "h:mm a").toLowerCase(),
-        ],
+        description: format(date, 'h:mm a'),
+        keywords: [format(date, 'ha').toLowerCase(), format(date, 'h:mm a').toLowerCase()],
       });
     }
   }
@@ -42,20 +39,17 @@ export function TimePicker({
   value,
   onChange,
   id,
-  placeholder = "Select time",
+  placeholder = 'Select time',
   invalid,
   intervalMinutes = 15,
   triggerClassName,
 }: TimePickerProps) {
-  const options = useMemo(
-    () => buildTimeOptions(intervalMinutes),
-    [intervalMinutes],
-  );
+  const options = useMemo(() => buildTimeOptions(intervalMinutes), [intervalMinutes]);
 
   return (
     <Combobox
       id={id}
-      value={value ?? ""}
+      value={value ?? ''}
       onValueChange={onChange}
       options={options}
       placeholder={placeholder}
@@ -64,7 +58,7 @@ export function TimePicker({
       invalid={invalid}
       triggerClassName={triggerClassName}
       clearLabel="Clear time"
-      onClear={() => onChange("")}
+      onClear={() => onChange('')}
     />
   );
 }

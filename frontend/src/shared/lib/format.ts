@@ -2,15 +2,15 @@ export function formatMoney(
   amount: string | number | null | undefined,
   currency: string | null | undefined,
 ) {
-  if (amount == null || amount === '') return null
+  if (amount == null || amount === '') return null;
 
-  const numericAmount = typeof amount === 'number' ? amount : Number(amount)
+  const numericAmount = typeof amount === 'number' ? amount : Number(amount);
   if (Number.isNaN(numericAmount)) {
-    return currency ? `${amount} ${currency}` : String(amount)
+    return currency ? `${amount} ${currency}` : String(amount);
   }
 
   if (!currency) {
-    return numericAmount.toLocaleString()
+    return numericAmount.toLocaleString();
   }
 
   try {
@@ -18,8 +18,8 @@ export function formatMoney(
       style: 'currency',
       currency,
       maximumFractionDigits: 0,
-    }).format(numericAmount)
+    }).format(numericAmount);
   } catch {
-    return `${numericAmount.toLocaleString()} ${currency}`
+    return `${numericAmount.toLocaleString()} ${currency}`;
   }
 }

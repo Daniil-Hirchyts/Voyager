@@ -75,7 +75,9 @@ async def patch_profile(
             raise ValidationApiError("preferences must not be null")
         preferences = payload.preferences
 
-    name_requested = "first_name" in payload.model_fields_set or "last_name" in payload.model_fields_set
+    name_requested = (
+        "first_name" in payload.model_fields_set or "last_name" in payload.model_fields_set
+    )
     next_first_name = user.first_name if first_name is _UNSET else first_name
     next_last_name = user.last_name if last_name is _UNSET else last_name
     if name_requested and (not next_first_name or not next_last_name):

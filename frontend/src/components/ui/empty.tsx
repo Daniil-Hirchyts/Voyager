@@ -1,5 +1,5 @@
-import { cva, type VariantProps } from 'class-variance-authority'
-import { cn } from '@/shared/lib/cn'
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/shared/lib/cn';
 
 function Empty({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -11,7 +11,7 @@ function Empty({ className, ...props }: React.ComponentProps<'div'>) {
       )}
       {...props}
     />
-  )
+  );
 }
 
 function EmptyHeader({ className, ...props }: React.ComponentProps<'div'>) {
@@ -21,7 +21,7 @@ function EmptyHeader({ className, ...props }: React.ComponentProps<'div'>) {
       className={cn('flex max-w-sm flex-col items-center gap-1.5 text-center', className)}
       {...props}
     />
-  )
+  );
 }
 
 const emptyMediaVariants = cva(
@@ -37,7 +37,7 @@ const emptyMediaVariants = cva(
       variant: 'default',
     },
   },
-)
+);
 
 function EmptyMedia({
   className,
@@ -51,7 +51,7 @@ function EmptyMedia({
       className={cn(emptyMediaVariants({ variant, className }))}
       {...props}
     />
-  )
+  );
 }
 
 function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
@@ -61,7 +61,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<'div'>) {
       className={cn('text-sm font-medium text-[var(--color-text)]', className)}
       {...props}
     />
-  )
+  );
 }
 
 function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
@@ -71,7 +71,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
       className={cn('text-sm leading-6 text-[var(--color-text-muted)]', className)}
       {...props}
     />
-  )
+  );
 }
 
 function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
@@ -81,14 +81,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
       className={cn('flex w-full max-w-sm flex-col items-center gap-3 text-sm', className)}
       {...props}
     />
-  )
+  );
 }
 
-export {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-}
+export { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle };

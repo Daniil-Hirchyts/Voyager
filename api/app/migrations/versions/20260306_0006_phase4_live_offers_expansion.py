@@ -20,7 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column("lodging_offer", sa.Column("lodging_type", sa.String(length=32), nullable=True))
-    op.create_index(op.f("ix_lodging_offer_lodging_type"), "lodging_offer", ["lodging_type"], unique=False)
+    op.create_index(
+        op.f("ix_lodging_offer_lodging_type"), "lodging_offer", ["lodging_type"], unique=False
+    )
     op.create_check_constraint(
         "ck_lodging_offer_lodging_type_values",
         "lodging_offer",

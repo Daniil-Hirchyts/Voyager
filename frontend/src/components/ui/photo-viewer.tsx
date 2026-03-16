@@ -1,7 +1,7 @@
-import type { ComponentProps, ReactElement } from 'react'
-import { PhotoProvider, PhotoView } from 'react-photo-view'
+import type { ComponentProps, ReactElement } from 'react';
+import { PhotoProvider, PhotoView } from 'react-photo-view';
 
-type PhotoViewerProviderProps = ComponentProps<typeof PhotoProvider>
+type PhotoViewerProviderProps = ComponentProps<typeof PhotoProvider>;
 
 export function PhotoViewerProvider({
   children,
@@ -23,22 +23,22 @@ export function PhotoViewerProvider({
     >
       {children}
     </PhotoProvider>
-  )
+  );
 }
 
 type PhotoViewerProps = Omit<ComponentProps<typeof PhotoView>, 'children' | 'src'> & {
-  src?: string | null
-  children: ReactElement
-}
+  src?: string | null;
+  children: ReactElement;
+};
 
 export function PhotoViewer({ src, children, ...props }: PhotoViewerProps) {
   if (!src) {
-    return children
+    return children;
   }
 
   return (
     <PhotoView src={src} {...props}>
       {children}
     </PhotoView>
-  )
+  );
 }

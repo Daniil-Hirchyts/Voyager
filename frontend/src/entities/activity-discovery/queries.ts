@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   attachSavedActivityToDay,
   discoverActivities,
@@ -7,19 +7,19 @@ import {
   getSavedActivityDetail,
   listSavedActivities,
   saveActivityToShortlist,
-} from './api'
+} from './api';
 import type {
   ActivityAttachDayInput,
   ActivityDiscoverInput,
   ActivityEntityType,
   ActivityRecommendationInput,
   ActivityShortlistSaveInput,
-} from '@/shared/api/types'
-import { isRateLimit } from '@/shared/api/client'
-import { activityKeys as plannerActivityKeys } from '@/entities/activity/queries'
-import { dayKeys } from '@/entities/day/queries'
-import { proposalKeys } from '@/entities/proposal/queries'
-import { tripKeys } from '@/entities/trip/queries'
+} from '@/shared/api/types';
+import { isRateLimit } from '@/shared/api/client';
+import { activityKeys as plannerActivityKeys } from '@/entities/activity/queries';
+import { dayKeys } from '@/entities/day/queries';
+import { proposalKeys } from '@/entities/proposal/queries';
+import { tripKeys } from '@/entities/trip/queries';
 
 export const activityDiscoveryKeys = {
   discover: (tripId: string, params: ActivityDiscoverInput) =>
@@ -30,17 +30,21 @@ export const activityDiscoveryKeys = {
   discoverDetail: (
     tripId: string,
     params: {
-      entity_type: ActivityEntityType
-      provider: string
-      provider_ref: string
-      locale?: string
+      entity_type: ActivityEntityType;
+      provider: string;
+      provider_ref: string;
+      locale?: string;
     } | null,
   ) => ['activities-discover-detail', tripId, params ?? '__none__'] as const,
   recommendations: (tripId: string, params: ActivityRecommendationInput) =>
     ['activities-recommendations', tripId, params] as const,
-}
+};
 
-export function useDiscoverActivities(tripId: string, params: ActivityDiscoverInput, enabled = true) {
+export function useDiscoverActivities(
+  tripId: string,
+  params: ActivityDiscoverInput,
+  enabled = true,
+) {
   return useQuery({
     queryKey: activityDiscoveryKeys.discover(tripId, params),
     queryFn: () => discoverActivities(tripId, params),
@@ -49,11 +53,11 @@ export function useDiscoverActivities(tripId: string, params: ActivityDiscoverIn
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       if (isRateLimit(error)) {
-        return false
+        return false;
       }
-      return failureCount < 1
+      return failureCount < 1;
     },
-  })
+  });
 }
 
 export function useSavedActivities(tripId: string) {
@@ -62,7 +66,7 @@ export function useSavedActivities(tripId: string) {
     queryFn: () => listSavedActivities(tripId, { limit: 100, offset: 0 }),
     enabled: !!tripId,
     staleTime: 15_000,
-  })
+  });
 }
 
 export function useSavedActivityDetail(snapshotId: string | null, locale = 'en-US') {
@@ -71,16 +75,16 @@ export function useSavedActivityDetail(snapshotId: string | null, locale = 'en-U
     queryFn: () => getSavedActivityDetail(snapshotId!, { locale }),
     enabled: !!snapshotId,
     staleTime: 30_000,
-  })
+  });
 }
 
 export function useDiscoveredActivityDetail(
   tripId: string,
   params: {
-    entity_type: ActivityEntityType
-    provider: string
-    provider_ref: string
-    locale?: string
+    entity_type: ActivityEntityType;
+    provider: string;
+    provider_ref: string;
+    locale?: string;
   } | null,
 ) {
   return useQuery({
@@ -91,32 +95,32 @@ export function useDiscoveredActivityDetail(
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       if (isRateLimit(error)) {
-        return false
+        return false;
       }
-      return failureCount < 1
+      return failureCount < 1;
     },
-  })
+  });
 }
 
 export function useSaveActivityToShortlist(tripId: string) {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       data,
       idempotencyKey,
     }: {
-      data: ActivityShortlistSaveInput
-      idempotencyKey: string
+      data: ActivityShortlistSaveInput;
+      idempotencyKey: string;
     }) => saveActivityToShortlist(tripId, data, idempotencyKey),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: activityDiscoveryKeys.shortlist(tripId) })
-      qc.invalidateQueries({ queryKey: ['activities-discover', tripId] })
+      qc.invalidateQueries({ queryKey: activityDiscoveryKeys.shortlist(tripId) });
+      qc.invalidateQueries({ queryKey: ['activities-discover', tripId] });
     },
-  })
+  });
 }
 
 export function useAttachSavedActivityToDay(tripId: string) {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({
       snapshotId,
@@ -124,25 +128,25 @@ export function useAttachSavedActivityToDay(tripId: string) {
       tripVersion,
       idempotencyKey,
     }: {
-      snapshotId: string
-      data: ActivityAttachDayInput
-      tripVersion: number
-      idempotencyKey: string
+      snapshotId: string;
+      data: ActivityAttachDayInput;
+      tripVersion: number;
+      idempotencyKey: string;
     }) => attachSavedActivityToDay(tripId, snapshotId, data, tripVersion, idempotencyKey),
     onSuccess: (_result, { data }) => {
-      qc.invalidateQueries({ queryKey: activityDiscoveryKeys.shortlist(tripId) })
-      qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) })
-      qc.invalidateQueries({ queryKey: dayKeys.list(tripId) })
-      qc.invalidateQueries({ queryKey: plannerActivityKeys.list(data.trip_day_id) })
-      qc.invalidateQueries({ queryKey: proposalKeys.list(tripId) })
+      qc.invalidateQueries({ queryKey: activityDiscoveryKeys.shortlist(tripId) });
+      qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) });
+      qc.invalidateQueries({ queryKey: dayKeys.list(tripId) });
+      qc.invalidateQueries({ queryKey: plannerActivityKeys.list(data.trip_day_id) });
+      qc.invalidateQueries({ queryKey: proposalKeys.list(tripId) });
     },
-  })
+  });
 }
 
 export function useActivityRecommendations(tripId: string) {
   return useMutation({
     mutationFn: (data: ActivityRecommendationInput) => getActivityRecommendations(tripId, data),
-  })
+  });
 }
 
 export function useActivityRecommendationsQuery(
@@ -158,9 +162,9 @@ export function useActivityRecommendationsQuery(
     refetchOnWindowFocus: false,
     retry: (failureCount, error) => {
       if (isRateLimit(error)) {
-        return false
+        return false;
       }
-      return failureCount < 1
+      return failureCount < 1;
     },
-  })
+  });
 }

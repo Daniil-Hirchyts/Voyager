@@ -7,17 +7,17 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from 'react'
+} from 'react';
 import {
   AssistantRuntimeProvider,
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
   useExternalStoreRuntime,
-} from '@assistant-ui/react'
-import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react'
-import { useQueryClient, type QueryClient } from '@tanstack/react-query'
-import { AnimatePresence, motion } from 'motion/react'
+} from '@assistant-ui/react';
+import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowUp,
   Bot,
@@ -38,53 +38,53 @@ import {
   WandSparkles,
   X,
   XCircle,
-} from 'lucide-react'
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
 import {
   ChainOfThought,
   ChainOfThoughtContent,
   ChainOfThoughtItem,
   ChainOfThoughtStep,
   ChainOfThoughtTrigger,
-} from '@/components/ui/chain-of-thought'
+} from '@/components/ui/chain-of-thought';
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
+} from '@/components/ui/command';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@/components/ui/sheet'
-import { Markdown } from '@/components/ui/markdown'
+} from '@/components/ui/sheet';
+import { Markdown } from '@/components/ui/markdown';
 import {
   PromptInput,
   PromptInputAction,
   PromptInputActions,
   PromptInputTextarea,
-} from '@/components/ui/prompt-input'
-import { mirrorAssistantJob, streamAssistantMessages } from '@/entities/assistant/api'
+} from '@/components/ui/prompt-input';
+import { mirrorAssistantJob, streamAssistantMessages } from '@/entities/assistant/api';
 import {
   appendAssistantJobProgressEvent,
   upsertAssistantMessages,
-} from '@/entities/assistant/cache'
-import { assistantKeys, useAssistantThread } from '@/entities/assistant/queries'
-import { streamJobProgress } from '@/entities/job/api'
-import { plannerKeys } from '@/entities/planner/queries'
-import { useGooglePlaceDetail } from '@/entities/place/queries'
-import { isApiError } from '@/shared/api/client'
+} from '@/entities/assistant/cache';
+import { assistantKeys, useAssistantThread } from '@/entities/assistant/queries';
+import { streamJobProgress } from '@/entities/job/api';
+import { plannerKeys } from '@/entities/planner/queries';
+import { useGooglePlaceDetail } from '@/entities/place/queries';
+import { isApiError } from '@/shared/api/client';
 import type {
   AssistantDataPart,
   AssistantMessage,
@@ -94,145 +94,145 @@ import type {
   AssistantTextPart,
   JobProgressEvent,
   Day,
-} from '@/shared/api/types'
-import { useIsMobile } from '@/shared/hooks/use-mobile'
-import { cn } from '@/shared/lib/cn'
-import { resolveMediaUrl } from '@/shared/lib/media'
+} from '@/shared/api/types';
+import { useIsMobile } from '@/shared/hooks/use-mobile';
+import { cn } from '@/shared/lib/cn';
+import { resolveMediaUrl } from '@/shared/lib/media';
 import {
   getPlannerAssistantCommandSuggestions,
   parsePlannerAssistantCommand,
   type PlannerAssistantCommandDefinition,
   type PlannerAssistantInlineCommand,
-} from './commands'
+} from './commands';
 import {
   PlannerGenerationInlineCard,
   type PlannerGenerationAction,
   type PlannerGenerationFormValues,
-} from '@/widgets/planner-board/GenerationControls'
+} from '@/widgets/planner-board/GenerationControls';
 
 type PlannerAssistantContextValue = {
-  confirmToolCall: (messageId: string, toolCallId: string, confirmed: boolean) => Promise<void>
-  selectSuggestedPlace: (place: PlannerAssistantSuggestedPlace) => void
-}
+  confirmToolCall: (messageId: string, toolCallId: string, confirmed: boolean) => Promise<void>;
+  selectSuggestedPlace: (place: PlannerAssistantSuggestedPlace) => void;
+};
 
 type PlannerAssistantPanelProps = {
-  tripId: string
-  destination: string
-  days: Day[]
-  hasActivities: boolean
-  isOpen: boolean
-  requestedInlineAction: PlannerGenerationAction | null
-  onRequestedInlineActionHandled: () => void
+  tripId: string;
+  destination: string;
+  days: Day[];
+  hasActivities: boolean;
+  isOpen: boolean;
+  requestedInlineAction: PlannerGenerationAction | null;
+  onRequestedInlineActionHandled: () => void;
   onSubmitInlineAction: (
     action: PlannerGenerationAction,
     values: PlannerGenerationFormValues,
     idempotencyKey: string,
-  ) => Promise<void>
-  isPlannerActionPending: boolean
-  onOpenChange: (open: boolean) => void
-  onSelectSuggestedPlace?: (place: PlannerAssistantSuggestedPlace) => void
-}
+  ) => Promise<void>;
+  isPlannerActionPending: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelectSuggestedPlace?: (place: PlannerAssistantSuggestedPlace) => void;
+};
 
 export type PlannerAssistantSuggestedPlace = {
-  placeId: string
-  name: string
-  label: string | null
-  addressText: string | null
-  category: string | null
-  lat: number | null
-  lon: number | null
-}
+  placeId: string;
+  name: string;
+  label: string | null;
+  addressText: string | null;
+  category: string | null;
+  lat: number | null;
+  lon: number | null;
+};
 
 type SavedConversation = {
-  id: string
-  name: string
-  messages: AssistantMessage[]
-  savedAt: string
-}
+  id: string;
+  name: string;
+  messages: AssistantMessage[];
+  savedAt: string;
+};
 
 type JobTimelineRow =
   | {
-      kind: 'step'
-      phase: string | null
-      eventId: string
-      name: string
-      detail: string
+      kind: 'step';
+      phase: string | null;
+      eventId: string;
+      name: string;
+      detail: string;
     }
   | {
-      kind: 'tool'
-      phase: string | null
-      eventId: string
-      toolName: string
-      callId: string | null
-      args: Record<string, unknown>
-      result?: Record<string, unknown>
-      isError?: boolean
+      kind: 'tool';
+      phase: string | null;
+      eventId: string;
+      toolName: string;
+      callId: string | null;
+      args: Record<string, unknown>;
+      result?: Record<string, unknown>;
+      isError?: boolean;
     }
   | {
-      kind: 'done'
-      phase: string | null
-      eventId: string
-      status: string
-      summary?: Record<string, unknown>
-    }
+      kind: 'done';
+      phase: string | null;
+      eventId: string;
+      status: string;
+      summary?: Record<string, unknown>;
+    };
 
-const PlannerAssistantContext = createContext<PlannerAssistantContextValue | null>(null)
+const PlannerAssistantContext = createContext<PlannerAssistantContextValue | null>(null);
 
 function usePlannerAssistantContext() {
-  const ctx = useContext(PlannerAssistantContext)
+  const ctx = useContext(PlannerAssistantContext);
   if (!ctx) {
-    throw new Error('PlannerAssistantContext not found')
+    throw new Error('PlannerAssistantContext not found');
   }
-  return ctx
+  return ctx;
 }
 
 function stripControlCharacters(value: string) {
   return Array.from(value)
     .filter((char) => {
-      const code = char.charCodeAt(0)
+      const code = char.charCodeAt(0);
       return !(
         (code >= 0 && code <= 8) ||
         code === 11 ||
         code === 12 ||
         (code >= 14 && code <= 31) ||
         code === 127
-      )
+      );
     })
-    .join('')
+    .join('');
 }
 
 function statusToAssistantUi(status: AssistantMessage['status']) {
-  if (status === 'running') return { type: 'running' as const }
+  if (status === 'running') return { type: 'running' as const };
   if (status === 'requires_action') {
-    return { type: 'requires-action' as const, reason: 'interrupt' as const }
+    return { type: 'requires-action' as const, reason: 'interrupt' as const };
   }
   if (status === 'incomplete') {
-    return { type: 'incomplete' as const, reason: 'error' as const }
+    return { type: 'incomplete' as const, reason: 'error' as const };
   }
-  return { type: 'complete' as const, reason: 'stop' as const }
+  return { type: 'complete' as const, reason: 'stop' as const };
 }
 
 function isTextPart(part: AssistantMessagePart): part is AssistantTextPart {
-  return typeof part === 'object' && part !== null && part.type === 'text'
+  return typeof part === 'object' && part !== null && part.type === 'text';
 }
 
 function isToolPart(part: AssistantMessagePart): part is AssistantToolCallPart {
-  return typeof part === 'object' && part !== null && part.type === 'tool-call'
+  return typeof part === 'object' && part !== null && part.type === 'tool-call';
 }
 
 function isDataPart(part: AssistantMessagePart): part is AssistantDataPart {
-  return typeof part === 'object' && part !== null && part.type === 'data'
+  return typeof part === 'object' && part !== null && part.type === 'data';
 }
 
 function isJobProgressPart(part: AssistantMessagePart): part is AssistantDataPart {
-  return isDataPart(part) && part.name === 'job-progress'
+  return isDataPart(part) && part.name === 'job-progress';
 }
 
 function toThreadMessage(message: AssistantMessage): ThreadMessageLike {
   const content = message.parts
     .map((part) => {
       if (isTextPart(part)) {
-        return { type: 'text' as const, text: part.text }
+        return { type: 'text' as const, text: part.text };
       }
       if (isToolPart(part)) {
         return {
@@ -244,18 +244,18 @@ function toThreadMessage(message: AssistantMessage): ThreadMessageLike {
           result: part.result,
           isError: part.isError,
           interrupt: part.interrupt,
-        } as ThreadMessageLike['content'][number]
+        } as ThreadMessageLike['content'][number];
       }
       if (isDataPart(part)) {
         return {
           type: 'data' as const,
           name: part.name,
           data: part.data,
-        }
+        };
       }
-      return null
+      return null;
     })
-    .filter(Boolean) as ThreadMessageLike['content']
+    .filter(Boolean) as ThreadMessageLike['content'];
 
   const baseMessage = {
     id: message.id,
@@ -268,111 +268,105 @@ function toThreadMessage(message: AssistantMessage): ThreadMessageLike {
         source_job_id: message.source_job_id,
       },
     },
-  } satisfies Omit<ThreadMessageLike, 'status'>
+  } satisfies Omit<ThreadMessageLike, 'status'>;
 
   if (message.role === 'assistant') {
     return {
       ...baseMessage,
       status: statusToAssistantUi(message.status),
-    }
+    };
   }
 
-  return baseMessage
+  return baseMessage;
 }
 
 function extractAppendText(message: AppendMessage) {
   return message.content
     .map((part) => {
-      if (part.type === 'text') return part.text
-      return ''
+      if (part.type === 'text') return part.text;
+      return '';
     })
     .join('\n')
-    .trim()
+    .trim();
 }
 
 function formatToolLabel(toolName: string) {
-  return toolName
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (letter: string) => letter.toUpperCase())
+  return toolName.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 }
 
 function toInlineError(error: unknown, fallback = 'Something went wrong.') {
   if (typeof error === 'string') {
-    return error
+    return error;
   }
   if (isApiError(error)) {
-    return error.message
+    return error.message;
   }
   if (error instanceof Error) {
-    return error.message
+    return error.message;
   }
-  return fallback
+  return fallback;
 }
 
-function removeAssistantMessage(
-  queryClient: QueryClient,
-  tripId: string,
-  messageId: string,
-) {
+function removeAssistantMessage(queryClient: QueryClient, tripId: string, messageId: string) {
   queryClient.setQueryData(assistantKeys.thread(tripId), (current: unknown) => {
     if (!current || typeof current !== 'object') {
-      return current
+      return current;
     }
-    const thread = current as { messages?: AssistantMessage[] }
+    const thread = current as { messages?: AssistantMessage[] };
     if (!Array.isArray(thread.messages)) {
-      return current
+      return current;
     }
     return {
       ...thread,
       messages: thread.messages.filter((message) => message.id !== messageId),
-    }
-  })
+    };
+  });
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null
+    return null;
   }
-  return value as Record<string, unknown>
+  return value as Record<string, unknown>;
 }
 
 function asString(value: unknown): string | null {
   if (typeof value !== 'string') {
-    return null
+    return null;
   }
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
 }
 
 function pluralize(count: number, label: string) {
-  return `${count} ${label}${count === 1 ? '' : 's'}`
+  return `${count} ${label}${count === 1 ? '' : 's'}`;
 }
 
 function dayScopeLabel(dayIds: unknown) {
   if (!Array.isArray(dayIds) || dayIds.length === 0) {
-    return 'the whole trip'
+    return 'the whole trip';
   }
-  return pluralize(dayIds.length, 'day')
+  return pluralize(dayIds.length, 'day');
 }
 
 function summaryValueLabel(value: unknown): string | null {
   if (value == null) {
-    return null
+    return null;
   }
   if (typeof value === 'string') {
-    const trimmed = value.trim()
-    return trimmed.length > 0 ? trimmed : null
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
   }
   if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value)
+    return String(value);
   }
   if (Array.isArray(value)) {
-    return pluralize(value.length, 'item')
+    return pluralize(value.length, 'item');
   }
   if (typeof value === 'object') {
-    return pluralize(Object.keys(value as Record<string, unknown>).length, 'field')
+    return pluralize(Object.keys(value as Record<string, unknown>).length, 'field');
   }
-  return null
+  return null;
 }
 
 function summarizeToolUsage(
@@ -380,135 +374,129 @@ function summarizeToolUsage(
   args: Record<string, unknown>,
   result?: Record<string, unknown>,
   options?: {
-    pending?: boolean
-    isError?: boolean
+    pending?: boolean;
+    isError?: boolean;
   },
 ) {
-  const pending = Boolean(options?.pending)
-  const isError = Boolean(options?.isError)
+  const pending = Boolean(options?.pending);
+  const isError = Boolean(options?.isError);
 
   if (toolName === 'read_trip_snapshot') {
-    const dayCount = Array.isArray(result?.days) ? result.days.length : null
+    const dayCount = Array.isArray(result?.days) ? result.days.length : null;
     return dayCount != null
       ? `Loaded the latest trip context for ${pluralize(dayCount, 'day')}.`
-      : 'Loaded the latest trip context.'
+      : 'Loaded the latest trip context.';
   }
 
   if (toolName === 'search_places') {
-    const query = asString(args.query)
-    const itemCount = Array.isArray(result?.items) ? result.items.length : null
+    const query = asString(args.query);
+    const itemCount = Array.isArray(result?.items) ? result.items.length : null;
     if (isError) {
-      return query ? `Place search for "${query}" failed.` : 'Place search failed.'
+      return query ? `Place search for "${query}" failed.` : 'Place search failed.';
     }
     if (itemCount != null) {
       return query
         ? `Found ${pluralize(itemCount, 'place')} for "${query}".`
-        : `Found ${pluralize(itemCount, 'place')}.`
+        : `Found ${pluralize(itemCount, 'place')}.`;
     }
-    return query ? `Searching places for "${query}".` : 'Searching places.'
+    return query ? `Searching places for "${query}".` : 'Searching places.';
   }
 
   if (toolName === 'create_activity') {
-    const activity = asRecord(result?.activity)
-    const title =
-      asString(activity?.title) ?? asString(args.title) ?? 'the activity'
-    return pending ? `Preparing ${title}.` : `Added ${title} to the itinerary.`
+    const activity = asRecord(result?.activity);
+    const title = asString(activity?.title) ?? asString(args.title) ?? 'the activity';
+    return pending ? `Preparing ${title}.` : `Added ${title} to the itinerary.`;
   }
 
   if (toolName === 'update_activity') {
-    const activity = asRecord(result?.activity)
-    const title =
-      asString(activity?.title) ?? asString(args.title) ?? 'the activity'
-    return pending ? `Updating ${title}.` : `Updated ${title}.`
+    const activity = asRecord(result?.activity);
+    const title = asString(activity?.title) ?? asString(args.title) ?? 'the activity';
+    return pending ? `Updating ${title}.` : `Updated ${title}.`;
   }
 
   if (toolName === 'move_activity') {
-    const activity = asRecord(result?.activity)
-    const title = asString(activity?.title)
-    return title ? `Moved ${title}.` : 'Moved the activity to a new slot.'
+    const activity = asRecord(result?.activity);
+    const title = asString(activity?.title);
+    return title ? `Moved ${title}.` : 'Moved the activity to a new slot.';
   }
 
   if (toolName === 'delete_activity') {
     if (pending) {
-      return 'Ready to remove this activity from the itinerary.'
+      return 'Ready to remove this activity from the itinerary.';
     }
-    return isError ? 'Could not delete the activity.' : 'Deleted the activity from the itinerary.'
+    return isError ? 'Could not delete the activity.' : 'Deleted the activity from the itinerary.';
   }
 
   if (toolName === 'generate_itinerary') {
-    const mode = asString(args.mode) ?? asString(result?.mode) ?? 'replace'
+    const mode = asString(args.mode) ?? asString(result?.mode) ?? 'replace';
     return pending
       ? `Ready to generate in ${mode} mode for ${dayScopeLabel(args.day_ids)}.`
-      : 'Queued itinerary generation and attached live progress below.'
+      : 'Queued itinerary generation and attached live progress below.';
   }
 
   if (toolName === 'reset_itinerary') {
     return pending
       ? `Ready to clear generated activities from ${dayScopeLabel(args.day_ids)}.`
-      : 'Queued itinerary reset and attached live progress below.'
+      : 'Queued itinerary reset and attached live progress below.';
   }
 
   return isError
     ? `${formatToolLabel(toolName)} failed.`
     : pending
       ? `${formatToolLabel(toolName)} is ready to run.`
-      : `${formatToolLabel(toolName)} completed.`
+      : `${formatToolLabel(toolName)} completed.`;
 }
 
 function summarizeTimelineTool(row: Extract<JobTimelineRow, { kind: 'tool' }>) {
-  const query = asString(row.args.query)
-  const result = row.result
+  const query = asString(row.args.query);
+  const result = row.result;
 
   if (row.toolName === 'google_places_search') {
-    const count = Array.isArray(result?.items) ? result.items.length : null
+    const count = Array.isArray(result?.items) ? result.items.length : null;
     if (count != null) {
       return query
         ? `Found ${pluralize(count, 'place')} for "${query}".`
-        : `Found ${pluralize(count, 'place')}.`
+        : `Found ${pluralize(count, 'place')}.`;
     }
-    return query ? `Searching for "${query}".` : 'Searching places.'
+    return query ? `Searching for "${query}".` : 'Searching places.';
   }
 
   if (row.toolName === 'google_place_details') {
-    const place = asRecord(result?.place)
-    const candidate = asRecord(result?.candidate)
-    const placeName =
-      asString(place?.name) ??
-      asString(candidate?.name)
-    return placeName ? `Loaded details for ${placeName}.` : 'Loading place details.'
+    const place = asRecord(result?.place);
+    const candidate = asRecord(result?.candidate);
+    const placeName = asString(place?.name) ?? asString(candidate?.name);
+    return placeName ? `Loaded details for ${placeName}.` : 'Loading place details.';
   }
 
   if (row.toolName.includes('photo')) {
-    return row.result ? 'Added photos to the shortlisted places.' : 'Collecting place photos.'
+    return row.result ? 'Added photos to the shortlisted places.' : 'Collecting place photos.';
   }
 
   if (row.toolName.includes('ground')) {
     return row.result
       ? 'Grounded the suggestions against trip constraints.'
-      : 'Grounding suggestions against the trip context.'
+      : 'Grounding suggestions against the trip context.';
   }
 
   if (row.toolName.includes('apply')) {
-    return row.result ? 'Applied the generated itinerary changes.' : 'Applying itinerary changes.'
+    return row.result ? 'Applied the generated itinerary changes.' : 'Applying itinerary changes.';
   }
 
   return summarizeToolUsage(row.toolName, row.args, row.result, {
     isError: row.isError,
-  })
+  });
 }
 
 function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
-  const rows: JobTimelineRow[] = []
-  const toolIndexByCallId = new Map<string, number>()
+  const rows: JobTimelineRow[] = [];
+  const toolIndexByCallId = new Map<string, number>();
 
   for (const item of events) {
-    if (!item || typeof item !== 'object') continue
-    const event = item as Record<string, unknown>
-    const phase = typeof event.phase === 'string' ? event.phase : null
+    if (!item || typeof item !== 'object') continue;
+    const event = item as Record<string, unknown>;
+    const phase = typeof event.phase === 'string' ? event.phase : null;
     const eventId =
-      typeof event.event_id === 'string' && event.event_id
-        ? event.event_id
-        : crypto.randomUUID()
+      typeof event.event_id === 'string' && event.event_id ? event.event_id : crypto.randomUUID();
 
     if (event.type === 'step') {
       rows.push({
@@ -517,13 +505,13 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
         eventId,
         name: String(event.name ?? 'Progress update'),
         detail: String(event.detail ?? ''),
-      })
-      continue
+      });
+      continue;
     }
 
     if (event.type === 'tool_call') {
-      const callId = typeof event.call_id === 'string' ? event.call_id : eventId
-      toolIndexByCallId.set(callId, rows.length)
+      const callId = typeof event.call_id === 'string' ? event.call_id : eventId;
+      toolIndexByCallId.set(callId, rows.length);
       rows.push({
         kind: 'tool',
         phase,
@@ -534,24 +522,24 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
           event.args && typeof event.args === 'object'
             ? (event.args as Record<string, unknown>)
             : {},
-      })
-      continue
+      });
+      continue;
     }
 
     if (event.type === 'tool_result') {
-      const callId = typeof event.call_id === 'string' ? event.call_id : null
-      const rowIndex = callId ? toolIndexByCallId.get(callId) : undefined
+      const callId = typeof event.call_id === 'string' ? event.call_id : null;
+      const rowIndex = callId ? toolIndexByCallId.get(callId) : undefined;
       if (rowIndex !== undefined) {
-        const row = rows[rowIndex]
+        const row = rows[rowIndex];
         if (!row || row.kind !== 'tool') {
-          continue
+          continue;
         }
         row.result =
           event.result && typeof event.result === 'object'
             ? (event.result as Record<string, unknown>)
-            : {}
-        row.isError = Boolean(event.is_error)
-        continue
+            : {};
+        row.isError = Boolean(event.is_error);
+        continue;
       }
 
       rows.push({
@@ -566,8 +554,8 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
             ? (event.result as Record<string, unknown>)
             : {},
         isError: Boolean(event.is_error),
-      })
-      continue
+      });
+      continue;
     }
 
     if (event.type === 'done') {
@@ -580,19 +568,19 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
           event.summary && typeof event.summary === 'object'
             ? (event.summary as Record<string, unknown>)
             : undefined,
-      })
+      });
     }
   }
 
-  return rows
+  return rows;
 }
 
 function buildSummaryEntries(summary: Record<string, unknown> | undefined) {
-  if (!summary) return []
+  if (!summary) return [];
   return Object.entries(summary).flatMap(([key, value]) => {
-    const label = summaryValueLabel(value)
-    return label ? [[key, label] as const] : []
-  })
+    const label = summaryValueLabel(value);
+    return label ? [[key, label] as const] : [];
+  });
 }
 
 function toneChipClasses(tone: 'neutral' | 'success' | 'warning' | 'danger') {
@@ -602,10 +590,10 @@ function toneChipClasses(tone: 'neutral' | 'success' | 'warning' | 'danger') {
     tone === 'warning' && 'bg-[rgba(245,158,11,0.12)] text-[rgba(180,83,9,1)]',
     tone === 'danger' && 'bg-[rgba(196,95,79,0.12)] text-[rgba(185,71,54,1)]',
     tone === 'neutral' && 'bg-[rgba(15,23,42,0.06)] text-[var(--color-text-muted)]',
-  )
+  );
 }
 
-type SubmitPlannerAssistantInputResult = 'sent' | 'inline' | 'invalid' | 'noop'
+type SubmitPlannerAssistantInputResult = 'sent' | 'inline' | 'invalid' | 'noop';
 
 function getAvailableCommandSuggestions(
   draft: string,
@@ -613,50 +601,50 @@ function getAvailableCommandSuggestions(
 ): PlannerAssistantCommandDefinition[] {
   return getPlannerAssistantCommandSuggestions(draft).filter((command) => {
     if (!hasActivities && command.name === 'reset') {
-      return false
+      return false;
     }
-    return true
-  })
+    return true;
+  });
 }
 
-const MAX_INPUT_LENGTH = 2000
-const SUBMIT_COOLDOWN_MS = 1500
+const MAX_INPUT_LENGTH = 2000;
+const SUBMIT_COOLDOWN_MS = 1500;
 
-const CONVERSATIONS_STORAGE_KEY = (tripId: string) => `assistant-conversations-${tripId}`
+const CONVERSATIONS_STORAGE_KEY = (tripId: string) => `assistant-conversations-${tripId}`;
 
 function loadSavedConversations(tripId: string): SavedConversation[] {
   try {
-    const raw = localStorage.getItem(CONVERSATIONS_STORAGE_KEY(tripId))
-    if (!raw) return []
-    return JSON.parse(raw) as SavedConversation[]
+    const raw = localStorage.getItem(CONVERSATIONS_STORAGE_KEY(tripId));
+    if (!raw) return [];
+    return JSON.parse(raw) as SavedConversation[];
   } catch {
-    return []
+    return [];
   }
 }
 
 function persistSavedConversations(tripId: string, convs: SavedConversation[]) {
   try {
-    localStorage.setItem(CONVERSATIONS_STORAGE_KEY(tripId), JSON.stringify(convs))
+    localStorage.setItem(CONVERSATIONS_STORAGE_KEY(tripId), JSON.stringify(convs));
   } catch {
     // localStorage may be full or unavailable — fail silently
   }
 }
 
-const HIDDEN_IDS_KEY = (tripId: string) => `assistant-hidden-ids-${tripId}`
+const HIDDEN_IDS_KEY = (tripId: string) => `assistant-hidden-ids-${tripId}`;
 
 function loadHiddenIds(tripId: string): Set<string> {
   try {
-    const raw = localStorage.getItem(HIDDEN_IDS_KEY(tripId))
-    if (!raw) return new Set()
-    return new Set(JSON.parse(raw) as string[])
+    const raw = localStorage.getItem(HIDDEN_IDS_KEY(tripId));
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
   } catch {
-    return new Set()
+    return new Set();
   }
 }
 
 function persistHiddenIds(tripId: string, ids: Set<string>) {
   try {
-    localStorage.setItem(HIDDEN_IDS_KEY(tripId), JSON.stringify([...ids]))
+    localStorage.setItem(HIDDEN_IDS_KEY(tripId), JSON.stringify([...ids]));
   } catch {
     // fail silently
   }
@@ -670,7 +658,7 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
     <strong className="font-semibold text-[var(--color-text)]">{children}</strong>
   ),
   em: ({ children }: { children?: ReactNode }) => (
-    <em className="italic text-[var(--color-text)]">{children}</em>
+    <em className="text-[var(--color-text)] italic">{children}</em>
   ),
   ol: ({ children }: { children?: ReactNode }) => (
     <ol className="m-0 flex list-decimal flex-col gap-2 pl-5">{children}</ol>
@@ -683,13 +671,7 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
       {children}
     </li>
   ),
-  a: ({
-    children,
-    href,
-  }: {
-    children?: ReactNode
-    href?: string
-  }) => (
+  a: ({ children, href }: { children?: ReactNode; href?: string }) => (
     <a
       href={href}
       target="_blank"
@@ -704,16 +686,18 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
       {children}
     </blockquote>
   ),
-}
+};
 
-function extractSuggestedPlaces(result: Record<string, unknown> | null): PlannerAssistantSuggestedPlace[] {
-  const items = Array.isArray(result?.items) ? result.items : []
+function extractSuggestedPlaces(
+  result: Record<string, unknown> | null,
+): PlannerAssistantSuggestedPlace[] {
+  const items = Array.isArray(result?.items) ? result.items : [];
   return items.flatMap((item) => {
-    const record = asRecord(item)
-    const placeId = asString(record?.place_id)
-    const name = asString(record?.name)
+    const record = asRecord(item);
+    const placeId = asString(record?.place_id);
+    const name = asString(record?.name);
     if (!placeId || !name) {
-      return []
+      return [];
     }
     return [
       {
@@ -725,15 +709,15 @@ function extractSuggestedPlaces(result: Record<string, unknown> | null): Planner
         lat: typeof record?.lat === 'number' ? record.lat : null,
         lon: typeof record?.lon === 'number' ? record.lon : null,
       },
-    ]
-  })
+    ];
+  });
 }
 
 function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }) {
-  const { selectSuggestedPlace } = usePlannerAssistantContext()
-  const detailQuery = useGooglePlaceDetail(place.placeId)
-  const heroPhoto = detailQuery.data?.photos?.[0] ?? null
-  const heroPhotoUrl = resolveMediaUrl(heroPhoto?.thumbnail_url ?? heroPhoto?.image_url ?? null)
+  const { selectSuggestedPlace } = usePlannerAssistantContext();
+  const detailQuery = useGooglePlaceDetail(place.placeId);
+  const heroPhoto = detailQuery.data?.photos?.[0] ?? null;
+  const heroPhotoUrl = resolveMediaUrl(heroPhoto?.thumbnail_url ?? heroPhoto?.image_url ?? null);
 
   return (
     <button
@@ -761,7 +745,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
               {place.name}
             </p>
             {place.category ? (
-              <p className="mt-0.5 text-[0.68rem] uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              <p className="mt-0.5 text-[0.68rem] tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                 {place.category.replace(/_/g, ' ')}
               </p>
             ) : null}
@@ -775,7 +759,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
         </p>
       </div>
     </button>
-  )
+  );
 }
 
 function TextBlock({ text }: { text: string }) {
@@ -788,22 +772,22 @@ function TextBlock({ text }: { text: string }) {
         {text}
       </Markdown>
     </div>
-  )
+  );
 }
 
 function PlannerResultCard({ part }: { part: AssistantDataPart }) {
-  const operation = String(part.data.operation ?? 'tool')
+  const operation = String(part.data.operation ?? 'tool');
   const activity =
     part.data.activity && typeof part.data.activity === 'object'
       ? (part.data.activity as Record<string, unknown>)
-      : null
-  const title = typeof activity?.title === 'string' ? activity.title : null
+      : null;
+  const title = typeof activity?.title === 'string' ? activity.title : null;
   const place =
     activity?.place && typeof activity.place === 'object'
       ? (activity.place as Record<string, unknown>)
-      : null
-  const placeName = typeof place?.name === 'string' ? place.name : null
-  const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null
+      : null;
+  const placeName = typeof place?.name === 'string' ? place.name : null;
+  const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null;
 
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
@@ -828,23 +812,35 @@ function PlannerResultCard({ part }: { part: AssistantDataPart }) {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId: string }) {
-  const { confirmToolCall } = usePlannerAssistantContext()
-  const pending = Boolean(part.interrupt)
-  const result = asRecord(part.result)
-  const suggestedPlaces = part.toolName === 'search_places' ? extractSuggestedPlaces(result) : []
-  const stateLabel = pending ? 'Awaiting confirmation' : part.isError ? 'Failed' : part.result ? 'Complete' : 'Running'
-  const stateTone = pending ? 'warning' : part.isError ? 'danger' : part.result ? 'success' : 'neutral'
+  const { confirmToolCall } = usePlannerAssistantContext();
+  const pending = Boolean(part.interrupt);
+  const result = asRecord(part.result);
+  const suggestedPlaces = part.toolName === 'search_places' ? extractSuggestedPlaces(result) : [];
+  const stateLabel = pending
+    ? 'Awaiting confirmation'
+    : part.isError
+      ? 'Failed'
+      : part.result
+        ? 'Complete'
+        : 'Running';
+  const stateTone = pending
+    ? 'warning'
+    : part.isError
+      ? 'danger'
+      : part.result
+        ? 'success'
+        : 'neutral';
   const summary = summarizeToolUsage(part.toolName, part.args ?? {}, result ?? undefined, {
     pending,
     isError: part.isError,
-  })
+  });
   const errorDetail = part.isError
     ? (asString(result?.error) ?? asString(result?.message) ?? asString(result?.detail) ?? null)
-    : null
+    : null;
 
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
@@ -859,9 +855,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
             </p>
             <span className={toneChipClasses(stateTone)}>{stateLabel}</span>
           </div>
-          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">
-            {summary}
-          </p>
+          <p className="mt-1 text-[0.75rem] leading-5 text-[var(--color-text-muted)]">{summary}</p>
         </div>
       </div>
 
@@ -901,7 +895,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 function jobRowIcon(row: JobTimelineRow) {
@@ -910,40 +904,39 @@ function jobRowIcon(row: JobTimelineRow) {
       <Check className="size-3.5" />
     ) : (
       <XCircle className="size-3.5" />
-    )
+    );
   }
   if (row.kind === 'tool') {
-    const name = row.toolName.toLowerCase()
-    if (name.includes('search') || name.includes('places')) return <Search className="size-3.5" />
+    const name = row.toolName.toLowerCase();
+    if (name.includes('search') || name.includes('places')) return <Search className="size-3.5" />;
     if (name.includes('apply') || name.includes('create') || name.includes('update'))
-      return <WandSparkles className="size-3.5" />
+      return <WandSparkles className="size-3.5" />;
   }
-  return <ChevronRight className="size-3.5" />
+  return <ChevronRight className="size-3.5" />;
 }
 
 function JobProgressCard({ part }: { part: AssistantDataPart }) {
-  const requestText = String(part.data.request_text ?? 'Planner job')
-  const jobStatus = String(part.data.job_status ?? 'PENDING')
-  const rows = buildTimelineRows(Array.isArray(part.data.events) ? part.data.events : [])
+  const requestText = String(part.data.request_text ?? 'Planner job');
+  const jobStatus = String(part.data.job_status ?? 'PENDING');
+  const rows = buildTimelineRows(Array.isArray(part.data.events) ? part.data.events : []);
   const summaryEntries = buildSummaryEntries(
     part.data.summary && typeof part.data.summary === 'object'
       ? (part.data.summary as Record<string, unknown>)
       : undefined,
-  )
-  const isRunning = jobStatus !== 'SUCCEEDED' && jobStatus !== 'FAILED'
-  const lastRow = rows.length > 0 ? rows[rows.length - 1] : null
-  const currentActivityRow =
-    isRunning && lastRow && lastRow.kind !== 'done' ? lastRow : null
+  );
+  const isRunning = jobStatus !== 'SUCCEEDED' && jobStatus !== 'FAILED';
+  const lastRow = rows.length > 0 ? rows[rows.length - 1] : null;
+  const currentActivityRow = isRunning && lastRow && lastRow.kind !== 'done' ? lastRow : null;
 
   const jobTone =
-    jobStatus === 'SUCCEEDED' ? 'success' : jobStatus === 'FAILED' ? 'danger' : 'warning'
+    jobStatus === 'SUCCEEDED' ? 'success' : jobStatus === 'FAILED' ? 'danger' : 'warning';
 
   const activeRowLabel =
     currentActivityRow?.kind === 'step'
       ? currentActivityRow.name
       : currentActivityRow?.kind === 'tool'
         ? `${formatToolLabel(currentActivityRow.toolName)}…`
-        : null
+        : null;
 
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
@@ -1004,21 +997,19 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                         : 'Finished with an error'}
                     </ChainOfThoughtTrigger>
                   </ChainOfThoughtStep>
-                )
+                );
               }
 
               if (row.kind === 'step') {
-                const isActive = isRunning && row === currentActivityRow
-                const detail = row.detail
+                const isActive = isRunning && row === currentActivityRow;
+                const detail = row.detail;
                 return (
                   <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
                     <ChainOfThoughtTrigger
                       leftIcon={jobRowIcon(row)}
                       className={cn(
                         'py-1 text-[0.78rem] font-medium',
-                        isActive
-                          ? 'text-[var(--color-primary)]'
-                          : 'text-[var(--color-text)]',
+                        isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]',
                       )}
                     >
                       {row.name}
@@ -1031,36 +1022,34 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                       </ChainOfThoughtContent>
                     ) : null}
                   </ChainOfThoughtStep>
-                )
+                );
               }
 
               // tool row
-              const isActive = isRunning && row === currentActivityRow
-              const isComplete = Boolean(row.result)
+              const isActive = isRunning && row === currentActivityRow;
+              const isComplete = Boolean(row.result);
               const toolStatusLabel = isComplete
                 ? row.isError
                   ? 'Error'
                   : 'Done'
                 : isActive
                   ? 'Running'
-                  : 'Pending'
+                  : 'Pending';
               const toolTone = isComplete
                 ? row.isError
                   ? 'danger'
                   : 'success'
                 : isActive
                   ? 'warning'
-                  : 'neutral'
-              const toolSummary = summarizeTimelineTool(row)
+                  : 'neutral';
+              const toolSummary = summarizeTimelineTool(row);
               return (
                 <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
                   <ChainOfThoughtTrigger
                     leftIcon={jobRowIcon(row)}
                     className={cn(
                       'py-1 text-[0.78rem] font-medium',
-                      isActive
-                        ? 'text-[var(--color-primary)]'
-                        : 'text-[var(--color-text)]',
+                      isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]',
                     )}
                   >
                     <span className="flex items-center gap-2">
@@ -1074,7 +1063,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </ChainOfThoughtItem>
                   </ChainOfThoughtContent>
                 </ChainOfThoughtStep>
-              )
+              );
             })}
           </ChainOfThought>
         </div>
@@ -1082,7 +1071,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
 
       {summaryEntries.length > 0 ? (
         <div className="mt-3 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5">
-          <p className="text-[0.67rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+          <p className="text-[0.67rem] font-medium tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
             Summary
           </p>
           <div className="mt-2 space-y-1.5">
@@ -1098,18 +1087,18 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         </div>
       ) : null}
     </div>
-  )
+  );
 }
 
 function EmptyThreadState({
   destination,
   hasActivities,
 }: {
-  destination: string
-  hasActivities: boolean
+  destination: string;
+  hasActivities: boolean;
 }) {
   return (
-    <div className="flex min-h-[12rem] flex-col justify-center px-1 pb-3 pt-1">
+    <div className="flex min-h-[12rem] flex-col justify-center px-1 pt-1 pb-3">
       <div className="flex gap-2 pb-2.5">
         <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
           <Bot className="size-3.5" />
@@ -1117,11 +1106,8 @@ function EmptyThreadState({
         <div className="min-w-0 flex-1">
           <div className="rounded-[18px] border border-black/7 bg-white px-3 py-2.5">
             <p className="text-[0.84rem] leading-7 text-[var(--color-text)]">
-              I can help shape{' '}
-              <span className="font-semibold">
-                {destination || 'this trip'}
-              </span>
-              . Ask me to add places, rebalance a day, or use{' '}
+              I can help shape <span className="font-semibold">{destination || 'this trip'}</span>.
+              Ask me to add places, rebalance a day, or use{' '}
               <span className="font-medium">/generate</span>
               {hasActivities ? ' or /reset' : ''}.
             </p>
@@ -1129,17 +1115,17 @@ function EmptyThreadState({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function PlannerAssistantEmptyState({
   destination,
   hasActivities,
 }: {
-  destination: string
-  hasActivities: boolean
+  destination: string;
+  hasActivities: boolean;
 }) {
-  return <EmptyThreadState destination={destination} hasActivities={hasActivities} />
+  return <EmptyThreadState destination={destination} hasActivities={hasActivities} />;
 }
 
 function PlannerAssistantComposer({
@@ -1153,56 +1139,59 @@ function PlannerAssistantComposer({
   onRequestInlineAction,
   onSubmitInput,
 }: {
-  hasActivities: boolean
-  draft: string
-  setDraft: (value: string) => void
-  isStreaming: boolean
-  streamError: string | null
-  setStreamError: (error: string | null) => void
-  textareaRef: { current: HTMLTextAreaElement | null }
-  onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void
-  onSubmitInput: (rawInput: string) => Promise<SubmitPlannerAssistantInputResult>
+  hasActivities: boolean;
+  draft: string;
+  setDraft: (value: string) => void;
+  isStreaming: boolean;
+  streamError: string | null;
+  setStreamError: (error: string | null) => void;
+  textareaRef: { current: HTMLTextAreaElement | null };
+  onRequestInlineAction: (action: PlannerAssistantInlineCommand) => void;
+  onSubmitInput: (rawInput: string) => Promise<SubmitPlannerAssistantInputResult>;
 }) {
-  const [commandMenuForcedOpen, setCommandMenuForcedOpen] = useState(false)
+  const [commandMenuForcedOpen, setCommandMenuForcedOpen] = useState(false);
   const commandSuggestions = useMemo(
-    () => getAvailableCommandSuggestions(draft.trimStart().startsWith('/') ? draft : '/', hasActivities),
+    () =>
+      getAvailableCommandSuggestions(
+        draft.trimStart().startsWith('/') ? draft : '/',
+        hasActivities,
+      ),
     [draft, hasActivities],
-  )
+  );
 
-  const isCommandMenuVisible =
-    commandMenuForcedOpen || draft.trimStart().startsWith('/')
+  const isCommandMenuVisible = commandMenuForcedOpen || draft.trimStart().startsWith('/');
 
   const handleCommandAction = useCallback(
     (command: PlannerAssistantCommandDefinition) => {
-      setStreamError(null)
-      setCommandMenuForcedOpen(false)
-      setDraft('')
-      onRequestInlineAction(command.name as PlannerAssistantInlineCommand)
+      setStreamError(null);
+      setCommandMenuForcedOpen(false);
+      setDraft('');
+      onRequestInlineAction(command.name as PlannerAssistantInlineCommand);
     },
     [onRequestInlineAction, setDraft, setStreamError],
-  )
+  );
 
   const submitComposer = useCallback(async () => {
-    const submission = draft
+    const submission = draft;
     if (!submission.trim()) {
-      return
+      return;
     }
 
-    setDraft('')
-    setCommandMenuForcedOpen(false)
-    setStreamError(null)
+    setDraft('');
+    setCommandMenuForcedOpen(false);
+    setStreamError(null);
     requestAnimationFrame(() => {
-      textareaRef.current?.focus()
-    })
-    const result = await onSubmitInput(submission)
+      textareaRef.current?.focus();
+    });
+    const result = await onSubmitInput(submission);
 
     if (result === 'invalid' || result === 'noop') {
-      setDraft(submission)
+      setDraft(submission);
       requestAnimationFrame(() => {
-        textareaRef.current?.focus()
-      })
+        textareaRef.current?.focus();
+      });
     }
-  }, [draft, onSubmitInput, setDraft, setStreamError, textareaRef])
+  }, [draft, onSubmitInput, setDraft, setStreamError, textareaRef]);
 
   return (
     <div className="border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
@@ -1221,7 +1210,7 @@ function PlannerAssistantComposer({
               exit={{ opacity: 0, y: 8 }}
               className="absolute inset-x-0 bottom-full z-10 mb-2"
             >
-              <Command className="overflow-hidden rounded-[20px] border border-black/8 bg-white shadow-[0_18px_45px_-32px_rgba(15,23,42,0.26)]">
+              <Command className="overflow-hidden rounded-[20px] border border-black/8 bg-white">
                 <CommandList className="max-h-[13rem] p-1.5">
                   <CommandEmpty>No matching commands.</CommandEmpty>
                   <CommandGroup heading="Commands">
@@ -1233,7 +1222,7 @@ function PlannerAssistantComposer({
                         className="items-start rounded-[14px] px-3 py-2.5"
                       >
                         <div className="min-w-0 flex-1">
-                          <span className="font-medium text-[0.8rem] text-[var(--color-text)]">
+                          <span className="text-[0.8rem] font-medium text-[var(--color-text)]">
                             /{command.name}
                           </span>
                           <p className="mt-1 text-[0.73rem] leading-5 text-[var(--color-text-muted)]">
@@ -1253,12 +1242,12 @@ function PlannerAssistantComposer({
           value={draft}
           onValueChange={(value) => {
             if (streamError) {
-              setStreamError(null)
+              setStreamError(null);
             }
             if (!value.trimStart().startsWith('/')) {
-              setCommandMenuForcedOpen(false)
+              setCommandMenuForcedOpen(false);
             }
-            setDraft(value)
+            setDraft(value);
           }}
           onSubmit={() => void submitComposer()}
           textareaRef={textareaRef}
@@ -1274,10 +1263,10 @@ function PlannerAssistantComposer({
                 <Button
                   type="button"
                   size="icon"
-                  className="size-8 rounded-full border border-black/8 bg-[rgba(15,23,42,0.05)] text-[var(--color-text)] shadow-none hover:bg-[rgba(15,23,42,0.09)]"
+                  className="size-8 rounded-full border border-black/8 bg-[rgba(15,23,42,0.05)] text-[var(--color-text)] hover:bg-[rgba(15,23,42,0.09)]"
                   onClick={() => {
-                    setCommandMenuForcedOpen(true)
-                    textareaRef.current?.focus()
+                    setCommandMenuForcedOpen(true);
+                    textareaRef.current?.focus();
                   }}
                 >
                   <Slash className="size-4" />
@@ -1319,29 +1308,29 @@ function PlannerAssistantComposer({
         </PromptInput>
       </div>
     </div>
-  )
+  );
 }
 
 function UserMessage() {
-  const state = useAuiState((s) => s.message)
+  const state = useAuiState((s) => s.message);
   const text = state.content
     .filter((part) => part.type === 'text')
     .map((part) => part.text)
-    .join('\n')
+    .join('\n');
 
   return (
     <MessagePrimitive.Root className="flex justify-end pb-2.5">
       <div className="max-w-[86%] rounded-[18px] rounded-br-[8px] bg-[#111827] px-3 py-2.5 text-white">
-        <p className="whitespace-pre-wrap text-[0.83rem] leading-6">{text}</p>
+        <p className="text-[0.83rem] leading-6 whitespace-pre-wrap">{text}</p>
       </div>
     </MessagePrimitive.Root>
-  )
+  );
 }
 
 function AssistantMessageView() {
-  const state = useAuiState((s) => s.message)
-  const parts = state.content as AssistantMessagePart[]
-  const messageId = state.id
+  const state = useAuiState((s) => s.message);
+  const parts = state.content as AssistantMessagePart[];
+  const messageId = state.id;
 
   return (
     <MessagePrimitive.Root className="flex gap-2 pb-2.5">
@@ -1355,7 +1344,7 @@ function AssistantMessageView() {
       <div className="min-w-0 flex-1 space-y-2">
         {parts.map((part, index) => {
           if (isTextPart(part)) {
-            return <TextBlock key={`${messageId}-text-${index}`} text={part.text} />
+            return <TextBlock key={`${messageId}-text-${index}`} text={part.text} />;
           }
           if (isToolPart(part)) {
             return (
@@ -1364,19 +1353,19 @@ function AssistantMessageView() {
                 part={part}
                 messageId={messageId}
               />
-            )
+            );
           }
           if (isDataPart(part) && part.name === 'planner-result') {
-            return <PlannerResultCard key={`${messageId}-result-${index}`} part={part} />
+            return <PlannerResultCard key={`${messageId}-result-${index}`} part={part} />;
           }
           if (isDataPart(part) && part.name === 'job-progress') {
-            return <JobProgressCard key={`${messageId}-job-${index}`} part={part} />
+            return <JobProgressCard key={`${messageId}-job-${index}`} part={part} />;
           }
-          return null
+          return null;
         })}
       </div>
     </MessagePrimitive.Root>
-  )
+  );
 }
 
 export function PlannerAssistantPanel({
@@ -1392,44 +1381,44 @@ export function PlannerAssistantPanel({
   onOpenChange,
   onSelectSuggestedPlace,
 }: PlannerAssistantPanelProps) {
-  const queryClient = useQueryClient()
-  const isMobile = useIsMobile()
-  const { data, isLoading } = useAssistantThread(tripId)
-  const [inlineAction, setInlineAction] = useState<PlannerGenerationAction | null>(null)
-  const [draft, setDraft] = useState('')
-  const [isStreaming, setIsStreaming] = useState(false)
-  const [streamError, setStreamError] = useState<string | null>(null)
-  const abortRef = useRef<AbortController | null>(null)
-  const jobStreamControllersRef = useRef(new Map<string, AbortController>())
-  const ignoredJobResumeIdsRef = useRef(new Set<string>())
-  const handledRequestedInlineActionRef = useRef<PlannerGenerationAction | null>(null)
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const lastSubmitTimeRef = useRef(0)
+  const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
+  const { data, isLoading } = useAssistantThread(tripId);
+  const [inlineAction, setInlineAction] = useState<PlannerGenerationAction | null>(null);
+  const [draft, setDraft] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const jobStreamControllersRef = useRef(new Map<string, AbortController>());
+  const ignoredJobResumeIdsRef = useRef(new Set<string>());
+  const handledRequestedInlineActionRef = useRef<PlannerGenerationAction | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastSubmitTimeRef = useRef(0);
   const [discussionName, setDiscussionName] = useState(
     () => localStorage.getItem(`assistant-discussion-${tripId}`) ?? '',
-  )
-  const [isRenamingDiscussion, setIsRenamingDiscussion] = useState(false)
-  const [renameInputValue, setRenameInputValue] = useState('')
-  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(
-    () => loadSavedConversations(tripId),
-  )
-  const [viewingConvId, setViewingConvId] = useState<string | null>(null)
-  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(
-    () => loadHiddenIds(tripId),
-  )
+  );
+  const [isRenamingDiscussion, setIsRenamingDiscussion] = useState(false);
+  const [renameInputValue, setRenameInputValue] = useState('');
+  const [savedConversations, setSavedConversations] = useState<SavedConversation[]>(() =>
+    loadSavedConversations(tripId),
+  );
+  const [viewingConvId, setViewingConvId] = useState<string | null>(null);
+  const [hiddenMessageIds, setHiddenMessageIds] = useState<Set<string>>(() =>
+    loadHiddenIds(tripId),
+  );
 
-  const liveMessages = data?.messages ?? []
+  const liveMessages = data?.messages ?? [];
   // Filter out messages that belong to a previously archived conversation.
   // We cannot clear the React Query cache (staleTime: 0 causes immediate refetch
   // from the backend), so we track hidden IDs in localStorage instead.
   const currentLiveMessages = useMemo(
     () => liveMessages.filter((m) => !hiddenMessageIds.has(m.id)),
     [liveMessages, hiddenMessageIds],
-  )
+  );
   const displayMessages =
     viewingConvId !== null
       ? (savedConversations.find((c) => c.id === viewingConvId)?.messages ?? [])
-      : currentLiveMessages
+      : currentLiveMessages;
   const runningJobIds = useMemo(() => {
     return Array.from(
       new Set(
@@ -1440,57 +1429,57 @@ export function PlannerAssistantPanel({
             !message.source_job_id ||
             !message.parts.some((part) => isJobProgressPart(part))
           ) {
-            return []
+            return [];
           }
-          return [message.source_job_id]
+          return [message.source_job_id];
         }),
       ),
-    )
-  }, [currentLiveMessages])
+    );
+  }, [currentLiveMessages]);
   useEffect(() => {
     if (!requestedInlineAction) {
-      handledRequestedInlineActionRef.current = null
-      return
+      handledRequestedInlineActionRef.current = null;
+      return;
     }
     if (handledRequestedInlineActionRef.current === requestedInlineAction) {
-      return
+      return;
     }
-    handledRequestedInlineActionRef.current = requestedInlineAction
-    setInlineAction(requestedInlineAction)
+    handledRequestedInlineActionRef.current = requestedInlineAction;
+    setInlineAction(requestedInlineAction);
     if (!isOpen) {
-      onOpenChange(true)
+      onOpenChange(true);
     }
-    onRequestedInlineActionHandled()
-  }, [isOpen, onOpenChange, onRequestedInlineActionHandled, requestedInlineAction])
+    onRequestedInlineActionHandled();
+  }, [isOpen, onOpenChange, onRequestedInlineActionHandled, requestedInlineAction]);
 
   useEffect(() => {
     if (!isOpen) {
-      return
+      return;
     }
     const timeoutId = window.setTimeout(() => {
-      textareaRef.current?.focus()
-    }, 180)
-    return () => window.clearTimeout(timeoutId)
-  }, [isOpen])
+      textareaRef.current?.focus();
+    }, 180);
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen]);
 
   useEffect(() => {
     if (isMobile || !isOpen) {
-      return
+      return;
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onOpenChange(false)
+        onOpenChange(false);
       }
-    }
+    };
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isMobile, isOpen, onOpenChange])
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobile, isOpen, onOpenChange]);
 
   useEffect(() => {
-    const controllerMap = jobStreamControllersRef.current
-    const activeJobIds = new Set(runningJobIds)
+    const controllerMap = jobStreamControllersRef.current;
+    const activeJobIds = new Set(runningJobIds);
     // Note: intentionally NOT cleaning up ignoredJobResumeIdsRef here.
     // After a 'done' event, invalidateQueries causes the thread to refetch
     // which may temporarily restore 'running' status from the backend before
@@ -1499,86 +1488,85 @@ export function PlannerAssistantPanel({
 
     for (const [jobId, controller] of controllerMap.entries()) {
       if (!activeJobIds.has(jobId)) {
-        controller.abort()
-        controllerMap.delete(jobId)
+        controller.abort();
+        controllerMap.delete(jobId);
       }
     }
 
     for (const jobId of activeJobIds) {
       if (ignoredJobResumeIdsRef.current.has(jobId)) {
-        continue
+        continue;
       }
       if (controllerMap.has(jobId)) {
-        continue
+        continue;
       }
 
-      const controller = new AbortController()
-      controllerMap.set(jobId, controller)
+      const controller = new AbortController();
+      controllerMap.set(jobId, controller);
 
       void streamJobProgress(
         jobId,
         (event: JobProgressEvent) => {
-          appendAssistantJobProgressEvent(queryClient, tripId, jobId, event)
+          appendAssistantJobProgressEvent(queryClient, tripId, jobId, event);
           if (event.type === 'done') {
-            ignoredJobResumeIdsRef.current.add(jobId)
-            controller.abort()
+            ignoredJobResumeIdsRef.current.add(jobId);
+            controller.abort();
             // Invalidate planner immediately to show new activities
-            void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) })
+            void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
             // Delay thread invalidation: the backend may not have committed the
             // updated message status yet, so an immediate refetch would overwrite
             // the local 'complete' status we just applied above and make the card
             // appear frozen (spinner never stops). Give the backend a few seconds.
             window.setTimeout(() => {
-              void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) })
-            }, 4000)
+              void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) });
+            }, 4000);
           }
         },
         controller.signal,
       )
         .catch((error) => {
           if ((error as Error)?.name === 'AbortError') {
-            return
+            return;
           }
           if (isApiError(error) && error.status === 404) {
-            ignoredJobResumeIdsRef.current.add(jobId)
-            return
+            ignoredJobResumeIdsRef.current.add(jobId);
+            return;
           }
-          setStreamError((current) => current ?? toInlineError(error, 'Failed to resume planner job progress.'))
+          setStreamError(
+            (current) => current ?? toInlineError(error, 'Failed to resume planner job progress.'),
+          );
         })
         .finally(() => {
           if (controllerMap.get(jobId) === controller) {
-            controllerMap.delete(jobId)
+            controllerMap.delete(jobId);
           }
-        })
+        });
     }
-  }, [queryClient, runningJobIds, tripId])
+  }, [queryClient, runningJobIds, tripId]);
 
   useEffect(() => {
     return () => {
-      abortRef.current?.abort()
-      abortRef.current = null
+      abortRef.current?.abort();
+      abortRef.current = null;
       for (const controller of jobStreamControllersRef.current.values()) {
-        controller.abort()
+        controller.abort();
       }
-      jobStreamControllersRef.current.clear()
-    }
-  }, [])
+      jobStreamControllersRef.current.clear();
+    };
+  }, []);
 
   const cancelCurrentStream = useCallback(async () => {
-    abortRef.current?.abort()
-    abortRef.current = null
-    setIsStreaming(false)
-  }, [])
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+  }, []);
 
   const startStream = useCallback(
-    async (
-      payload: AssistantMessageStreamInput,
-      optimisticMessageId?: string,
-    ) => {
-      const controller = new AbortController()
-      abortRef.current = controller
-      setIsStreaming(true)
-      setStreamError(null)
+    async (payload: AssistantMessageStreamInput, optimisticMessageId?: string) => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+      setIsStreaming(true);
+      setStreamError(null);
 
       try {
         await streamAssistantMessages(
@@ -1586,61 +1574,61 @@ export function PlannerAssistantPanel({
           payload,
           (event) => {
             if (event.type === 'message_upsert') {
-              upsertAssistantMessages(queryClient, tripId, [event.message])
-              return
+              upsertAssistantMessages(queryClient, tripId, [event.message]);
+              return;
             }
             if (event.type === 'error') {
-              setStreamError(event.error.message)
+              setStreamError(event.error.message);
             }
           },
           controller.signal,
-        )
+        );
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) }),
           queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) }),
-        ])
+        ]);
       } catch (error) {
         if ((error as Error)?.name === 'AbortError') {
-          return
+          return;
         }
         if (optimisticMessageId) {
-          removeAssistantMessage(queryClient, tripId, optimisticMessageId)
+          removeAssistantMessage(queryClient, tripId, optimisticMessageId);
         }
-        setStreamError(toInlineError(error, 'Failed to reach the planner assistant.'))
+        setStreamError(toInlineError(error, 'Failed to reach the planner assistant.'));
       } finally {
         if (abortRef.current === controller) {
-          abortRef.current = null
+          abortRef.current = null;
         }
-        setIsStreaming(false)
+        setIsStreaming(false);
       }
     },
     [queryClient, tripId],
-  )
+  );
 
   const handleTextTurn = useCallback(
     async (text: string) => {
-      const trimmed = text.trim()
+      const trimmed = text.trim();
       if (!trimmed || isStreaming) {
-        return
+        return;
       }
 
       // Rate limit: prevent rapid successive messages
-      const now = Date.now()
+      const now = Date.now();
       if (now - lastSubmitTimeRef.current < SUBMIT_COOLDOWN_MS) {
-        setStreamError('Please wait a moment before sending another message.')
-        return
+        setStreamError('Please wait a moment before sending another message.');
+        return;
       }
 
       // Length limit
       if (trimmed.length > MAX_INPUT_LENGTH) {
-        setStreamError(`Message is too long. Please keep it under ${MAX_INPUT_LENGTH} characters.`)
-        return
+        setStreamError(`Message is too long. Please keep it under ${MAX_INPUT_LENGTH} characters.`);
+        return;
       }
 
       // Strip null bytes and dangerous control characters (basic injection protection)
-      const sanitized = stripControlCharacters(trimmed).trim()
+      const sanitized = stripControlCharacters(trimmed).trim();
       if (!sanitized) {
-        return
+        return;
       }
 
       // Warn on obvious prompt injection patterns
@@ -1649,14 +1637,16 @@ export function PlannerAssistantPanel({
         /you\s+are\s+now\s+a/i,
         /disregard\s+(all\s+)?(previous|prior)/i,
         /system\s*:\s*[^\n]{0,100}/i,
-      ]
+      ];
       if (injectionPatterns.some((p) => p.test(sanitized))) {
-        setStreamError('This message contains patterns that are not allowed. Please rephrase your request.')
-        return
+        setStreamError(
+          'This message contains patterns that are not allowed. Please rephrase your request.',
+        );
+        return;
       }
 
-      lastSubmitTimeRef.current = now
-      const clientMessageId = crypto.randomUUID()
+      lastSubmitTimeRef.current = now;
+      const clientMessageId = crypto.randomUUID();
       const optimisticMessage: AssistantMessage = {
         id: clientMessageId,
         thread_id: data?.id ?? `thread-${tripId}`,
@@ -1667,10 +1657,10 @@ export function PlannerAssistantPanel({
         source_job_id: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }
+      };
 
-      upsertAssistantMessages(queryClient, tripId, [optimisticMessage])
-      onOpenChange(true)
+      upsertAssistantMessages(queryClient, tripId, [optimisticMessage]);
+      onOpenChange(true);
 
       await startStream(
         {
@@ -1678,51 +1668,51 @@ export function PlannerAssistantPanel({
           text: sanitized,
         },
         clientMessageId,
-      )
+      );
     },
     [data?.id, isStreaming, onOpenChange, queryClient, startStream, tripId],
-  )
+  );
 
   const handleSubmitInput = useCallback(
     async (rawInput: string): Promise<SubmitPlannerAssistantInputResult> => {
-      const trimmed = rawInput.trim()
+      const trimmed = rawInput.trim();
       if (!trimmed) {
-        return 'noop'
+        return 'noop';
       }
       if (isStreaming) {
-        return 'noop'
+        return 'noop';
       }
 
       if (!trimmed.startsWith('/')) {
-        await handleTextTurn(trimmed)
-        return 'sent'
+        await handleTextTurn(trimmed);
+        return 'sent';
       }
 
-      const parsed = parsePlannerAssistantCommand(trimmed)
+      const parsed = parsePlannerAssistantCommand(trimmed);
       if (!parsed) {
-        return 'noop'
+        return 'noop';
       }
 
       if (parsed.type === 'invalid') {
-        setStreamError(parsed.message)
-        return 'invalid'
+        setStreamError(parsed.message);
+        return 'invalid';
       }
 
       if (parsed.type === 'inline') {
-        setStreamError(null)
-        setInlineAction(parsed.name)
-        onOpenChange(true)
-        return 'inline'
+        setStreamError(null);
+        setInlineAction(parsed.name);
+        onOpenChange(true);
+        return 'inline';
       }
 
-      return 'noop'
+      return 'noop';
     },
     [handleTextTurn, isStreaming, onOpenChange],
-  )
+  );
 
   const handleCancelInlineAction = useCallback(() => {
-    setInlineAction(null)
-  }, [])
+    setInlineAction(null);
+  }, []);
 
   const handleSubmitInlineAction = useCallback(
     async (
@@ -1731,19 +1721,19 @@ export function PlannerAssistantPanel({
       idempotencyKey: string,
     ) => {
       try {
-        await onSubmitInlineAction(action, values, idempotencyKey)
-        setInlineAction(null)
+        await onSubmitInlineAction(action, values, idempotencyKey);
+        setInlineAction(null);
       } catch {
         // planner mutations already surface toast errors upstream
       }
     },
     [onSubmitInlineAction],
-  )
+  );
 
   const confirmToolCall = useCallback(
     async (messageId: string, toolCallId: string, confirmed: boolean) => {
       if (isStreaming) {
-        return
+        return;
       }
       await startStream({
         confirmation: {
@@ -1751,49 +1741,49 @@ export function PlannerAssistantPanel({
           tool_call_id: toolCallId,
           confirmed,
         },
-      })
+      });
     },
     [isStreaming, startStream],
-  )
+  );
 
   const selectSuggestedPlace = useCallback(
     (place: PlannerAssistantSuggestedPlace) => {
-      onSelectSuggestedPlace?.(place)
+      onSelectSuggestedPlace?.(place);
     },
     [onSelectSuggestedPlace],
-  )
+  );
 
   const runtime = useExternalStoreRuntime<AssistantMessage>({
     messages: displayMessages,
     isRunning: isStreaming && viewingConvId === null,
     convertMessage: toThreadMessage,
     onNew: async (message) => {
-      const text = extractAppendText(message)
-      await handleSubmitInput(text)
+      const text = extractAppendText(message);
+      await handleSubmitInput(text);
     },
     onCancel: cancelCurrentStream,
-  })
+  });
 
   const handleRenameDiscussion = useCallback(
     (name: string) => {
-      const trimmedName = name.trim()
-      setDiscussionName(trimmedName)
+      const trimmedName = name.trim();
+      setDiscussionName(trimmedName);
       if (trimmedName) {
-        localStorage.setItem(`assistant-discussion-${tripId}`, trimmedName)
+        localStorage.setItem(`assistant-discussion-${tripId}`, trimmedName);
       } else {
-        localStorage.removeItem(`assistant-discussion-${tripId}`)
+        localStorage.removeItem(`assistant-discussion-${tripId}`);
       }
-      setIsRenamingDiscussion(false)
+      setIsRenamingDiscussion(false);
     },
     [tripId],
-  )
+  );
 
   const handleClearConversation = useCallback(() => {
-    if (currentLiveMessages.length === 0) return
-    const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)])
-    setHiddenMessageIds(newHiddenIds)
-    persistHiddenIds(tripId, newHiddenIds)
-  }, [currentLiveMessages, hiddenMessageIds, tripId])
+    if (currentLiveMessages.length === 0) return;
+    const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)]);
+    setHiddenMessageIds(newHiddenIds);
+    persistHiddenIds(tripId, newHiddenIds);
+  }, [currentLiveMessages, hiddenMessageIds, tripId]);
 
   const handleNewConversation = useCallback(() => {
     if (currentLiveMessages.length > 0) {
@@ -1809,36 +1799,36 @@ export function PlannerAssistantPanel({
           }),
         messages: currentLiveMessages,
         savedAt: new Date().toISOString(),
-      }
-      const updated = [conv, ...savedConversations]
-      setSavedConversations(updated)
-      persistSavedConversations(tripId, updated)
+      };
+      const updated = [conv, ...savedConversations];
+      setSavedConversations(updated);
+      persistSavedConversations(tripId, updated);
       // Hide current messages from the live view — cannot clear React Query cache
       // because staleTime: 0 causes an immediate refetch that restores them.
-      const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)])
-      setHiddenMessageIds(newHiddenIds)
-      persistHiddenIds(tripId, newHiddenIds)
+      const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)]);
+      setHiddenMessageIds(newHiddenIds);
+      persistHiddenIds(tripId, newHiddenIds);
     }
-    setViewingConvId(null)
-    setDiscussionName('')
-    localStorage.removeItem(`assistant-discussion-${tripId}`)
-  }, [currentLiveMessages, discussionName, savedConversations, hiddenMessageIds, tripId])
+    setViewingConvId(null);
+    setDiscussionName('');
+    localStorage.removeItem(`assistant-discussion-${tripId}`);
+  }, [currentLiveMessages, discussionName, savedConversations, hiddenMessageIds, tripId]);
 
   const handleSwitchConversation = useCallback((convId: string | null) => {
-    setViewingConvId(convId)
-  }, [])
+    setViewingConvId(convId);
+  }, []);
 
   const handleDeleteSavedConversation = useCallback(
     (convId: string) => {
-      const updated = savedConversations.filter((c) => c.id !== convId)
-      setSavedConversations(updated)
-      persistSavedConversations(tripId, updated)
+      const updated = savedConversations.filter((c) => c.id !== convId);
+      setSavedConversations(updated);
+      persistSavedConversations(tripId, updated);
       if (viewingConvId === convId) {
-        setViewingConvId(null)
+        setViewingConvId(null);
       }
     },
     [savedConversations, viewingConvId, tripId],
-  )
+  );
 
   const assistantSurface = (
     <>
@@ -1855,8 +1845,8 @@ export function PlannerAssistantPanel({
             ) : isRenamingDiscussion ? (
               <form
                 onSubmit={(e) => {
-                  e.preventDefault()
-                  handleRenameDiscussion(renameInputValue)
+                  e.preventDefault();
+                  handleRenameDiscussion(renameInputValue);
                 }}
                 className="flex items-center gap-1"
               >
@@ -1867,7 +1857,7 @@ export function PlannerAssistantPanel({
                   onBlur={() => handleRenameDiscussion(renameInputValue)}
                   onKeyDown={(e) => {
                     if (e.key === 'Escape') {
-                      setIsRenamingDiscussion(false)
+                      setIsRenamingDiscussion(false);
                     }
                   }}
                   placeholder="Conversation name…"
@@ -1917,7 +1907,7 @@ export function PlannerAssistantPanel({
                 {savedConversations.length > 0 ? (
                   <>
                     <DropdownMenuSeparator />
-                    <p className="px-2 py-1.5 text-[0.67rem] font-medium uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                    <p className="px-2 py-1.5 text-[0.67rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Saved
                     </p>
                     {savedConversations.map((conv) => (
@@ -1938,8 +1928,8 @@ export function PlannerAssistantPanel({
                             type="button"
                             className="ml-2 shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:bg-black/8 hover:text-[rgba(196,95,79,1)]"
                             onClick={(e) => {
-                              e.stopPropagation()
-                              handleDeleteSavedConversation(conv.id)
+                              e.stopPropagation();
+                              handleDeleteSavedConversation(conv.id);
                             }}
                           >
                             <X className="size-3" />
@@ -1952,8 +1942,8 @@ export function PlannerAssistantPanel({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => {
-                    setRenameInputValue(discussionName)
-                    setIsRenamingDiscussion(true)
+                    setRenameInputValue(discussionName);
+                    setIsRenamingDiscussion(true);
                   }}
                   disabled={viewingConvId !== null}
                 >
@@ -2003,7 +1993,7 @@ export function PlannerAssistantPanel({
       ) : null}
 
       <AssistantRuntimeProvider runtime={runtime}>
-        <div className="min-h-0 flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {isLoading ? (
             <div className="flex min-h-0 flex-1 items-center justify-center px-4 py-6 text-[0.8rem] text-[var(--color-text-muted)]">
               <Loader2 className="mr-2 size-4 animate-spin text-[var(--color-primary)]" />
@@ -2062,8 +2052,8 @@ export function PlannerAssistantPanel({
                   setStreamError={setStreamError}
                   textareaRef={textareaRef}
                   onRequestInlineAction={(action) => {
-                    setInlineAction(action)
-                    onOpenChange(true)
+                    setInlineAction(action);
+                    onOpenChange(true);
                   }}
                   onSubmitInput={handleSubmitInput}
                 />
@@ -2073,7 +2063,7 @@ export function PlannerAssistantPanel({
         </div>
       </AssistantRuntimeProvider>
     </>
-  )
+  );
 
   return (
     <PlannerAssistantContext.Provider value={{ confirmToolCall, selectSuggestedPlace }}>
@@ -2081,7 +2071,7 @@ export function PlannerAssistantPanel({
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="flex w-full flex-col gap-0 overflow-hidden border-black/8 bg-[#fcfcfb] p-0 h-[min(88vh,48rem)] rounded-t-[28px] border-x-0 border-b-0"
+            className="flex h-[min(88vh,48rem)] w-full flex-col gap-0 overflow-hidden rounded-t-[28px] border-x-0 border-b-0 border-black/8 bg-[#fcfcfb] p-0"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Planner Assistant</SheetTitle>
@@ -2098,7 +2088,7 @@ export function PlannerAssistantPanel({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-              className="absolute inset-y-0 left-0 z-40 flex w-[46%] min-w-[380px] max-w-full flex-col overflow-hidden border-r border-black/8 bg-[#fcfcfb] shadow-[24px_0_72px_-42px_rgba(32,56,83,0.18)]"
+              className="absolute inset-y-0 left-0 z-40 flex w-[46%] max-w-full min-w-[380px] flex-col overflow-hidden border-r border-black/8 bg-[#fcfcfb]"
             >
               {assistantSurface}
             </motion.aside>
@@ -2106,15 +2096,15 @@ export function PlannerAssistantPanel({
         </AnimatePresence>
       )}
     </PlannerAssistantContext.Provider>
-  )
+  );
 }
 
 type MirrorPlannerJobOptions = {
-  tripId: string
-  jobId: string
-  requestText: string
-  action: string
-}
+  tripId: string;
+  jobId: string;
+  requestText: string;
+  action: string;
+};
 
 export async function mirrorPlannerJobToAssistant(
   queryClient: QueryClient,
@@ -2124,7 +2114,7 @@ export async function mirrorPlannerJobToAssistant(
     job_id: options.jobId,
     request_text: options.requestText,
     action: options.action,
-  })
-  upsertAssistantMessages(queryClient, options.tripId, messages)
-  await queryClient.invalidateQueries({ queryKey: assistantKeys.thread(options.tripId) })
+  });
+  upsertAssistantMessages(queryClient, options.tripId, messages);
+  await queryClient.invalidateQueries({ queryKey: assistantKeys.thread(options.tripId) });
 }

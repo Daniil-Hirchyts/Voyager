@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Download,
   Eye,
@@ -22,12 +22,12 @@ import {
   Upload,
   Waypoints,
   X,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { config } from '@/app/config'
-import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
-import { patchActivity } from '@/entities/activity/api'
-import { searchPlaces } from '@/entities/place/api'
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { config } from '@/app/config';
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer';
+import { patchActivity } from '@/entities/activity/api';
+import { searchPlaces } from '@/entities/place/api';
 import {
   useCreatePlace,
   useNearbyPlaces,
@@ -35,18 +35,18 @@ import {
   usePlaceList,
   usePlaceSearch,
   useViewportPlaces,
-} from '@/entities/place/queries'
+} from '@/entities/place/queries';
 import {
   useCreateTripMapLayer,
   useDeleteTripMapLayer,
   usePatchTripMapLayer,
   useTripMapLayers,
-} from '@/entities/trip-map-layer/queries'
-import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue'
-import { cn } from '@/shared/lib/cn'
-import { resolvePhotoUrl } from '@/shared/lib/media'
-import { useMapStore } from '@/shared/stores/map.store'
-import { VoyagerLoader } from '@/widgets/app-shell/logo'
+} from '@/entities/trip-map-layer/queries';
+import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
+import { cn } from '@/shared/lib/cn';
+import { resolvePhotoUrl } from '@/shared/lib/media';
+import { useMapStore } from '@/shared/stores/map.store';
+import { VoyagerLoader } from '@/widgets/app-shell/logo';
 import {
   ControlPosition,
   GoogleDirectionsRoute,
@@ -64,7 +64,7 @@ import {
   featureCollectionToPoints,
   summarizeFeatureCollection,
   useGoogleGeometryLibrary,
-} from '@/shared/layouts/google-maps'
+} from '@/shared/layouts/google-maps';
 import type {
   GooglePlaceCandidate,
   MapLayerRenderer,
@@ -74,13 +74,13 @@ import type {
   RoutePreviewRoute,
   TripMapFeatureCollection,
   TripMapLayer,
-} from '@/shared/api/types'
+} from '@/shared/api/types';
 
 const nearbySchema = z.object({
   lat: z.coerce.number().min(-90).max(90),
   lon: z.coerce.number().min(-180).max(180),
   radius_m: z.coerce.number().min(1).max(50000),
-})
+});
 
 const createPlaceSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -94,30 +94,30 @@ const createPlaceSchema = z.object({
     .union([z.number().min(-180).max(180), z.nan()])
     .optional()
     .transform((value) => (value == null || Number.isNaN(value) ? undefined : value)),
-})
+});
 
-type NearbyFormValues = z.infer<typeof nearbySchema>
-type CreatePlaceValues = z.infer<typeof createPlaceSchema>
+type NearbyFormValues = z.infer<typeof nearbySchema>;
+type CreatePlaceValues = z.infer<typeof createPlaceSchema>;
 
 interface Props {
-  tripId: string
+  tripId: string;
 }
 
 interface RouteStop {
-  id: string
-  name: string
-  point: { lat: number; lng: number }
+  id: string;
+  name: string;
+  point: { lat: number; lng: number };
 }
 
 interface DraftLayerState {
-  layerId: string | null
-  name: string
-  source: MapLayerSource
-  renderer: MapLayerRenderer
-  featureCollection: TripMapFeatureCollection
-  style: Record<string, unknown>
-  metadata: Record<string, unknown>
-  drawMode: 'select' | 'point' | 'linestring' | 'polygon' | 'rectangle' | 'circle' | 'freehand'
+  layerId: string | null;
+  name: string;
+  source: MapLayerSource;
+  renderer: MapLayerRenderer;
+  featureCollection: TripMapFeatureCollection;
+  style: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  drawMode: 'select' | 'point' | 'linestring' | 'polygon' | 'rectangle' | 'circle' | 'freehand';
 }
 
 type DdsBoundaryFeatureType =
@@ -125,7 +125,7 @@ type DdsBoundaryFeatureType =
   | 'ADMINISTRATIVE_AREA_LEVEL_1'
   | 'ADMINISTRATIVE_AREA_LEVEL_2'
   | 'LOCALITY'
-  | 'POSTAL_CODE'
+  | 'POSTAL_CODE';
 
 const BOUNDARY_FEATURE_OPTIONS: Array<{ value: DdsBoundaryFeatureType; label: string }> = [
   { value: 'COUNTRY', label: 'Country' },
@@ -133,7 +133,7 @@ const BOUNDARY_FEATURE_OPTIONS: Array<{ value: DdsBoundaryFeatureType; label: st
   { value: 'ADMINISTRATIVE_AREA_LEVEL_2', label: 'Admin Area 2' },
   { value: 'LOCALITY', label: 'Locality' },
   { value: 'POSTAL_CODE', label: 'Postal Code' },
-]
+];
 
 function defaultLayerStyle(source: MapLayerSource, drawMode: DraftLayerState['drawMode']) {
   if (source === 'routes' || drawMode === 'linestring') {
@@ -141,7 +141,7 @@ function defaultLayerStyle(source: MapLayerSource, drawMode: DraftLayerState['dr
       strokeColor: '#17344C',
       strokeWeight: 5,
       strokeOpacity: 0.92,
-    }
+    };
   }
 
   return {
@@ -150,11 +150,11 @@ function defaultLayerStyle(source: MapLayerSource, drawMode: DraftLayerState['dr
     strokeOpacity: 0.9,
     fillColor: '#72AEE6',
     fillOpacity: 0.16,
-  }
+  };
 }
 
 function makeRouteStop(place: Place | null | undefined): RouteStop | null {
-  if (!place || place.lat == null || place.lon == null) return null
+  if (!place || place.lat == null || place.lon == null) return null;
   return {
     id: place.id,
     name: place.name,
@@ -162,7 +162,7 @@ function makeRouteStop(place: Place | null | undefined): RouteStop | null {
       lat: place.lat,
       lng: place.lon,
     },
-  }
+  };
 }
 
 function createFeatureCollectionFromPlaces(places: Place[]): TripMapFeatureCollection {
@@ -182,14 +182,14 @@ function createFeatureCollectionFromPlaces(places: Place[]): TripMapFeatureColle
           coordinates: [place.lon!, place.lat!],
         },
       })),
-  }
+  };
 }
 
 function createViewportFeatureCollection(
   bounds: google.maps.LatLngBoundsLiteral | null,
 ): TripMapFeatureCollection {
   if (!bounds) {
-    return emptyFeatureCollection()
+    return emptyFeatureCollection();
   }
 
   return {
@@ -202,35 +202,37 @@ function createViewportFeatureCollection(
         },
         geometry: {
           type: 'Polygon',
-          coordinates: [[
-            [bounds.west, bounds.south],
-            [bounds.east, bounds.south],
-            [bounds.east, bounds.north],
-            [bounds.west, bounds.north],
-            [bounds.west, bounds.south],
-          ]],
+          coordinates: [
+            [
+              [bounds.west, bounds.south],
+              [bounds.east, bounds.south],
+              [bounds.east, bounds.north],
+              [bounds.west, bounds.north],
+              [bounds.west, bounds.south],
+            ],
+          ],
         },
       },
     ],
-  }
+  };
 }
 
 function downloadJson(filename: string, payload: unknown) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = filename
-  link.click()
-  URL.revokeObjectURL(url)
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function inferDrawMode(featureCollection: TripMapFeatureCollection): DraftLayerState['drawMode'] {
-  const geometryType = featureCollection.features[0]?.geometry?.type
-  if (geometryType === 'Point' || geometryType === 'MultiPoint') return 'point'
-  if (geometryType === 'LineString' || geometryType === 'MultiLineString') return 'linestring'
-  if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') return 'polygon'
-  return 'select'
+  const geometryType = featureCollection.features[0]?.geometry?.type;
+  if (geometryType === 'Point' || geometryType === 'MultiPoint') return 'point';
+  if (geometryType === 'LineString' || geometryType === 'MultiLineString') return 'linestring';
+  if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') return 'polygon';
+  return 'select';
 }
 
 function PlaceResultRow({
@@ -238,17 +240,19 @@ function PlaceResultRow({
   selected,
   onSelect,
 }: {
-  place: Place
-  selected: boolean
-  onSelect: (place: Place) => void
+  place: Place;
+  selected: boolean;
+  onSelect: (place: Place) => void;
 }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(place)}
       className={cn(
-        'w-full text-left p-3 rounded-[14px] border transition-colors',
-        selected ? 'bg-[var(--color-cta)]/6 border-[var(--color-primary)]' : 'hover:bg-[rgba(114,174,230,0.08)]',
+        'w-full rounded-[14px] border p-3 text-left transition-colors',
+        selected
+          ? 'border-[var(--color-primary)] bg-[var(--color-cta)]/6'
+          : 'hover:bg-[rgba(114,174,230,0.08)]',
       )}
       style={{ borderColor: selected ? 'var(--color-primary)' : 'var(--color-border)' }}
     >
@@ -261,19 +265,21 @@ function PlaceResultRow({
           </p>
         </div>
         {place.distance_m != null && (
-          <span className="text-xs text-[var(--color-primary-foreground)] shrink-0">{Math.round(place.distance_m)}m</span>
+          <span className="shrink-0 text-xs text-[var(--color-primary-foreground)]">
+            {Math.round(place.distance_m)}m
+          </span>
         )}
       </div>
     </button>
-  )
+  );
 }
 
 export default function MapWorkspace({ tripId }: Props) {
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const activityId = searchParams.get('activityId')
-  const returnTo = searchParams.get('returnTo') || `/app/trips/${tripId}/plan`
-  const requestedPlaceId = searchParams.get('placeId')
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activityId = searchParams.get('activityId');
+  const returnTo = searchParams.get('returnTo') || `/app/trips/${tripId}/plan`;
+  const requestedPlaceId = searchParams.get('placeId');
 
   const {
     mode,
@@ -284,18 +290,18 @@ export default function MapWorkspace({ tripId }: Props) {
     setViewport,
     mobilePanel,
     setMobilePanel,
-  } = useMapStore()
+  } = useMapStore();
 
-  const [searchText, setSearchText] = useState(searchParams.get('q') ?? '')
-  const [showCreatePlace, setShowCreatePlace] = useState(false)
+  const [searchText, setSearchText] = useState(searchParams.get('q') ?? '');
+  const [showCreatePlace, setShowCreatePlace] = useState(false);
   const [viewportParams, setViewportParams] = useState<{
-    min_lat: number
-    min_lon: number
-    max_lat: number
-    max_lon: number
-    limit: number
-    offset: number
-  } | null>(null)
+    min_lat: number;
+    min_lon: number;
+    max_lat: number;
+    max_lon: number;
+    limit: number;
+    offset: number;
+  } | null>(null);
 
   const nearbyForm = useForm<NearbyFormValues>({
     resolver: zodResolver(nearbySchema),
@@ -304,7 +310,7 @@ export default function MapWorkspace({ tripId }: Props) {
       lon: viewport.longitude,
       radius_m: 1200,
     },
-  })
+  });
   const createPlaceForm = useForm<CreatePlaceValues>({
     resolver: zodResolver(createPlaceSchema),
     defaultValues: {
@@ -312,55 +318,59 @@ export default function MapWorkspace({ tripId }: Props) {
       lat: viewport.latitude,
       lon: viewport.longitude,
     },
-  })
+  });
 
-  const geometryLib = useGoogleGeometryLibrary()
-  const debouncedViewportParams = useDebouncedValue(viewportParams, 450)
-  const [nearbyParams, setNearbyParams] = useState<NearbyFormValues | null>(null)
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
-  const [draftLayer, setDraftLayer] = useState<DraftLayerState | null>(null)
-  const [googlePlaceDraft, setGooglePlaceDraft] = useState<GooglePlaceCandidate | null>(null)
-  const [boundaryFeatureType, setBoundaryFeatureType] =
-    useState<DdsBoundaryFeatureType>('ADMINISTRATIVE_AREA_LEVEL_1')
-  const [datasetIdInput, setDatasetIdInput] = useState('')
-  const [routeOrigin, setRouteOrigin] = useState<RouteStop | null>(null)
-  const [routeDestination, setRouteDestination] = useState<RouteStop | null>(null)
-  const [routeWaypoints, setRouteWaypoints] = useState<RouteStop[]>([])
-  const [routeAlternatives, setRouteAlternatives] = useState<RoutePreviewRoute[]>([])
-  const [activeRouteIndex, setActiveRouteIndex] = useState(0)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const geometryLib = useGoogleGeometryLibrary();
+  const debouncedViewportParams = useDebouncedValue(viewportParams, 450);
+  const [nearbyParams, setNearbyParams] = useState<NearbyFormValues | null>(null);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [draftLayer, setDraftLayer] = useState<DraftLayerState | null>(null);
+  const [googlePlaceDraft, setGooglePlaceDraft] = useState<GooglePlaceCandidate | null>(null);
+  const [boundaryFeatureType, setBoundaryFeatureType] = useState<DdsBoundaryFeatureType>(
+    'ADMINISTRATIVE_AREA_LEVEL_1',
+  );
+  const [datasetIdInput, setDatasetIdInput] = useState('');
+  const [routeOrigin, setRouteOrigin] = useState<RouteStop | null>(null);
+  const [routeDestination, setRouteDestination] = useState<RouteStop | null>(null);
+  const [routeWaypoints, setRouteWaypoints] = useState<RouteStop[]>([]);
+  const [routeAlternatives, setRouteAlternatives] = useState<RoutePreviewRoute[]>([]);
+  const [activeRouteIndex, setActiveRouteIndex] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { data: basePlaces, isLoading: isLoadingBasePlaces } = usePlaceList({ limit: 30, offset: 0 })
+  const { data: basePlaces, isLoading: isLoadingBasePlaces } = usePlaceList({
+    limit: 30,
+    offset: 0,
+  });
   const { data: searchPlacesData, isFetching: isSearching } = usePlaceSearch(
     { q: searchText.trim(), limit: 30, offset: 0 },
     mode === 'search' && searchText.trim().length > 0,
-  )
+  );
   const { data: nearbyPlacesData, isFetching: isFetchingNearby } = useNearbyPlaces(
     nearbyParams,
     mode === 'nearby' && nearbyParams != null,
-  )
+  );
   const { data: viewportPlacesData, isFetching: isFetchingViewport } = useViewportPlaces(
     debouncedViewportParams,
     mode === 'viewport' && debouncedViewportParams != null && !!config.map.apiKey,
-  )
-  const { data: selectedPlace } = usePlace(selectedPlaceId)
-  const { data: tripLayersData, isLoading: isLoadingTripLayers } = useTripMapLayers(tripId)
-  const createPlaceMutation = useCreatePlace()
-  const createTripLayerMutation = useCreateTripMapLayer(tripId)
-  const patchTripLayerMutation = usePatchTripMapLayer(tripId)
-  const deleteTripLayerMutation = useDeleteTripMapLayer(tripId)
+  );
+  const { data: selectedPlace } = usePlace(selectedPlaceId);
+  const { data: tripLayersData, isLoading: isLoadingTripLayers } = useTripMapLayers(tripId);
+  const createPlaceMutation = useCreatePlace();
+  const createTripLayerMutation = useCreateTripMapLayer(tripId);
+  const patchTripLayerMutation = usePatchTripMapLayer(tripId);
+  const deleteTripLayerMutation = useDeleteTripMapLayer(tripId);
 
   useEffect(() => {
     if (requestedPlaceId) {
-      setSelectedPlaceId(requestedPlaceId)
+      setSelectedPlaceId(requestedPlaceId);
     }
-  }, [requestedPlaceId, setSelectedPlaceId])
+  }, [requestedPlaceId, setSelectedPlaceId]);
 
   const results = useMemo(() => {
-    if (mode === 'nearby') return nearbyPlacesData?.items ?? []
-    if (mode === 'viewport') return viewportPlacesData?.items ?? []
-    if (searchText.trim().length > 0) return searchPlacesData?.items ?? []
-    return basePlaces?.items ?? []
+    if (mode === 'nearby') return nearbyPlacesData?.items ?? [];
+    if (mode === 'viewport') return viewportPlacesData?.items ?? [];
+    if (searchText.trim().length > 0) return searchPlacesData?.items ?? [];
+    return basePlaces?.items ?? [];
   }, [
     basePlaces?.items,
     mode,
@@ -368,20 +378,21 @@ export default function MapWorkspace({ tripId }: Props) {
     searchPlacesData?.items,
     searchText,
     viewportPlacesData?.items,
-  ])
+  ]);
 
-  const selectedResult = results.find((place) => place.id === selectedPlaceId) ?? selectedPlace
-  const tripLayers = tripLayersData?.items ?? []
-  const selectedLayer = tripLayers.find((layer) => layer.id === selectedLayerId) ?? null
-  const currentFeatureCollection = draftLayer?.featureCollection ?? selectedLayer?.feature_collection ?? null
+  const selectedResult = results.find((place) => place.id === selectedPlaceId) ?? selectedPlace;
+  const tripLayers = tripLayersData?.items ?? [];
+  const selectedLayer = tripLayers.find((layer) => layer.id === selectedLayerId) ?? null;
+  const currentFeatureCollection =
+    draftLayer?.featureCollection ?? selectedLayer?.feature_collection ?? null;
   const geometrySummary = useMemo(
     () => summarizeFeatureCollection(currentFeatureCollection, geometryLib),
     [currentFeatureCollection, geometryLib],
-  )
+  );
   const mappableResults = useMemo(
     () => results.filter((place) => place.lat != null && place.lon != null),
     [results],
-  )
+  );
   const clusteredMarkers = useMemo(
     () =>
       mappableResults
@@ -393,53 +404,50 @@ export default function MapWorkspace({ tripId }: Props) {
           color: '#17344C',
         })),
     [mappableResults, selectedPlaceId],
-  )
-  const isMapUnavailable = !config.map.apiKey
+  );
+  const isMapUnavailable = !config.map.apiKey;
   const isLoadingResults =
-    isLoadingBasePlaces ||
-    isSearching ||
-    isFetchingNearby ||
-    isFetchingViewport
+    isLoadingBasePlaces || isSearching || isFetchingNearby || isFetchingViewport;
   const isSavingLayer =
     createTripLayerMutation.isPending ||
     patchTripLayerMutation.isPending ||
-    deleteTripLayerMutation.isPending
+    deleteTripLayerMutation.isPending;
 
   const handleSelectPlace = (place: Place) => {
-    setSelectedPlaceId(place.id)
-  }
+    setSelectedPlaceId(place.id);
+  };
 
   const handleAssignToActivity = async () => {
-    if (!activityId || !selectedPlaceId) return
+    if (!activityId || !selectedPlaceId) return;
 
     try {
-      await patchActivity(activityId, { place_id: selectedPlaceId })
-      toast.success('Place assigned to activity')
-      navigate(returnTo)
+      await patchActivity(activityId, { place_id: selectedPlaceId });
+      toast.success('Place assigned to activity');
+      navigate(returnTo);
     } catch {
-      toast.error('Failed to assign place to activity')
+      toast.error('Failed to assign place to activity');
     }
-  }
+  };
 
   const handleCreatePlace = async (values: CreatePlaceValues) => {
     const matchedPlaces = googlePlaceDraft?.place_id
       ? await searchPlaces({ q: values.name.trim(), limit: 12, offset: 0 }).catch(() => null)
-      : null
+      : null;
     const matchedPlace = matchedPlaces?.items.find((place) => {
-      if (!values.name.trim()) return false
-      const sameName = place.name.trim().toLowerCase() === values.name.trim().toLowerCase()
+      if (!values.name.trim()) return false;
+      const sameName = place.name.trim().toLowerCase() === values.name.trim().toLowerCase();
       const latClose =
-        place.lat != null && values.lat != null ? Math.abs(place.lat - values.lat) <= 0.002 : true
+        place.lat != null && values.lat != null ? Math.abs(place.lat - values.lat) <= 0.002 : true;
       const lonClose =
-        place.lon != null && values.lon != null ? Math.abs(place.lon - values.lon) <= 0.002 : true
-      return sameName && latClose && lonClose
-    })
+        place.lon != null && values.lon != null ? Math.abs(place.lon - values.lon) <= 0.002 : true;
+      return sameName && latClose && lonClose;
+    });
 
     if (matchedPlace) {
-      setSelectedPlaceId(matchedPlace.id)
-      setShowCreatePlace(false)
-      toast.success('Matched an existing Voyager place')
-      return
+      setSelectedPlaceId(matchedPlace.id);
+      setShowCreatePlace(false);
+      toast.success('Matched an existing Voyager place');
+      return;
     }
 
     const payload: PlaceCreateInput = {
@@ -454,26 +462,26 @@ export default function MapWorkspace({ tripId }: Props) {
         ...(googlePlaceDraft ? { google_place_candidate: googlePlaceDraft } : {}),
         ...(googlePlaceDraft?.timezone ? { time_zone_id: googlePlaceDraft.timezone } : {}),
       },
-    }
+    };
 
     try {
       const created = await createPlaceMutation.mutateAsync({
         data: payload,
         idempotencyKey: crypto.randomUUID(),
-      })
-      setSelectedPlaceId(created.id)
-      setShowCreatePlace(false)
+      });
+      setSelectedPlaceId(created.id);
+      setShowCreatePlace(false);
       createPlaceForm.reset({
         category: 'poi',
         lat: viewport.latitude,
         lon: viewport.longitude,
-      })
-      setGooglePlaceDraft(null)
-      toast.success('Custom place created')
+      });
+      setGooglePlaceDraft(null);
+      toast.success('Custom place created');
     } catch {
-      toast.error('Failed to create custom place')
+      toast.error('Failed to create custom place');
     }
-  }
+  };
 
   const handleStartLayerDraft = (
     source: MapLayerSource,
@@ -481,7 +489,7 @@ export default function MapWorkspace({ tripId }: Props) {
     name: string,
     renderer: MapLayerRenderer = 'native',
   ) => {
-    setSelectedLayerId(null)
+    setSelectedLayerId(null);
     setDraftLayer({
       layerId: null,
       name,
@@ -491,11 +499,11 @@ export default function MapWorkspace({ tripId }: Props) {
       style: defaultLayerStyle(source, drawMode),
       metadata: {},
       drawMode,
-    })
-  }
+    });
+  };
 
   const handleEditLayer = (layer: TripMapLayer) => {
-    setSelectedLayerId(layer.id)
+    setSelectedLayerId(layer.id);
     if (layer.renderer === 'native') {
       setDraftLayer({
         layerId: layer.id,
@@ -506,16 +514,16 @@ export default function MapWorkspace({ tripId }: Props) {
         style: layer.style,
         metadata: layer.metadata,
         drawMode: inferDrawMode(layer.feature_collection),
-      })
+      });
     } else {
-      setDraftLayer(null)
+      setDraftLayer(null);
     }
-  }
+  };
 
   const handlePersistDraftLayer = async () => {
-    if (!draftLayer) return
+    if (!draftLayer) return;
 
-    const summary = summarizeFeatureCollection(draftLayer.featureCollection, geometryLib)
+    const summary = summarizeFeatureCollection(draftLayer.featureCollection, geometryLib);
     const payload = {
       name: draftLayer.name,
       source: draftLayer.source,
@@ -529,80 +537,80 @@ export default function MapWorkspace({ tripId }: Props) {
       },
       is_visible: true,
       is_locked: false,
-    }
+    };
 
     try {
       if (draftLayer.layerId) {
         const updated = await patchTripLayerMutation.mutateAsync({
           layerId: draftLayer.layerId,
           data: payload,
-        })
-        setSelectedLayerId(updated.id)
-        toast.success('Trip layer updated')
+        });
+        setSelectedLayerId(updated.id);
+        toast.success('Trip layer updated');
       } else {
         const created = await createTripLayerMutation.mutateAsync({
           data: payload,
           idempotencyKey: crypto.randomUUID(),
-        })
-        setSelectedLayerId(created.id)
-        toast.success('Trip layer saved')
+        });
+        setSelectedLayerId(created.id);
+        toast.success('Trip layer saved');
       }
-      setDraftLayer(null)
+      setDraftLayer(null);
     } catch {
-      toast.error('Failed to save trip layer')
+      toast.error('Failed to save trip layer');
     }
-  }
+  };
 
   const handleDeleteLayer = async (layer: TripMapLayer) => {
     try {
-      await deleteTripLayerMutation.mutateAsync(layer.id)
+      await deleteTripLayerMutation.mutateAsync(layer.id);
       if (selectedLayerId === layer.id) {
-        setSelectedLayerId(null)
+        setSelectedLayerId(null);
       }
       if (draftLayer?.layerId === layer.id) {
-        setDraftLayer(null)
+        setDraftLayer(null);
       }
-      toast.success('Trip layer deleted')
+      toast.success('Trip layer deleted');
     } catch {
-      toast.error('Failed to delete trip layer')
+      toast.error('Failed to delete trip layer');
     }
-  }
+  };
 
   const handleToggleLayerVisibility = async (layer: TripMapLayer) => {
     try {
       await patchTripLayerMutation.mutateAsync({
         layerId: layer.id,
         data: { is_visible: !layer.is_visible },
-      })
+      });
     } catch {
-      toast.error('Failed to update layer visibility')
+      toast.error('Failed to update layer visibility');
     }
-  }
+  };
 
   const handleToggleLayerLock = async (layer: TripMapLayer) => {
     try {
       await patchTripLayerMutation.mutateAsync({
         layerId: layer.id,
         data: { is_locked: !layer.is_locked },
-      })
+      });
     } catch {
-      toast.error('Failed to update layer lock state')
+      toast.error('Failed to update layer lock state');
     }
-  }
+  };
 
   const handleExportLayer = (layer: TripMapLayer) => {
     downloadJson(
       `${layer.name.toLowerCase().replace(/\s+/g, '-') || 'trip-layer'}.geojson`,
       layer.feature_collection,
-    )
-  }
+    );
+  };
 
   const handleImportGeoJson = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const file = event.target.files?.[0];
+    if (!file) return;
 
     try {
-      const payload = JSON.parse(await file.text()) as TripMapFeatureCollection
+      const payload = JSON.parse(await file.text()) as TripMapFeatureCollection;
       await createTripLayerMutation.mutateAsync({
         data: {
           name: file.name.replace(/\.geojson$/i, ''),
@@ -615,19 +623,19 @@ export default function MapWorkspace({ tripId }: Props) {
           },
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      toast.success('GeoJSON layer imported')
-      event.target.value = ''
+      });
+      toast.success('GeoJSON layer imported');
+      event.target.value = '';
     } catch {
-      toast.error('Could not import GeoJSON')
+      toast.error('Could not import GeoJSON');
     }
-  }
+  };
 
   const handleSaveAnalyticsLayer = async (deckKind: 'heatmap' | 'hexagon' | 'scatter') => {
-    const places = results.filter((place) => place.lat != null && place.lon != null)
+    const places = results.filter((place) => place.lat != null && place.lon != null);
     if (!places.length) {
-      toast.error('No mapped results available for analytics')
-      return
+      toast.error('No mapped results available for analytics');
+      return;
     }
 
     try {
@@ -644,12 +652,12 @@ export default function MapWorkspace({ tripId }: Props) {
           style: {},
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      toast.success('Analytics layer saved')
+      });
+      toast.success('Analytics layer saved');
     } catch {
-      toast.error('Failed to save analytics layer')
+      toast.error('Failed to save analytics layer');
     }
-  }
+  };
 
   const handleSaveViewportLayer = async () => {
     try {
@@ -661,11 +669,11 @@ export default function MapWorkspace({ tripId }: Props) {
           feature_collection: createViewportFeatureCollection(
             viewportParams
               ? {
-                north: viewportParams.max_lat,
-                south: viewportParams.min_lat,
-                east: viewportParams.max_lon,
-                west: viewportParams.min_lon,
-              }
+                  north: viewportParams.max_lat,
+                  south: viewportParams.min_lat,
+                  east: viewportParams.max_lon,
+                  west: viewportParams.min_lon,
+                }
               : null,
           ),
           style: defaultLayerStyle('places', 'polygon'),
@@ -674,12 +682,12 @@ export default function MapWorkspace({ tripId }: Props) {
           },
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      toast.success('Viewport layer saved')
+      });
+      toast.success('Viewport layer saved');
     } catch {
-      toast.error('Failed to save viewport layer')
+      toast.error('Failed to save viewport layer');
     }
-  }
+  };
 
   const handleSaveBoundaryLayer = async () => {
     try {
@@ -695,17 +703,17 @@ export default function MapWorkspace({ tripId }: Props) {
           },
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      toast.success('Boundary layer saved')
+      });
+      toast.success('Boundary layer saved');
     } catch {
-      toast.error('Failed to save boundary layer')
+      toast.error('Failed to save boundary layer');
     }
-  }
+  };
 
   const handleSaveDatasetLayer = async () => {
     if (!datasetIdInput.trim()) {
-      toast.error('Dataset ID is required')
-      return
+      toast.error('Dataset ID is required');
+      return;
     }
 
     try {
@@ -721,40 +729,40 @@ export default function MapWorkspace({ tripId }: Props) {
           },
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      setDatasetIdInput('')
-      toast.success('Dataset layer saved')
+      });
+      setDatasetIdInput('');
+      toast.success('Dataset layer saved');
     } catch {
-      toast.error('Failed to save dataset layer')
+      toast.error('Failed to save dataset layer');
     }
-  }
+  };
 
   const handleUsePlaceAsRouteRole = (role: 'origin' | 'destination' | 'waypoint') => {
-    const stop = makeRouteStop(selectedResult)
+    const stop = makeRouteStop(selectedResult);
     if (!stop) {
-      toast.error('Selected place needs coordinates')
-      return
+      toast.error('Selected place needs coordinates');
+      return;
     }
 
     if (role === 'origin') {
-      setRouteOrigin(stop)
-      return
+      setRouteOrigin(stop);
+      return;
     }
     if (role === 'destination') {
-      setRouteDestination(stop)
-      return
+      setRouteDestination(stop);
+      return;
     }
     setRouteWaypoints((current) => {
-      if (current.some((item) => item.id === stop.id)) return current
-      return [...current, stop]
-    })
-  }
+      if (current.some((item) => item.id === stop.id)) return current;
+      return [...current, stop];
+    });
+  };
 
   const handleSaveComputedRoute = async () => {
-    const route = routeAlternatives[activeRouteIndex]
+    const route = routeAlternatives[activeRouteIndex];
     if (!route || !route.path?.length || !routeOrigin || !routeDestination) {
-      toast.error('Route preview is not ready yet')
-      return
+      toast.error('Route preview is not ready yet');
+      return;
     }
 
     try {
@@ -793,12 +801,12 @@ export default function MapWorkspace({ tripId }: Props) {
           },
         },
         idempotencyKey: crypto.randomUUID(),
-      })
-      toast.success('Route layer saved')
+      });
+      toast.success('Route layer saved');
     } catch {
-      toast.error('Failed to save route layer')
+      toast.error('Failed to save route layer');
     }
-  }
+  };
 
   const onBoundsChange = (bounds: google.maps.LatLngBoundsLiteral) => {
     setViewportParams({
@@ -808,23 +816,24 @@ export default function MapWorkspace({ tripId }: Props) {
       max_lon: bounds.east,
       limit: 50,
       offset: 0,
-    })
-  }
+    });
+  };
 
   const topButtonClass =
-    'px-3 py-2 rounded-[14px] border border-[var(--color-border-strong)] bg-white/70 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[rgba(114,174,230,0.08)]'
+    'px-3 py-2 rounded-[14px] border border-[var(--color-border-strong)] bg-white/70 text-sm text-[var(--color-text-muted)] transition-colors hover:bg-[rgba(114,174,230,0.08)]';
 
   return (
     <div className="flex h-full min-h-0 flex-col" style={{ background: 'var(--color-bg)' }}>
       <div
-        className="px-6 py-4 border-b flex flex-col gap-4 shrink-0"
+        className="flex shrink-0 flex-col gap-4 border-b px-6 py-4"
         style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-semibold text-[var(--color-text)]">Map Workspace</h1>
             <p className="text-sm text-[var(--color-text-muted)]">
-              Search the place catalog, inspect nearby points, and assign places back into the planner.
+              Search the place catalog, inspect nearby points, and assign places back into the
+              planner.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -844,7 +853,7 @@ export default function MapWorkspace({ tripId }: Props) {
               className={topButtonClass}
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
             >
-              <Plus className="w-4 h-4 inline mr-1 text-[var(--color-primary-foreground)]" />
+              <Plus className="mr-1 inline h-4 w-4 text-[var(--color-primary-foreground)]" />
               {showCreatePlace ? 'Hide Place Form' : 'Create Place'}
             </button>
           </div>
@@ -858,7 +867,8 @@ export default function MapWorkspace({ tripId }: Props) {
               onClick={() => setMode(value)}
               className={cn(
                 topButtonClass,
-                mode === value && 'bg-[var(--color-cta)] text-white border-[var(--color-primary)] hover:bg-[var(--color-cta)]',
+                mode === value &&
+                  'border-[var(--color-primary)] bg-[var(--color-cta)] text-white hover:bg-[var(--color-cta)]',
               )}
               style={{
                 borderColor: mode === value ? 'var(--color-primary)' : 'var(--color-border)',
@@ -868,19 +878,24 @@ export default function MapWorkspace({ tripId }: Props) {
               {value === 'search' ? 'Search' : value === 'nearby' ? 'Nearby' : 'Viewport'}
             </button>
           ))}
-          <div className="md:hidden ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-2 md:hidden">
             {(['list', 'map'] as const).map((value) => (
               <button
                 key={value}
                 type="button"
                 onClick={() => setMobilePanel(value)}
                 className={cn(
-                  'px-3 py-2 rounded-[10px] border text-sm',
-                  mobilePanel === value && 'bg-[var(--color-cta)] text-white border-[var(--color-primary)]',
+                  'rounded-[10px] border px-3 py-2 text-sm',
+                  mobilePanel === value &&
+                    'border-[var(--color-primary)] bg-[var(--color-cta)] text-white',
                 )}
                 style={{
-                  borderColor: mobilePanel === value ? 'var(--color-primary)' : 'var(--color-border)',
-                  color: mobilePanel === value ? 'var(--color-cta-foreground)' : 'var(--color-text-muted)',
+                  borderColor:
+                    mobilePanel === value ? 'var(--color-primary)' : 'var(--color-border)',
+                  color:
+                    mobilePanel === value
+                      ? 'var(--color-cta-foreground)'
+                      : 'var(--color-text-muted)',
                 }}
               >
                 {value === 'list' ? 'List' : 'Map'}
@@ -891,12 +906,12 @@ export default function MapWorkspace({ tripId }: Props) {
 
         {mode === 'search' && (
           <div className="relative max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" />
+            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />
             <input
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
               placeholder="Search places, landmarks, neighborhoods..."
-              className="w-full pl-9 pr-4 py-3 rounded-[14px] border text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(114,174,230,0.16)]"
+              className="w-full rounded-[14px] border py-3 pr-4 pl-9 text-sm outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[rgba(114,174,230,0.16)]"
               style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
             />
           </div>
@@ -905,10 +920,10 @@ export default function MapWorkspace({ tripId }: Props) {
         {mode === 'nearby' && (
           <form
             onSubmit={nearbyForm.handleSubmit((values) => setNearbyParams(values))}
-            className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end"
+            className="grid grid-cols-1 items-end gap-3 md:grid-cols-[1fr_1fr_1fr_auto]"
           >
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Latitude
               </label>
               <input
@@ -917,12 +932,12 @@ export default function MapWorkspace({ tripId }: Props) {
                 max="90"
                 step="any"
                 {...nearbyForm.register('lat', { valueAsNumber: true })}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Longitude
               </label>
               <input
@@ -931,12 +946,12 @@ export default function MapWorkspace({ tripId }: Props) {
                 max="180"
                 step="any"
                 {...nearbyForm.register('lon', { valueAsNumber: true })}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Radius (m)
               </label>
               <input
@@ -944,13 +959,13 @@ export default function MapWorkspace({ tripId }: Props) {
                 min="0"
                 max="50000"
                 {...nearbyForm.register('radius_m', { valueAsNumber: true })}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2.5 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors"
+              className="rounded-[10px] bg-[var(--color-cta)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta)]"
             >
               Search Nearby
             </button>
@@ -959,7 +974,7 @@ export default function MapWorkspace({ tripId }: Props) {
 
         {mode === 'viewport' && (
           <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-            <SlidersHorizontal className="w-4 h-4 text-[var(--color-primary-foreground)]" />
+            <SlidersHorizontal className="h-4 w-4 text-[var(--color-primary-foreground)]" />
             {isMapUnavailable
               ? 'Viewport search is unavailable until Google Maps is configured.'
               : 'Pan or zoom the map to refresh the visible place list.'}
@@ -970,7 +985,7 @@ export default function MapWorkspace({ tripId }: Props) {
           className="flex flex-wrap items-center gap-2 rounded-[16px] border px-3 py-3"
           style={{ borderColor: 'var(--color-border)', background: 'rgba(255,255,255,0.42)' }}
         >
-          <span className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+          <span className="text-[0.72rem] font-medium tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
             Layer Actions
           </span>
           <button
@@ -1020,55 +1035,57 @@ export default function MapWorkspace({ tripId }: Props) {
 
         {showCreatePlace && (
           <div
-            className="rounded-[18px] border p-4 grid grid-cols-1 md:grid-cols-2 gap-3"
+            className="grid grid-cols-1 gap-3 rounded-[18px] border p-4 md:grid-cols-2"
             style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
           >
-            <div className="md:col-span-2 flex items-center justify-between">
+            <div className="flex items-center justify-between md:col-span-2">
               <div>
                 <p className="font-medium text-[var(--color-text)]">Create Custom Place</p>
-                <p className="text-sm text-[var(--color-text-muted)]">Save a personal place directly into Voyager.</p>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  Save a personal place directly into Voyager.
+                </p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowCreatePlace(false)}
-                className="p-1.5 rounded-[10px] hover:bg-[rgba(114,174,230,0.08)] transition-colors"
+                className="rounded-[10px] p-1.5 transition-colors hover:bg-[rgba(114,174,230,0.08)]"
               >
-                <X className="w-4 h-4 text-[var(--color-text-muted)]" />
+                <X className="h-4 w-4 text-[var(--color-text-muted)]" />
               </button>
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Name
               </label>
               <input
                 {...createPlaceForm.register('name')}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Category
               </label>
               <input
                 {...createPlaceForm.register('category')}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Address
               </label>
               <input
                 {...createPlaceForm.register('address_text')}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Latitude
               </label>
               <input
@@ -1077,12 +1094,12 @@ export default function MapWorkspace({ tripId }: Props) {
                 max="90"
                 step="any"
                 {...createPlaceForm.register('lat', { valueAsNumber: true })}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase tracking-wider">
+              <label className="mb-1 block text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                 Longitude
               </label>
               <input
@@ -1091,27 +1108,31 @@ export default function MapWorkspace({ tripId }: Props) {
                 max="180"
                 step="any"
                 {...createPlaceForm.register('lon', { valueAsNumber: true })}
-                className="w-full px-3 py-2 rounded-[10px] border text-sm"
+                className="w-full rounded-[10px] border px-3 py-2 text-sm"
                 style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
               />
             </div>
             {config.features.mapExperiments && (
-              <div className="md:col-span-2 rounded-[16px] border p-3" style={{ borderColor: 'var(--color-border)' }}>
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+              <div
+                className="rounded-[16px] border p-3 md:col-span-2"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
+                <p className="text-xs font-medium tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   Google Places Assist
                 </p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                  Search Google Places to hydrate the custom place form. Voyager still saves or matches the final place record.
+                  Search Google Places to hydrate the custom place form. Voyager still saves or
+                  matches the final place record.
                 </p>
                 <div className="mt-3">
                   <GooglePlacesExperimentPanel
                     selectedPlaceId={googlePlaceDraft?.place_id}
                     onPlacePicked={(candidate) => {
-                      setGooglePlaceDraft(candidate)
-                      createPlaceForm.setValue('name', candidate?.name ?? '')
-                      createPlaceForm.setValue('address_text', candidate?.address_text ?? '')
-                      if (candidate?.lat != null) createPlaceForm.setValue('lat', candidate.lat)
-                      if (candidate?.lon != null) createPlaceForm.setValue('lon', candidate.lon)
+                      setGooglePlaceDraft(candidate);
+                      createPlaceForm.setValue('name', candidate?.name ?? '');
+                      createPlaceForm.setValue('address_text', candidate?.address_text ?? '');
+                      if (candidate?.lat != null) createPlaceForm.setValue('lat', candidate.lat);
+                      if (candidate?.lon != null) createPlaceForm.setValue('lon', candidate.lon);
                     }}
                   />
                 </div>
@@ -1122,9 +1143,9 @@ export default function MapWorkspace({ tripId }: Props) {
                 type="button"
                 onClick={createPlaceForm.handleSubmit(handleCreatePlace)}
                 disabled={createPlaceMutation.isPending}
-                className="inline-flex items-center gap-2 px-4 py-2.5 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-cta)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta)] disabled:opacity-50"
               >
-                {createPlaceMutation.isPending && <VoyagerLoader className="w-4 h-4 " />}
+                {createPlaceMutation.isPending && <VoyagerLoader className="h-4 w-4" />}
                 Save Place
               </button>
             </div>
@@ -1132,25 +1153,28 @@ export default function MapWorkspace({ tripId }: Props) {
         )}
       </div>
 
-      <div className="flex-1 min-h-0 grid md:grid-cols-[22rem_1fr_22rem] gap-4 p-4">
+      <div className="grid min-h-0 flex-1 gap-4 p-4 md:grid-cols-[22rem_1fr_22rem]">
         <section
           className={cn(
-            'min-h-0 flex-col rounded-[24px] border overflow-hidden',
+            'min-h-0 flex-col overflow-hidden rounded-[24px] border',
             mobilePanel === 'list' ? 'flex' : 'hidden md:flex',
           )}
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
         >
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="border-b px-4 py-3" style={{ borderColor: 'var(--color-border)' }}>
             <p className="font-medium text-[var(--color-text)]">Results</p>
             <p className="text-xs text-[var(--color-text-muted)]">
               {results.length} place{results.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {isLoadingResults ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="h-20 rounded-[14px] bg-[rgba(114,174,230,0.16)] animate-pulse" />
+                  <div
+                    key={item}
+                    className="h-20 animate-pulse rounded-[14px] bg-[rgba(114,174,230,0.16)]"
+                  />
                 ))}
               </div>
             ) : results.length > 0 ? (
@@ -1163,7 +1187,7 @@ export default function MapWorkspace({ tripId }: Props) {
                 />
               ))
             ) : (
-              <div className="text-sm text-[var(--color-text-muted)] p-3">
+              <div className="p-3 text-sm text-[var(--color-text-muted)]">
                 {mode === 'nearby'
                   ? 'No nearby places found. Try increasing the radius.'
                   : mode === 'viewport'
@@ -1176,16 +1200,16 @@ export default function MapWorkspace({ tripId }: Props) {
 
         <section
           className={cn(
-            'min-h-[320px] rounded-[24px] border overflow-hidden relative',
+            'relative min-h-[320px] overflow-hidden rounded-[24px] border',
             mobilePanel === 'map' ? 'block' : 'hidden md:block',
           )}
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
         >
           {isMapUnavailable ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-              <MapPin className="w-8 h-8 text-[var(--color-primary-foreground)] mb-3" />
-              <p className="font-medium text-[var(--color-text)] mb-1">Map unavailable</p>
-              <p className="text-sm text-[var(--color-text-muted)] max-w-sm">
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <MapPin className="mb-3 h-8 w-8 text-[var(--color-primary-foreground)]" />
+              <p className="mb-1 font-medium text-[var(--color-text)]">Map unavailable</p>
+              <p className="max-w-sm text-sm text-[var(--color-text-muted)]">
                 Set `VITE_GOOGLE_MAPS_API_KEY` to enable the interactive map canvas.
               </p>
             </div>
@@ -1203,7 +1227,7 @@ export default function MapWorkspace({ tripId }: Props) {
                   latitude: event.detail.center.lat,
                   longitude: event.detail.center.lng,
                   zoom: event.detail.zoom,
-                })
+                });
               }}
             >
               <MapBoundsSync onBoundsChange={onBoundsChange} />
@@ -1217,11 +1241,11 @@ export default function MapWorkspace({ tripId }: Props) {
                     setDraftLayer((current) =>
                       current
                         ? {
-                          ...current,
-                          featureCollection,
-                        }
+                            ...current,
+                            featureCollection,
+                          }
                         : current,
-                    )
+                    );
                   }}
                 />
               ) : null}
@@ -1232,8 +1256,10 @@ export default function MapWorkspace({ tripId }: Props) {
                   waypoints={routeWaypoints.map((item) => item.point)}
                   activeRouteIndex={activeRouteIndex}
                   onRoutesChange={(routes) => {
-                    setRouteAlternatives(routes)
-                    setActiveRouteIndex((current) => Math.min(current, Math.max(routes.length - 1, 0)))
+                    setRouteAlternatives(routes);
+                    setActiveRouteIndex((current) =>
+                      Math.min(current, Math.max(routes.length - 1, 0)),
+                    );
                   }}
                 />
               ) : null}
@@ -1243,14 +1269,18 @@ export default function MapWorkspace({ tripId }: Props) {
                     ? { lat: selectedResult.lat, lng: selectedResult.lon }
                     : null
                 }
-                zoom={selectedResult?.lat != null && selectedResult?.lon != null ? Math.max(viewport.zoom, 13) : undefined}
+                zoom={
+                  selectedResult?.lat != null && selectedResult?.lon != null
+                    ? Math.max(viewport.zoom, 13)
+                    : undefined
+                }
               />
               <VoyagerMarkerClusterLayer
                 items={clusteredMarkers}
                 onMarkerClick={(item) => {
-                  const match = results.find((place) => place.id === item.id)
+                  const match = results.find((place) => place.id === item.id);
                   if (match) {
-                    handleSelectPlace(match)
+                    handleSelectPlace(match);
                   }
                 }}
               />
@@ -1265,8 +1295,8 @@ export default function MapWorkspace({ tripId }: Props) {
                 />
               ) : null}
               <VoyagerMapControl position={ControlPosition.TOP_LEFT}>
-                <div className="m-3 max-w-[280px] rounded-[18px] border border-white/70 bg-white/88 px-3 py-3 shadow-[0_16px_40px_rgba(23,62,67,0.16)] backdrop-blur">
-                  <p className="text-[0.68rem] uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                <div className="m-3 max-w-[280px] rounded-[18px] border border-white/70 bg-white/88 px-3 py-3 backdrop-blur">
+                  <p className="text-[0.68rem] tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                     Atlas Status
                   </p>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--color-text)]">
@@ -1274,7 +1304,8 @@ export default function MapWorkspace({ tripId }: Props) {
                       {tripLayers.length} saved layer{tripLayers.length === 1 ? '' : 's'}
                     </span>
                     <span className="rounded-full bg-[var(--color-bg-soft)] px-2.5 py-1">
-                      {mappableResults.length} visible place{mappableResults.length === 1 ? '' : 's'}
+                      {mappableResults.length} visible place
+                      {mappableResults.length === 1 ? '' : 's'}
                     </span>
                     {draftLayer ? (
                       <span className="rounded-full bg-[rgba(114,174,230,0.12)] px-2.5 py-1">
@@ -1286,7 +1317,7 @@ export default function MapWorkspace({ tripId }: Props) {
               </VoyagerMapControl>
               {routeAlternatives.length > 1 ? (
                 <VoyagerMapControl position={ControlPosition.TOP_RIGHT}>
-                  <div className="m-3 flex gap-2 rounded-[18px] border border-white/70 bg-white/88 px-3 py-3 shadow-[0_16px_40px_rgba(23,62,67,0.16)] backdrop-blur">
+                  <div className="m-3 flex gap-2 rounded-[18px] border border-white/70 bg-white/88 px-3 py-3 backdrop-blur">
                     {routeAlternatives.map((route, index) => (
                       <button
                         key={`${route.summary || 'route'}-${index}`}
@@ -1310,10 +1341,10 @@ export default function MapWorkspace({ tripId }: Props) {
         </section>
 
         <section
-          className="min-h-0 flex flex-col rounded-[24px] border overflow-hidden"
+          className="flex min-h-0 flex-col overflow-hidden rounded-[24px] border"
           style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
         >
-          <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="border-b px-4 py-3" style={{ borderColor: 'var(--color-border)' }}>
             <p className="font-medium text-[var(--color-text)]">Selected Place</p>
             <p className="text-xs text-[var(--color-text-muted)]">
               {activityId
@@ -1321,7 +1352,7 @@ export default function MapWorkspace({ tripId }: Props) {
                 : 'Inspect metadata and imagery for the selected place.'}
             </p>
           </div>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 space-y-4 overflow-y-auto p-4">
             {selectedResult ? (
               <div className="space-y-4">
                 {resolvePhotoUrl(selectedResult.primary_photo, 'full') ? (
@@ -1342,14 +1373,16 @@ export default function MapWorkspace({ tripId }: Props) {
                   </PhotoViewerProvider>
                 ) : (
                   <div
-                    className="h-44 rounded-[18px] flex items-center justify-center text-sm text-[var(--color-text-muted)]"
+                    className="flex h-44 items-center justify-center rounded-[18px] text-sm text-[var(--color-text-muted)]"
                     style={{ background: 'var(--color-bg)' }}
                   >
                     No photo available
                   </div>
                 )}
                 <div>
-                  <h2 className="text-lg font-semibold text-[var(--color-text)]">{selectedResult.name}</h2>
+                  <h2 className="text-lg font-semibold text-[var(--color-text)]">
+                    {selectedResult.name}
+                  </h2>
                   <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                     {selectedResult.category || 'place'}
                     {selectedResult.address_text ? ` · ${selectedResult.address_text}` : ''}
@@ -1386,16 +1419,18 @@ export default function MapWorkspace({ tripId }: Props) {
                 </div>
                 {selectedResult.metadata && Object.keys(selectedResult.metadata).length > 0 && (
                   <div>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    <p className="mb-2 text-xs font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
                       Metadata
                     </p>
                     <div className="space-y-2">
-                      {Object.entries(selectedResult.metadata).slice(0, 8).map(([key, value]) => (
-                        <div key={key} className="text-sm text-[var(--color-text-muted)]">
-                          <span className="font-medium text-[var(--color-text)]">{key}:</span>{' '}
-                          {typeof value === 'string' ? value : JSON.stringify(value)}
-                        </div>
-                      ))}
+                      {Object.entries(selectedResult.metadata)
+                        .slice(0, 8)
+                        .map(([key, value]) => (
+                          <div key={key} className="text-sm text-[var(--color-text-muted)]">
+                            <span className="font-medium text-[var(--color-text)]">{key}:</span>{' '}
+                            {typeof value === 'string' ? value : JSON.stringify(value)}
+                          </div>
+                        ))}
                     </div>
                   </div>
                 )}
@@ -1403,21 +1438,27 @@ export default function MapWorkspace({ tripId }: Props) {
                   <button
                     type="button"
                     onClick={handleAssignToActivity}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--color-cta)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta)]"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="h-4 w-4" />
                     Use For Planner Activity
                   </button>
                 )}
               </div>
             ) : (
-              <div className="rounded-[18px] border p-4 text-center text-sm text-[var(--color-text-muted)]" style={{ borderColor: 'var(--color-border)' }}>
+              <div
+                className="rounded-[18px] border p-4 text-center text-sm text-[var(--color-text-muted)]"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
                 <MapPin className="mx-auto mb-2 h-6 w-6 text-[var(--color-primary-foreground)]" />
                 Select a place from the list or map to inspect it here.
               </div>
             )}
 
-            <div className="rounded-[18px] border p-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div
+              className="rounded-[18px] border p-4"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Route Composer</p>
@@ -1428,11 +1469,11 @@ export default function MapWorkspace({ tripId }: Props) {
                 <button
                   type="button"
                   onClick={() => {
-                    setRouteOrigin(null)
-                    setRouteDestination(null)
-                    setRouteWaypoints([])
-                    setRouteAlternatives([])
-                    setActiveRouteIndex(0)
+                    setRouteOrigin(null);
+                    setRouteDestination(null);
+                    setRouteWaypoints([]);
+                    setRouteAlternatives([]);
+                    setActiveRouteIndex(0);
                   }}
                   className={topButtonClass}
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}
@@ -1441,28 +1482,50 @@ export default function MapWorkspace({ tripId }: Props) {
                 </button>
               </div>
               <div className="mt-3 space-y-2 text-sm text-[var(--color-text-muted)]">
-                <p><span className="font-medium text-[var(--color-text)]">Origin:</span> {routeOrigin?.name ?? 'Not set'}</p>
-                <p><span className="font-medium text-[var(--color-text)]">Destination:</span> {routeDestination?.name ?? 'Not set'}</p>
-                <p><span className="font-medium text-[var(--color-text)]">Waypoints:</span> {routeWaypoints.length ? routeWaypoints.map((item) => item.name).join(', ') : 'None'}</p>
+                <p>
+                  <span className="font-medium text-[var(--color-text)]">Origin:</span>{' '}
+                  {routeOrigin?.name ?? 'Not set'}
+                </p>
+                <p>
+                  <span className="font-medium text-[var(--color-text)]">Destination:</span>{' '}
+                  {routeDestination?.name ?? 'Not set'}
+                </p>
+                <p>
+                  <span className="font-medium text-[var(--color-text)]">Waypoints:</span>{' '}
+                  {routeWaypoints.length
+                    ? routeWaypoints.map((item) => item.name).join(', ')
+                    : 'None'}
+                </p>
               </div>
               {routeAlternatives.length > 0 ? (
                 <div className="mt-3 rounded-[14px] bg-[var(--color-bg-soft)] p-3 text-sm text-[var(--color-text)]">
                   <p className="font-medium">Active Route</p>
-                  <p className="mt-1">{routeAlternatives[activeRouteIndex]?.summary || `Route ${activeRouteIndex + 1}`}</p>
+                  <p className="mt-1">
+                    {routeAlternatives[activeRouteIndex]?.summary ||
+                      `Route ${activeRouteIndex + 1}`}
+                  </p>
                 </div>
               ) : null}
               <button
                 type="button"
                 onClick={handleSaveComputedRoute}
-                disabled={!routeOrigin || !routeDestination || routeAlternatives.length === 0 || isSavingLayer}
-                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors disabled:opacity-50"
+                disabled={
+                  !routeOrigin ||
+                  !routeDestination ||
+                  routeAlternatives.length === 0 ||
+                  isSavingLayer
+                }
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--color-cta)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta)] disabled:opacity-50"
               >
                 <Route className="h-4 w-4" />
                 Save Route Layer
               </button>
             </div>
 
-            <div className="rounded-[18px] border p-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div
+              className="rounded-[18px] border p-4"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Layer Draft</p>
@@ -1486,19 +1549,33 @@ export default function MapWorkspace({ tripId }: Props) {
                   <input
                     value={draftLayer.name}
                     onChange={(event) =>
-                      setDraftLayer((current) => current ? { ...current, name: event.target.value } : current)
+                      setDraftLayer((current) =>
+                        current ? { ...current, name: event.target.value } : current,
+                      )
                     }
                     className="w-full rounded-[12px] border px-3 py-2 text-sm"
                     style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
                     placeholder="Layer name"
                   />
                   <div className="flex flex-wrap gap-2">
-                    {(['select', 'linestring', 'polygon', 'rectangle', 'circle', 'point', 'freehand'] as const).map((value) => (
+                    {(
+                      [
+                        'select',
+                        'linestring',
+                        'polygon',
+                        'rectangle',
+                        'circle',
+                        'point',
+                        'freehand',
+                      ] as const
+                    ).map((value) => (
                       <button
                         key={value}
                         type="button"
                         onClick={() =>
-                          setDraftLayer((current) => current ? { ...current, drawMode: value } : current)
+                          setDraftLayer((current) =>
+                            current ? { ...current, drawMode: value } : current,
+                          )
                         }
                         className={cn(
                           'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
@@ -1513,11 +1590,13 @@ export default function MapWorkspace({ tripId }: Props) {
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs text-[var(--color-text-muted)]">
                     <div className="rounded-[12px] bg-[var(--color-bg-soft)] px-3 py-2">
-                      <p className="uppercase tracking-[0.16em]">Features</p>
-                      <p className="mt-1 text-sm font-medium text-[var(--color-text)]">{geometrySummary.featureCount}</p>
+                      <p className="tracking-[0.16em] uppercase">Features</p>
+                      <p className="mt-1 text-sm font-medium text-[var(--color-text)]">
+                        {geometrySummary.featureCount}
+                      </p>
                     </div>
                     <div className="rounded-[12px] bg-[var(--color-bg-soft)] px-3 py-2">
-                      <p className="uppercase tracking-[0.16em]">Area / Dist</p>
+                      <p className="tracking-[0.16em] uppercase">Area / Dist</p>
                       <p className="mt-1 text-sm font-medium text-[var(--color-text)]">
                         {geometrySummary.areaSquareMeters > 0
                           ? `${Math.round(geometrySummary.areaSquareMeters)} m²`
@@ -1529,9 +1608,13 @@ export default function MapWorkspace({ tripId }: Props) {
                     type="button"
                     onClick={handlePersistDraftLayer}
                     disabled={isSavingLayer}
-                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[var(--color-cta)] text-white text-sm font-medium rounded-[10px] hover:bg-[var(--color-cta)] transition-colors disabled:opacity-50"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-[10px] bg-[var(--color-cta)] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[var(--color-cta)] disabled:opacity-50"
                   >
-                    {isSavingLayer ? <VoyagerLoader className="h-4 w-4 " /> : <Layers3 className="h-4 w-4" />}
+                    {isSavingLayer ? (
+                      <VoyagerLoader className="h-4 w-4" />
+                    ) : (
+                      <Layers3 className="h-4 w-4" />
+                    )}
                     {draftLayer.layerId ? 'Update Layer' : 'Save Layer'}
                   </button>
                 </div>
@@ -1557,13 +1640,16 @@ export default function MapWorkspace({ tripId }: Props) {
               )}
             </div>
 
-            <div className="rounded-[18px] border p-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div
+              className="rounded-[18px] border p-4"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="font-medium text-[var(--color-text)]">Trip Layers</p>
                   <p className="text-sm text-[var(--color-text-muted)]">
                     Persisted overlays shared across the planner, map, and activity workspaces.
-                </p>
+                  </p>
                 </div>
                 <span className="rounded-full bg-[rgba(114,174,230,0.12)] px-2.5 py-1 text-xs font-medium text-[var(--color-text)]">
                   {tripLayers.length}
@@ -1578,15 +1664,28 @@ export default function MapWorkspace({ tripId }: Props) {
                       key={layer.id}
                       className={cn(
                         'rounded-[14px] border p-3',
-                        selectedLayerId === layer.id && 'border-[var(--color-primary)] bg-[var(--color-cta)]/6',
+                        selectedLayerId === layer.id &&
+                          'border-[var(--color-primary)] bg-[var(--color-cta)]/6',
                       )}
-                      style={{ borderColor: selectedLayerId === layer.id ? 'var(--color-primary)' : 'var(--color-border)' }}
+                      style={{
+                        borderColor:
+                          selectedLayerId === layer.id
+                            ? 'var(--color-primary)'
+                            : 'var(--color-border)',
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <button type="button" onClick={() => setSelectedLayerId(layer.id)} className="min-w-0 text-left">
-                          <p className="text-sm font-medium text-[var(--color-text)]">{layer.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedLayerId(layer.id)}
+                          className="min-w-0 text-left"
+                        >
+                          <p className="text-sm font-medium text-[var(--color-text)]">
+                            {layer.name}
+                          </p>
                           <p className="text-xs text-[var(--color-text-muted)]">
-                            {layer.source} · {layer.renderer} · {featureCollectionToPoints(layer.feature_collection).length} pts
+                            {layer.source} · {layer.renderer} ·{' '}
+                            {featureCollectionToPoints(layer.feature_collection).length} pts
                           </p>
                         </button>
                         <div className="flex items-center gap-1">
@@ -1596,7 +1695,11 @@ export default function MapWorkspace({ tripId }: Props) {
                             className="rounded-[10px] p-2 hover:bg-[rgba(114,174,230,0.08)]"
                             title={layer.is_visible ? 'Hide layer' : 'Show layer'}
                           >
-                            {layer.is_visible ? <Eye className="h-4 w-4 text-[var(--color-text-muted)]" /> : <EyeOff className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                            {layer.is_visible ? (
+                              <Eye className="h-4 w-4 text-[var(--color-text-muted)]" />
+                            ) : (
+                              <EyeOff className="h-4 w-4 text-[var(--color-text-muted)]" />
+                            )}
                           </button>
                           <button
                             type="button"
@@ -1640,16 +1743,21 @@ export default function MapWorkspace({ tripId }: Props) {
                   ))
                 ) : (
                   <div className="text-sm text-[var(--color-text-muted)]">
-                    No layers saved yet. Draw a route or area, save viewport bounds, or import GeoJSON to start.
+                    No layers saved yet. Draw a route or area, save viewport bounds, or import
+                    GeoJSON to start.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="rounded-[18px] border p-4" style={{ borderColor: 'var(--color-border)' }}>
+            <div
+              className="rounded-[18px] border p-4"
+              style={{ borderColor: 'var(--color-border)' }}
+            >
               <p className="font-medium text-[var(--color-text)]">Analytics & DDS</p>
               <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Save deck.gl density overlays from the current result set or create DDS-backed experiment layers.
+                Save deck.gl density overlays from the current result set or create DDS-backed
+                experiment layers.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
@@ -1678,12 +1786,14 @@ export default function MapWorkspace({ tripId }: Props) {
                 </button>
               </div>
               <div className="mt-3 grid grid-cols-1 gap-2">
-                <label className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                <label className="text-xs font-medium tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   Boundary Feature Type
                 </label>
                 <select
                   value={boundaryFeatureType}
-                  onChange={(event) => setBoundaryFeatureType(event.target.value as DdsBoundaryFeatureType)}
+                  onChange={(event) =>
+                    setBoundaryFeatureType(event.target.value as DdsBoundaryFeatureType)
+                  }
                   className="rounded-[12px] border px-3 py-2 text-sm"
                   style={{ borderColor: 'var(--color-border)', background: 'var(--color-bg)' }}
                 >
@@ -1701,7 +1811,7 @@ export default function MapWorkspace({ tripId }: Props) {
                 >
                   Save Boundary Layer
                 </button>
-                <label className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-[var(--color-text-muted)]">
+                <label className="mt-2 text-xs font-medium tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   Dataset ID
                 </label>
                 <input
@@ -1723,7 +1833,10 @@ export default function MapWorkspace({ tripId }: Props) {
             </div>
 
             {config.features.map3D && (
-              <div className="rounded-[18px] border p-4" style={{ borderColor: 'var(--color-border)' }}>
+              <div
+                className="rounded-[18px] border p-4"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
                 <p className="font-medium text-[var(--color-text)]">3D Preview</p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   Experimental 3D map view for the currently selected place or viewport center.
@@ -1748,5 +1861,5 @@ export default function MapWorkspace({ tripId }: Props) {
         </section>
       </div>
     </div>
-  )
+  );
 }

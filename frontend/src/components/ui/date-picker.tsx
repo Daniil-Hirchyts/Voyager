@@ -1,10 +1,10 @@
-import * as React from 'react'
-import { format, parse, isValid } from 'date-fns'
-import { CalendarIcon } from 'lucide-react'
-import { cn } from '@/shared/lib/cn'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import * as React from 'react';
+import { format, parse, isValid } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
  * DatePicker — a controlled Popover+Calendar combo.
@@ -12,13 +12,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
  * compatible with the existing react-hook-form date fields.
  */
 interface DatePickerProps {
-  value?: string
-  onChange?: (value: string) => void
-  placeholder?: string
-  disabled?: boolean
-  invalid?: boolean
-  className?: string
-  id?: string
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  invalid?: boolean;
+  className?: string;
+  id?: string;
 }
 
 export function DatePicker({
@@ -30,20 +30,20 @@ export function DatePicker({
   className,
   id,
 }: DatePickerProps) {
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false);
 
   const selected = React.useMemo(() => {
-    if (!value) return undefined
-    const d = parse(value, 'yyyy-MM-dd', new Date())
-    return isValid(d) ? d : undefined
-  }, [value])
+    if (!value) return undefined;
+    const d = parse(value, 'yyyy-MM-dd', new Date());
+    return isValid(d) ? d : undefined;
+  }, [value]);
 
   const handleSelect = (day: Date | undefined) => {
     if (day) {
-      onChange?.(format(day, 'yyyy-MM-dd'))
-      setOpen(false)
+      onChange?.(format(day, 'yyyy-MM-dd'));
+      setOpen(false);
     }
-  }
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -55,7 +55,7 @@ export function DatePicker({
           aria-invalid={invalid}
           data-invalid={invalid ? true : undefined}
           className={cn(
-            'h-10 w-full justify-start rounded-[10px] px-3 text-left text-sm font-normal shadow-none',
+            'h-10 w-full justify-start rounded-[10px] px-3 text-left text-sm font-normal',
             !selected && 'text-[var(--color-text-muted)]/60',
             invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(196,95,79,0.12)]',
             className,
@@ -66,13 +66,8 @@ export function DatePicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={handleSelect}
-          initialFocus
-        />
+        <Calendar mode="single" selected={selected} onSelect={handleSelect} initialFocus />
       </PopoverContent>
     </Popover>
-  )
+  );
 }

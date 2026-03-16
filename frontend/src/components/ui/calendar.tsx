@@ -1,13 +1,13 @@
-import * as React from 'react'
-import { DayPicker } from 'react-day-picker'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { cn } from '@/shared/lib/cn'
-import { buttonVariants } from '@/components/ui/button'
+import * as React from 'react';
+import { DayPicker } from 'react-day-picker';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
+import { buttonVariants } from '@/components/ui/button';
 
-export type CalendarProps = React.ComponentProps<typeof DayPicker>
+export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
 function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
-  const isSingleMode = props.mode === 'single'
+  const isSingleMode = props.mode === 'single';
 
   return (
     <DayPicker
@@ -29,7 +29,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         ),
         month_grid: 'w-full border-collapse',
         weekdays: 'flex',
-        weekday: 'size-10 rounded-md text-center text-[0.74rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]',
+        weekday:
+          'size-10 rounded-md text-center text-[0.74rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]',
         // no gap between week rows so range bg is continuous across rows
         week: 'flex w-full',
         day: cn(
@@ -55,7 +56,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         selected:
           'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)] hover:text-white focus:bg-[var(--color-primary)] focus:text-white rounded-full',
         today:
-          '[&>button]:rounded-full [&>button]:shadow-[inset_0_0_0_2px_var(--color-primary)] [&>button]:text-[var(--color-text)] [&>button]:font-semibold',
+          '[&>button]:rounded-full [&>button]: [&>button]:text-[var(--color-text)] [&>button]:font-semibold',
         outside:
           'day-outside text-[var(--color-text-muted)]/30 aria-selected:bg-[rgba(26,22,21,0.04)] aria-selected:text-[var(--color-text-muted)]/30',
         disabled: 'text-[var(--color-text-muted)]/30 opacity-50',
@@ -74,8 +75,8 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
       }}
       {...props}
     />
-  )
+  );
 }
-Calendar.displayName = 'Calendar'
+Calendar.displayName = 'Calendar';
 
-export { Calendar }
+export { Calendar };

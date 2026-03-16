@@ -1,25 +1,25 @@
-import { cn } from '@/shared/lib/cn'
-import { AnimatePresence, type Transition, motion } from 'motion/react'
-import { Children, cloneElement, type ReactElement, useEffect, useId, useState } from 'react'
+import { cn } from '@/shared/lib/cn';
+import { AnimatePresence, type Transition, motion } from 'motion/react';
+import { Children, cloneElement, type ReactElement, useEffect, useId, useState } from 'react';
 
 type AnimatedChildProps = {
-  'data-id': string
-  'data-checked'?: string
-  className?: string
-  children?: React.ReactNode
-  onClick?: () => void
-  onMouseEnter?: () => void
-  onMouseLeave?: () => void
-}
+  'data-id': string;
+  'data-checked'?: string;
+  className?: string;
+  children?: React.ReactNode;
+  onClick?: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+};
 
 export type AnimatedBackgroundProps = {
-  children: ReactElement<AnimatedChildProps> | ReactElement<AnimatedChildProps>[]
-  defaultValue?: string
-  onValueChange?: (newActiveId: string | null) => void
-  className?: string
-  transition?: Transition
-  enableHover?: boolean
-}
+  children: ReactElement<AnimatedChildProps> | ReactElement<AnimatedChildProps>[];
+  defaultValue?: string;
+  onValueChange?: (newActiveId: string | null) => void;
+  className?: string;
+  transition?: Transition;
+  enableHover?: boolean;
+};
 
 export function AnimatedBackground({
   children,
@@ -29,22 +29,22 @@ export function AnimatedBackground({
   transition,
   enableHover = false,
 }: AnimatedBackgroundProps) {
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const uniqueId = useId()
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const uniqueId = useId();
 
   const handleSetActiveId = (id: string | null) => {
-    setActiveId(id)
-    onValueChange?.(id)
-  }
+    setActiveId(id);
+    onValueChange?.(id);
+  };
 
   useEffect(() => {
     if (defaultValue !== undefined) {
-      setActiveId(defaultValue)
+      setActiveId(defaultValue);
     }
-  }, [defaultValue])
+  }, [defaultValue]);
 
   return Children.map(children, (child, index) => {
-    const id = child.props['data-id']
+    const id = child.props['data-id'];
 
     const interactionProps = enableHover
       ? {
@@ -53,7 +53,7 @@ export function AnimatedBackground({
         }
       : {
           onClick: () => handleSetActiveId(id),
-        }
+        };
 
     return cloneElement(
       child,
@@ -78,6 +78,6 @@ export function AnimatedBackground({
         </AnimatePresence>
         <div className="z-10">{child.props.children}</div>
       </>,
-    )
-  })
+    );
+  });
 }

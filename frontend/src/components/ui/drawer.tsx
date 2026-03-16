@@ -1,7 +1,7 @@
-import * as React from "react"
-import { Drawer as DrawerPrimitive } from "vaul"
+import * as React from 'react';
+import { Drawer as DrawerPrimitive } from 'vaul';
 
-import { cn } from "@/shared/lib/cn"
+import { cn } from '@/shared/lib/cn';
 
 const Drawer = ({
   shouldScaleBackground = true,
@@ -12,14 +12,14 @@ const Drawer = ({
     direction="right"
     {...props}
   />
-)
-Drawer.displayName = "Drawer"
+);
+Drawer.displayName = 'Drawer';
 
-const DrawerTrigger = DrawerPrimitive.Trigger
+const DrawerTrigger = DrawerPrimitive.Trigger;
 
-const DrawerPortal = DrawerPrimitive.Portal
+const DrawerPortal = DrawerPrimitive.Portal;
 
-const DrawerClose = DrawerPrimitive.Close
+const DrawerClose = DrawerPrimitive.Close;
 
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
@@ -27,11 +27,11 @@ const DrawerOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-[rgba(18,33,50,0.18)] backdrop-blur-[2px]", className)}
+    className={cn('fixed inset-0 z-50 bg-[rgba(18,33,50,0.18)] backdrop-blur-[2px]', className)}
     {...props}
   />
-))
-DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
+));
+DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName;
 
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
@@ -42,39 +42,26 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed right-0 top-0 bottom-0 z-50 flex w-full max-w-md flex-col border-l border-[var(--color-border-strong)] bg-[#F3F5F7] shadow-[0_32px_80px_-30px_rgba(32,56,83,0.32)] transition-transform duration-300",
-        className
+        'fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-md flex-col border-l border-[var(--color-border-strong)] bg-[#F3F5F7] transition-transform duration-300',
+        className,
       )}
       {...props}
     >
-      
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
-))
-DrawerContent.displayName = "DrawerContent"
+));
+DrawerContent.displayName = 'DrawerContent';
 
-const DrawerHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col gap-1.5 px-6 py-5", className)}
-    {...props}
-  />
-)
-DrawerHeader.displayName = "DrawerHeader"
+const DrawerHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn('flex flex-col gap-1.5 px-6 py-5', className)} {...props} />
+);
+DrawerHeader.displayName = 'DrawerHeader';
 
-const DrawerFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex items-center gap-3 px-6 py-5 mt-auto", className)}
-    {...props}
-  />
-)
-DrawerFooter.displayName = "DrawerFooter"
+const DrawerFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn('mt-auto flex items-center gap-3 px-6 py-5', className)} {...props} />
+);
+DrawerFooter.displayName = 'DrawerFooter';
 
 const DrawerTitle = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Title>,
@@ -83,13 +70,13 @@ const DrawerTitle = React.forwardRef<
   <DrawerPrimitive.Title
     ref={ref}
     className={cn(
-      "text-[1.25rem] font-semibold tracking-tight text-[var(--color-text)]",
-      className
+      'text-[1.25rem] font-semibold tracking-tight text-[var(--color-text)]',
+      className,
     )}
     {...props}
   />
-))
-DrawerTitle.displayName = DrawerPrimitive.Title.displayName
+));
+DrawerTitle.displayName = DrawerPrimitive.Title.displayName;
 
 const DrawerDescription = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Description>,
@@ -97,11 +84,11 @@ const DrawerDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Description
     ref={ref}
-    className={cn("text-[0.85rem] leading-6 text-[var(--color-text-muted)]", className)}
+    className={cn('text-[0.85rem] leading-6 text-[var(--color-text-muted)]', className)}
     {...props}
   />
-))
-DrawerDescription.displayName = DrawerPrimitive.Description.displayName
+));
+DrawerDescription.displayName = DrawerPrimitive.Description.displayName;
 
 export {
   Drawer,
@@ -114,4 +101,4 @@ export {
   DrawerFooter,
   DrawerTitle,
   DrawerDescription,
-}
+};

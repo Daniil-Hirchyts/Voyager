@@ -275,9 +275,7 @@ def _google_place_details_from_payload(
     )
 
 
-def _normalize_google_place_photos(
-    raw_photos: Any, *, limit: int = 8
-) -> list[GooglePlacePhoto]:
+def _normalize_google_place_photos(raw_photos: Any, *, limit: int = 8) -> list[GooglePlacePhoto]:
     if not isinstance(raw_photos, list):
         return []
 
@@ -372,9 +370,7 @@ def _normalize_google_hours(raw_hours: Any) -> list[dict[str, Any]]:
             hours.append({"day": label, "times": []})
             continue
         windows = [
-            {"open": part.strip(), "close": None}
-            for part in summary.split(",")
-            if part.strip()
+            {"open": part.strip(), "close": None} for part in summary.split(",") if part.strip()
         ]
         hours.append({"day": label, "times": windows})
     return hours
@@ -388,12 +384,16 @@ def _normalize_google_reviews(raw_reviews: Any) -> list[dict[str, Any]]:
     for index, item in enumerate(raw_reviews[:6]):
         if not isinstance(item, dict):
             continue
-        author = item.get("authorAttribution") if isinstance(item.get("authorAttribution"), dict) else {}
+        author = (
+            item.get("authorAttribution") if isinstance(item.get("authorAttribution"), dict) else {}
+        )
         text_payload = item.get("text") if isinstance(item.get("text"), dict) else {}
         original_text_payload = (
             item.get("originalText") if isinstance(item.get("originalText"), dict) else {}
         )
-        text = _field_text(text_payload.get("text")) or _field_text(original_text_payload.get("text"))
+        text = _field_text(text_payload.get("text")) or _field_text(
+            original_text_payload.get("text")
+        )
         reviews.append(
             {
                 "review_id": _field_text(item.get("name")) or f"google-review-{index}",
@@ -660,9 +660,7 @@ async def fetch_google_place_photo_asset(
             follow_redirects=True,
         ) as client:
             response = await client.get(
-                _google_place_photo_media_url(
-                    normalized_photo_name, max_width_px=max_width_px
-                )
+                _google_place_photo_media_url(normalized_photo_name, max_width_px=max_width_px)
             )
             response.raise_for_status()
     except httpx.HTTPStatusError as exc:
@@ -709,9 +707,7 @@ async def fetch_google_place_detail(place_id: str) -> GooglePlaceRichDetail | No
     )
     mentions = _google_mentions(details)
     booking_links = [
-        {"label": item["label"], "url": item["url"]}
-        for item in mentions
-        if item["url"] is not None
+        {"label": item["label"], "url": item["url"]} for item in mentions if item["url"] is not None
     ]
     return GooglePlaceRichDetail(
         place=place,
@@ -886,9 +882,7 @@ async def search_google_places(
         "pageSize": max(1, min(limit, 10)),
         "languageCode": _settings().google_maps_language,
         **(
-            {"regionCode": _settings().google_maps_region}
-            if _settings().google_maps_region
-            else {}
+            {"regionCode": _settings().google_maps_region} if _settings().google_maps_region else {}
         ),
     }
     normalized_category = _field_text(category)

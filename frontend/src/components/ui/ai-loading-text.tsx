@@ -1,21 +1,21 @@
-'use client'
+'use client';
 
-import type { JSX } from 'react'
-import { TextShimmerWave } from '@/components/ui/text-shimmer-wave'
-import { cn } from '@/shared/lib/cn'
+import type { JSX } from 'react';
+import { TextShimmerWave } from '@/components/ui/text-shimmer-wave';
+import { cn } from '@/shared/lib/cn';
 
 interface AiLoadingTextProps {
-  children: string
-  className?: string
-  as?: keyof JSX.IntrinsicElements
-  size?: 'sm' | 'md'
-  announce?: boolean
+  children: string;
+  className?: string;
+  as?: keyof JSX.IntrinsicElements;
+  size?: 'sm' | 'md';
+  announce?: boolean;
 }
 
 const SIZE_CLASS_NAMES: Record<NonNullable<AiLoadingTextProps['size']>, string> = {
   sm: 'text-[0.78rem]',
   md: 'text-sm',
-}
+};
 
 export function AiLoadingText({
   children,
@@ -51,5 +51,5 @@ export function AiLoadingText({
         </TextShimmerWave>
       </span>
     </span>
-  )
+  );
 }

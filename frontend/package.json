@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint \"src/**/*.{ts,tsx}\" --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "build-keycloak-theme": "bun run build && keycloakify build",
     "api:types": "bunx openapi-typescript http://localhost:8000/openapi.json -o src/shared/api/generated/schema.d.ts"
   },
@@ -97,6 +98,7 @@
   "devDependencies": {
     "@eslint/js": "^9.17.0",
     "@types/js-cookie": "^3.0.6",
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^25.3.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
@@ -105,10 +107,11 @@
     "globals": "^15.14.0",
     "keycloakify": "^11.15.1",
     "openapi-typescript": "^7.4.4",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
     "tss-react": "^4.9.20",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.19.1",
-    "vite": "^5.4.21",
-    "@types/lodash-es": "^4.17.12"
+    "vite": "^5.4.21"
   }
 }

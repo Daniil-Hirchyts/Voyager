@@ -116,7 +116,9 @@ def _trip_response(
     )
 
 
-async def _trip_cover_payload_map(db: AsyncSession, trips) -> dict[uuid.UUID, tuple[TripCoverPreference | None, TripCoverPhoto | None]]:
+async def _trip_cover_payload_map(
+    db: AsyncSession, trips
+) -> dict[uuid.UUID, tuple[TripCoverPreference | None, TripCoverPhoto | None]]:
     return await resolve_trip_cover_payloads(db, trips)
 
 
@@ -127,7 +129,9 @@ def _trip_cover_payload_for(
     return cover_payloads.get(trip.id, (None, None))
 
 
-def _planner_place_summary(place, *, photo_count: int = 0, primary_photo=None) -> PlannerPlaceSummary:
+def _planner_place_summary(
+    place, *, photo_count: int = 0, primary_photo=None
+) -> PlannerPlaceSummary:
     return PlannerPlaceSummary(
         id=place.id,
         name=place.name,
@@ -419,7 +423,9 @@ async def get_trip(
     if cached:
         return TripResponse.model_validate(cached)
 
-    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    summary = await TripRepository.get_trip_access_summary(
+        db, user_id=auth.user_id, trip_id=trip_id
+    )
     cover_payloads = await _trip_cover_payload_map(db, [summary.trip])
     cover_preference, cover_photo = _trip_cover_payload_for(summary.trip, cover_payloads)
     response = _trip_response(
@@ -441,14 +447,18 @@ async def get_trip_planner(
     auth: AuthContext = Depends(get_auth_context),
     db: AsyncSession = Depends(get_db_session),
 ) -> TripPlannerResponse:
-    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    summary = await TripRepository.get_trip_access_summary(
+        db, user_id=auth.user_id, trip_id=trip_id
+    )
     trip = summary.trip
     cover_payloads = await _trip_cover_payload_map(db, [trip])
     cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
     days = await TripRepository.list_days(db, auth.user_id, trip_id)
     activities = await ActivityRepository.list_trip_activities(db, auth.user_id, trip_id)
 
-    place_ids = list(dict.fromkeys(activity.place_id for activity in activities if activity.place_id))
+    place_ids = list(
+        dict.fromkeys(activity.place_id for activity in activities if activity.place_id)
+    )
     photo_summaries = await PlacePhotoRepository.photo_summaries_for_place_ids(db, place_ids)
 
     places_by_id: dict[uuid.UUID, Place] = {}
@@ -552,7 +562,9 @@ async def get_planner_map_place_detail(
             snapshot_id=snapshot_id,
         )
 
-    snapshot_detail = EventRepository.to_discovery_detail(snapshot) if snapshot is not None else None
+    snapshot_detail = (
+        EventRepository.to_discovery_detail(snapshot) if snapshot is not None else None
+    )
     metadata = place_record.metadata_json or {}
     metadata_hours = metadata.get("hours") if isinstance(metadata.get("hours"), list) else []
 
@@ -567,7 +579,8 @@ async def get_planner_map_place_detail(
             if snapshot_detail and snapshot_detail.summary
             else (
                 str(metadata.get("description")).strip()
-                if isinstance(metadata.get("description"), str) and metadata.get("description").strip()
+                if isinstance(metadata.get("description"), str)
+                and metadata.get("description").strip()
                 else None
             )
         ),
@@ -585,7 +598,9 @@ async def get_planner_map_place_detail(
             else [_place_photo_to_discovery_photo(photo) for photo in place_photos]
         ),
         reviews=snapshot_detail.reviews if snapshot_detail else [],
-        hours=snapshot_detail.hours if snapshot_detail and snapshot_detail.hours else metadata_hours,
+        hours=snapshot_detail.hours
+        if snapshot_detail and snapshot_detail.hours
+        else metadata_hours,
         booking_links=snapshot_detail.booking_links if snapshot_detail else [],
         tags=_string_list(
             metadata.get("tags"),
@@ -625,7 +640,9 @@ async def patch_trip(
 ) -> TripResponse:
     expected_version = parse_if_match(if_match)
     trip = await TripRepository.patch_trip(db, auth.user_id, trip_id, expected_version, payload)
-    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    summary = await TripRepository.get_trip_access_summary(
+        db, user_id=auth.user_id, trip_id=trip_id
+    )
     cover_payloads = await _trip_cover_payload_map(db, [trip])
     cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
     await cache_delete_prefix(redis, "trip:get:")
@@ -695,7 +712,9 @@ async def patch_trip_cover_preference(
         trip_id=trip_id,
         payload=payload,
     )
-    summary = await TripRepository.get_trip_access_summary(db, user_id=auth.user_id, trip_id=trip_id)
+    summary = await TripRepository.get_trip_access_summary(
+        db, user_id=auth.user_id, trip_id=trip_id
+    )
     cover_payloads = await _trip_cover_payload_map(db, [trip])
     cover_preference, cover_photo = _trip_cover_payload_for(trip, cover_payloads)
     await cache_delete_prefix(redis, "trip:get:")

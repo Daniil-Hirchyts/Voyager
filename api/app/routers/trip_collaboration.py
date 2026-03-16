@@ -166,7 +166,9 @@ async def get_trip_sharing(
     collaborators = await TripRepository.list_trip_collaborators(db, trip_id=trip_id)
     pending_invitations = []
     if summary.current_user_role.value == TripAccessRole.OWNER.value:
-        pending_invitations = await TripRepository.list_pending_trip_invitations(db, trip_id=trip_id)
+        pending_invitations = await TripRepository.list_pending_trip_invitations(
+            db, trip_id=trip_id
+        )
 
     return TripSharingResponse(
         trip_id=trip_id,
@@ -199,7 +201,9 @@ async def get_trip_sharing(
     )
 
 
-@router.post("/trips/{trip_id}/invites", response_model=TripInvitationCreateResponse, status_code=201)
+@router.post(
+    "/trips/{trip_id}/invites", response_model=TripInvitationCreateResponse, status_code=201
+)
 async def create_trip_invitation(
     trip_id: uuid.UUID,
     payload: TripInvitationCreateRequest,

@@ -1,71 +1,71 @@
-import createClient from 'openapi-fetch'
-import { config } from '@/app/config'
-import type { paths } from '@/shared/api/generated/schema'
+import createClient from 'openapi-fetch';
+import { config } from '@/app/config';
+import type { paths } from '@/shared/api/generated/schema';
 
-let getToken: (() => string | undefined) | null = null
-let unauthorizedHandler: (() => void | Promise<void>) | null = null
-let unauthorizedInFlight: Promise<void> | null = null
+let getToken: (() => string | undefined) | null = null;
+let unauthorizedHandler: (() => void | Promise<void>) | null = null;
+let unauthorizedInFlight: Promise<void> | null = null;
 
 export function setTokenGetter(getter: () => string | undefined) {
-  getToken = getter
+  getToken = getter;
 }
 
 export function setUnauthorizedHandler(handler: (() => void | Promise<void>) | null) {
-  unauthorizedHandler = handler
+  unauthorizedHandler = handler;
 
   return () => {
     if (unauthorizedHandler === handler) {
-      unauthorizedHandler = null
+      unauthorizedHandler = null;
     }
-  }
+  };
 }
 
 export function getAuthToken() {
-  return getToken?.()
+  return getToken?.();
 }
 
 async function notifyUnauthorizedResponse(response: Response) {
   if (response.status !== 401) {
-    return false
+    return false;
   }
 
-  return triggerUnauthorizedHandler().catch(() => false)
+  return triggerUnauthorizedHandler().catch(() => false);
 }
 
 export async function triggerUnauthorizedHandler() {
   if (!unauthorizedHandler) {
-    return false
+    return false;
   }
 
   if (!unauthorizedInFlight) {
     unauthorizedInFlight = Promise.resolve(unauthorizedHandler()).finally(() => {
-      unauthorizedInFlight = null
-    })
+      unauthorizedInFlight = null;
+    });
   }
 
-  await unauthorizedInFlight
-  return true
+  await unauthorizedInFlight;
+  return true;
 }
 
 export const apiClient = createClient<paths>({
   baseUrl: config.api.baseUrl,
-})
+});
 
 apiClient.use({
   onRequest({ request }) {
-    const token = getAuthToken()
+    const token = getAuthToken();
     if (token) {
-      request.headers.set('Authorization', `Bearer ${token}`)
+      request.headers.set('Authorization', `Bearer ${token}`);
     }
-    return request
+    return request;
   },
   async onResponse({ response }) {
     if (!response.ok) {
-      throw await toApiError(response)
+      throw await toApiError(response);
     }
-    return response
+    return response;
   },
-})
+});
 
 export class ApiError extends Error {
   constructor(
@@ -76,16 +76,19 @@ export class ApiError extends Error {
     public readonly traceId?: string,
     public readonly unauthorizedHandled = false,
   ) {
-    super(message)
-    this.name = 'ApiError'
+    super(message);
+    this.name = 'ApiError';
   }
 }
 
 export async function toApiError(response: Response) {
-  const unauthorizedHandled = await notifyUnauthorizedResponse(response)
+  const unauthorizedHandled = await notifyUnauthorizedResponse(response);
 
-  const body = await response.clone().json().catch(() => null)
-  const apiError = body?.error
+  const body = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  const apiError = body?.error;
   return new ApiError(
     response.status,
     apiError?.code ?? 'UNKNOWN',
@@ -93,27 +96,24 @@ export async function toApiError(response: Response) {
     apiError?.details,
     apiError?.trace_id,
     unauthorizedHandled,
-  )
+  );
 }
 
 export function buildApiUrl(path: string) {
-  if (/^https?:\/\//.test(path)) return path
-  return `${config.api.baseUrl}${path}`
+  if (/^https?:\/\//.test(path)) return path;
+  return `${config.api.baseUrl}${path}`;
 }
 
-export function createRequestHeaders(
-  headers?: HeadersInit,
-  options?: { json?: boolean },
-) {
-  const normalized = new Headers(headers)
-  const token = getAuthToken()
+export function createRequestHeaders(headers?: HeadersInit, options?: { json?: boolean }) {
+  const normalized = new Headers(headers);
+  const token = getAuthToken();
   if (token && !normalized.has('Authorization')) {
-    normalized.set('Authorization', `Bearer ${token}`)
+    normalized.set('Authorization', `Bearer ${token}`);
   }
   if (options?.json && !normalized.has('Content-Type')) {
-    normalized.set('Content-Type', 'application/json')
+    normalized.set('Content-Type', 'application/json');
   }
-  return normalized
+  return normalized;
 }
 
 export async function requestJson<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -122,36 +122,36 @@ export async function requestJson<T>(path: string, init: RequestInit = {}): Prom
     headers: createRequestHeaders(init.headers, {
       json: init.body != null && !(init.body instanceof FormData),
     }),
-  })
+  });
   if (!response.ok) {
-    throw await toApiError(response)
+    throw await toApiError(response);
   }
   if (response.status === 204) {
-    return undefined as T
+    return undefined as T;
   }
-  return response.json() as Promise<T>
+  return response.json() as Promise<T>;
 }
 
 export function isApiError(err: unknown): err is ApiError {
-  return err instanceof ApiError
+  return err instanceof ApiError;
 }
 
 export function isConflict(err: unknown): err is ApiError {
-  return isApiError(err) && err.status === 409
+  return isApiError(err) && err.status === 409;
 }
 
 export function isRateLimit(err: unknown): err is ApiError {
-  return isApiError(err) && err.status === 429
+  return isApiError(err) && err.status === 429;
 }
 
 export function isValidationError(err: unknown): err is ApiError {
-  return isApiError(err) && err.status === 422
+  return isApiError(err) && err.status === 422;
 }
 
 export function isNotFound(err: unknown): err is ApiError {
-  return isApiError(err) && err.status === 404
+  return isApiError(err) && err.status === 404;
 }
 
 export function isIntegrationNotConfigured(err: unknown): err is ApiError {
-  return isApiError(err) && err.code === 'INTEGRATION_NOT_CONFIGURED'
+  return isApiError(err) && err.code === 'INTEGRATION_NOT_CONFIGURED';
 }

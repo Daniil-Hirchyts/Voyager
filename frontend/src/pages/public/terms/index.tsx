@@ -1,15 +1,15 @@
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { VoyagerLogo } from '@/widgets/app-shell/logo';
 
 function LegalPage({
   title,
   lastUpdated,
   children,
 }: {
-  title: string
-  lastUpdated: string
-  children: React.ReactNode
+  title: string;
+  lastUpdated: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="min-h-dvh bg-[var(--color-bg)]">
@@ -31,11 +31,15 @@ function LegalPage({
         </div>
 
         <div className="mb-10 border-b border-[var(--color-border-strong)] pb-8">
-          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#8b97a7]">Legal</p>
-          <h1 className="text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.05em] text-[var(--color-text)] md:text-[2.8rem]">
+          <p className="mb-3 text-[0.68rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
+            Legal
+          </p>
+          <h1 className="text-[2.2rem] leading-[1.05] font-semibold tracking-[-0.05em] text-[var(--color-text)] md:text-[2.8rem]">
             {title}
           </h1>
-          <p className="mt-3 text-[0.85rem] text-[var(--color-text-muted)]">Last updated: {lastUpdated}</p>
+          <p className="mt-3 text-[0.85rem] text-[var(--color-text-muted)]">
+            Last updated: {lastUpdated}
+          </p>
         </div>
 
         <div>{children}</div>
@@ -47,23 +51,31 @@ function LegalPage({
             { label: 'Cookie Policy', to: '/cookies' },
             { label: 'Imprint', to: '/imprint' },
           ].map(({ label, to }) => (
-            <Link key={label} to={to} className="text-[0.78rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">
+            <Link
+              key={label}
+              to={to}
+              className="text-[0.78rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+            >
               {label}
             </Link>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-[1.1rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">{title}</h2>
-      <div className="space-y-3 text-[0.92rem] leading-7 text-[var(--color-text-muted)]">{children}</div>
+      <h2 className="mb-3 text-[1.1rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+        {title}
+      </h2>
+      <div className="space-y-3 text-[0.92rem] leading-7 text-[var(--color-text-muted)]">
+        {children}
+      </div>
     </section>
-  )
+  );
 }
 
 export default function TermsOfServicePage() {
@@ -80,8 +92,8 @@ export default function TermsOfServicePage() {
       <Section title="2. Description of service">
         <p>
           Voyager is an AI-assisted travel planning tool that allows you to create, manage, and
-          share itineraries. The service is provided "as is" and we make no warranty that it will
-          be uninterrupted, error-free, or fit for any particular purpose.
+          share itineraries. The service is provided "as is" and we make no warranty that it will be
+          uninterrupted, error-free, or fit for any particular purpose.
         </p>
       </Section>
 
@@ -123,8 +135,8 @@ export default function TermsOfServicePage() {
       <Section title="7. Limitation of liability">
         <p>
           To the fullest extent permitted by law, Voyager shall not be liable for any indirect,
-          incidental, or consequential damages arising from your use of the service, including travel
-          disruptions or losses based on AI-generated recommendations.
+          incidental, or consequential damages arising from your use of the service, including
+          travel disruptions or losses based on AI-generated recommendations.
         </p>
       </Section>
 
@@ -137,8 +149,8 @@ export default function TermsOfServicePage() {
 
       <Section title="9. Governing law">
         <p>
-          These terms are governed by the laws of the European Union and, where applicable,
-          the jurisdiction in which Voyager is incorporated.
+          These terms are governed by the laws of the European Union and, where applicable, the
+          jurisdiction in which Voyager is incorporated.
         </p>
       </Section>
 
@@ -149,5 +161,5 @@ export default function TermsOfServicePage() {
         </p>
       </Section>
     </LegalPage>
-  )
+  );
 }

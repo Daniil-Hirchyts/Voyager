@@ -237,7 +237,9 @@ def _validate_candidate_diversity(
             if title_key:
                 prior_day_id = seen_titles.get(title_key)
                 if prior_day_id is not None:
-                    raise ValueError("LLM payload reused the same activity title across multiple days")
+                    raise ValueError(
+                        "LLM payload reused the same activity title across multiple days"
+                    )
                 seen_titles[title_key] = day_id
 
 

@@ -1,10 +1,10 @@
-import { Navigate, useLocation, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 
 export default function EventsPage() {
-  const { tripId } = useParams<{ tripId: string }>()
-  const location = useLocation()
+  const { tripId } = useParams<{ tripId: string }>();
+  const location = useLocation();
 
-  if (!tripId) return null
+  if (!tripId) return null;
 
-  return <Navigate to={`/app/trips/${tripId}/activities${location.search}`} replace />
+  return <Navigate to={`/app/trips/${tripId}/activities${location.search}`} replace />;
 }

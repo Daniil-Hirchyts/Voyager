@@ -1,3 +1,3 @@
 export default function AuthSilentPage() {
-  return null
+  return null;
 }

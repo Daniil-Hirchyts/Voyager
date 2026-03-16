@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   closestCenter,
   DndContext,
@@ -15,33 +15,29 @@ import {
   type UniqueIdentifier,
   useSensor,
   useSensors,
-} from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { useNavigate, useSearchParams } from "react-router-dom";
+} from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useQueryClient } from '@tanstack/react-query';
+import { format } from 'date-fns';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { toast } from "sonner";
-import { config } from "@/app/config";
-import {
-  useGenerateItinerary,
-  useJob,
-  useResetItinerary,
-} from "@/entities/job/queries";
-import { getPlanner } from "@/entities/planner/api";
-import { plannerKeys, usePlanner } from "@/entities/planner/queries";
-import { readTripCoverPhotoPreference } from "@/entities/trip/cover-photo";
-import { tripAssetKeys } from "@/entities/trip-asset/queries";
+import { toast } from 'sonner';
+import { config } from '@/app/config';
+import { useGenerateItinerary, useJob, useResetItinerary } from '@/entities/job/queries';
+import { getPlanner } from '@/entities/planner/api';
+import { plannerKeys, usePlanner } from '@/entities/planner/queries';
+import { readTripCoverPhotoPreference } from '@/entities/trip/cover-photo';
+import { tripAssetKeys } from '@/entities/trip-asset/queries';
 import {
   isApiError,
   isConflict,
   isRateLimit,
   triggerUnauthorizedHandler,
-} from "@/shared/api/client";
-import { isJobSuccessful, isJobTerminal } from "@/shared/lib/jobs";
-import { usePlannerStore } from "@/shared/stores/planner.store";
-import { useSideRailStore, type DayAnchor } from "@/shared/stores/side-rail.store";
-import { PLANNER_MAP_DAY_COLORS } from "./planner-map-utils";
+} from '@/shared/api/client';
+import { isJobSuccessful, isJobTerminal } from '@/shared/lib/jobs';
+import { usePlannerStore } from '@/shared/stores/planner.store';
+import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store';
+import { PLANNER_MAP_DAY_COLORS } from './planner-map-utils';
 import type {
   ActivityCreateInput,
   Day,
@@ -50,32 +46,29 @@ import type {
   PlannerResponse,
   TripCoverPreference,
   TripGenerateInput,
-} from "@/shared/api/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { ComboboxOption } from "@/components/ui/combobox";
-import { ActivityCardView } from "./ActivityCard";
-import { ActivityDrawer } from "./ActivityDrawer";
+} from '@/shared/api/types';
+import { Skeleton } from '@/components/ui/skeleton';
+import type { ComboboxOption } from '@/components/ui/combobox';
+import { ActivityCardView } from './ActivityCard';
+import { ActivityDrawer } from './ActivityDrawer';
 import {
   filterPlannerActivitiesByBucket,
   plannerActivityBucket,
   type PlannerActivityBucket,
-} from "./activity-buckets";
+} from './activity-buckets';
 import {
   type PlannerGenerationAction,
   type PlannerGenerationFormValues,
-} from "./GenerationControls";
-import {
-  mirrorPlannerJobToAssistant,
-  PlannerAssistantPanel,
-} from "@/widgets/planner-assistant";
+} from './GenerationControls';
+import { mirrorPlannerJobToAssistant, PlannerAssistantPanel } from '@/widgets/planner-assistant';
 import {
   ActivityMapDetailSheet,
   PlannerMapView,
   type PlannerAssistantSuggestedPlace,
-} from "./PlannerMapView";
-import type { PlannerRecommendationEntry } from "./usePlannerRecommendations";
-import { usePlannerRecommendations } from "./usePlannerRecommendations";
-import { TripSettingsMenu } from "./TripSettingsMenu";
+} from './PlannerMapView';
+import type { PlannerRecommendationEntry } from './usePlannerRecommendations';
+import { usePlannerRecommendations } from './usePlannerRecommendations';
+import { TripSettingsMenu } from './TripSettingsMenu';
 
 interface Props {
   tripId: string;
@@ -94,7 +87,7 @@ type DragPreviewSize = {
 type EditorState = {
   activityId: string | null;
   defaultTripDayId: string | null;
-  defaultCategory: PlannerActivity["category"] | null;
+  defaultCategory: PlannerActivity['category'] | null;
 } | null;
 type PlannerMapSeed = {
   activityId: string | null;
@@ -102,10 +95,10 @@ type PlannerMapSeed = {
   center: { lat: number; lng: number } | null;
 };
 
-const INBOX_CONTAINER_ID = "inbox";
-const INBOX_DAY_VALUE = "__inbox__";
-const CHIP_PREFIX = "chip::";
-const END_SUFFIX = "::end";
+const INBOX_CONTAINER_ID = 'inbox';
+const INBOX_DAY_VALUE = '__inbox__';
+const CHIP_PREFIX = 'chip::';
+const END_SUFFIX = '::end';
 
 function clonePlanner(planner: PlannerResponse): PlannerResponse {
   return {
@@ -126,10 +119,9 @@ function getEndZoneId(containerId: PlannerVisualContainerId) {
 }
 
 export function resolveDragPreviewSize(
-  event: Pick<DragStartEvent, "active" | "activatorEvent">,
+  event: Pick<DragStartEvent, 'active' | 'activatorEvent'>,
 ): DragPreviewSize | null {
-  const sourceRect =
-    event.active.rect.current.initial ?? event.active.rect.current.translated;
+  const sourceRect = event.active.rect.current.initial ?? event.active.rect.current.translated;
   if (sourceRect) {
     return {
       width: sourceRect.width,
@@ -142,7 +134,7 @@ export function resolveDragPreviewSize(
     return null;
   }
 
-  const sourceCard = activatorTarget.closest("article");
+  const sourceCard = activatorTarget.closest('article');
   if (!sourceCard) {
     return null;
   }
@@ -154,18 +146,12 @@ export function resolveDragPreviewSize(
   };
 }
 
-function normalizeActivityList(
-  activities: PlannerActivity[],
-  tripDayId: string | null,
-) {
+function normalizeActivityList(activities: PlannerActivity[], tripDayId: string | null) {
   return activities.map((activity, index) => ({
     ...activity,
     trip_day_id: tripDayId,
     order_index: index,
-    start_time:
-      tripDayId == null && activity.category !== "travel"
-        ? null
-        : activity.start_time,
+    start_time: tripDayId == null && activity.category !== 'travel' ? null : activity.start_time,
   }));
 }
 
@@ -179,11 +165,9 @@ function getVisualContainerId(
 function parseVisualContainerId(
   value: string,
 ): { bucket: PlannerActivityBucket; dayId: string | null } | null {
-  const [bucketValue, rawDayId] = value.split("::");
+  const [bucketValue, rawDayId] = value.split('::');
   if (
-    (bucketValue !== "main" &&
-      bucketValue !== "travel" &&
-      bucketValue !== "accommodation") ||
+    (bucketValue !== 'main' && bucketValue !== 'travel' && bucketValue !== 'accommodation') ||
     !rawDayId
   ) {
     return null;
@@ -195,10 +179,7 @@ function parseVisualContainerId(
   };
 }
 
-function getActivitiesForDay(
-  planner: PlannerResponse,
-  dayId: string | null,
-) {
+function getActivitiesForDay(planner: PlannerResponse, dayId: string | null) {
   if (dayId == null) {
     return planner.inbox_activities;
   }
@@ -270,9 +251,7 @@ function findActivityLocation(
     return null;
   }
 
-  const inboxIndex = planner.inbox_activities.findIndex(
-    (activity) => activity.id === activityId,
-  );
+  const inboxIndex = planner.inbox_activities.findIndex((activity) => activity.id === activityId);
   if (inboxIndex >= 0) {
     const activity = planner.inbox_activities[inboxIndex];
     if (!activity) {
@@ -290,9 +269,7 @@ function findActivityLocation(
   }
 
   for (const day of planner.days) {
-    const index = day.activities.findIndex(
-      (activity) => activity.id === activityId,
-    );
+    const index = day.activities.findIndex((activity) => activity.id === activityId);
     if (index >= 0) {
       const activity = day.activities[index];
       if (!activity) {
@@ -313,17 +290,12 @@ function findActivityLocation(
   return null;
 }
 
-function findActivity(
-  planner: PlannerResponse | undefined,
-  activityId: string | null,
-) {
+function findActivity(planner: PlannerResponse | undefined, activityId: string | null) {
   if (!planner || !activityId) {
     return null;
   }
 
-  const inboxActivity = planner.inbox_activities.find(
-    (activity) => activity.id === activityId,
-  );
+  const inboxActivity = planner.inbox_activities.find((activity) => activity.id === activityId);
   if (inboxActivity) {
     return inboxActivity;
   }
@@ -350,19 +322,19 @@ function resolveDropTarget(
     const rawContainerId = overId.slice(CHIP_PREFIX.length);
     if (rawContainerId === INBOX_CONTAINER_ID) {
       return {
-        bucket: "main",
-        containerId: getVisualContainerId("main", null),
+        bucket: 'main',
+        containerId: getVisualContainerId('main', null),
         dayId: null,
-        index: getContainerActivities(planner, null, "main").length,
+        index: getContainerActivities(planner, null, 'main').length,
       };
     }
     const day = planner.days.find((item) => item.id === rawContainerId);
     return day
       ? {
-          bucket: "main",
-          containerId: getVisualContainerId("main", day.id),
+          bucket: 'main',
+          containerId: getVisualContainerId('main', day.id),
           dayId: day.id,
-          index: getContainerActivities(planner, day.id, "main").length,
+          index: getContainerActivities(planner, day.id, 'main').length,
         }
       : null;
   }
@@ -374,16 +346,9 @@ function resolveDropTarget(
   if (parsedContainer) {
     return {
       bucket: parsedContainer.bucket,
-      containerId: getVisualContainerId(
-        parsedContainer.bucket,
-        parsedContainer.dayId,
-      ),
+      containerId: getVisualContainerId(parsedContainer.bucket, parsedContainer.dayId),
       dayId: parsedContainer.dayId,
-      index: getContainerActivities(
-        planner,
-        parsedContainer.dayId,
-        parsedContainer.bucket,
-      ).length,
+      index: getContainerActivities(planner, parsedContainer.dayId, parsedContainer.bucket).length,
     };
   }
 
@@ -391,10 +356,10 @@ function resolveDropTarget(
     const day = planner.days.find((item) => item.id === normalizedOverId);
     return day
       ? {
-          bucket: "main",
-          containerId: getVisualContainerId("main", day.id),
+          bucket: 'main',
+          containerId: getVisualContainerId('main', day.id),
           dayId: day.id,
-          index: getContainerActivities(planner, day.id, "main").length,
+          index: getContainerActivities(planner, day.id, 'main').length,
         }
       : null;
   }
@@ -402,15 +367,12 @@ function resolveDropTarget(
   return findActivityLocation(planner, overId);
 }
 
-function canMoveBetweenLocations(
-  source: ActivityLocation,
-  target: ActivityLocation,
-) {
+function canMoveBetweenLocations(source: ActivityLocation, target: ActivityLocation) {
   if (source.bucket !== target.bucket) {
     return false;
   }
 
-  if (source.bucket !== "main" && source.dayId !== target.dayId) {
+  if (source.bucket !== 'main' && source.dayId !== target.dayId) {
     return false;
   }
 
@@ -437,9 +399,7 @@ function updatePlannerActivityLists(
       ? sourceActivities
       : [...getActivitiesForDay(nextPlanner, target.dayId)];
 
-  const sourceIndex = sourceActivities.findIndex(
-    (activity) => activity.id === activityId,
-  );
+  const sourceIndex = sourceActivities.findIndex((activity) => activity.id === activityId);
   const [activity] = sourceActivities.splice(sourceIndex, 1);
   if (!activity) {
     return null;
@@ -457,12 +417,8 @@ function updatePlannerActivityLists(
   const nextActivity: PlannerActivity = {
     ...activity,
     trip_day_id: target.dayId,
-    start_time:
-      target.dayId == null && activity.category !== "travel"
-        ? null
-        : activity.start_time,
-    legacy_source_day_id:
-      target.dayId ?? activity.legacy_source_day_id ?? source.dayId,
+    start_time: target.dayId == null && activity.category !== 'travel' ? null : activity.start_time,
+    legacy_source_day_id: target.dayId ?? activity.legacy_source_day_id ?? source.dayId,
     legacy_inbox_item: target.dayId == null,
   };
   targetActivities.splice(safeIndex, 0, nextActivity);
@@ -485,21 +441,12 @@ function buildReport(
   return {
     jobId,
     status,
-    result:
-      result && typeof result === "object"
-        ? (result as Record<string, unknown>)
-        : null,
-    error:
-      error && typeof error === "object"
-        ? (error as Record<string, unknown>)
-        : null,
+    result: result && typeof result === 'object' ? (result as Record<string, unknown>) : null,
+    error: error && typeof error === 'object' ? (error as Record<string, unknown>) : null,
   };
 }
 
-function findDayLabel(
-  planner: PlannerResponse | null | undefined,
-  tripDayId: string | null,
-) {
+function findDayLabel(planner: PlannerResponse | null | undefined, tripDayId: string | null) {
   if (!planner || !tripDayId) {
     return null;
   }
@@ -507,7 +454,7 @@ function findDayLabel(
   if (!day) {
     return null;
   }
-  return `Day ${day.day_index + 1} · ${format(new Date(day.date), "EEE, MMM d")}`;
+  return `Day ${day.day_index + 1} · ${format(new Date(day.date), 'EEE, MMM d')}`;
 }
 
 function parsePlannerMapSeed(
@@ -516,24 +463,24 @@ function parsePlannerMapSeed(
   coverPreference: TripCoverPreference | null = null,
 ): PlannerMapSeed {
   const legacyCoverPreference = readTripCoverPhotoPreference(tripId);
-  const activityId = searchParams.get("activityId")?.trim() || null;
-  const placeId = searchParams.get("placeId")?.trim() || null;
-  const lat = Number(searchParams.get("lat"));
-  const lng = Number(searchParams.get("lng"));
+  const activityId = searchParams.get('activityId')?.trim() || null;
+  const placeId = searchParams.get('placeId')?.trim() || null;
+  const lat = Number(searchParams.get('lat'));
+  const lng = Number(searchParams.get('lng'));
   const center =
     Number.isFinite(lat) && Number.isFinite(lng)
       ? { lat, lng }
-      : typeof coverPreference?.placeLat === "number" &&
+      : typeof coverPreference?.placeLat === 'number' &&
           Number.isFinite(coverPreference.placeLat) &&
-          typeof coverPreference?.placeLng === "number" &&
+          typeof coverPreference?.placeLng === 'number' &&
           Number.isFinite(coverPreference.placeLng)
         ? { lat: coverPreference.placeLat, lng: coverPreference.placeLng }
-        : typeof legacyCoverPreference?.placeLat === "number" &&
+        : typeof legacyCoverPreference?.placeLat === 'number' &&
             Number.isFinite(legacyCoverPreference.placeLat) &&
-            typeof legacyCoverPreference?.placeLng === "number" &&
+            typeof legacyCoverPreference?.placeLng === 'number' &&
             Number.isFinite(legacyCoverPreference.placeLng)
           ? { lat: legacyCoverPreference.placeLat, lng: legacyCoverPreference.placeLng }
-        : null;
+          : null;
 
   return {
     activityId,
@@ -547,9 +494,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const [editorState, setEditorState] = useState<EditorState>(null);
-  const [detailsActivityId, setDetailsActivityId] = useState<string | null>(
-    null,
-  );
+  const [detailsActivityId, setDetailsActivityId] = useState<string | null>(null);
   const [selectedRecommendation, setSelectedRecommendation] =
     useState<PlannerRecommendationEntry | null>(null);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
@@ -570,19 +515,14 @@ export default function PlannerBoard({ tripId }: Props) {
     assistantPanelOpenByTrip,
     setAssistantPanelOpen,
   } = usePlannerStore();
-  const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(
-    null,
-  );
-  const [activeDragPreviewSize, setActiveDragPreviewSize] =
-    useState<DragPreviewSize | null>(null);
+  const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(null);
+  const [activeDragPreviewSize, setActiveDragPreviewSize] = useState<DragPreviewSize | null>(null);
   const prevJobStatus = useRef<string | null>(null);
   const lastOverIdRef = useRef<UniqueIdentifier | null>(null);
   const dragOriginPlannerRef = useRef<PlannerResponse | null>(null);
   const openRailSectionRef = useRef<((sectionKey: string) => void) | null>(null);
 
-  const [plannerLoadRecovery, setPlannerLoadRecovery] = useState<
-    "auth" | "trip" | null
-  >(null);
+  const [plannerLoadRecovery, setPlannerLoadRecovery] = useState<'auth' | 'trip' | null>(null);
   const { data: planner, isLoading, isError, error } = usePlanner(tripId);
   const plannerMapSeed = useMemo(
     () => parsePlannerMapSeed(searchParams, tripId, planner?.trip.coverPreference ?? null),
@@ -591,11 +531,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const plannerError = isApiError(error) ? error : null;
   const plannerLoadRecoveryMode =
     plannerLoadRecovery ??
-    (plannerError?.status === 401
-      ? "auth"
-      : plannerError?.status === 404
-        ? "trip"
-        : null);
+    (plannerError?.status === 401 ? 'auth' : plannerError?.status === 404 ? 'trip' : null);
   const plannerDays = planner?.days ?? null;
 
   useEffect(() => {
@@ -607,11 +543,11 @@ export default function PlannerBoard({ tripId }: Props) {
     }
 
     if (plannerError.status === 401) {
-      if (plannerLoadRecovery === "auth") {
+      if (plannerLoadRecovery === 'auth') {
         return;
       }
 
-      setPlannerLoadRecovery("auth");
+      setPlannerLoadRecovery('auth');
 
       if (!plannerError.unauthorizedHandled) {
         void triggerUnauthorizedHandler().catch(() => undefined);
@@ -621,12 +557,12 @@ export default function PlannerBoard({ tripId }: Props) {
     }
 
     if (plannerError.status === 404) {
-      if (plannerLoadRecovery === "trip") {
+      if (plannerLoadRecovery === 'trip') {
         return;
       }
 
-      setPlannerLoadRecovery("trip");
-      navigate("/app/trips", { replace: true });
+      setPlannerLoadRecovery('trip');
+      navigate('/app/trips', { replace: true });
       return;
     }
 
@@ -643,42 +579,47 @@ export default function PlannerBoard({ tripId }: Props) {
         label: String(i + 1),
         date: day.date,
         color:
-          PLANNER_MAP_DAY_COLORS[i % PLANNER_MAP_DAY_COLORS.length] ??
-          PLANNER_MAP_DAY_COLORS[0],
+          PLANNER_MAP_DAY_COLORS[i % PLANNER_MAP_DAY_COLORS.length] ?? PLANNER_MAP_DAY_COLORS[0],
         isInbox: false,
       })),
-    ]
+    ];
     function scrollIntoView(target: Element | null) {
-      const scrollEl = document.querySelector('[data-planner-scroll]')
+      const scrollEl = document.querySelector('[data-planner-scroll]');
       if (scrollEl && target) {
-        const offset = target.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top
-        scrollEl.scrollTo({ top: scrollEl.scrollTop + offset - 8, behavior: 'smooth' })
+        const offset = target.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top;
+        scrollEl.scrollTo({ top: scrollEl.scrollTop + offset - 8, behavior: 'smooth' });
       }
     }
     function onScrollToDay(dayId: string) {
-      const { mobilePlannerView, setMobilePlannerView } = useSideRailStore.getState()
-      const wasInMapMode = mobilePlannerView === 'map'
+      const { mobilePlannerView, setMobilePlannerView } = useSideRailStore.getState();
+      const wasInMapMode = mobilePlannerView === 'map';
       if (wasInMapMode) {
-        setMobilePlannerView('cards')
+        setMobilePlannerView('cards');
       }
-      const { mapDayAccordionStateByTrip, setMapDayAccordionState } = usePlannerStore.getState()
-      const current = mapDayAccordionStateByTrip[tripId] ?? {}
-      const delay = wasInMapMode ? 350 : 200
+      const { mapDayAccordionStateByTrip, setMapDayAccordionState } = usePlannerStore.getState();
+      const current = mapDayAccordionStateByTrip[tripId] ?? {};
+      const delay = wasInMapMode ? 350 : 200;
       if (!current[dayId]) {
-        setMapDayAccordionState(tripId, { ...current, [dayId]: true })
-        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), delay)
+        setMapDayAccordionState(tripId, { ...current, [dayId]: true });
+        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), delay);
       } else {
-        setTimeout(() => scrollIntoView(document.getElementById(`planner-day-${dayId}`)), wasInMapMode ? delay : 0)
+        setTimeout(
+          () => scrollIntoView(document.getElementById(`planner-day-${dayId}`)),
+          wasInMapMode ? delay : 0,
+        );
       }
     }
-    const sectionKeyMap: Record<string, string> = { hotel: 'accommodation', travel: 'travel' }
+    const sectionKeyMap: Record<string, string> = { hotel: 'accommodation', travel: 'travel' };
     function onScrollToSection(section: 'itinerary' | 'hotel' | 'travel') {
-      const sectionKey = sectionKeyMap[section]
+      const sectionKey = sectionKeyMap[section];
       if (sectionKey) {
-        openRailSectionRef.current?.(sectionKey)
-        setTimeout(() => scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`)), 200)
+        openRailSectionRef.current?.(sectionKey);
+        setTimeout(
+          () => scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`)),
+          200,
+        );
       } else {
-        scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`))
+        scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`));
       }
     }
     setPlannerInstruments({
@@ -688,8 +629,10 @@ export default function PlannerBoard({ tripId }: Props) {
       days,
       onScrollToDay,
       onScrollToSection,
-    })
-    return () => { setPlannerInstruments(null) }
+    });
+    return () => {
+      setPlannerInstruments(null);
+    };
   }, [plannerDays, setAssistantPanelOpen, setPlannerInstruments, tripId]);
 
   const pendingJobId = pendingJobIds[tripId] ?? null;
@@ -698,9 +641,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(
     plannerMapSeed.activityId,
   );
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
-    plannerMapSeed.placeId,
-  );
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(plannerMapSeed.placeId);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -715,10 +656,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const allActivities = useMemo(
     () =>
       planner
-        ? [
-            ...planner.inbox_activities,
-            ...planner.days.flatMap((day) => day.activities),
-          ]
+        ? [...planner.inbox_activities, ...planner.days.flatMap((day) => day.activities)]
         : [],
     [planner],
   );
@@ -742,23 +680,16 @@ export default function PlannerBoard({ tripId }: Props) {
   const collisionDetectionStrategy = useCallback<CollisionDetection>(
     (args) => {
       const intersections = pointerWithin(args);
-      const collisions =
-        intersections.length > 0 ? intersections : rectIntersection(args);
-      let overId = getFirstCollision(collisions, "id");
+      const collisions = intersections.length > 0 ? intersections : rectIntersection(args);
+      let overId = getFirstCollision(collisions, 'id');
 
       if (overId != null && planner) {
         const resolved = resolveDropTarget(planner, String(overId));
         const isChip = String(overId).startsWith(CHIP_PREFIX);
         if (resolved && !isChip) {
-          const containerItems = getContainerActivities(
-            planner,
-            resolved.dayId,
-            resolved.bucket,
-          );
+          const containerItems = getContainerActivities(planner, resolved.dayId, resolved.bucket);
           if (containerItems.length > 0) {
-            const itemIds = new Set(
-              containerItems.map((activity) => activity.id),
-            );
+            const itemIds = new Set(containerItems.map((activity) => activity.id));
             const narrowed = closestCenter({
               ...args,
               droppableContainers: args.droppableContainers.filter(
@@ -777,9 +708,7 @@ export default function PlannerBoard({ tripId }: Props) {
         return [{ id: overId }];
       }
 
-      return lastOverIdRef.current != null
-        ? [{ id: lastOverIdRef.current }]
-        : [];
+      return lastOverIdRef.current != null ? [{ id: lastOverIdRef.current }] : [];
     },
     [planner],
   );
@@ -794,28 +723,18 @@ export default function PlannerBoard({ tripId }: Props) {
     }
 
     prevJobStatus.current = job.status;
-    setGenerationReport(
-      tripId,
-      buildReport(job.id, job.status, job.result, job.error),
-    );
+    setGenerationReport(tripId, buildReport(job.id, job.status, job.result, job.error));
 
     if (isJobSuccessful(job.status)) {
       qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
       clearPendingJobId(tripId);
-      toast.success("Planner updated");
+      toast.success('Planner updated');
       return;
     }
 
     clearPendingJobId(tripId);
-    toast.error("Planner generation failed");
-  }, [
-    clearPendingJobId,
-    currentJob.data,
-    pendingJobId,
-    qc,
-    setGenerationReport,
-    tripId,
-  ]);
+    toast.error('Planner generation failed');
+  }, [clearPendingJobId, currentJob.data, pendingJobId, qc, setGenerationReport, tripId]);
 
   useEffect(() => {
     if (!recommendations.enabled) {
@@ -836,7 +755,7 @@ export default function PlannerBoard({ tripId }: Props) {
 
   const openCreateDrawer = (
     defaultTripDayId: string | null,
-    defaultCategory: PlannerActivity["category"] | null = null,
+    defaultCategory: PlannerActivity['category'] | null = null,
   ) => {
     setDetailsActivityId(null);
     setEditorState({ activityId: null, defaultTripDayId, defaultCategory });
@@ -853,10 +772,7 @@ export default function PlannerBoard({ tripId }: Props) {
 
   const closeEditor = () => setEditorState(null);
 
-  const handleDrawerSave = async (
-    data: ActivityCreateInput,
-    attachmentFiles: File[] = [],
-  ) => {
+  const handleDrawerSave = async (data: ActivityCreateInput, attachmentFiles: File[] = []) => {
     if (!planner) {
       return;
     }
@@ -864,11 +780,10 @@ export default function PlannerBoard({ tripId }: Props) {
 
     try {
       let savedActivityId: string | null = null;
-      const successMessage = editorActivity ? "Activity updated" : "Activity added";
+      const successMessage = editorActivity ? 'Activity updated' : 'Activity added';
 
       if (editorActivity) {
-        const { moveActivity, patchActivity } =
-          await import("@/entities/activity/api");
+        const { moveActivity, patchActivity } = await import('@/entities/activity/api');
         const nextTripDayId = data.trip_day_id ?? null;
         const targetDay = nextTripDayId
           ? (planner.days.find((day) => day.id === nextTripDayId) ?? null)
@@ -876,15 +791,11 @@ export default function PlannerBoard({ tripId }: Props) {
         const targetIndex = nextTripDayId
           ? Math.max(
               0,
-              targetDay?.activities.filter(
-                (item) => item.id !== editorActivity.id,
-              ).length ?? 0,
+              targetDay?.activities.filter((item) => item.id !== editorActivity.id).length ?? 0,
             )
           : Math.max(
               0,
-              planner.inbox_activities.filter(
-                (item) => item.id !== editorActivity.id,
-              ).length,
+              planner.inbox_activities.filter((item) => item.id !== editorActivity.id).length,
             );
 
         if (editorActivity.trip_day_id !== nextTripDayId) {
@@ -903,46 +814,35 @@ export default function PlannerBoard({ tripId }: Props) {
         const updatedActivity = await patchActivity(editorActivity.id, {
           ...patchPayload,
           start_time:
-            nextTripDayId == null && editorActivity.category !== "travel"
+            nextTripDayId == null && editorActivity.category !== 'travel'
               ? null
               : (patchPayload.start_time ?? null),
         });
         savedActivityId = updatedActivity.id;
       } else if (editorState) {
         const idempotencyKey = crypto.randomUUID();
-        const { createPlannerActivity } =
-          await import("@/entities/activity/api");
-        const createdActivity = await createPlannerActivity(
-          tripId,
-          data,
-          idempotencyKey,
-        );
+        const { createPlannerActivity } = await import('@/entities/activity/api');
+        const createdActivity = await createPlannerActivity(tripId, data, idempotencyKey);
         savedActivityId = createdActivity.id;
       }
 
       if (savedActivityId && attachmentFiles.length > 0) {
-        const { uploadTripAsset } = await import("@/entities/trip-asset/api");
+        const { uploadTripAsset } = await import('@/entities/trip-asset/api');
         const results = await Promise.allSettled(
-          attachmentFiles.map((file) =>
-            uploadTripAsset(tripId, file, savedActivityId),
-          ),
+          attachmentFiles.map((file) => uploadTripAsset(tripId, file, savedActivityId)),
         );
-        const uploadedCount = results.filter(
-          (result) => result.status === "fulfilled",
-        ).length;
+        const uploadedCount = results.filter((result) => result.status === 'fulfilled').length;
         const failedCount = results.length - uploadedCount;
 
         if (uploadedCount > 0) {
           toast.success(
-            `${successMessage} · ${uploadedCount} file${uploadedCount === 1 ? "" : "s"} attached`,
+            `${successMessage} · ${uploadedCount} file${uploadedCount === 1 ? '' : 's'} attached`,
           );
         } else {
           toast.success(successMessage);
         }
         if (failedCount > 0) {
-          toast.error(
-            `${failedCount} attachment${failedCount === 1 ? "" : "s"} failed to upload`,
-          );
+          toast.error(`${failedCount} attachment${failedCount === 1 ? '' : 's'} failed to upload`);
         }
       } else {
         toast.success(successMessage);
@@ -955,9 +855,9 @@ export default function PlannerBoard({ tripId }: Props) {
       closeEditor();
     } catch (error) {
       if (isRateLimit(error)) {
-        toast.error("Too many requests. Please wait a moment.");
+        toast.error('Too many requests. Please wait a moment.');
       } else {
-        toast.error("Failed to save activity");
+        toast.error('Failed to save activity');
       }
     } finally {
       setIsSaving(false);
@@ -966,9 +866,9 @@ export default function PlannerBoard({ tripId }: Props) {
 
   const handleDeleteActivity = async (activityId: string) => {
     try {
-      const { deleteActivity } = await import("@/entities/activity/api");
+      const { deleteActivity } = await import('@/entities/activity/api');
       await deleteActivity(activityId);
-      toast.success("Activity removed");
+      toast.success('Activity removed');
       if (detailsActivityId === activityId) {
         setDetailsActivityId(null);
       }
@@ -981,14 +881,11 @@ export default function PlannerBoard({ tripId }: Props) {
       }
       await invalidatePlanner();
     } catch {
-      toast.error("Failed to remove activity");
+      toast.error('Failed to remove activity');
     }
   };
 
-  const submitGeneration = async (
-    data: PlannerGenerationFormValues,
-    idempotencyKey: string,
-  ) => {
+  const submitGeneration = async (data: PlannerGenerationFormValues, idempotencyKey: string) => {
     if (!planner) {
       return null;
     }
@@ -1011,10 +908,7 @@ export default function PlannerBoard({ tripId }: Props) {
     return accepted.job_id;
   };
 
-  const handleGenerate = async (
-    data: PlannerGenerationFormValues,
-    idempotencyKey: string,
-  ) => {
+  const handleGenerate = async (data: PlannerGenerationFormValues, idempotencyKey: string) => {
     const scopeDays = data.day_ids?.length ? data.day_ids.length : (planner?.days.length ?? 0);
     const requestText = `Generate · ${data.mode} · ${scopeDays} day${scopeDays !== 1 ? 's' : ''}`;
     try {
@@ -1027,26 +921,23 @@ export default function PlannerBoard({ tripId }: Props) {
           tripId,
           jobId,
           requestText,
-          action: "generate",
+          action: 'generate',
         });
         setAssistantPanelOpen(tripId, true);
       } catch {
-        toast.error("Planner generation queued, but assistant progress could not be opened");
+        toast.error('Planner generation queued, but assistant progress could not be opened');
       }
-      toast.success("Planner generation queued");
+      toast.success('Planner generation queued');
     } catch (error) {
       if (isConflict(error)) {
-        toast.error("Trip changed. Refresh the planner and try again.");
+        toast.error('Trip changed. Refresh the planner and try again.');
       } else {
-        toast.error("Failed to queue planner generation");
+        toast.error('Failed to queue planner generation');
       }
     }
   };
 
-  const handleReset = async (
-    dayIds: string[] | undefined,
-    idempotencyKey: string,
-  ) => {
+  const handleReset = async (dayIds: string[] | undefined, idempotencyKey: string) => {
     if (!planner) {
       return;
     }
@@ -1056,10 +947,7 @@ export default function PlannerBoard({ tripId }: Props) {
       clearGenerationReport(tripId);
       const accepted = await resetMutation.mutateAsync({
         data: {
-          day_ids:
-            dayIds && dayIds.length > 0
-              ? dayIds
-              : planner.days.map((day) => day.id),
+          day_ids: dayIds && dayIds.length > 0 ? dayIds : planner.days.map((day) => day.id),
         },
         tripVersion: planner.trip.version,
         idempotencyKey,
@@ -1071,18 +959,18 @@ export default function PlannerBoard({ tripId }: Props) {
           tripId,
           jobId: accepted.job_id,
           requestText,
-          action: "reset",
+          action: 'reset',
         });
         setAssistantPanelOpen(tripId, true);
       } catch {
-        toast.error("Reset queued, but assistant progress could not be opened");
+        toast.error('Reset queued, but assistant progress could not be opened');
       }
-      toast.success("Generated activities reset queued");
+      toast.success('Generated activities reset queued');
     } catch (error) {
       if (isConflict(error)) {
-        toast.error("Trip changed. Refresh the planner and try again.");
+        toast.error('Trip changed. Refresh the planner and try again.');
       } else {
-        toast.error("Failed to queue reset");
+        toast.error('Failed to queue reset');
       }
     }
   };
@@ -1092,7 +980,7 @@ export default function PlannerBoard({ tripId }: Props) {
     values: PlannerGenerationFormValues,
     idempotencyKey: string,
   ) => {
-    if (action === "generate") {
+    if (action === 'generate') {
       await handleGenerate(values, idempotencyKey);
       return;
     }
@@ -1112,7 +1000,7 @@ export default function PlannerBoard({ tripId }: Props) {
   );
 
   const handleOpenGenerationInline = useCallback(() => {
-    setAssistantInlineAction("generate");
+    setAssistantInlineAction('generate');
     setAssistantPanelOpen(tripId, true);
   }, [setAssistantPanelOpen, tripId]);
 
@@ -1128,8 +1016,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const handleDragOver = (event: DragOverEvent) => {
     const overId = event.over?.id ? String(event.over.id) : null;
     const activityId = String(event.active.id);
-    const currentPlanner =
-      qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner;
+    const currentPlanner = qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner;
     if (!currentPlanner || !overId) {
       return;
     }
@@ -1139,18 +1026,11 @@ export default function PlannerBoard({ tripId }: Props) {
     if (!source || !target) {
       return;
     }
-    if (
-      source.containerId === target.containerId &&
-      source.index === target.index
-    ) {
+    if (source.containerId === target.containerId && source.index === target.index) {
       return;
     }
 
-    const nextPlanner = updatePlannerActivityLists(
-      currentPlanner,
-      activityId,
-      target,
-    );
+    const nextPlanner = updatePlannerActivityLists(currentPlanner, activityId, target);
     if (!nextPlanner) {
       return;
     }
@@ -1170,8 +1050,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const handleDragEnd = async (event: DragEndEvent) => {
     const capturedActivity = activeActivity;
     const originPlanner = dragOriginPlannerRef.current;
-    const currentPlanner =
-      qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner;
+    const currentPlanner = qc.getQueryData<PlannerResponse>(plannerKeys.detail(tripId)) ?? planner;
 
     setActiveActivity(null);
     setActiveDragPreviewSize(null);
@@ -1185,14 +1064,8 @@ export default function PlannerBoard({ tripId }: Props) {
       return;
     }
 
-    const startLocation = findActivityLocation(
-      originPlanner,
-      capturedActivity.id,
-    );
-    const finalLocation = findActivityLocation(
-      currentPlanner,
-      capturedActivity.id,
-    );
+    const startLocation = findActivityLocation(originPlanner, capturedActivity.id);
+    const finalLocation = findActivityLocation(currentPlanner, capturedActivity.id);
     if (!startLocation || !finalLocation) {
       qc.setQueryData(plannerKeys.detail(tripId), originPlanner);
       return;
@@ -1207,17 +1080,13 @@ export default function PlannerBoard({ tripId }: Props) {
     }
 
     const persistMove = async (tripVersion: number) => {
-      const { moveActivity, reorderActivities } =
-        await import("@/entities/activity/api");
+      const { moveActivity, reorderActivities } = await import('@/entities/activity/api');
 
       const shouldUseDayReorder =
-        startLocation.containerId === finalLocation.containerId &&
-        finalLocation.dayId != null;
+        startLocation.containerId === finalLocation.containerId && finalLocation.dayId != null;
 
       if (shouldUseDayReorder) {
-        const reorderedDay = currentPlanner.days.find(
-          (day) => day.id === finalLocation.dayId,
-        );
+        const reorderedDay = currentPlanner.days.find((day) => day.id === finalLocation.dayId);
         if (!reorderedDay) {
           return;
         }
@@ -1267,10 +1136,9 @@ export default function PlannerBoard({ tripId }: Props) {
         }
       }
       qc.setQueryData(plannerKeys.detail(tripId), originPlanner);
-      toast.error("Failed to move activity");
+      toast.error('Failed to move activity');
     }
   };
-
 
   if (isLoading) {
     return (
@@ -1289,9 +1157,9 @@ export default function PlannerBoard({ tripId }: Props) {
     return (
       <div className="p-4 md:p-5">
         <div className="rounded-[12px] border border-black/8 bg-white p-5 text-sm text-[var(--color-text-muted)]">
-          {plannerLoadRecoveryMode === "auth"
-            ? "Redirecting to sign in..."
-            : "Returning to your trips..."}
+          {plannerLoadRecoveryMode === 'auth'
+            ? 'Redirecting to sign in...'
+            : 'Returning to your trips...'}
         </div>
       </div>
     );
@@ -1310,23 +1178,17 @@ export default function PlannerBoard({ tripId }: Props) {
   const activityDayOptions: ComboboxOption[] = [
     {
       value: INBOX_DAY_VALUE,
-      label: "Inbox",
-      description: "Unassigned activity",
+      label: 'Inbox',
+      description: 'Unassigned activity',
     },
     ...planner.days.map((day) => ({
       value: day.id,
       label: `Day ${day.day_index + 1}`,
-      description: day.date ? format(new Date(day.date), "EEE, MMM d") : null,
+      description: day.date ? format(new Date(day.date), 'EEE, MMM d') : null,
     })),
   ];
-  const editorDayLabel = findDayLabel(
-    planner,
-    editorState?.defaultTripDayId ?? null,
-  );
-  const detailsDayLabel = findDayLabel(
-    planner,
-    detailsActivity?.trip_day_id ?? null,
-  );
+  const editorDayLabel = findDayLabel(planner, editorState?.defaultTripDayId ?? null);
+  const detailsDayLabel = findDayLabel(planner, detailsActivity?.trip_day_id ?? null);
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -1358,10 +1220,15 @@ export default function PlannerBoard({ tripId }: Props) {
               onSelectActivityId={handleMapSelectActivityId}
               onSelectPlaceId={setSelectedPlaceId}
               onSelectRecommendation={setSelectedRecommendation}
-              onClearMapSelection={() => { setSelectedActivityId(null); setSelectedPlaceId(null); }}
+              onClearMapSelection={() => {
+                setSelectedActivityId(null);
+                setSelectedPlaceId(null);
+              }}
               onEditActivity={openEditDrawer}
               onDeleteActivity={handleDeleteActivity}
-              onRegisterSectionOpener={(opener) => { openRailSectionRef.current = opener }}
+              onRegisterSectionOpener={(opener) => {
+                openRailSectionRef.current = opener;
+              }}
               onOpenCollaboration={() => setCollaborationMenuOpen(true)}
               onOpenGeneration={handleOpenGenerationInline}
               assistantSuggestedPlace={assistantSuggestedPlace}
@@ -1378,11 +1245,7 @@ export default function PlannerBoard({ tripId }: Props) {
                   height: activeDragPreviewSize?.height,
                 }}
               >
-                <ActivityCardView
-                  activity={activeActivity}
-                  isDragging
-                  showDragHandle
-                />
+                <ActivityCardView activity={activeActivity} isDragging showDragHandle />
               </div>
             ) : null}
           </DragOverlay>
@@ -1423,17 +1286,14 @@ export default function PlannerBoard({ tripId }: Props) {
       />
       <PlannerAssistantPanel
         tripId={tripId}
-        destination={planner.trip.destination_text ?? ""}
+        destination={planner.trip.destination_text ?? ''}
         days={planner.days as Day[]}
         hasActivities={hasActivities}
         isOpen={assistantPanelOpen}
         requestedInlineAction={assistantInlineAction}
         onRequestedInlineActionHandled={handleRequestedInlineActionHandled}
         onSubmitInlineAction={handleAssistantInlineActionSubmit}
-        isPlannerActionPending={
-          generateMutation.isPending ||
-          resetMutation.isPending
-        }
+        isPlannerActionPending={generateMutation.isPending || resetMutation.isPending}
         onOpenChange={handleAssistantPanelOpenChange}
         onSelectSuggestedPlace={(place) => {
           setSelectedActivityId(null);

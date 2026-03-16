@@ -20,7 +20,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column("event_snapshot", sa.Column("entity_type", sa.String(length=32), nullable=True))
-    op.add_column("event_snapshot", sa.Column("rating", sa.Numeric(precision=4, scale=2), nullable=True))
+    op.add_column(
+        "event_snapshot", sa.Column("rating", sa.Numeric(precision=4, scale=2), nullable=True)
+    )
     op.add_column("event_snapshot", sa.Column("review_count", sa.Integer(), nullable=True))
     op.add_column("event_snapshot", sa.Column("price_label", sa.String(length=128), nullable=True))
     op.add_column(
@@ -42,7 +44,9 @@ def upgrade() -> None:
             server_default=sa.text("'{}'::jsonb"),
         ),
     )
-    op.create_index(op.f("ix_event_snapshot_entity_type"), "event_snapshot", ["entity_type"], unique=False)
+    op.create_index(
+        op.f("ix_event_snapshot_entity_type"), "event_snapshot", ["entity_type"], unique=False
+    )
     op.alter_column("event_snapshot", "tags_json", server_default=None)
     op.alter_column("event_snapshot", "provider_detail_json", server_default=None)
 

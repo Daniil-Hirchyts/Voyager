@@ -69,7 +69,9 @@ async def stream_trip_assistant_messages(
             confirmation=payload.confirmation.model_dump(mode="json")
             if payload.confirmation is not None
             else None,
-            command=payload.command.model_dump(mode="json") if payload.command is not None else None,
+            command=payload.command.model_dump(mode="json")
+            if payload.command is not None
+            else None,
         ):
             yield f"data: {json.dumps(event, default=str)}\n\n"
 

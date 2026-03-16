@@ -41,11 +41,7 @@ async def get_auth_context(
     claims = principal.claims
     raw_email = claims.get("email")
     email = raw_email.strip() if isinstance(raw_email, str) and raw_email.strip() else None
-    raw_display_name = (
-        claims.get("name")
-        or claims.get("preferred_username")
-        or claims.get("sub")
-    )
+    raw_display_name = claims.get("name") or claims.get("preferred_username") or claims.get("sub")
     claim_display_name = (
         raw_display_name.strip()
         if isinstance(raw_display_name, str) and raw_display_name.strip()
@@ -74,7 +70,9 @@ async def get_auth_context(
             await db.flush()
         except IntegrityError:
             await db.rollback()
-            result = await db.execute(select(UserProfile).where(UserProfile.keycloak_sub == principal.sub))
+            result = await db.execute(
+                select(UserProfile).where(UserProfile.keycloak_sub == principal.sub)
+            )
             user = result.scalar_one()
             await UserRepository.sync_identity(
                 db,

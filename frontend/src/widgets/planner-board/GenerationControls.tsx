@@ -1,33 +1,33 @@
-import { useMemo, useRef } from 'react'
-import { z } from 'zod'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { Sparkles, Trash2 } from 'lucide-react'
-import type { Day } from '@/shared/api/types'
-import { cn } from '@/shared/lib/cn'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
+import { useMemo, useRef } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Sparkles, Trash2 } from 'lucide-react';
+import type { Day } from '@/shared/api/types';
+import { cn } from '@/shared/lib/cn';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const plannerGenerationSchema = z.object({
   mode: z.enum(['replace', 'merge', 'append']),
   day_ids: z.array(z.string()).optional(),
   seed: z.number().int().optional(),
-})
+});
 
-export type PlannerGenerationAction = 'generate' | 'reset'
-export type PlannerGenerationFormValues = z.infer<typeof plannerGenerationSchema>
+export type PlannerGenerationAction = 'generate' | 'reset';
+export type PlannerGenerationFormValues = z.infer<typeof plannerGenerationSchema>;
 
 type PlannerGenerationInlineCardProps = {
-  action: PlannerGenerationAction
-  days: Day[]
-  isSubmitting?: boolean
-  onCancel: () => void
+  action: PlannerGenerationAction;
+  days: Day[];
+  isSubmitting?: boolean;
+  onCancel: () => void;
   onSubmit: (
     action: PlannerGenerationAction,
     values: PlannerGenerationFormValues,
     idempotencyKey: string,
-  ) => Promise<void>
-}
+  ) => Promise<void>;
+};
 
 const MODE_LABELS: Record<
   PlannerGenerationFormValues['mode'],
@@ -45,7 +45,7 @@ const MODE_LABELS: Record<
     label: 'Append',
     description: 'Add more generated activities without removing the current ones.',
   },
-}
+};
 
 export function PlannerGenerationInlineCard({
   action,
@@ -54,42 +54,42 @@ export function PlannerGenerationInlineCard({
   onCancel,
   onSubmit,
 }: PlannerGenerationInlineCardProps) {
-  const submissionKeyRef = useRef(crypto.randomUUID())
+  const submissionKeyRef = useRef(crypto.randomUUID());
   const { register, handleSubmit, watch, setValue } = useForm<PlannerGenerationFormValues>({
     resolver: zodResolver(plannerGenerationSchema),
     defaultValues: {
       mode: action === 'reset' ? 'replace' : 'replace',
       day_ids: [],
     },
-  })
+  });
 
-  const mode = watch('mode')
-  const dayIds = watch('day_ids') ?? []
-  const selectedDayCount = dayIds.length > 0 ? dayIds.length : days.length
+  const mode = watch('mode');
+  const dayIds = watch('day_ids') ?? [];
+  const selectedDayCount = dayIds.length > 0 ? dayIds.length : days.length;
 
   const submitLabel = useMemo(() => {
     if (action === 'reset') {
-      return 'Queue reset'
+      return 'Queue reset';
     }
-    return selectedDayCount === 1 ? 'Generate 1 day' : `Generate ${selectedDayCount} days`
-  }, [action, selectedDayCount])
+    return selectedDayCount === 1 ? 'Generate 1 day' : `Generate ${selectedDayCount} days`;
+  }, [action, selectedDayCount]);
 
   const handleDaySelection = (dayId: string, checked: boolean) => {
     if (checked) {
-      setValue('day_ids', [...dayIds, dayId], { shouldDirty: true })
-      return
+      setValue('day_ids', [...dayIds, dayId], { shouldDirty: true });
+      return;
     }
     setValue(
       'day_ids',
       dayIds.filter((id) => id !== dayId),
       { shouldDirty: true },
-    )
-  }
+    );
+  };
 
   const handleFormSubmit = handleSubmit(async (values) => {
-    await onSubmit(action, values, submissionKeyRef.current)
-    submissionKeyRef.current = crypto.randomUUID()
-  })
+    await onSubmit(action, values, submissionKeyRef.current);
+    submissionKeyRef.current = crypto.randomUUID();
+  });
 
   return (
     <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
@@ -130,12 +130,7 @@ export function PlannerGenerationInlineCard({
                       : 'border-black/8 bg-white hover:bg-[rgba(244,246,248,0.45)]',
                   )}
                 >
-                  <input
-                    type="radio"
-                    value={option}
-                    {...register('mode')}
-                    className="mt-0.5"
-                  />
+                  <input type="radio" value={option} {...register('mode')} className="mt-0.5" />
                   <div className="min-w-0">
                     <p className="text-[0.82rem] font-medium text-[var(--color-text)]">
                       {MODE_LABELS[option].label}
@@ -150,15 +145,14 @@ export function PlannerGenerationInlineCard({
           </div>
         ) : (
           <p className="rounded-[14px] border border-[rgba(196,95,79,0.16)] bg-[rgba(196,95,79,0.05)] px-3 py-2.5 text-[0.77rem] leading-6 text-[var(--color-text)]">
-            Reset only removes generated activities from the selected days. Manual edits stay in place.
+            Reset only removes generated activities from the selected days. Manual edits stay in
+            place.
           </p>
         )}
 
         {days.length > 0 ? (
           <div className="flex flex-col gap-2">
-            <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-              Days
-            </p>
+            <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Days</p>
             <div className="max-h-44 overflow-y-auto rounded-[14px] border border-black/8 bg-[rgba(244,246,248,0.28)] p-2">
               <div className="flex flex-col gap-1">
                 {days.map((day, index) => (
@@ -211,5 +205,5 @@ export function PlannerGenerationInlineCard({
         </div>
       </form>
     </div>
-  )
+  );
 }

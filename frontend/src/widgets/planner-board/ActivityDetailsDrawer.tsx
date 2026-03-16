@@ -8,26 +8,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import { useIsMobile } from "@/shared/hooks/use-mobile";
-import { formatMoney } from "@/shared/lib/format";
-import type { PlannerActivity } from "@/shared/api/types";
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
+import { useIsMobile } from '@/shared/hooks/use-mobile';
+import { formatMoney } from '@/shared/lib/format';
+import type { PlannerActivity } from '@/shared/api/types';
 import {
   plannerCategoryDescription,
   plannerCategoryLabel,
   plannerPrimaryPlace,
   plannerTravelRoute,
-} from "./categories";
-import { PlannerPreviewMap } from "./PlannerPreviewMap";
-import TripAssetManager from "@/widgets/trip-assets";
-import { cn } from "@/shared/lib/cn";
+} from './categories';
+import { PlannerPreviewMap } from './PlannerPreviewMap';
+import TripAssetManager from '@/widgets/trip-assets';
+import { cn } from '@/shared/lib/cn';
 import {
   BedDouble,
   Clock3,
@@ -40,7 +35,7 @@ import {
   Trash2,
   Utensils,
   X,
-} from "lucide-react";
+} from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -61,9 +56,7 @@ const CATEGORY_ICON: Record<string, typeof Landmark> = {
 };
 
 function detailsRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object"
-    ? (value as Record<string, unknown>)
-    : {};
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
 }
 
 function scheduleLabel(activity: PlannerActivity): string | null {
@@ -77,11 +70,11 @@ function scheduleLabel(activity: PlannerActivity): string | null {
   };
   if (activity.start_time) {
     return `${formatTime(activity.start_time)}${
-      activity.duration_min ? ` · ${formatDur(activity.duration_min)}` : ""
+      activity.duration_min ? ` · ${formatDur(activity.duration_min)}` : ''
     }`;
   }
   if (activity.duration_min) return formatDur(activity.duration_min);
-  return activity.trip_day_id == null ? null : "Flexible";
+  return activity.trip_day_id == null ? null : 'Flexible';
 }
 
 function MapPreview({ activity }: { activity: PlannerActivity }) {
@@ -127,26 +120,33 @@ export function ActivityDetailsDrawer({
       : null;
 
   const infoItems = [
-    schedule ? { key: "schedule", label: "Schedule", value: schedule, Icon: Clock3 } : null,
-    categoryDescription ? { key: "location", label: "Location", value: categoryDescription, Icon: MapPin } : null,
-    budgetLabel ? { key: "budget", label: "Budget", value: budgetLabel, Icon: Receipt } : null,
-    { key: "placement", label: "Placement", value: dayLabel ?? (activity.trip_day_id == null ? "Inbox" : "Assigned"), Icon: CategoryIcon },
+    schedule ? { key: 'schedule', label: 'Schedule', value: schedule, Icon: Clock3 } : null,
+    categoryDescription
+      ? { key: 'location', label: 'Location', value: categoryDescription, Icon: MapPin }
+      : null,
+    budgetLabel ? { key: 'budget', label: 'Budget', value: budgetLabel, Icon: Receipt } : null,
+    {
+      key: 'placement',
+      label: 'Placement',
+      value: dayLabel ?? (activity.trip_day_id == null ? 'Inbox' : 'Assigned'),
+      Icon: CategoryIcon,
+    },
   ].filter((item): item is NonNullable<typeof item> => Boolean(item?.value));
 
   return (
     <Sheet open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
       <SheetContent
-        side={isMobile ? "bottom" : "right"}
+        side={isMobile ? 'bottom' : 'right'}
         className={cn(
-          "flex flex-col overflow-hidden bg-[var(--color-secondary-surface)] p-0",
+          'flex flex-col overflow-hidden bg-[var(--color-secondary-surface)] p-0',
           isMobile
-            ? "h-[94dvh] rounded-t-[16px] border-x-0 border-b-0 sm:max-w-none"
-            : "h-full w-full max-w-[28rem] sm:max-w-[28rem]",
+            ? 'h-[94dvh] rounded-t-[16px] border-x-0 border-b-0 sm:max-w-none'
+            : 'h-full w-full max-w-[28rem] sm:max-w-[28rem]',
         )}
       >
         <SheetTitle className="sr-only">{activity.title}</SheetTitle>
         <SheetDescription className="sr-only">
-          {categoryDescription || dayLabel || "Activity details"}
+          {categoryDescription || dayLabel || 'Activity details'}
         </SheetDescription>
         {/* Header */}
         <div className="shrink-0 border-b border-black/8 bg-white px-5 py-5">
@@ -170,7 +170,7 @@ export function ActivityDetailsDrawer({
               <button
                 type="button"
                 onClick={() => onEdit(activity)}
-                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
+                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
                 aria-label="Edit activity"
               >
                 <Pencil className="h-4 w-4" />
@@ -179,13 +179,13 @@ export function ActivityDetailsDrawer({
                 <AlertDialogTrigger asChild>
                   <button
                     type="button"
-                    className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-destructive"
+                    className="hover:text-destructive rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white"
                     aria-label="Delete activity"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-[14px] border-black/8 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
+                <AlertDialogContent className="rounded-[14px] border-black/8 bg-white">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete activity</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -209,7 +209,7 @@ export function ActivityDetailsDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
+                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -225,7 +225,7 @@ export function ActivityDetailsDrawer({
 
             {activity.description ? (
               <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Summary
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">
@@ -235,8 +235,11 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {infoItems.map((item) => (
-              <div key={item.key} className="rounded-[18px] border border-black/8 bg-white px-4 py-3">
-                <div className="flex items-center gap-2 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+              <div
+                key={item.key}
+                className="rounded-[18px] border border-black/8 bg-white px-4 py-3"
+              >
+                <div className="flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   <item.Icon className="h-3.5 w-3.5" />
                   {item.label}
                 </div>
@@ -244,9 +247,9 @@ export function ActivityDetailsDrawer({
               </div>
             ))}
 
-            {activity.category === "travel" && travelRoute.length > 0 ? (
+            {activity.category === 'travel' && travelRoute.length > 0 ? (
               <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Route
                 </p>
                 <div className="mt-3 space-y-2">
@@ -255,8 +258,8 @@ export function ActivityDetailsDrawer({
                       key={`${point.label}-${idx}`}
                       className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5"
                     >
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
-                        {idx === 0 ? "Origin" : "Destination"}
+                      <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
+                        {idx === 0 ? 'Origin' : 'Destination'}
                       </p>
                       <p className="mt-1 text-sm text-[var(--color-text)]">{point.label}</p>
                     </div>
@@ -265,31 +268,35 @@ export function ActivityDetailsDrawer({
               </div>
             ) : null}
 
-            {activity.category === "hotel" ? (
+            {activity.category === 'hotel' ? (
               <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Stay
                 </p>
-                <div className="mt-3 grid gap-2 grid-cols-2">
-                  {typeof details.checkin_date === "string" ? (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {typeof details.checkin_date === 'string' ? (
                     <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-in
                       </p>
-                      <p className="mt-1 text-sm text-[var(--color-text)]">{details.checkin_date}</p>
+                      <p className="mt-1 text-sm text-[var(--color-text)]">
+                        {details.checkin_date}
+                      </p>
                     </div>
                   ) : null}
-                  {typeof details.checkout_date === "string" ? (
+                  {typeof details.checkout_date === 'string' ? (
                     <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                      <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-out
                       </p>
-                      <p className="mt-1 text-sm text-[var(--color-text)]">{details.checkout_date}</p>
+                      <p className="mt-1 text-sm text-[var(--color-text)]">
+                        {details.checkout_date}
+                      </p>
                     </div>
                   ) : null}
-                  {typeof details.room_type === "string" ? (
-                    <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5 col-span-2">
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                  {typeof details.room_type === 'string' ? (
+                    <div className="col-span-2 rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                      <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Room
                       </p>
                       <p className="mt-1 text-sm text-[var(--color-text)]">{details.room_type}</p>
@@ -301,12 +308,10 @@ export function ActivityDetailsDrawer({
 
             {activity.notes ? (
               <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Notes
                 </p>
-                <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">
-                  {activity.notes}
-                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--color-text)]">{activity.notes}</p>
               </div>
             ) : null}
 
@@ -315,7 +320,7 @@ export function ActivityDetailsDrawer({
               activityId={activity.id}
               title="Attachments"
               description="Add receipts, reservation PDFs, screenshots, and extra photos that belong to this activity."
-              className="shadow-none"
+              className=""
             />
           </div>
         </div>

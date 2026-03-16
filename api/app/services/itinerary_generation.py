@@ -222,9 +222,7 @@ def _is_destination_level_google_place(details: Any) -> bool:
         return False
 
     normalized_types = {
-        str(item).strip().casefold()
-        for item in raw_types
-        if isinstance(item, str) and item.strip()
+        str(item).strip().casefold() for item in raw_types if isinstance(item, str) and item.strip()
     }
     return bool(normalized_types & DESTINATION_LEVEL_PLACE_TYPES)
 

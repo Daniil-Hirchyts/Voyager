@@ -1,48 +1,47 @@
-import { type ChangeEvent, useEffect, useRef, useState } from 'react'
-import { useAuth } from 'react-oidc-context'
-import { Camera, Map, Sparkles, UserRound } from 'lucide-react'
-import { toast } from 'sonner'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
+import { type ChangeEvent, useEffect, useRef, useState } from 'react';
+import { useAuth } from 'react-oidc-context';
+import { Camera, Map, Sparkles, UserRound } from 'lucide-react';
+import { toast } from 'sonner';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from '@/components/ui/select';
 import {
   DEFAULT_VOYAGER_PREFERENCES,
   mergeVoyagerPreferences,
   readVoyagerPreferences,
   type RecommendationAudiencePreference,
-} from '@/entities/user/preferences'
+} from '@/entities/user/preferences';
 import {
   useDeleteProfileAvatar,
   usePatchProfile,
   useProfile,
   useUploadProfileAvatar,
-} from '@/entities/user/queries'
-import { WorkspacePage } from '@/shared/layouts/workspace-shell'
-import { Skeleton } from '@/components/ui/skeleton'
+} from '@/entities/user/queries';
+import { WorkspacePage } from '@/shared/layouts/workspace-shell';
+import { Skeleton } from '@/components/ui/skeleton';
 
-const sectionClassName =
-  'rounded-xl border border-black/5 bg-white p-6 shadow-sm'
+const sectionClassName = 'rounded-xl border border-black/5 bg-white p-6';
 const fieldLabelClassName =
-  'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]'
+  'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]';
 
 const AUDIENCE_OPTIONS: Array<{
-  value: RecommendationAudiencePreference
-  label: string
+  value: RecommendationAudiencePreference;
+  label: string;
 }> = [
   { value: 'any', label: 'Any traveler' },
   { value: 'families', label: 'Families' },
   { value: 'couples', label: 'Couples' },
   { value: 'friends', label: 'Friends' },
   { value: 'solo_travelers', label: 'Solo travelers' },
-]
+];
 
 function getInitials(name: string) {
   return (
@@ -52,115 +51,115 @@ function getInitials(name: string) {
       .slice(0, 2)
       .map((part) => part[0]?.toUpperCase())
       .join('') || 'V'
-  )
+  );
 }
 
 export default function SettingsPage() {
-  const auth = useAuth()
-  const avatarInputRef = useRef<HTMLInputElement | null>(null)
-  const { data: profile, isLoading } = useProfile()
-  const patchSettings = usePatchProfile()
-  const patchAccount = usePatchProfile()
-  const uploadAvatar = useUploadProfileAvatar()
-  const deleteAvatar = useDeleteProfileAvatar()
-  const [settings, setSettings] = useState(DEFAULT_VOYAGER_PREFERENCES)
+  const auth = useAuth();
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const { data: profile, isLoading } = useProfile();
+  const patchSettings = usePatchProfile();
+  const patchAccount = usePatchProfile();
+  const uploadAvatar = useUploadProfileAvatar();
+  const deleteAvatar = useDeleteProfileAvatar();
+  const [settings, setSettings] = useState(DEFAULT_VOYAGER_PREFERENCES);
   const [account, setAccount] = useState({
     firstName: '',
     lastName: '',
-  })
+  });
 
   useEffect(() => {
     if (!profile) {
-      return
+      return;
     }
-    setSettings(readVoyagerPreferences(profile))
+    setSettings(readVoyagerPreferences(profile));
     setAccount({
       firstName: profile.first_name ?? '',
       lastName: profile.last_name ?? '',
-    })
-  }, [profile])
+    });
+  }, [profile]);
 
   async function handleSaveSettings() {
     if (!profile) {
-      return
+      return;
     }
 
     try {
       await patchSettings.mutateAsync({
         preferences: mergeVoyagerPreferences(profile.preferences, settings),
-      })
-      toast.success('App settings saved')
+      });
+      toast.success('App settings saved');
     } catch {
-      toast.error('Could not save app settings')
+      toast.error('Could not save app settings');
     }
   }
 
   async function handleSaveAccount() {
-    const firstName = account.firstName.trim()
-    const lastName = account.lastName.trim()
+    const firstName = account.firstName.trim();
+    const lastName = account.lastName.trim();
 
     if (!firstName || !lastName) {
-      toast.error('First and last name are required')
-      return
+      toast.error('First and last name are required');
+      return;
     }
 
     try {
       await patchAccount.mutateAsync({
         first_name: firstName,
         last_name: lastName,
-      })
-      toast.success('Account details saved')
+      });
+      toast.success('Account details saved');
     } catch {
-      toast.error('Could not save account details')
+      toast.error('Could not save account details');
     }
   }
 
   async function handleAvatarInputChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
+    const file = event.target.files?.[0];
+    event.target.value = '';
 
     if (!file) {
-      return
+      return;
     }
 
     try {
-      await uploadAvatar.mutateAsync(file)
-      toast.success('Avatar updated')
+      await uploadAvatar.mutateAsync(file);
+      toast.success('Avatar updated');
     } catch {
-      toast.error('Could not update avatar')
+      toast.error('Could not update avatar');
     }
   }
 
   async function handleAvatarRemove() {
     try {
-      await deleteAvatar.mutateAsync()
-      toast.success('Avatar removed')
+      await deleteAvatar.mutateAsync();
+      toast.success('Avatar removed');
     } catch {
-      toast.error('Could not remove avatar')
+      toast.error('Could not remove avatar');
     }
   }
 
   const displayName =
-    profile?.display_name || (auth.user?.profile?.name as string | undefined) || 'Traveler'
+    profile?.display_name || (auth.user?.profile?.name as string | undefined) || 'Traveler';
   const userEmail =
     profile?.email ||
     (auth.user?.profile?.email as string | undefined) ||
     profile?.keycloak_sub ||
-    'Signed in'
+    'Signed in';
   const avatarUrl =
     profile?.avatar_thumbnail_url ||
     profile?.avatar_url ||
-    (auth.user?.profile?.picture as string | undefined)
+    (auth.user?.profile?.picture as string | undefined);
   const accountDirty =
     account.firstName.trim() !== (profile?.first_name ?? '') ||
-    account.lastName.trim() !== (profile?.last_name ?? '')
-  const avatarBusy = uploadAvatar.isPending || deleteAvatar.isPending
-  const accountBusy = patchAccount.isPending || avatarBusy
+    account.lastName.trim() !== (profile?.last_name ?? '');
+  const avatarBusy = uploadAvatar.isPending || deleteAvatar.isPending;
+  const accountBusy = patchAccount.isPending || avatarBusy;
 
   if (isLoading) {
     return (
       <WorkspacePage className="gap-4">
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-16 rounded-full" />
             <Skeleton className="h-6 w-32" />
@@ -216,17 +215,19 @@ export default function SettingsPage() {
           </div>
         </div>
       </WorkspacePage>
-    )
+    );
   }
 
   return (
     <WorkspacePage className="gap-4">
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5">
         <div className="flex flex-col gap-1.5">
-          <span className="w-fit rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+          <span className="w-fit rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
             Settings
           </span>
-          <h1 className="text-xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">App defaults</h1>
+          <h1 className="text-xl font-semibold tracking-[-0.03em] text-[var(--color-text)]">
+            App defaults
+          </h1>
         </div>
         <Button
           onClick={() => void handleSaveSettings()}
@@ -287,7 +288,7 @@ export default function SettingsPage() {
                   }))
                 }
               >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                <SelectTrigger className="rounded-[14px] border-black/8 bg-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-[16px] border-black/8">
@@ -313,7 +314,7 @@ export default function SettingsPage() {
                   }))
                 }
               >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white shadow-none">
+                <SelectTrigger className="rounded-[14px] border-black/8 bg-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-[16px] border-black/8">
@@ -346,7 +347,9 @@ export default function SettingsPage() {
           <div className="mt-5 grid gap-4">
             <label className="flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-[var(--color-text)]">Show routes by default</p>
+                <p className="text-sm font-medium text-[var(--color-text)]">
+                  Show routes by default
+                </p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   Start planner map with route lines enabled.
                 </p>
@@ -367,7 +370,9 @@ export default function SettingsPage() {
 
             <label className="flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
               <div>
-                <p className="text-sm font-medium text-[var(--color-text)]">Show custom layers by default</p>
+                <p className="text-sm font-medium text-[var(--color-text)]">
+                  Show custom layers by default
+                </p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">
                   Keep saved map layers visible when the planner map opens.
                 </p>
@@ -397,9 +402,7 @@ export default function SettingsPage() {
               <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
                 Account
               </h2>
-              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
-                Update the identity.
-              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">Update the identity.</p>
             </div>
           </div>
 
@@ -407,15 +410,13 @@ export default function SettingsPage() {
             <div className="rounded-lg border border-black/5 bg-[var(--color-secondary-surface)] p-4">
               <p className={fieldLabelClassName}>Avatar</p>
               <div className="mt-4 flex flex-col items-center text-center">
-                <Avatar className="size-24 rounded-xl border border-black/8 bg-white shadow-none">
+                <Avatar className="size-24 rounded-xl border border-black/8 bg-white">
                   <AvatarImage src={avatarUrl} alt={displayName} />
                   <AvatarFallback className="rounded-xl text-lg font-semibold">
                     {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
-                <p className="mt-4 text-sm text-[var(--color-text-muted)]">
-                  JPG, PNG, or WebP.
-                </p>
+                <p className="mt-4 text-sm text-[var(--color-text-muted)]">JPG, PNG, or WebP.</p>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -489,7 +490,11 @@ export default function SettingsPage() {
                 >
                   {patchAccount.isPending ? 'Saving…' : 'Save account'}
                 </Button>
-                <Button variant="outline" onClick={() => auth.signoutRedirect()} disabled={accountBusy}>
+                <Button
+                  variant="outline"
+                  onClick={() => auth.signoutRedirect()}
+                  disabled={accountBusy}
+                >
                   Sign out
                 </Button>
               </div>
@@ -498,5 +503,5 @@ export default function SettingsPage() {
         </section>
       </div>
     </WorkspacePage>
-  )
+  );
 }

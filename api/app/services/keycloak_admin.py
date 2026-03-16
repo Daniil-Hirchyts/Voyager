@@ -19,7 +19,12 @@ def derive_keycloak_admin_target() -> KeycloakAdminTarget:
     settings = get_settings()
     issuer = urlparse(settings.keycloak_issuer)
     issuer_parts = [part for part in issuer.path.split("/") if part]
-    if not issuer.scheme or not issuer.netloc or len(issuer_parts) < 2 or issuer_parts[-2] != "realms":
+    if (
+        not issuer.scheme
+        or not issuer.netloc
+        or len(issuer_parts) < 2
+        or issuer_parts[-2] != "realms"
+    ):
         raise ServiceUnavailableError(
             code="INTEGRATION_NOT_CONFIGURED",
             message="Keycloak profile sync is unavailable",
@@ -52,7 +57,9 @@ def _keycloak_not_configured() -> ServiceUnavailableError:
     )
 
 
-def _keycloak_sync_failed(exc: Exception, *, status_code: int | None = None) -> ServiceUnavailableError:
+def _keycloak_sync_failed(
+    exc: Exception, *, status_code: int | None = None
+) -> ServiceUnavailableError:
     details: dict[str, object] = {
         "provider": "keycloak",
         "error": exc.__class__.__name__,
@@ -113,4 +120,3 @@ async def sync_keycloak_user_names(*, user_id: str, first_name: str, last_name: 
         raise _keycloak_sync_failed(exc, status_code=exc.response.status_code) from exc
     except httpx.HTTPError as exc:
         raise _keycloak_sync_failed(exc) from exc
-

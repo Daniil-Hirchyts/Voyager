@@ -57,15 +57,21 @@ def upgrade() -> None:
     op.create_index(
         op.f("ix_event_snapshot_trip_day_id"), "event_snapshot", ["trip_day_id"], unique=False
     )
-    op.create_index(op.f("ix_event_snapshot_provider"), "event_snapshot", ["provider"], unique=False)
-    op.create_index(op.f("ix_event_snapshot_place_id"), "event_snapshot", ["place_id"], unique=False)
+    op.create_index(
+        op.f("ix_event_snapshot_provider"), "event_snapshot", ["provider"], unique=False
+    )
+    op.create_index(
+        op.f("ix_event_snapshot_place_id"), "event_snapshot", ["place_id"], unique=False
+    )
     op.create_index(
         op.f("ix_event_snapshot_request_fingerprint"),
         "event_snapshot",
         ["request_fingerprint"],
         unique=False,
     )
-    op.create_index("ix_event_snapshot_trip_created", "event_snapshot", ["trip_id", "created_at"], unique=False)
+    op.create_index(
+        "ix_event_snapshot_trip_created", "event_snapshot", ["trip_id", "created_at"], unique=False
+    )
     op.create_index(
         "uq_event_snapshot_provider_ref_trip",
         "event_snapshot",
@@ -73,8 +79,12 @@ def upgrade() -> None:
         unique=True,
     )
 
-    op.add_column("activity", sa.Column("event_snapshot_id", postgresql.UUID(as_uuid=True), nullable=True))
-    op.create_index(op.f("ix_activity_event_snapshot_id"), "activity", ["event_snapshot_id"], unique=False)
+    op.add_column(
+        "activity", sa.Column("event_snapshot_id", postgresql.UUID(as_uuid=True), nullable=True)
+    )
+    op.create_index(
+        op.f("ix_activity_event_snapshot_id"), "activity", ["event_snapshot_id"], unique=False
+    )
     op.create_foreign_key(
         op.f("fk_activity_event_snapshot_id_event_snapshot"),
         "activity",
@@ -138,10 +148,18 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("job_id"),
     )
-    op.create_index(op.f("ix_itinerary_proposal_trip_id"), "itinerary_proposal", ["trip_id"], unique=False)
-    op.create_index(op.f("ix_itinerary_proposal_user_id"), "itinerary_proposal", ["user_id"], unique=False)
-    op.create_index(op.f("ix_itinerary_proposal_job_id"), "itinerary_proposal", ["job_id"], unique=False)
-    op.create_index(op.f("ix_itinerary_proposal_status"), "itinerary_proposal", ["status"], unique=False)
+    op.create_index(
+        op.f("ix_itinerary_proposal_trip_id"), "itinerary_proposal", ["trip_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_itinerary_proposal_user_id"), "itinerary_proposal", ["user_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_itinerary_proposal_job_id"), "itinerary_proposal", ["job_id"], unique=False
+    )
+    op.create_index(
+        op.f("ix_itinerary_proposal_status"), "itinerary_proposal", ["status"], unique=False
+    )
     op.create_index(
         "ix_itinerary_proposal_trip_created",
         "itinerary_proposal",
@@ -330,12 +348,26 @@ def downgrade() -> None:
         """
     )
 
-    op.drop_index("ix_itinerary_proposal_activity_proposal_order", table_name="itinerary_proposal_activity")
-    op.drop_index(op.f("ix_itinerary_proposal_activity_place_id"), table_name="itinerary_proposal_activity")
-    op.drop_index(op.f("ix_itinerary_proposal_activity_event_snapshot_id"), table_name="itinerary_proposal_activity")
-    op.drop_index(op.f("ix_itinerary_proposal_activity_source_activity_id"), table_name="itinerary_proposal_activity")
-    op.drop_index(op.f("ix_itinerary_proposal_activity_trip_day_id"), table_name="itinerary_proposal_activity")
-    op.drop_index(op.f("ix_itinerary_proposal_activity_proposal_id"), table_name="itinerary_proposal_activity")
+    op.drop_index(
+        "ix_itinerary_proposal_activity_proposal_order", table_name="itinerary_proposal_activity"
+    )
+    op.drop_index(
+        op.f("ix_itinerary_proposal_activity_place_id"), table_name="itinerary_proposal_activity"
+    )
+    op.drop_index(
+        op.f("ix_itinerary_proposal_activity_event_snapshot_id"),
+        table_name="itinerary_proposal_activity",
+    )
+    op.drop_index(
+        op.f("ix_itinerary_proposal_activity_source_activity_id"),
+        table_name="itinerary_proposal_activity",
+    )
+    op.drop_index(
+        op.f("ix_itinerary_proposal_activity_trip_day_id"), table_name="itinerary_proposal_activity"
+    )
+    op.drop_index(
+        op.f("ix_itinerary_proposal_activity_proposal_id"), table_name="itinerary_proposal_activity"
+    )
     op.drop_table("itinerary_proposal_activity")
 
     op.drop_index("ix_itinerary_proposal_user_created", table_name="itinerary_proposal")
@@ -353,7 +385,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_place_photo_place_id"), table_name="place_photo")
     op.drop_table("place_photo")
 
-    op.drop_constraint(op.f("fk_activity_event_snapshot_id_event_snapshot"), "activity", type_="foreignkey")
+    op.drop_constraint(
+        op.f("fk_activity_event_snapshot_id_event_snapshot"), "activity", type_="foreignkey"
+    )
     op.drop_index(op.f("ix_activity_event_snapshot_id"), table_name="activity")
     op.drop_column("activity", "event_snapshot_id")
 

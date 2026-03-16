@@ -1,15 +1,15 @@
-import type { AuthContextProps } from 'react-oidc-context'
+import type { AuthContextProps } from 'react-oidc-context';
 
-export const DEFAULT_INTENDED_PATH = '/app/trips'
+export const DEFAULT_INTENDED_PATH = '/app/trips';
 
 interface StartKeycloakSignInOptions {
-  auth: Pick<AuthContextProps, 'signinRedirect'>
-  intendedPath?: string | null
-  setIntendedPath?: (path: string | null) => void
+  auth: Pick<AuthContextProps, 'signinRedirect'>;
+  intendedPath?: string | null;
+  setIntendedPath?: (path: string | null) => void;
 }
 
 function resolveIntendedPath(intendedPath?: string | null) {
-  return intendedPath || DEFAULT_INTENDED_PATH
+  return intendedPath || DEFAULT_INTENDED_PATH;
 }
 
 export async function startKeycloakSignIn({
@@ -17,12 +17,12 @@ export async function startKeycloakSignIn({
   intendedPath,
   setIntendedPath,
 }: StartKeycloakSignInOptions) {
-  const nextIntendedPath = resolveIntendedPath(intendedPath)
+  const nextIntendedPath = resolveIntendedPath(intendedPath);
 
-  setIntendedPath?.(nextIntendedPath)
+  setIntendedPath?.(nextIntendedPath);
   await auth.signinRedirect({
     state: { intendedPath: nextIntendedPath },
-  })
+  });
 
-  return nextIntendedPath
+  return nextIntendedPath;
 }

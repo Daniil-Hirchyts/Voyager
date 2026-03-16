@@ -50,7 +50,9 @@ async def _assert_scope_days(
     allowed = {day.id for day in trip_days}
     invalid = [str(day_id) for day_id in day_ids if day_id not in allowed]
     if invalid:
-        raise ValidationApiError("One or more day_ids are not part of the trip", {"day_ids": invalid})
+        raise ValidationApiError(
+            "One or more day_ids are not part of the trip", {"day_ids": invalid}
+        )
 
 
 @router.post("/trips/{trip_id}/optimize", response_model=JobAcceptedResponse, status_code=202)
@@ -80,9 +82,7 @@ async def optimize_trip(
         day_ids=payload.day_ids,
     )
 
-    fingerprint = payload_fingerprint(
-        {"trip_id": str(trip_id), **payload.model_dump(mode="json")}
-    )
+    fingerprint = payload_fingerprint({"trip_id": str(trip_id), **payload.model_dump(mode="json")})
     idem = IdempotencyService(redis)
     replay = await idem.check_or_replay(
         user_id=str(auth.user_id),

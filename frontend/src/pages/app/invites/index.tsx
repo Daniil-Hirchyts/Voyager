@@ -1,8 +1,8 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
-import { Link2, MapPinned, ShieldCheck, UserPlus, Users } from 'lucide-react'
-import { toast } from 'sonner'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link2, MapPinned, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -10,47 +10,44 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import {
-  useAcceptTripInvitation,
-  useTripInvitationPreview,
-} from '@/entities/trip-sharing/queries'
-import { isApiError } from '@/shared/api/client'
-import { WorkspacePage } from '@/shared/layouts/workspace-shell'
-import { VoyagerLoader } from '@/widgets/app-shell/logo'
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
+import { useAcceptTripInvitation, useTripInvitationPreview } from '@/entities/trip-sharing/queries';
+import { isApiError } from '@/shared/api/client';
+import { WorkspacePage } from '@/shared/layouts/workspace-shell';
+import { VoyagerLoader } from '@/widgets/app-shell/logo';
 
 const heroClassName =
-  'rounded-[28px] border border-black/8 bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_52%,rgba(240,247,255,0.92)_100%)] p-6 shadow-[0_28px_60px_-42px_rgba(15,23,42,0.28)] md:p-8'
+  'rounded-[28px] border border-black/8 bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_52%,rgba(240,247,255,0.92)_100%)] p-6 md:p-8';
 
 function formatInviteDate(value: string) {
   return new Intl.DateTimeFormat('en-US', {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
-  }).format(new Date(value))
+  }).format(new Date(value));
 }
 
 export default function TripInvitePage() {
-  const navigate = useNavigate()
-  const { token = '' } = useParams<{ token: string }>()
-  const preview = useTripInvitationPreview(token)
-  const acceptInvitation = useAcceptTripInvitation()
+  const navigate = useNavigate();
+  const { token = '' } = useParams<{ token: string }>();
+  const preview = useTripInvitationPreview(token);
+  const acceptInvitation = useAcceptTripInvitation();
 
   async function handleAcceptInvite() {
     try {
-      const trip = await acceptInvitation.mutateAsync(token)
-      toast.success('Trip access granted')
-      navigate(`/app/trips/${trip.id}/plan`, { replace: true })
+      const trip = await acceptInvitation.mutateAsync(token);
+      toast.success('Trip access granted');
+      navigate(`/app/trips/${trip.id}/plan`, { replace: true });
     } catch (error) {
-      toast.error(isApiError(error) ? error.message : 'Could not accept invite')
+      toast.error(isApiError(error) ? error.message : 'Could not accept invite');
     }
   }
 
   const errorMessage =
     preview.error && isApiError(preview.error)
       ? preview.error.message
-      : 'This invitation is not available anymore.'
+      : 'This invitation is not available anymore.';
 
   return (
     <WorkspacePage className="gap-5 pb-10 md:gap-6">
@@ -72,14 +69,14 @@ export default function TripInvitePage() {
                 Join a shared trip
               </h1>
               <p className="max-w-[42rem] text-sm leading-6 text-[var(--color-text-muted)] md:text-[0.98rem]">
-                Accept this single-use invitation to collaborate on the same itinerary, assets,
-                and map context as the rest of the trip team.
+                Accept this single-use invitation to collaborate on the same itinerary, assets, and
+                map context as the rest of the trip team.
               </p>
             </div>
           </div>
 
           <div className="grid gap-2 rounded-[20px] border border-black/8 bg-white/74 px-4 py-4 text-sm text-[var(--color-text-muted)]">
-            <span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               How it works
             </span>
             <p>1. Review the invite details.</p>
@@ -119,7 +116,7 @@ export default function TripInvitePage() {
             <>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] px-5 py-5">
-                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                  <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Trip
                   </p>
                   <h2 className="mt-3 text-[1.4rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
@@ -132,7 +129,7 @@ export default function TripInvitePage() {
                 </div>
 
                 <div className="rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] px-5 py-5">
-                  <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                  <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Invited by
                   </p>
                   <h2 className="mt-3 text-[1.2rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
@@ -148,12 +145,16 @@ export default function TripInvitePage() {
               <Separator className="bg-black/8" />
 
               <div className="grid gap-3 rounded-[22px] border border-black/8 bg-white/78 px-5 py-5 text-sm text-[var(--color-text-muted)]">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                   Granted role
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="accent">{preview.data.role === 'editor' ? 'Editor' : preview.data.role}</Badge>
-                  <span>You will be able to edit trip details, activities, map content, and assets.</span>
+                  <Badge variant="accent">
+                    {preview.data.role === 'editor' ? 'Editor' : preview.data.role}
+                  </Badge>
+                  <span>
+                    You will be able to edit trip details, activities, map content, and assets.
+                  </span>
                 </div>
               </div>
             </>
@@ -170,10 +171,7 @@ export default function TripInvitePage() {
           </Button>
 
           {preview.data ? (
-            <Button
-              onClick={() => void handleAcceptInvite()}
-              disabled={acceptInvitation.isPending}
-            >
+            <Button onClick={() => void handleAcceptInvite()} disabled={acceptInvitation.isPending}>
               {acceptInvitation.isPending ? (
                 <VoyagerLoader data-icon="inline-start" />
               ) : (
@@ -185,5 +183,5 @@ export default function TripInvitePage() {
         </CardFooter>
       </Card>
     </WorkspacePage>
-  )
+  );
 }

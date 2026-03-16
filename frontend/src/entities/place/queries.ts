@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   autocompleteDestinations,
   createPlace,
@@ -10,14 +10,14 @@ import {
   listPlaces,
   searchGooglePlaces,
   searchPlaces,
-} from './api'
+} from './api';
 import type {
   DestinationAutocompleteResponse,
   NearbyPlaceParams,
   PlaceListParams,
   ViewportPlaceParams,
-} from './api'
-import type { PlaceCreateInput } from '@/shared/api/types'
+} from './api';
+import type { PlaceCreateInput } from '@/shared/api/types';
 
 export const placeKeys = {
   all: ['places'] as const,
@@ -30,13 +30,13 @@ export const placeKeys = {
   detail: (placeId: string) => ['place', placeId] as const,
   googleDetail: (placeId: string) => ['places', 'google', placeId] as const,
   googleRichDetail: (placeId: string) => ['places', 'google', placeId, 'detail'] as const,
-}
+};
 
 export function usePlaceList(params: PlaceListParams = {}) {
   return useQuery({
     queryKey: placeKeys.list(params),
     queryFn: () => listPlaces(params),
-  })
+  });
 }
 
 export function usePlaceSearch(params: PlaceListParams, enabled = true) {
@@ -44,7 +44,7 @@ export function usePlaceSearch(params: PlaceListParams, enabled = true) {
     queryKey: placeKeys.search(params),
     queryFn: () => searchPlaces(params),
     enabled,
-  })
+  });
 }
 
 export function useGooglePlaceSearch(params: PlaceListParams, enabled = true) {
@@ -52,18 +52,15 @@ export function useGooglePlaceSearch(params: PlaceListParams, enabled = true) {
     queryKey: placeKeys.googleSearch(params),
     queryFn: () => searchGooglePlaces(params),
     enabled,
-  })
+  });
 }
 
-export function useDestinationAutocomplete(
-  params: PlaceListParams,
-  enabled = true,
-) {
+export function useDestinationAutocomplete(params: PlaceListParams, enabled = true) {
   return useQuery<DestinationAutocompleteResponse>({
     queryKey: placeKeys.autocomplete(params),
     queryFn: () => autocompleteDestinations(params),
     enabled,
-  })
+  });
 }
 
 export function useNearbyPlaces(params: NearbyPlaceParams | null, enabled = true) {
@@ -71,7 +68,7 @@ export function useNearbyPlaces(params: NearbyPlaceParams | null, enabled = true
     queryKey: placeKeys.nearby(params),
     queryFn: () => getNearbyPlaces(params!),
     enabled: enabled && !!params,
-  })
+  });
 }
 
 export function useViewportPlaces(params: ViewportPlaceParams | null, enabled = true) {
@@ -79,7 +76,7 @@ export function useViewportPlaces(params: ViewportPlaceParams | null, enabled = 
     queryKey: placeKeys.viewport(params),
     queryFn: () => getViewportPlaces(params!),
     enabled: enabled && !!params,
-  })
+  });
 }
 
 export function usePlace(placeId: string | null | undefined) {
@@ -88,7 +85,7 @@ export function usePlace(placeId: string | null | undefined) {
     queryFn: () => getPlace(placeId!),
     enabled: !!placeId,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 export function useGooglePlace(placeId: string | null | undefined) {
@@ -97,7 +94,7 @@ export function useGooglePlace(placeId: string | null | undefined) {
     queryFn: () => getGooglePlace(placeId!),
     enabled: !!placeId,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 export function useGooglePlaceDetail(placeId: string | null | undefined) {
@@ -106,23 +103,18 @@ export function useGooglePlaceDetail(placeId: string | null | undefined) {
     queryFn: () => getGooglePlaceDetail(placeId!),
     enabled: !!placeId,
     staleTime: 5 * 60 * 1000,
-  })
+  });
 }
 
 export function useCreatePlace() {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      data,
-      idempotencyKey,
-    }: {
-      data: PlaceCreateInput
-      idempotencyKey: string
-    }) => createPlace(data, idempotencyKey),
+    mutationFn: ({ data, idempotencyKey }: { data: PlaceCreateInput; idempotencyKey: string }) =>
+      createPlace(data, idempotencyKey),
     onSuccess: (place) => {
-      qc.invalidateQueries({ queryKey: placeKeys.all })
-      qc.setQueryData(placeKeys.detail(place.id), place)
+      qc.invalidateQueries({ queryKey: placeKeys.all });
+      qc.setQueryData(placeKeys.detail(place.id), place);
     },
-  })
+  });
 }

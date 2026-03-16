@@ -26,4 +26,3 @@ async def set_audit_context(
             "request_path": request_path or "",
         },
     )
-

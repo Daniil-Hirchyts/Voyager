@@ -1,9 +1,9 @@
-import type { RouteTravelMode } from '@/shared/api/types'
+import type { RouteTravelMode } from '@/shared/api/types';
 
 export const ROUTE_TRAVEL_MODE_OPTIONS: Array<{
-  value: RouteTravelMode
-  label: string
-  description: string
+  value: RouteTravelMode;
+  label: string;
+  description: string;
 }> = [
   {
     value: 'WALK',
@@ -25,22 +25,22 @@ export const ROUTE_TRAVEL_MODE_OPTIONS: Array<{
     label: 'Transit',
     description: 'Use public transport timings where available.',
   },
-]
+];
 
 export function routeTravelModeLabel(mode: RouteTravelMode | null | undefined) {
-  return ROUTE_TRAVEL_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Walking'
+  return ROUTE_TRAVEL_MODE_OPTIONS.find((option) => option.value === mode)?.label ?? 'Walking';
 }
 
 export function routeTravelModeDescriptor(mode: RouteTravelMode | null | undefined) {
   switch (mode) {
     case 'DRIVE':
-      return 'driving'
+      return 'driving';
     case 'BICYCLE':
-      return 'cycling'
+      return 'cycling';
     case 'TRANSIT':
-      return 'transit'
+      return 'transit';
     case 'WALK':
     default:
-      return 'walking'
+      return 'walking';
   }
 }

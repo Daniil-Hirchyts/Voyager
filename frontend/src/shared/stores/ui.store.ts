@@ -1,11 +1,11 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
 
 interface UIStore {
-  navMenuOpen: boolean
-  setNavMenuOpen: (v: boolean) => void
+  navMenuOpen: boolean;
+  setNavMenuOpen: (v: boolean) => void;
 
-  commandPaletteOpen: boolean
-  setCommandPaletteOpen: (v: boolean) => void
+  commandPaletteOpen: boolean;
+  setCommandPaletteOpen: (v: boolean) => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -14,4 +14,4 @@ export const useUIStore = create<UIStore>((set) => ({
 
   commandPaletteOpen: false,
   setCommandPaletteOpen: (v) => set({ commandPaletteOpen: v }),
-}))
+}));

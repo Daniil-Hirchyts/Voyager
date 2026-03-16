@@ -1,22 +1,21 @@
-'use client'
+'use client';
 
-import type { ReactNode } from 'react'
-import { SlidingNumber } from '@/components/ui/sliding-number'
-import { cn } from '@/shared/lib/cn'
+import type { ReactNode } from 'react';
+import { SlidingNumber } from '@/components/ui/sliding-number';
+import { cn } from '@/shared/lib/cn';
 
 interface AnimatedNumberProps {
-  value: number | null | undefined
-  className?: string
-  fallback?: ReactNode
-  locale?: string
-  formatOptions?: Intl.NumberFormatOptions
+  value: number | null | undefined;
+  className?: string;
+  fallback?: ReactNode;
+  locale?: string;
+  formatOptions?: Intl.NumberFormatOptions;
 }
 
-interface AnimatedMoneyProps
-  extends Omit<AnimatedNumberProps, 'formatOptions'> {
-  currency?: string | null
-  minimumFractionDigits?: number
-  maximumFractionDigits?: number
+interface AnimatedMoneyProps extends Omit<AnimatedNumberProps, 'formatOptions'> {
+  currency?: string | null;
+  minimumFractionDigits?: number;
+  maximumFractionDigits?: number;
 }
 
 function buildFormatter(
@@ -27,9 +26,9 @@ function buildFormatter(
     return new Intl.NumberFormat(locale, {
       numberingSystem: 'latn',
       ...formatOptions,
-    })
+    });
   } catch {
-    return new Intl.NumberFormat(locale, { numberingSystem: 'latn' })
+    return new Intl.NumberFormat(locale, { numberingSystem: 'latn' });
   }
 }
 
@@ -41,12 +40,12 @@ export function AnimatedNumber({
   formatOptions,
 }: AnimatedNumberProps) {
   if (value == null || Number.isNaN(value) || !Number.isFinite(value)) {
-    return fallback ? <>{fallback}</> : null
+    return fallback ? <>{fallback}</> : null;
   }
 
-  const formatter = buildFormatter(locale, formatOptions)
-  const parts = formatter.formatToParts(value)
-  const accessibleText = formatter.format(value)
+  const formatter = buildFormatter(locale, formatOptions);
+  const parts = formatter.formatToParts(value);
+  const accessibleText = formatter.format(value);
 
   return (
     <span className={cn('inline-flex items-baseline tabular-nums', className)}>
@@ -60,14 +59,14 @@ export function AnimatedNumber({
                 value={Number.parseInt(part.value, 10)}
                 minimumDigits={part.value.length}
               />
-            )
+            );
           }
 
-          return <span key={`${part.type}-${index}`}>{part.value}</span>
+          return <span key={`${part.type}-${index}`}>{part.value}</span>;
         })}
       </span>
     </span>
-  )
+  );
 }
 
 export function AnimatedMoney({
@@ -95,5 +94,5 @@ export function AnimatedMoney({
             }
       }
     />
-  )
+  );
 }

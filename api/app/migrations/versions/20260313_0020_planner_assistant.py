@@ -116,4 +116,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_assistant_thread_user_id"), table_name="assistant_thread")
     op.drop_index(op.f("ix_assistant_thread_trip_id"), table_name="assistant_thread")
     op.drop_table("assistant_thread")
-

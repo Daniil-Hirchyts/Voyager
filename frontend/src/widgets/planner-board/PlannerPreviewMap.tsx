@@ -1,12 +1,12 @@
-import { useMemo } from "react";
-import { config } from "@/app/config";
+import { useMemo } from 'react';
+import { config } from '@/app/config';
 import {
   VoyagerMap,
   GooglePolyline,
   MapFitBounds,
   MapPanTo,
   VoyagerMarker,
-} from "@/shared/layouts/google-maps";
+} from '@/shared/layouts/google-maps';
 
 type PreviewPoint = {
   lat: number;
@@ -20,10 +20,10 @@ function toLatLng(point: PreviewPoint) {
 
 function PlannerMapMarker({ title }: { title: string }) {
   return (
-    <div className="transition-transform origin-bottom pb-1">
-      <div className="relative flex items-center justify-center h-7 w-7 rounded-[50%_50%_50%_10%] -rotate-45 border-[1.5px] border-white shadow-[0_6px_12px_rgba(0,0,0,0.15)] bg-zinc-900">
-        <div className="rotate-45 flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-white shadow-sm" />
+    <div className="origin-bottom pb-1 transition-transform">
+      <div className="relative flex h-7 w-7 -rotate-45 items-center justify-center rounded-[50%_50%_50%_10%] border-[1.5px] border-white bg-zinc-900">
+        <div className="flex rotate-45 items-center justify-center">
+          <div className="h-2 w-2 rounded-full bg-white" />
         </div>
         <span className="sr-only">{title}</span>
       </div>
@@ -43,26 +43,20 @@ export function PlannerPreviewMap({
   const normalizedRoute = useMemo(
     () =>
       routePoints.filter(
-        (point): point is PreviewPoint =>
-          Number.isFinite(point.lat) && Number.isFinite(point.lon),
+        (point): point is PreviewPoint => Number.isFinite(point.lat) && Number.isFinite(point.lon),
       ),
     [routePoints],
   );
   const hasPrimaryPoint =
-    primaryPoint != null &&
-    Number.isFinite(primaryPoint.lat) &&
-    Number.isFinite(primaryPoint.lon);
+    primaryPoint != null && Number.isFinite(primaryPoint.lat) && Number.isFinite(primaryPoint.lon);
   const primaryLatLng = hasPrimaryPoint ? toLatLng(primaryPoint) : null;
-  const routeLatLngs = useMemo(
-    () => normalizedRoute.map(toLatLng),
-    [normalizedRoute],
-  );
+  const routeLatLngs = useMemo(() => normalizedRoute.map(toLatLng), [normalizedRoute]);
   const points = useMemo(
     () => [...(primaryLatLng ? [primaryLatLng] : []), ...routeLatLngs],
     [primaryLatLng, routeLatLngs],
   );
   const mapSignature = useMemo(
-    () => points.map((point) => `${point.lat}:${point.lng}`).join("|"),
+    () => points.map((point) => `${point.lat}:${point.lng}`).join('|'),
     [points],
   );
 
@@ -89,7 +83,7 @@ export function PlannerPreviewMap({
           reuseMaps={false}
           defaultCenter={defaultCenter ?? { lat: 48.8566, lng: 2.3522 }}
           defaultZoom={hasRoute ? 10.8 : 13.8}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: '100%', height: '100%' }}
           disableDefaultUI
           mapTypeControl={false}
           fullscreenControl={false}
@@ -97,12 +91,7 @@ export function PlannerPreviewMap({
           gestureHandling="cooperative"
         >
           {hasRoute ? (
-            <MapFitBounds
-              points={points}
-              padding={48}
-              maxZoom={13}
-              singlePointZoom={13.8}
-            />
+            <MapFitBounds points={points} padding={48} maxZoom={13} singlePointZoom={13.8} />
           ) : defaultCenter ? (
             <MapPanTo point={defaultCenter} zoom={13.8} />
           ) : null}
@@ -115,12 +104,7 @@ export function PlannerPreviewMap({
             />
           ) : null}
           {hasPrimaryPoint && primaryLatLng && !hasRoute ? (
-            <VoyagerMarker
-              position={primaryLatLng}
-              title={primaryPoint.title}
-              selected
-              zIndex={3}
-            >
+            <VoyagerMarker position={primaryLatLng} title={primaryPoint.title} selected zIndex={3}>
               <PlannerMapMarker title={primaryPoint.title} />
             </VoyagerMarker>
           ) : null}
@@ -136,9 +120,9 @@ export function PlannerPreviewMap({
                 title={point.title}
                 label={
                   index === 0
-                    ? "Origin"
+                    ? 'Origin'
                     : index === normalizedRoute.length - 1
-                      ? "Destination"
+                      ? 'Destination'
                       : undefined
                 }
                 selected

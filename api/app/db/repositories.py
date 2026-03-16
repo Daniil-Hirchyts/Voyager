@@ -162,7 +162,9 @@ def _infer_activity_category(
         return ActivityCategory.VISIT
 
     haystack = " ".join(
-        value for value in [place_category, title, source] if isinstance(value, str) and value.strip()
+        value
+        for value in [place_category, title, source]
+        if isinstance(value, str) and value.strip()
     ).lower()
     if any(token in haystack for token in ("restaurant", "cafe", "food", "bistro", "bar")):
         return ActivityCategory.EAT
@@ -322,7 +324,9 @@ class TripRepository:
     @staticmethod
     async def create_trip(db: AsyncSession, user_id: uuid.UUID, payload: TripCreateRequest) -> Trip:
         await TripRepository._validate_date_range(payload)
-        if payload.editorial_route_id and not has_editorial_route_template(payload.editorial_route_id):
+        if payload.editorial_route_id and not has_editorial_route_template(
+            payload.editorial_route_id
+        ):
             raise ValidationApiError(
                 "Unknown editorial route",
                 {"editorial_route_id": payload.editorial_route_id},
@@ -469,7 +473,11 @@ class TripRepository:
         collaborator_count = TripRepository._collaborator_count_expr()
         role_expr = TripRepository._role_expr(user_id)
         result = await db.execute(
-            select(Trip, role_expr.label("current_user_role"), collaborator_count.label("collaborator_count"))
+            select(
+                Trip,
+                role_expr.label("current_user_role"),
+                collaborator_count.label("collaborator_count"),
+            )
             .where(access_clause)
             .order_by(Trip.updated_at.desc())
             .limit(limit)
@@ -497,7 +505,11 @@ class TripRepository:
             owner_user_id_column=Trip.user_id,
         )
         result = await db.execute(
-            select(Trip, role_expr.label("current_user_role"), collaborator_count.label("collaborator_count"))
+            select(
+                Trip,
+                role_expr.label("current_user_role"),
+                collaborator_count.label("collaborator_count"),
+            )
             .where(Trip.id == trip_id)
             .where(access_clause)
         )
@@ -660,7 +672,9 @@ class TripRepository:
             budget_currency=source.budget_currency,
             trip_type=source.trip_type,
             route_travel_mode=source.route_travel_mode,
-            cover_preference_json=TripRepository._cover_preference_json(source.cover_preference_json),
+            cover_preference_json=TripRepository._cover_preference_json(
+                source.cover_preference_json
+            ),
             version=1,
         )
         db.add(duplicate)
@@ -1769,9 +1783,7 @@ class PlaceRepository:
     ) -> Place:
         if external_id:
             existing_result = await db.execute(
-                select(Place)
-                .where(Place.source == source)
-                .where(Place.external_id == external_id)
+                select(Place).where(Place.source == source).where(Place.external_id == external_id)
             )
             existing = existing_result.scalar_one_or_none()
             if existing:
@@ -2178,9 +2190,7 @@ class EventRepository:
             reviews=provider_detail.get("reviews") or [],
             hours=provider_detail.get("hours") or [],
             booking_links=provider_detail.get("booking_links") or [],
-            provider_payload=provider_detail.get("provider_payload")
-            or item.raw_payload_json
-            or {},
+            provider_payload=provider_detail.get("provider_payload") or item.raw_payload_json or {},
         )
 
     @staticmethod
@@ -2382,7 +2392,9 @@ class EventRepository:
         if snapshot.trip_id != trip_id:
             raise NotFoundError("Activity not found")
         if not EventRepository._is_attachable(snapshot):
-            raise ValidationApiError("Only attractions and restaurants can be attached to itinerary days")
+            raise ValidationApiError(
+                "Only attractions and restaurants can be attached to itinerary days"
+            )
 
         count_result = await db.execute(
             select(func.count(Activity.id)).where(Activity.trip_day_id == day.id)
@@ -2877,7 +2889,9 @@ class ProposalRepository:
             await db.flush()
 
         existing_items_row = await db.execute(
-            select(ItineraryProposalActivity).where(ItineraryProposalActivity.proposal_id == proposal.id)
+            select(ItineraryProposalActivity).where(
+                ItineraryProposalActivity.proposal_id == proposal.id
+            )
         )
         for existing_item in existing_items_row.scalars().all():
             await db.delete(existing_item)
@@ -2921,7 +2935,9 @@ class ProposalRepository:
         total = int(
             (
                 await db.execute(
-                    select(func.count(ItineraryProposal.id)).where(ItineraryProposal.trip_id == trip_id)
+                    select(func.count(ItineraryProposal.id)).where(
+                        ItineraryProposal.trip_id == trip_id
+                    )
                 )
             ).scalar_one()
         )
@@ -3295,12 +3311,14 @@ class JobRepository:
     @staticmethod
     async def queue_depths(db: AsyncSession) -> tuple[int, int]:
         pending = int(
-            (await db.execute(select(func.count(Job.id)).where(Job.status == JobStatus.PENDING)))
-            .scalar_one()
+            (
+                await db.execute(select(func.count(Job.id)).where(Job.status == JobStatus.PENDING))
+            ).scalar_one()
         )
         running = int(
-            (await db.execute(select(func.count(Job.id)).where(Job.status == JobStatus.RUNNING)))
-            .scalar_one()
+            (
+                await db.execute(select(func.count(Job.id)).where(Job.status == JobStatus.RUNNING))
+            ).scalar_one()
         )
         return pending, running
 

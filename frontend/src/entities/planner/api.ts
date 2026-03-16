@@ -1,6 +1,6 @@
-import { requestJson } from '@/shared/api/client'
-import type { PlannerActivity, PlannerResponse } from '@/shared/api/types'
-import { normalizeTrip } from '@/entities/trip/api'
+import { requestJson } from '@/shared/api/client';
+import type { PlannerActivity, PlannerResponse } from '@/shared/api/types';
+import { normalizeTrip } from '@/entities/trip/api';
 
 function normalizeActivity(activity: PlannerActivity): PlannerActivity {
   return {
@@ -10,11 +10,11 @@ function normalizeActivity(activity: PlannerActivity): PlannerActivity {
         ? activity.category_details
         : {},
     place: activity.place ?? null,
-  }
+  };
 }
 
 export async function getPlanner(tripId: string): Promise<PlannerResponse> {
-  const planner = await requestJson<PlannerResponse>(`/trips/${tripId}/planner`)
+  const planner = await requestJson<PlannerResponse>(`/trips/${tripId}/planner`);
 
   return {
     ...planner,
@@ -25,9 +25,7 @@ export async function getPlanner(tripId: string): Promise<PlannerResponse> {
       : [],
     days: (planner.days ?? []).map((day) => ({
       ...day,
-      activities: Array.isArray(day.activities)
-        ? day.activities.map(normalizeActivity)
-        : [],
+      activities: Array.isArray(day.activities) ? day.activities.map(normalizeActivity) : [],
     })),
-  }
+  };
 }

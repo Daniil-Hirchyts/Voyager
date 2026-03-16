@@ -1,14 +1,14 @@
-import { buildApiUrl, createRequestHeaders, requestJson, toApiError } from '@/shared/api/client'
+import { buildApiUrl, createRequestHeaders, requestJson, toApiError } from '@/shared/api/client';
 import type {
   AssistantMessage,
   AssistantMessageStreamInput,
   AssistantMirrorJobInput,
   AssistantStreamEvent,
   AssistantThread,
-} from '@/shared/api/types'
+} from '@/shared/api/types';
 
 export async function getAssistantThread(tripId: string): Promise<AssistantThread> {
-  return requestJson<AssistantThread>(`/trips/${tripId}/assistant/thread`)
+  return requestJson<AssistantThread>(`/trips/${tripId}/assistant/thread`);
 }
 
 export async function mirrorAssistantJob(
@@ -18,7 +18,7 @@ export async function mirrorAssistantJob(
   return requestJson<AssistantMessage[]>(`/trips/${tripId}/assistant/mirror-job`, {
     method: 'POST',
     body: JSON.stringify(payload),
-  })
+  });
 }
 
 export async function streamAssistantMessages(
@@ -32,31 +32,31 @@ export async function streamAssistantMessages(
     headers: createRequestHeaders(undefined, { json: true }),
     body: JSON.stringify(payload),
     signal,
-  })
+  });
   if (!response.ok || !response.body) {
     if (!response.ok) {
-      throw await toApiError(response)
+      throw await toApiError(response);
     }
-    throw new Error('Failed to stream assistant messages')
+    throw new Error('Failed to stream assistant messages');
   }
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
 
   while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-    const chunks = buffer.split('\n')
-    buffer = chunks.pop() ?? ''
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const chunks = buffer.split('\n');
+    buffer = chunks.pop() ?? '';
 
     for (const line of chunks) {
-      if (!line.startsWith('data: ')) continue
-      const payloadText = line.slice(6)
+      if (!line.startsWith('data: ')) continue;
+      const payloadText = line.slice(6);
       try {
-        const event = JSON.parse(payloadText) as AssistantStreamEvent
-        onEvent(event)
+        const event = JSON.parse(payloadText) as AssistantStreamEvent;
+        onEvent(event);
       } catch {
         // ignore malformed events
       }

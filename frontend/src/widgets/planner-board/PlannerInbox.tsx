@@ -1,24 +1,24 @@
-import { useDroppable } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import { Inbox, Pin, PinOff } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/shared/lib/cn'
-import type { PlannerActivity } from '@/shared/api/types'
-import { ActivityCard } from './ActivityCard'
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { Inbox, Pin, PinOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
+import type { PlannerActivity } from '@/shared/api/types';
+import { ActivityCard } from './ActivityCard';
 
 interface PlannerInboxProps {
-  activities: PlannerActivity[]
-  selectedActivityId?: string | null
-  title?: string
-  subtitle?: string
-  className?: string
-  isDragActive?: boolean
-  emptyMessage?: string
-  isDetached?: boolean
-  onToggleDetached?: () => void
-  onSelectActivity?: (activity: PlannerActivity) => void
-  onAddActivity?: () => void
-  onToggleVisited?: (activityId: string, currentVisitedAt: string | null) => void
+  activities: PlannerActivity[];
+  selectedActivityId?: string | null;
+  title?: string;
+  subtitle?: string;
+  className?: string;
+  isDragActive?: boolean;
+  emptyMessage?: string;
+  isDetached?: boolean;
+  onToggleDetached?: () => void;
+  onSelectActivity?: (activity: PlannerActivity) => void;
+  onAddActivity?: () => void;
+  onToggleVisited?: (activityId: string, currentVisitedAt: string | null) => void;
 }
 
 export function PlannerInbox({
@@ -38,24 +38,24 @@ export function PlannerInbox({
   const { setNodeRef, isOver } = useDroppable({
     id: 'inbox',
     data: { type: 'container', containerId: 'inbox', dayId: null },
-  })
+  });
   const { setNodeRef: setEndZoneRef, isOver: isOverEnd } = useDroppable({
     id: 'inbox::end',
     data: { type: 'container-end', containerId: 'inbox', dayId: null },
-  })
+  });
 
   return (
     <section
       ref={setNodeRef}
       className={cn(
-        'flex h-full min-h-0 w-full lg:w-[320px] lg:min-w-[320px] lg:max-w-[320px] flex-col rounded-[14px] border border-black/8 bg-white',
+        'flex h-full min-h-0 w-full flex-col rounded-[14px] border border-black/8 bg-white lg:w-[320px] lg:max-w-[320px] lg:min-w-[320px]',
         isOver && 'border-black/16 ring-2 ring-black/6',
         className,
       )}
       aria-label={title}
     >
-      <header className="hidden lg:flex flex-col justify-center h-[4.5rem] border-b border-black/8 bg-[var(--color-secondary-surface)] px-4">
-        <div className="flex items-center justify-between gap-3 w-full">
+      <header className="hidden h-[4.5rem] flex-col justify-center border-b border-black/8 bg-[var(--color-secondary-surface)] px-4 lg:flex">
+        <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white text-[var(--color-text-muted)]">
               <Inbox className="h-4 w-4" />
@@ -70,11 +70,15 @@ export function PlannerInbox({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-[8px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)] shadow-none"
+              className="h-8 w-8 rounded-[8px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)]"
               onClick={onToggleDetached}
               title={isDetached ? 'Attach to side' : 'Detach from side'}
             >
-              {isDetached ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5 rotate-45" />}
+              {isDetached ? (
+                <PinOff className="h-3.5 w-3.5" />
+              ) : (
+                <Pin className="h-3.5 w-3.5 rotate-45" />
+              )}
             </Button>
           ) : null}
         </div>
@@ -87,7 +91,10 @@ export function PlannerInbox({
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-            <SortableContext items={activities.map((activity) => activity.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext
+              items={activities.map((activity) => activity.id)}
+              strategy={verticalListSortingStrategy}
+            >
               <div className="flex min-h-0 flex-1 flex-col gap-2">
                 {activities.map((activity) => (
                   <ActivityCard
@@ -95,7 +102,11 @@ export function PlannerInbox({
                     activity={activity}
                     onOpen={onSelectActivity}
                     isSelected={selectedActivityId === activity.id}
-                    onToggleVisited={onToggleVisited ? () => onToggleVisited(activity.id, activity.visited_at) : undefined}
+                    onToggleVisited={
+                      onToggleVisited
+                        ? () => onToggleVisited(activity.id, activity.visited_at)
+                        : undefined
+                    }
                   />
                 ))}
               </div>
@@ -117,7 +128,7 @@ export function PlannerInbox({
           <Button
             type="button"
             variant="outline"
-            className="h-9 w-full rounded-[10px] border-dashed border-black/8 bg-white text-[var(--color-text-muted)] shadow-none hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
+            className="h-9 w-full rounded-[10px] border-dashed border-black/8 bg-white text-[var(--color-text-muted)] hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
             onClick={() => onAddActivity()}
           >
             Add activity
@@ -125,5 +136,5 @@ export function PlannerInbox({
         </div>
       ) : null}
     </section>
-  )
+  );
 }

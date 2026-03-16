@@ -1,37 +1,38 @@
-import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from 'react-router-dom'
-import { RequireAuth } from '@/app/auth/RequireAuth'
-import { ErrorBoundary } from 'react-error-boundary'
-import { lazy, Suspense } from 'react'
-import { config } from '@/app/config'
-import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { VoyagerLoader } from '@/widgets/app-shell/logo'
+import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from 'react-router-dom';
+import { RequireAuth } from '@/app/auth/RequireAuth';
+import { ErrorBoundary } from 'react-error-boundary';
+import { lazy, Suspense } from 'react';
+import { config } from '@/app/config';
+import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { VoyagerLoader } from '@/widgets/app-shell/logo';
 
 // Public pages
-const LandingPage = lazy(() => import('@/pages/public/landing'))
-const SignInPage = lazy(() => import('@/pages/public/signin'))
-const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'))
-const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'))
-const PrivacyPolicyPage = lazy(() => import('@/pages/public/privacy'))
-const TermsOfServicePage = lazy(() => import('@/pages/public/terms'))
-const CookiePolicyPage = lazy(() => import('@/pages/public/cookies'))
-const ImprintPage = lazy(() => import('@/pages/public/imprint'))
+const LandingPage = lazy(() => import('@/pages/public/landing'));
+const SignInPage = lazy(() => import('@/pages/public/signin'));
+const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'));
+const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'));
+const PrivacyPolicyPage = lazy(() => import('@/pages/public/privacy'));
+const TermsOfServicePage = lazy(() => import('@/pages/public/terms'));
+const CookiePolicyPage = lazy(() => import('@/pages/public/cookies'));
+const ImprintPage = lazy(() => import('@/pages/public/imprint'));
 
 // App pages
-const SettingsPage = lazy(() => import('@/pages/app/settings'))
-const TripsPage = lazy(() => import('@/pages/app/trips'))
-const TripCreatePage = lazy(() => import('@/pages/app/trips/new'))
-const TripInvitePage = lazy(() => import('@/pages/app/invites'))
-const PlanPage = lazy(() => import('@/pages/app/plan'))
-const EventsPage = lazy(() => import('@/pages/app/events'))
-const ProposalsPage = lazy(() => import('@/pages/app/proposals'))
-const AppLayout = lazy(() => import('@/widgets/app-side-rail').then((m) => ({ default: m.AppLayout })))
+const SettingsPage = lazy(() => import('@/pages/app/settings'));
+const TripsPage = lazy(() => import('@/pages/app/trips'));
+const TripCreatePage = lazy(() => import('@/pages/app/trips/new'));
+const TripInvitePage = lazy(() => import('@/pages/app/invites'));
+const PlanPage = lazy(() => import('@/pages/app/plan'));
+const EventsPage = lazy(() => import('@/pages/app/events'));
+const ProposalsPage = lazy(() => import('@/pages/app/proposals'));
+const AppLayout = lazy(() =>
+  import('@/widgets/app-side-rail').then((m) => ({ default: m.AppLayout })),
+);
 
 function PageLoader() {
-  const showLoading = useDelayedLoading(true, 250)
-  
-  if (!showLoading) return null
+  const showLoading = useDelayedLoading(true, 250);
+  if (!showLoading) return null;
 
   return (
     <div className="voyager-page flex min-h-[100dvh] items-center justify-center">
@@ -40,11 +41,17 @@ function PageLoader() {
         Loading workspace
       </div>
     </div>
-  )
+  );
 }
 
-function RouteErrorFallback({ error, resetErrorBoundary }: { error: Error; resetErrorBoundary?: () => void }) {
-  const traceId = (error as { traceId?: string }).traceId
+function RouteErrorFallback({
+  error,
+  resetErrorBoundary,
+}: {
+  error: Error;
+  resetErrorBoundary?: () => void;
+}) {
+  const traceId = (error as { traceId?: string }).traceId;
   return (
     <div className="voyager-page flex min-h-[72dvh] items-center justify-center">
       <Card variant="solid" className="w-full max-w-2xl">
@@ -60,9 +67,7 @@ function RouteErrorFallback({ error, resetErrorBoundary }: { error: Error; reset
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
-            {resetErrorBoundary ? (
-              <Button onClick={resetErrorBoundary}>Retry</Button>
-            ) : null}
+            {resetErrorBoundary ? <Button onClick={resetErrorBoundary}>Retry</Button> : null}
             <Button asChild variant="outline">
               <a href="/">Return home</a>
             </Button>
@@ -70,28 +75,28 @@ function RouteErrorFallback({ error, resetErrorBoundary }: { error: Error; reset
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
 
 export function FeatureRouteGate({
   enabled,
   children,
 }: {
-  enabled: boolean
-  children: React.ReactNode
+  enabled: boolean;
+  children: React.ReactNode;
 }) {
-  const { tripId } = useParams<{ tripId: string }>()
+  const { tripId } = useParams<{ tripId: string }>();
 
   if (!enabled) {
-    return <Navigate to={tripId ? `/app/trips/${tripId}` : '/app/trips'} replace />
+    return <Navigate to={tripId ? `/app/trips/${tripId}` : '/app/trips'} replace />;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 export function LegacyActivitiesRedirect() {
-  const { tripId } = useParams<{ tripId: string }>()
-  return <Navigate to={tripId ? `/app/trips/${tripId}/plan` : '/app/trips'} replace />
+  const { tripId } = useParams<{ tripId: string }>();
+  return <Navigate to={tripId ? `/app/trips/${tripId}/plan` : '/app/trips'} replace />;
 }
 
 const router = createBrowserRouter([
@@ -276,8 +281,8 @@ const router = createBrowserRouter([
       </div>
     ),
   },
-])
+]);
 
 export function Router() {
-  return <RouterProvider router={router} future={{ v7_startTransition: true }} />
+  return <RouterProvider router={router} future={{ v7_startTransition: true }} />;
 }

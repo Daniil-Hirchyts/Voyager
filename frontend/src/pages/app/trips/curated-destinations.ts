@@ -1,26 +1,26 @@
 export type CuratedDestination = {
-  id: string
-  name: string
-  destinationText: string
-  country: string
-  region: string
-  lat: number
-  lon: number
-  imageUrl: string
-  teaser: string
-  summary: string
-  highlights: string[]
-  bestFor: string
-  weatherLabel: string
-  budgetAmount: number
-  budgetCurrency: string
-  startDate: string
-  endDate: string
-  tripType: string
-  routeTravelMode: 'WALK' | 'DRIVE' | 'TRANSIT' | 'BICYCLE'
-  accentFrom: string
-  accentTo: string
-}
+  id: string;
+  name: string;
+  destinationText: string;
+  country: string;
+  region: string;
+  lat: number;
+  lon: number;
+  imageUrl: string;
+  teaser: string;
+  summary: string;
+  highlights: string[];
+  bestFor: string;
+  weatherLabel: string;
+  budgetAmount: number;
+  budgetCurrency: string;
+  startDate: string;
+  endDate: string;
+  tripType: string;
+  routeTravelMode: 'WALK' | 'DRIVE' | 'TRANSIT' | 'BICYCLE';
+  accentFrom: string;
+  accentTo: string;
+};
 
 export const CURATED_DESTINATIONS: CuratedDestination[] = [
   {
@@ -80,7 +80,8 @@ export const CURATED_DESTINATIONS: CuratedDestination[] = [
     lat: 64.1466,
     lon: -21.9426,
     imageUrl: '/images/trips/reykjavik-midnight-route.jpg',
-    teaser: 'A bright-season route for geothermal swims, black-sand detours, and long golden evenings.',
+    teaser:
+      'A bright-season route for geothermal swims, black-sand detours, and long golden evenings.',
     summary:
       'This one leans outdoors without feeling rugged, pairing scenic drives with soft-landings in Reykjavik restaurants and design stays.',
     highlights: ['Sky Lagoon reset', 'South Coast loop', 'Late-night harbor dinner'],
@@ -104,7 +105,8 @@ export const CURATED_DESTINATIONS: CuratedDestination[] = [
     lat: 36.3932,
     lon: 25.4615,
     imageUrl: '/images/trips/santorini-blue-hour.jpg',
-    teaser: 'Five days shaped around caldera walks, whitewashed stays, and long lunches over the water.',
+    teaser:
+      'Five days shaped around caldera walks, whitewashed stays, and long lunches over the water.',
     summary:
       'A polished island edit with enough downtime to actually feel the place, not just photograph it.',
     highlights: ['Oia blue-hour walk', 'Catamaran swim day', 'Winery cliff tasting'],
@@ -167,4 +169,4 @@ export const CURATED_DESTINATIONS: CuratedDestination[] = [
     accentFrom: '#2d4a74',
     accentTo: '#f0b470',
   },
-]
+];

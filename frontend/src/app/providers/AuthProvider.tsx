@@ -1,10 +1,10 @@
-import { AuthProvider as OidcAuthProvider, useAuth } from 'react-oidc-context'
-import { useEffect, useMemo } from 'react'
-import { config } from '@/app/config'
-import { setTokenGetter, setUnauthorizedHandler } from '@/shared/api/client'
-import { useAuthStore } from '@/shared/stores/auth.store'
-import { createSessionExpiryHandler, getBrowserPath } from './auth-session'
-import { startKeycloakSignIn } from '@/app/auth/signin'
+import { AuthProvider as OidcAuthProvider, useAuth } from 'react-oidc-context';
+import { useEffect, useMemo } from 'react';
+import { config } from '@/app/config';
+import { setTokenGetter, setUnauthorizedHandler } from '@/shared/api/client';
+import { useAuthStore } from '@/shared/stores/auth.store';
+import { createSessionExpiryHandler, getBrowserPath } from './auth-session';
+import { startKeycloakSignIn } from '@/app/auth/signin';
 
 const oidcConfig = {
   authority: config.keycloak.issuer,
@@ -16,25 +16,24 @@ const oidcConfig = {
   automaticSilentRenew: true,
   filterProtocolClaims: true,
   loadUserInfo: true,
-}
+};
 
 interface Props {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 function AuthSessionManager() {
-  const auth = useAuth()
-  const setIntendedPath = useAuthStore((s) => s.setIntendedPath)
+  const auth = useAuth();
+  const setIntendedPath = useAuthStore((s) => s.setIntendedPath);
   const startSignin = useMemo(
-    () =>
-      (intendedPath?: string | null) =>
-        startKeycloakSignIn({
-          auth,
-          intendedPath,
-          setIntendedPath,
-        }),
+    () => (intendedPath?: string | null) =>
+      startKeycloakSignIn({
+        auth,
+        intendedPath,
+        setIntendedPath,
+      }),
     [auth, setIntendedPath],
-  )
+  );
 
   const handleSessionExpired = useMemo(
     () =>
@@ -45,34 +44,34 @@ function AuthSessionManager() {
         startSignin,
       }),
     [auth.removeUser, startSignin],
-  )
+  );
 
   useEffect(() => {
-    setTokenGetter(() => auth.user?.access_token)
+    setTokenGetter(() => auth.user?.access_token);
     return () => {
-      setTokenGetter(() => undefined)
-    }
-  }, [auth.user?.access_token])
+      setTokenGetter(() => undefined);
+    };
+  }, [auth.user?.access_token]);
 
   useEffect(() => {
-    return setUnauthorizedHandler(() => handleSessionExpired())
-  }, [handleSessionExpired])
+    return setUnauthorizedHandler(() => handleSessionExpired());
+  }, [handleSessionExpired]);
 
   useEffect(() => {
     const removeAccessTokenExpired = auth.events.addAccessTokenExpired(() => {
-      void handleSessionExpired()
-    })
+      void handleSessionExpired();
+    });
     const removeSilentRenewError = auth.events.addSilentRenewError(() => {
-      void handleSessionExpired()
-    })
+      void handleSessionExpired();
+    });
 
     return () => {
-      removeAccessTokenExpired()
-      removeSilentRenewError()
-    }
-  }, [auth.events, handleSessionExpired])
+      removeAccessTokenExpired();
+      removeSilentRenewError();
+    };
+  }, [auth.events, handleSessionExpired]);
 
-  return null
+  return null;
 }
 
 export function AuthProvider({ children }: Props) {
@@ -80,11 +79,11 @@ export function AuthProvider({ children }: Props) {
     <OidcAuthProvider
       {...oidcConfig}
       onSigninCallback={() => {
-        window.history.replaceState({}, document.title, window.location.pathname)
+        window.history.replaceState({}, document.title, window.location.pathname);
       }}
     >
       <AuthSessionManager />
       {children}
     </OidcAuthProvider>
-  )
+  );
 }

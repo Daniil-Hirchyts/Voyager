@@ -1,14 +1,14 @@
 interface SessionExpiryHandlerOptions {
-  getCurrentPath: () => string
-  getCurrentPathname: () => string
-  removeUser: () => Promise<void>
-  startSignin: (intendedPath?: string | null) => Promise<unknown>
+  getCurrentPath: () => string;
+  getCurrentPathname: () => string;
+  removeUser: () => Promise<void>;
+  startSignin: (intendedPath?: string | null) => Promise<unknown>;
 }
 
 export function getBrowserPath(
   location: Pick<Location, 'pathname' | 'search' | 'hash'> = window.location,
 ) {
-  return `${location.pathname}${location.search}${location.hash}`
+  return `${location.pathname}${location.search}${location.hash}`;
 }
 
 export function createSessionExpiryHandler({
@@ -17,25 +17,25 @@ export function createSessionExpiryHandler({
   removeUser,
   startSignin,
 }: SessionExpiryHandlerOptions) {
-  let inFlight: Promise<void> | null = null
+  let inFlight: Promise<void> | null = null;
 
   return async () => {
     if (inFlight) {
-      return inFlight
+      return inFlight;
     }
 
     inFlight = (async () => {
-      const intendedPath = getCurrentPathname().startsWith('/app') ? getCurrentPath() : null
+      const intendedPath = getCurrentPathname().startsWith('/app') ? getCurrentPath() : null;
 
       try {
-        await removeUser()
+        await removeUser();
       } finally {
-        await startSignin(intendedPath)
+        await startSignin(intendedPath);
       }
     })().finally(() => {
-      inFlight = null
-    })
+      inFlight = null;
+    });
 
-    return inFlight
-  }
+    return inFlight;
+  };
 }

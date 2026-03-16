@@ -1,15 +1,15 @@
-import { useMemo } from 'react'
-import { useTripCoverPreferenceMigration } from '@/entities/trip/useTripCoverPreferenceMigration'
-import type { Trip } from '@/shared/api/types'
-import { resolveMediaUrl } from '@/shared/lib/media'
+import { useMemo } from 'react';
+import { useTripCoverPreferenceMigration } from '@/entities/trip/useTripCoverPreferenceMigration';
+import type { Trip } from '@/shared/api/types';
+import { resolveMediaUrl } from '@/shared/lib/media';
 
 export type TripCardCover = {
-  url: string | null
-  isFallback: boolean
-}
+  url: string | null;
+  isFallback: boolean;
+};
 
 export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover> {
-  useTripCoverPreferenceMigration(trips)
+  useTripCoverPreferenceMigration(trips);
 
   return useMemo(
     () =>
@@ -28,5 +28,5 @@ export function useTripListCoverPhotos(trips: Trip[]): Map<string, TripCardCover
         ]),
       ),
     [trips],
-  )
+  );
 }

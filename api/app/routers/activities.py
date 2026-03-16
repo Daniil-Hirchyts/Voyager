@@ -122,7 +122,9 @@ def _string_terms(value) -> list[str]:
     return []
 
 
-def _shortlist_snapshot_terms(payload: ActivityShortlistSaveRequest) -> tuple[str, str | None, list[str]]:
+def _shortlist_snapshot_terms(
+    payload: ActivityShortlistSaveRequest,
+) -> tuple[str, str | None, list[str]]:
     segment = {
         ActivityEntityType.RESTAURANT: "dining",
         ActivityEntityType.ATTRACTION: "sightseeing",
@@ -171,7 +173,9 @@ async def _assert_scope_days(
     allowed = {day.id for day in trip_days}
     invalid = [str(day_id) for day_id in day_ids if day_id not in allowed]
     if invalid:
-        raise ValidationApiError("One or more day_ids are not part of the trip", {"day_ids": invalid})
+        raise ValidationApiError(
+            "One or more day_ids are not part of the trip", {"day_ids": invalid}
+        )
 
 
 def _provider_errors_to_api(exc: Exception) -> None:
@@ -184,7 +188,9 @@ def _provider_errors_to_api(exc: Exception) -> None:
     raise exc
 
 
-@router.post("/trips/{trip_id}/planner/activities", response_model=ActivityResponse, status_code=201)
+@router.post(
+    "/trips/{trip_id}/planner/activities", response_model=ActivityResponse, status_code=201
+)
 async def create_trip_activity(
     trip_id: uuid.UUID,
     payload: ActivityCreateRequest,
@@ -639,7 +645,9 @@ async def get_discovered_activity_detail(
     return response
 
 
-@router.post("/trips/{trip_id}/activities/save", response_model=ActivityDiscoveryItem, status_code=201)
+@router.post(
+    "/trips/{trip_id}/activities/save", response_model=ActivityDiscoveryItem, status_code=201
+)
 async def save_activity_to_shortlist(
     trip_id: uuid.UUID,
     payload: ActivityShortlistSaveRequest,
@@ -692,7 +700,9 @@ async def save_activity_to_shortlist(
     if resolved_lat is not None or resolved_lon is not None or resolved_address_text:
         place = await PlaceRepository.get_or_create_external_place(
             db,
-            source="google_places" if resolved_google_place_id else f"tripadvisor_{payload.entity_type.value}",
+            source="google_places"
+            if resolved_google_place_id
+            else f"tripadvisor_{payload.entity_type.value}",
             external_id=resolved_google_place_id or payload.provider_ref,
             name=payload.title,
             category=payload.entity_type.value,
@@ -810,7 +820,9 @@ async def get_saved_activity_detail(
     db: AsyncSession = Depends(get_db_session),
     redis: Redis = Depends(get_redis),
 ) -> ActivityDiscoveryDetail:
-    cache_key = "activity:shortlist:get:" + build_cache_key(str(auth.user_id), str(snapshot_id), locale)
+    cache_key = "activity:shortlist:get:" + build_cache_key(
+        str(auth.user_id), str(snapshot_id), locale
+    )
     cached = await cache_get_json(redis, cache_key)
     if cached:
         return ActivityDiscoveryDetail.model_validate(cached)
@@ -857,7 +869,9 @@ async def get_saved_activity_detail(
     return response
 
 
-@router.post("/trips/{trip_id}/activities/{snapshot_id}/attach-day", response_model=ActivityResponse)
+@router.post(
+    "/trips/{trip_id}/activities/{snapshot_id}/attach-day", response_model=ActivityResponse
+)
 async def attach_saved_activity_to_day(
     trip_id: uuid.UUID,
     snapshot_id: uuid.UUID,

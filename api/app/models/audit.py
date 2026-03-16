@@ -23,4 +23,3 @@ class AuditLogListResponse(BaseModel):
     limit: int
     offset: int
     items: list[AuditLogEntry]
-

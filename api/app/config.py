@@ -85,9 +85,7 @@ class Settings(BaseSettings):
         ),
     )
     proposal_cache_ttl_sec: int = Field(default=30, alias="VOYAGER_PROPOSAL_CACHE_TTL_SEC")
-    place_photo_cache_ttl_sec: int = Field(
-        default=60, alias="VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC"
-    )
+    place_photo_cache_ttl_sec: int = Field(default=60, alias="VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC")
     export_cache_ttl_sec: int = Field(default=20, alias="VOYAGER_EXPORT_CACHE_TTL_SEC")
     audit_cache_ttl_sec: int = Field(default=15, alias="VOYAGER_AUDIT_CACHE_TTL_SEC")
     idempotency_ttl_sec: int = 86400
@@ -97,22 +95,15 @@ class Settings(BaseSettings):
     exports_dir: str = Field(default="/var/lib/voyager/exports", alias="VOYAGER_EXPORTS_DIR")
     export_retention_days: int = Field(default=14, alias="VOYAGER_EXPORT_RETENTION_DAYS")
     itinerary_llm_enabled: bool = Field(default=True, alias="VOYAGER_ITINERARY_LLM_ENABLED")
-    llm_openrouter_api_key: str | None = Field(
-        default=None, alias="VOYAGER_LLM_OPENROUTER_API_KEY"
-    )
+    llm_openrouter_api_key: str | None = Field(default=None, alias="VOYAGER_LLM_OPENROUTER_API_KEY")
     llm_openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1", alias="VOYAGER_LLM_OPENROUTER_BASE_URL"
     )
     llm_openrouter_model_order_raw: str = Field(
-        default=(
-            "stepfun/step-3.5-flash:free,"
-            "z-ai/glm-4.5-air:free"
-        ),
+        default=("stepfun/step-3.5-flash:free,z-ai/glm-4.5-air:free"),
         alias="VOYAGER_LLM_OPENROUTER_MODEL_ORDER",
     )
-    llm_openrouter_timeout_sec: int = Field(
-        default=20, alias="VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC"
-    )
+    llm_openrouter_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC")
     rate_limit_itinerary_provider_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )
@@ -232,9 +223,7 @@ class Settings(BaseSettings):
 
     def itinerary_llm_model_order(self) -> list[str]:
         return [
-            part.strip()
-            for part in self.llm_openrouter_model_order_raw.split(",")
-            if part.strip()
+            part.strip() for part in self.llm_openrouter_model_order_raw.split(",") if part.strip()
         ]
 
     @property

@@ -20,7 +20,9 @@ class ApiMetricsStore:
         self.request_duration_sum_ms: dict[tuple[str, str, str], float] = defaultdict(float)
         self.request_duration_buckets: dict[tuple[str, str, str, str], int] = defaultdict(int)
 
-    def observe_request(self, *, method: str, path: str, status_code: int, elapsed_ms: float) -> None:
+    def observe_request(
+        self, *, method: str, path: str, status_code: int, elapsed_ms: float
+    ) -> None:
         key = (method, path, str(status_code))
         self.request_total[key] += 1
         self.request_duration_count[key] += 1

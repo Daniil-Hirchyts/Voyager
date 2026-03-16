@@ -1,30 +1,30 @@
-import type { ActivityCategory, PlannerActivity, PlannerDay } from '@/shared/api/types'
+import type { ActivityCategory, PlannerActivity, PlannerDay } from '@/shared/api/types';
 
-export type PlannerActivityBucket = 'main' | 'travel' | 'accommodation'
+export type PlannerActivityBucket = 'main' | 'travel' | 'accommodation';
 
 export function plannerActivityBucketForCategory(
   category: ActivityCategory,
 ): PlannerActivityBucket {
   if (category === 'travel') {
-    return 'travel'
+    return 'travel';
   }
   if (category === 'hotel') {
-    return 'accommodation'
+    return 'accommodation';
   }
-  return 'main'
+  return 'main';
 }
 
 export function plannerActivityBucket(
   activity: Pick<PlannerActivity, 'category'>,
 ): PlannerActivityBucket {
-  return plannerActivityBucketForCategory(activity.category)
+  return plannerActivityBucketForCategory(activity.category);
 }
 
 export function filterPlannerActivitiesByBucket(
   activities: PlannerActivity[],
   bucket: PlannerActivityBucket,
 ) {
-  return activities.filter((activity) => plannerActivityBucket(activity) === bucket)
+  return activities.filter((activity) => plannerActivityBucket(activity) === bucket);
 }
 
 export function filterPlannerDaysByBucket(
@@ -34,7 +34,7 @@ export function filterPlannerDaysByBucket(
   return days.map((day) => ({
     ...day,
     activities: filterPlannerActivitiesByBucket(day.activities, bucket),
-  }))
+  }));
 }
 
 export function mergeBucketActivityOrder(
@@ -42,19 +42,19 @@ export function mergeBucketActivityOrder(
   bucket: PlannerActivityBucket,
   orderedBucketIds: string[],
 ) {
-  const activityById = new Map(activities.map((activity) => [activity.id, activity]))
+  const activityById = new Map(activities.map((activity) => [activity.id, activity]));
   const orderedBucketActivities = orderedBucketIds
     .map((id) => activityById.get(id))
     .filter(
       (activity): activity is PlannerActivity =>
         activity != null && plannerActivityBucket(activity) === bucket,
-    )
+    );
 
-  let bucketIndex = 0
+  let bucketIndex = 0;
   return activities.map((activity) => {
     if (plannerActivityBucket(activity) !== bucket) {
-      return activity
+      return activity;
     }
-    return orderedBucketActivities[bucketIndex++] ?? activity
-  })
+    return orderedBucketActivities[bucketIndex++] ?? activity;
+  });
 }

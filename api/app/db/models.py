@@ -229,8 +229,12 @@ class TripInvitation(Base, UUIDPrimaryKeyMixin, TimestampMixin):
         default=TripAccessRole.EDITOR,
     )
     token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
-    accepted_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    revoked_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    accepted_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    revoked_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="invitations")
     created_by: Mapped["UserProfile"] = relationship(
@@ -296,9 +300,7 @@ class TripMapLayer(Base, UUIDPrimaryKeyMixin, TimestampMixin):
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="map_layers")
 
-    __table_args__ = (
-        Index("ix_trip_map_layer_trip_order", "trip_id", "order_index"),
-    )
+    __table_args__ = (Index("ix_trip_map_layer_trip_order", "trip_id", "order_index"),)
 
 
 class Place(Base, UUIDPrimaryKeyMixin, TimestampMixin):
@@ -370,7 +372,9 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     start_time: Mapped[time_value | None] = mapped_column(nullable=True)
     duration_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     category_details_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    estimated_cost_amount: Mapped[DecimalValue | None] = mapped_column(Numeric(12, 2), nullable=True)
+    estimated_cost_amount: Mapped[DecimalValue | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
     estimated_cost_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     place_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("place.id", ondelete="SET NULL"), nullable=True, index=True
@@ -383,7 +387,9 @@ class Activity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    visited_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    visited_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="manual")
     generation_batch_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), nullable=True, index=True
@@ -446,9 +452,15 @@ class Job(Base, UUIDPrimaryKeyMixin):
     dead_lettered_at: Mapped[datetime_value | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    created_at: Mapped[datetime_value] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    started_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime_value] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    started_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    finished_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (Index("ix_job_status_available_at", "status", "available_at"),)
 
@@ -554,7 +566,9 @@ class EventSnapshot(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     raw_payload_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     provider_detail_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
-    expires_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="event_snapshots")
     trip_day: Mapped["TripDay | None"] = relationship("TripDay", back_populates="event_snapshots")
@@ -694,13 +708,17 @@ class ItineraryProposalActivity(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     start_time: Mapped[time_value | None] = mapped_column(nullable=True)
     duration_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    estimated_cost_amount: Mapped[DecimalValue | None] = mapped_column(Numeric(12, 2), nullable=True)
+    estimated_cost_amount: Mapped[DecimalValue | None] = mapped_column(
+        Numeric(12, 2), nullable=True
+    )
     estimated_cost_currency: Mapped[str | None] = mapped_column(String(3), nullable=True)
     tags_json: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
     rationale_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
     score_json: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
 
-    proposal: Mapped["ItineraryProposal"] = relationship("ItineraryProposal", back_populates="items")
+    proposal: Mapped["ItineraryProposal"] = relationship(
+        "ItineraryProposal", back_populates="items"
+    )
     trip_day: Mapped["TripDay"] = relationship("TripDay", back_populates="proposal_activities")
     source_activity: Mapped["Activity | None"] = relationship("Activity")
     event_snapshot: Mapped["EventSnapshot | None"] = relationship(
@@ -791,10 +809,18 @@ class TripExport(Base, UUIDPrimaryKeyMixin):
     size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     error_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime_value] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    finished_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_at: Mapped[datetime_value | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime_value] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    finished_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    expires_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_at: Mapped[datetime_value | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="exports")
     user: Mapped["UserProfile"] = relationship("UserProfile")
@@ -817,7 +843,9 @@ class AuditLog(Base, UUIDPrimaryKeyMixin):
     after_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     correlation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     request_path: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[datetime_value] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime_value] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
 
     __table_args__ = (
         Index("ix_audit_log_trip_created_desc", "trip_id", "created_at"),

@@ -184,11 +184,15 @@ async def download_export_content(
         export_id=export_id,
         user_id=auth.user_id,
     )
-    if (job.status.value if hasattr(job.status, "value") else str(job.status)) != JobStatus.SUCCEEDED.value:
+    if (
+        job.status.value if hasattr(job.status, "value") else str(job.status)
+    ) != JobStatus.SUCCEEDED.value:
         raise ConflictError(
             code="EXPORT_NOT_READY",
             message="Export artifact is not ready",
-            details={"status": job.status.value if hasattr(job.status, "value") else str(job.status)},
+            details={
+                "status": job.status.value if hasattr(job.status, "value") else str(job.status)
+            },
         )
     if export.deleted_at is not None:
         raise NotFoundError("Export artifact has expired")
@@ -199,7 +203,9 @@ async def download_export_content(
     if not file_path.exists():
         raise NotFoundError("Export artifact file not found")
 
-    content_type = export.content_type or mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    content_type = (
+        export.content_type or mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+    )
     filename = f"trip-{export.trip_id}-v{export.trip_version}.{export.format}"
     response = FileResponse(file_path, media_type=content_type)
     response.headers["Content-Disposition"] = f'attachment; filename="{filename}"'

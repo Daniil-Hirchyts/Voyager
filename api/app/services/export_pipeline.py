@@ -84,12 +84,7 @@ def _as_format(value: Any) -> str:
 
 
 def _escape_ics(text: str) -> str:
-    return (
-        text.replace("\\", "\\\\")
-        .replace(";", "\\;")
-        .replace(",", "\\,")
-        .replace("\n", "\\n")
-    )
+    return text.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
 
 
 def _fold_ics_line(line: str, *, limit: int = 73) -> list[str]:
@@ -193,7 +188,9 @@ def _fallback_location_payload(
             }
 
     if category_value == "travel" and route_points:
-        labels = " -> ".join(str(point.get("label") or "").strip() for point in route_points if point.get("label"))
+        labels = " -> ".join(
+            str(point.get("label") or "").strip() for point in route_points if point.get("label")
+        )
         destination = route_points[-1]
         return {
             "id": destination.get("place_id"),
@@ -265,7 +262,9 @@ def _activity_payload(
     fallback_index: int,
 ) -> dict[str, Any]:
     details = activity.category_details_json or {}
-    category_value = activity.category.value if hasattr(activity.category, "value") else str(activity.category)
+    category_value = (
+        activity.category.value if hasattr(activity.category, "value") else str(activity.category)
+    )
     start_value = activity.start_time or (time(9 + min(fallback_index, 8), 0) if day else None)
     start_datetime = (
         datetime.combine(day.date, start_value, tzinfo=UTC).isoformat()
@@ -313,7 +312,9 @@ def _activity_payload(
         if activity.estimated_cost_amount is not None
         else None,
         "estimated_cost_currency": activity.estimated_cost_currency,
-        "cost_label": _format_money(activity.estimated_cost_amount, activity.estimated_cost_currency),
+        "cost_label": _format_money(
+            activity.estimated_cost_amount, activity.estimated_cost_currency
+        ),
         "date": day.date.isoformat() if day else None,
         "day_index": day.day_index if day else None,
         "day_label": f"Day {day.day_index + 1}" if day else "Inbox",
@@ -362,7 +363,8 @@ def _serialize_ics(payload: dict[str, Any]) -> bytes:
             route_points = activity.get("route_points") or []
             if route_points:
                 description_parts.append(
-                    "Route: " + " -> ".join(str(point.get("label") or "").strip() for point in route_points)
+                    "Route: "
+                    + " -> ".join(str(point.get("label") or "").strip() for point in route_points)
                 )
             hotel_details = activity.get("hotel_details") or {}
             if hotel_details.get("checkin_date") or hotel_details.get("checkout_date"):
@@ -405,11 +407,13 @@ def _serialize_ics(payload: dict[str, Any]) -> bytes:
             _append_ics_field(lines, "LOCATION", str(location_name) if location_name else None)
             _append_ics_field(lines, "CATEGORIES", str(activity["category"]).upper())
 
-            if isinstance(location, dict) and location.get("lat") is not None and location.get("lon") is not None:
+            if (
+                isinstance(location, dict)
+                and location.get("lat") is not None
+                and location.get("lon") is not None
+            ):
                 lines.extend(
-                    _fold_ics_line(
-                        f"GEO:{float(location['lat']):.6f};{float(location['lon']):.6f}"
-                    )
+                    _fold_ics_line(f"GEO:{float(location['lat']):.6f};{float(location['lon']):.6f}")
                 )
             lines.append("END:VEVENT")
 
@@ -496,8 +500,12 @@ def _build_pdf_blocks(payload: dict[str, Any]) -> list[_PdfBlock]:
     ]
     blocks.append(
         _pdf_block(
-            _PdfTextLine("Voyager itinerary", font="F2", size=11, color=(0.64, 0.35, 0.18), leading=16),
-            _PdfTextLine(str(trip["title"]), font="F2", size=22, color=(0.10, 0.14, 0.18), leading=28),
+            _PdfTextLine(
+                "Voyager itinerary", font="F2", size=11, color=(0.64, 0.35, 0.18), leading=16
+            ),
+            _PdfTextLine(
+                str(trip["title"]), font="F2", size=22, color=(0.10, 0.14, 0.18), leading=28
+            ),
             *[
                 _PdfTextLine(line, font="F1", size=11, color=(0.29, 0.35, 0.42), leading=16)
                 for line in hero_meta
@@ -620,8 +628,7 @@ def _build_pdf_blocks(payload: dict[str, Any]) -> list[_PdfBlock]:
                 )
             if activity.get("route_points"):
                 route_text = " -> ".join(
-                    str(point.get("label") or "").strip()
-                    for point in activity["route_points"]
+                    str(point.get("label") or "").strip() for point in activity["route_points"]
                 )
                 card_lines.append(
                     _PdfTextLine(
@@ -667,7 +674,9 @@ def _build_pdf_blocks(payload: dict[str, Any]) -> list[_PdfBlock]:
     if inbox_activities:
         blocks.append(
             _pdf_block(
-                _PdfTextLine("Inbox activities", font="F2", size=15, color=(0.12, 0.15, 0.20), leading=20),
+                _PdfTextLine(
+                    "Inbox activities", font="F2", size=15, color=(0.12, 0.15, 0.20), leading=20
+                ),
                 _PdfTextLine(
                     "These items are saved on the trip but are not assigned to a day yet.",
                     font="F1",
@@ -685,7 +694,13 @@ def _build_pdf_blocks(payload: dict[str, Any]) -> list[_PdfBlock]:
 
         for activity in inbox_activities:
             card_lines = [
-                _PdfTextLine(str(activity["title"]), font="F2", size=12.5, color=(0.10, 0.14, 0.18), leading=18),
+                _PdfTextLine(
+                    str(activity["title"]),
+                    font="F2",
+                    size=12.5,
+                    color=(0.10, 0.14, 0.18),
+                    leading=18,
+                ),
                 _PdfTextLine(
                     " / ".join(
                         part
@@ -866,10 +881,8 @@ def _serialize_pdf(payload: dict[str, Any]) -> bytes:
     data += b"0000000000 65535 f \n"
     for offset in offsets[1:]:
         data += f"{offset:010d} 00000 n \n".encode("ascii")
-    data += (
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF\n".encode(
-            "ascii"
-        )
+    data += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF\n".encode(
+        "ascii"
     )
     return data
 
@@ -909,7 +922,9 @@ async def _load_trip_payload(
 
     for activity, place in activity_rows.all():
         day = day_by_id.get(activity.trip_day_id) if activity.trip_day_id is not None else None
-        fallback_index = len(activity_map.get(day.id, [])) if day is not None else len(inbox_activities)
+        fallback_index = (
+            len(activity_map.get(day.id, [])) if day is not None else len(inbox_activities)
+        )
         item = _activity_payload(
             activity=activity,
             place=place,
@@ -968,7 +983,9 @@ def _materialize_bytes(format_name: str, payload: dict[str, Any]) -> bytes:
     return _serialize_pdf(payload)
 
 
-def _target_path(*, user_id: uuid.UUID, trip_id: uuid.UUID, export_id: uuid.UUID, format_name: str) -> Path:
+def _target_path(
+    *, user_id: uuid.UUID, trip_id: uuid.UUID, export_id: uuid.UUID, format_name: str
+) -> Path:
     root = Path(settings.exports_dir)
     return root / str(user_id) / str(trip_id) / f"{export_id}.{format_name}"
 

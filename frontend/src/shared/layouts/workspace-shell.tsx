@@ -1,30 +1,30 @@
-import type { LucideIcon } from 'lucide-react'
-import { cn } from '@/shared/lib/cn'
+import type { LucideIcon } from 'lucide-react';
+import { cn } from '@/shared/lib/cn';
 
 type WorkspacePageProps = {
-  children: React.ReactNode
-  className?: string
-}
+  children: React.ReactNode;
+  className?: string;
+};
 
 type WorkspaceHeaderProps = {
-  eyebrow?: string
-  title: string
-  description?: string
-  actions?: React.ReactNode
-  meta?: React.ReactNode
-  className?: string
-}
+  eyebrow?: string;
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  meta?: React.ReactNode;
+  className?: string;
+};
 
 type WorkspaceStatCardProps = {
-  label: string
-  value: React.ReactNode
-  detail?: React.ReactNode
-  icon?: LucideIcon
-  className?: string
-}
+  label: string;
+  value: React.ReactNode;
+  detail?: React.ReactNode;
+  icon?: LucideIcon;
+  className?: string;
+};
 
 export function WorkspacePage({ children, className }: WorkspacePageProps) {
-  return <div className={cn('voyager-app-page flex flex-col gap-6', className)}>{children}</div>
+  return <div className={cn('voyager-app-page flex flex-col gap-6', className)}>{children}</div>;
 }
 
 export function WorkspaceHeader({
@@ -36,7 +36,9 @@ export function WorkspaceHeader({
   className,
 }: WorkspaceHeaderProps) {
   return (
-    <section className={cn('voyager-panel-strong voyager-noise overflow-hidden p-6 md:p-8', className)}>
+    <section
+      className={cn('voyager-panel-strong voyager-noise overflow-hidden p-6 md:p-8', className)}
+    >
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="flex flex-col gap-4">
           {eyebrow ? <span className="voyager-eyebrow w-fit">{eyebrow}</span> : null}
@@ -46,14 +48,16 @@ export function WorkspaceHeader({
           </div>
           {meta ? <div className="flex flex-wrap gap-3">{meta}</div> : null}
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-3 lg:justify-end">{actions}</div> : null}
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-3 lg:justify-end">{actions}</div>
+        ) : null}
       </div>
     </section>
-  )
+  );
 }
 
 export function WorkspaceStatGrid({ children, className }: WorkspacePageProps) {
-  return <div className={cn('voyager-status-grid', className)}>{children}</div>
+  return <div className={cn('voyager-status-grid', className)}>{children}</div>;
 }
 
 export function WorkspaceStatCard({
@@ -66,7 +70,7 @@ export function WorkspaceStatCard({
   return (
     <div className={cn('voyager-status-card flex flex-col gap-3', className)}>
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+        <span className="text-[0.68rem] font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
           {label}
         </span>
         {Icon ? (
@@ -75,8 +79,10 @@ export function WorkspaceStatCard({
           </span>
         ) : null}
       </div>
-      <div className="text-2xl font-semibold tracking-[-0.04em] text-[var(--color-text)]">{value}</div>
+      <div className="text-2xl font-semibold tracking-[-0.04em] text-[var(--color-text)]">
+        {value}
+      </div>
       {detail ? <div className="text-sm text-[var(--color-text-muted)]">{detail}</div> : null}
     </div>
-  )
+  );
 }

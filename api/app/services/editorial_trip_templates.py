@@ -104,7 +104,9 @@ def _parse_activity(payload: dict[str, Any]) -> EditorialActivitySeed:
     return EditorialActivitySeed(
         category=_parse_category(str(payload.get("category") or "")),
         title=title,
-        description=str(description).strip() if isinstance(description, str) and description.strip() else None,
+        description=str(description).strip()
+        if isinstance(description, str) and description.strip()
+        else None,
         start_time=_parse_time(str(payload.get("start_time") or "")),
         duration_min=duration_min,
         place=_parse_place(payload),

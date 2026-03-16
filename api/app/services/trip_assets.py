@@ -42,9 +42,7 @@ def _sanitize_filename(value: str | None) -> str:
     return cleaned or "upload"
 
 
-def normalize_trip_asset_content_type(
-    *, filename: str | None, content_type: str | None
-) -> str:
+def normalize_trip_asset_content_type(*, filename: str | None, content_type: str | None) -> str:
     if content_type:
         normalized = content_type.split(";", 1)[0].strip()
         if normalized:
@@ -63,10 +61,7 @@ def build_trip_asset_object_key(
     safe_name = _sanitize_filename(original_filename)
     suffix = Path(safe_name).suffix
     stem = Path(safe_name).stem or "upload"
-    return (
-        f"users/{user_id}/trips/{trip_id}/assets/{asset_id}/original/"
-        f"{stem}{suffix}"
-    )
+    return f"users/{user_id}/trips/{trip_id}/assets/{asset_id}/original/{stem}{suffix}"
 
 
 def build_trip_asset_thumbnail_key(
@@ -235,7 +230,11 @@ def upload_prepared_trip_asset(prepared: PreparedTripAssetUpload) -> None:
         Body=prepared.original_bytes,
         ContentType=prepared.content_type,
     )
-    if prepared.thumbnail_object_key and prepared.thumbnail_bytes and prepared.thumbnail_content_type:
+    if (
+        prepared.thumbnail_object_key
+        and prepared.thumbnail_bytes
+        and prepared.thumbnail_content_type
+    ):
         client.put_object(
             Bucket=bucket,
             Key=prepared.thumbnail_object_key,

@@ -57,7 +57,9 @@ def _day_terms(activities: list[Activity]) -> set[str]:
     return terms
 
 
-def _centroid_for_day(activities: list[Activity], places_by_id: dict[uuid.UUID, Place]) -> tuple[float, float] | None:
+def _centroid_for_day(
+    activities: list[Activity], places_by_id: dict[uuid.UUID, Place]
+) -> tuple[float, float] | None:
     coords = []
     for activity in activities:
         if activity.place_id is None:
@@ -176,7 +178,9 @@ async def _llm_rationales(
                 "title": item["snapshot"].title,
                 "summary": item["snapshot"].summary,
                 "tags": item["snapshot"].tags_json or [],
-                "rating": float(item["snapshot"].rating) if item["snapshot"].rating is not None else None,
+                "rating": float(item["snapshot"].rating)
+                if item["snapshot"].rating is not None
+                else None,
                 "review_count": item["snapshot"].review_count,
                 "day": {
                     "id": str(item["day"].id),
@@ -197,11 +201,14 @@ async def _llm_rationales(
                 "content": (
                     "You are ranking saved TripAdvisor activities for a trip. "
                     "Return JSON only in the shape "
-                    "{\"items\":[{\"snapshot_id\":\"uuid\",\"rationale\":\"string\"}]}. "
+                    '{"items":[{"snapshot_id":"uuid","rationale":"string"}]}. '
                     "Each rationale must be one concise sentence."
                 ),
             },
-            {"role": "user", "content": json.dumps(payload, separators=(",", ":"), ensure_ascii=True)},
+            {
+                "role": "user",
+                "content": json.dumps(payload, separators=(",", ":"), ensure_ascii=True),
+            },
         ],
     }
     headers = {
@@ -266,10 +273,16 @@ async def recommend_shortlist_items(
         .where(EventSnapshot.trip_id == trip_id)
     )
     snapshot_query = snapshot_query.where(EventSnapshot.provider == "tripadvisor")
-    snapshot_query = snapshot_query.where(EventSnapshot.entity_type.in_(("attraction", "restaurant")))
+    snapshot_query = snapshot_query.where(
+        EventSnapshot.entity_type.in_(("attraction", "restaurant"))
+    )
     if snapshot_ids:
         snapshot_query = snapshot_query.where(EventSnapshot.id.in_(snapshot_ids))
-    rows = await db.execute(snapshot_query.order_by(EventSnapshot.rating.desc().nulls_last(), EventSnapshot.created_at.desc()))
+    rows = await db.execute(
+        snapshot_query.order_by(
+            EventSnapshot.rating.desc().nulls_last(), EventSnapshot.created_at.desc()
+        )
+    )
     snapshots = list(rows.scalars().all())
     if not snapshots or not scoped_days:
         return []
@@ -288,7 +301,9 @@ async def recommend_shortlist_items(
         if activity.place_id is not None:
             place_ids.add(activity.place_id)
 
-    place_rows = await db.execute(select(Place).where(Place.id.in_(place_ids))) if place_ids else None
+    place_rows = (
+        await db.execute(select(Place).where(Place.id.in_(place_ids))) if place_ids else None
+    )
     places_by_id = {place.id: place for place in place_rows.scalars().all()} if place_rows else {}
     centroids = {
         day.id: _centroid_for_day(activities_by_day.get(day.id, []), places_by_id)
@@ -311,7 +326,9 @@ async def recommend_shortlist_items(
             review_score = min(math.log10((snapshot.review_count or 0) + 10) * 6.0, 18.0)
             distance_score = _distance_score(snapshot, centroid=centroids.get(day.id), place=place)
             day_bias = max(0, 12 - day.day_index)
-            total_score = round(context_score + rating_score + review_score + distance_score + day_bias, 2)
+            total_score = round(
+                context_score + rating_score + review_score + distance_score + day_bias, 2
+            )
             candidate = {
                 "snapshot": snapshot,
                 "day": day,
@@ -324,7 +341,14 @@ async def recommend_shortlist_items(
         if best is not None:
             scored.append(best)
 
-    scored.sort(key=lambda item: (item["score"], item["snapshot"].rating or 0, item["snapshot"].review_count or 0), reverse=True)
+    scored.sort(
+        key=lambda item: (
+            item["score"],
+            item["snapshot"].rating or 0,
+            item["snapshot"].review_count or 0,
+        ),
+        reverse=True,
+    )
     top_items = scored[:limit]
     llm_rationales = (
         await _llm_rationales(redis=redis, trip=trip, recommendations=top_items)
@@ -344,12 +368,12 @@ async def recommend_shortlist_items(
                 "rationale": llm_rationales.get(
                     snapshot.id,
                     _fallback_rationale(
-                    snapshot=snapshot,
-                    day=day,
-                    context_matches=item["context_matches"],
-                    distance_score=item["distance_score"],
+                        snapshot=snapshot,
+                        day=day,
+                        context_matches=item["context_matches"],
+                        distance_score=item["distance_score"],
+                    ),
                 ),
-            ),
                 "item": EventRepository.to_discovery_item(snapshot),
             }
         )

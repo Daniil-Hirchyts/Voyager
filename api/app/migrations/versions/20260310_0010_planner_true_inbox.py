@@ -102,8 +102,9 @@ def downgrade() -> None:
     op.drop_index("ix_activity_trip_order_inbox", table_name="activity")
     op.drop_index("ix_activity_trip_day_order_assigned", table_name="activity")
     op.alter_column("activity", "trip_day_id", nullable=False)
-    op.create_unique_constraint("uq_activity_trip_day_order", "activity", ["trip_day_id", "order_index"])
+    op.create_unique_constraint(
+        "uq_activity_trip_day_order", "activity", ["trip_day_id", "order_index"]
+    )
     op.drop_constraint(op.f("fk_activity_trip_id_trip"), "activity", type_="foreignkey")
     op.drop_index(op.f("ix_activity_trip_id"), table_name="activity")
     op.drop_column("activity", "trip_id")
-

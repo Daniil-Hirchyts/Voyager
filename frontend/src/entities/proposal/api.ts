@@ -1,11 +1,11 @@
-import { requestJson } from '@/shared/api/client'
+import { requestJson } from '@/shared/api/client';
 import type {
   JobAcceptedResponse,
   ProposalListResponse,
   ProposalResponse,
   ProposalApplyResponse,
   TripOptimizeInput,
-} from '@/shared/api/types'
+} from '@/shared/api/types';
 
 export async function optimizeTrip(
   tripId: string,
@@ -16,22 +16,22 @@ export async function optimizeTrip(
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function listProposals(
   tripId: string,
   params: { limit?: number; offset?: number } = {},
 ): Promise<ProposalListResponse> {
-  const qs = new URLSearchParams()
-  if (params.limit != null) qs.set('limit', String(params.limit))
-  if (params.offset != null) qs.set('offset', String(params.offset))
-  const q = qs.toString()
-  return requestJson<ProposalListResponse>(`/trips/${tripId}/proposals${q ? `?${q}` : ''}`)
+  const qs = new URLSearchParams();
+  if (params.limit != null) qs.set('limit', String(params.limit));
+  if (params.offset != null) qs.set('offset', String(params.offset));
+  const q = qs.toString();
+  return requestJson<ProposalListResponse>(`/trips/${tripId}/proposals${q ? `?${q}` : ''}`);
 }
 
 export async function getProposal(proposalId: string): Promise<ProposalResponse> {
-  return requestJson<ProposalResponse>(`/proposals/${proposalId}`)
+  return requestJson<ProposalResponse>(`/proposals/${proposalId}`);
 }
 
 export async function applyProposal(
@@ -45,5 +45,5 @@ export async function applyProposal(
       'If-Match': String(tripVersion),
       'Idempotency-Key': idempotencyKey,
     },
-  })
+  });
 }

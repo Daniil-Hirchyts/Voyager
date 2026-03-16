@@ -1,6 +1,6 @@
-import type { ButtonHTMLAttributes } from 'react'
-import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import type { ButtonHTMLAttributes } from 'react';
+import { defaultAnimateLayoutChanges, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   BedDouble,
   Check,
@@ -11,21 +11,21 @@ import {
   Plane,
   Ticket,
   Utensils,
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/shared/lib/cn'
-import { formatMoney } from '@/shared/lib/format'
-import type { ActivityCategory, PlannerActivity } from '@/shared/api/types'
-import { plannerCategoryDescription, plannerCategoryLabel } from './categories'
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/shared/lib/cn';
+import { formatMoney } from '@/shared/lib/format';
+import type { ActivityCategory, PlannerActivity } from '@/shared/api/types';
+import { plannerCategoryDescription, plannerCategoryLabel } from './categories';
 
 interface BaseProps {
-  activity: PlannerActivity
-  onOpen?: (activity: PlannerActivity) => void
-  onToggleVisited?: () => void
-  isDragging?: boolean
-  isSelected?: boolean
-  dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>
-  showDragHandle?: boolean
+  activity: PlannerActivity;
+  onOpen?: (activity: PlannerActivity) => void;
+  onToggleVisited?: () => void;
+  isDragging?: boolean;
+  isSelected?: boolean;
+  dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
+  showDragHandle?: boolean;
 }
 
 const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
@@ -34,24 +34,24 @@ const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
   activity: Ticket,
   hotel: BedDouble,
   travel: Plane,
-}
+};
 
 function scheduleLabel(activity: PlannerActivity) {
-  const formatTime = (t: string) => (t.length > 5 ? t.substring(0, 5) : t)
+  const formatTime = (t: string) => (t.length > 5 ? t.substring(0, 5) : t);
   const formatDur = (m: number) => {
     if (m >= 60) {
-      const h = m / 60
-      return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`
+      const h = m / 60;
+      return h % 1 === 0 ? `${h}h` : `${h.toFixed(1)}h`;
     }
-    return `${m}m`
-  }
+    return `${m}m`;
+  };
 
   if (!activity.start_time) {
-    return activity.duration_min ? formatDur(activity.duration_min) : null
+    return activity.duration_min ? formatDur(activity.duration_min) : null;
   }
   return `${formatTime(activity.start_time)}${
     activity.duration_min ? ` · ${formatDur(activity.duration_min)}` : ''
-  }`
+  }`;
 }
 
 export function ActivityCardView({
@@ -63,19 +63,20 @@ export function ActivityCardView({
   dragHandleProps,
   showDragHandle = false,
 }: BaseProps) {
-  const schedule = scheduleLabel(activity)
-  const categoryLabel = plannerCategoryLabel(activity.category)
-  const categoryDescription = plannerCategoryDescription(activity)
-  const normalizedTitle = activity.title.trim().toLowerCase()
-  const normalizedDescription = categoryDescription?.trim().toLowerCase() ?? null
+  const schedule = scheduleLabel(activity);
+  const categoryLabel = plannerCategoryLabel(activity.category);
+  const categoryDescription = plannerCategoryDescription(activity);
+  const normalizedTitle = activity.title.trim().toLowerCase();
+  const normalizedDescription = categoryDescription?.trim().toLowerCase() ?? null;
   const secondaryLabel =
     normalizedDescription && normalizedDescription !== normalizedTitle
       ? categoryDescription
-      : activity.place?.address_text && activity.place.address_text.trim().toLowerCase() !== normalizedTitle
+      : activity.place?.address_text &&
+          activity.place.address_text.trim().toLowerCase() !== normalizedTitle
         ? activity.place.address_text
-        : null
-  const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark
-  const shouldRenderDragHandle = Boolean(dragHandleProps || showDragHandle)
+        : null;
+  const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark;
+  const shouldRenderDragHandle = Boolean(dragHandleProps || showDragHandle);
 
   return (
     <article
@@ -83,12 +84,12 @@ export function ActivityCardView({
         'group flex flex-col rounded-[12px] border border-black/8 bg-white transition-[border-color,box-shadow]',
         'hover:border-black/12',
         isSelected && 'border-black/16 ring-2 ring-black/6',
-        isDragging && 'border-black/16 shadow-[0_14px_30px_rgba(15,23,42,0.08)]',
+        isDragging && 'border-black/16',
         activity.visited_at && 'border-emerald-100 bg-emerald-50/30',
       )}
       aria-label={`Activity: ${activity.title}`}
     >
-      <div className="flex items-start justify-between gap-2 px-3 pb-1 pt-2">
+      <div className="flex items-start justify-between gap-2 px-3 pt-2 pb-1">
         <div className="flex min-w-0 items-center gap-2 text-[0.7rem] font-medium text-[var(--color-text-muted)]">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-secondary-surface)] px-2 py-1">
             <CategoryIcon className="h-3.5 w-3.5" />
@@ -122,8 +123,8 @@ export function ActivityCardView({
               )}
               aria-label={activity.visited_at ? 'Mark as not visited' : 'Mark as visited'}
               onClick={(e) => {
-                e.stopPropagation()
-                onToggleVisited()
+                e.stopPropagation();
+                onToggleVisited();
               }}
             >
               <CircleCheck className="h-4 w-4" />
@@ -160,7 +161,7 @@ export function ActivityCardView({
         className="flex flex-1 flex-col items-start gap-1.5 px-3 pb-3 text-left"
       >
         <div className="w-full min-w-0">
-          <h3 className="line-clamp-2 text-[0.95rem] font-medium leading-5 text-[var(--color-text)]">
+          <h3 className="line-clamp-2 text-[0.95rem] leading-5 font-medium text-[var(--color-text)]">
             {activity.title}
           </h3>
         </div>
@@ -175,10 +176,10 @@ export function ActivityCardView({
         </div>
       </button>
     </article>
-  )
+  );
 }
 
-type SortableProps = Omit<BaseProps, 'dragHandleProps'>
+type SortableProps = Omit<BaseProps, 'dragHandleProps'>;
 
 export function ActivityCard({
   activity,
@@ -202,13 +203,13 @@ export function ActivityCard({
       dayId: activity.trip_day_id,
     },
     animateLayoutChanges: defaultAnimateLayoutChanges,
-  })
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isSortableDragging ? 0.42 : 1,
-  }
+  };
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -221,5 +222,5 @@ export function ActivityCard({
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>
-  )
+  );
 }

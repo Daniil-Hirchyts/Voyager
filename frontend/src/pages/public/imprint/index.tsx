@@ -1,14 +1,8 @@
-import { Link } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
-import { VoyagerLogo } from '@/widgets/app-shell/logo'
+import { Link } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
+import { VoyagerLogo } from '@/widgets/app-shell/logo';
 
-function LegalPage({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-[var(--color-bg)]">
       <div className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-20">
@@ -29,8 +23,10 @@ function LegalPage({
         </div>
 
         <div className="mb-10 border-b border-[var(--color-border-strong)] pb-8">
-          <p className="mb-3 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-[#8b97a7]">Legal</p>
-          <h1 className="text-[2.2rem] font-semibold leading-[1.05] tracking-[-0.05em] text-[var(--color-text)] md:text-[2.8rem]">
+          <p className="mb-3 text-[0.68rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
+            Legal
+          </p>
+          <h1 className="text-[2.2rem] leading-[1.05] font-semibold tracking-[-0.05em] text-[var(--color-text)] md:text-[2.8rem]">
             {title}
           </h1>
         </div>
@@ -44,14 +40,18 @@ function LegalPage({
             { label: 'Cookie Policy', to: '/cookies' },
             { label: 'Imprint', to: '/imprint' },
           ].map(({ label, to }) => (
-            <Link key={label} to={to} className="text-[0.78rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]">
+            <Link
+              key={label}
+              to={to}
+              className="text-[0.78rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+            >
               {label}
             </Link>
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -60,7 +60,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <p className="text-[0.82rem] font-semibold text-[var(--color-text)]">{label}</p>
       <p className="text-[0.92rem] leading-6 text-[var(--color-text-muted)]">{children}</p>
     </div>
-  )
+  );
 }
 
 export default function ImprintPage() {
@@ -73,11 +73,13 @@ export default function ImprintPage() {
       <div className="rounded-[18px] border border-[var(--color-border-strong)] bg-white/60 px-5">
         <Row label="Company">Voyager Technologies Ltd.</Row>
         <Row label="Address">
-          123 Explorer Street<br />
+          123 Explorer Street
+          <br />
           10115 Berlin, Germany
         </Row>
         <Row label="Register">
-          Commercial Register: Amtsgericht Berlin-Charlottenburg<br />
+          Commercial Register: Amtsgericht Berlin-Charlottenburg
+          <br />
           HRB 000000 B
         </Row>
         <Row label="Managing Director">Your Name</Row>
@@ -89,11 +91,13 @@ export default function ImprintPage() {
           <span className="font-medium text-[var(--color-text)]">legal@voyager.app</span>
         </Row>
         <div className="grid gap-1 py-4 sm:grid-cols-[10rem_1fr]">
-          <p className="text-[0.82rem] font-semibold text-[var(--color-text)]">Dispute resolution</p>
+          <p className="text-[0.82rem] font-semibold text-[var(--color-text)]">
+            Dispute resolution
+          </p>
           <p className="text-[0.92rem] leading-6 text-[var(--color-text-muted)]">
             The European Commission provides a platform for online dispute resolution (ODR):{' '}
-            <span className="font-medium text-[var(--color-text)]">ec.europa.eu/consumers/odr</span>.
-            We are not obliged to participate in dispute resolution proceedings before a consumer
+            <span className="font-medium text-[var(--color-text)]">ec.europa.eu/consumers/odr</span>
+            . We are not obliged to participate in dispute resolution proceedings before a consumer
             arbitration board.
           </p>
         </div>
@@ -105,5 +109,5 @@ export default function ImprintPage() {
         The operators of the linked pages are solely responsible for their content.
       </p>
     </LegalPage>
-  )
+  );
 }

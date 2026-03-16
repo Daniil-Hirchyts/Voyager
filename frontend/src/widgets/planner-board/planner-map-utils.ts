@@ -4,14 +4,14 @@ import type {
   RouteLegEstimateInput,
   RouteLegEstimateItem,
   RouteTravelMode,
-} from '@/shared/api/types'
-import { plannerPrimaryPlace } from './categories'
+} from '@/shared/api/types';
+import { plannerPrimaryPlace } from './categories';
 import {
   buildPlannerTravelLegs,
   summarizePlannerTravelLegs,
   type PlannerTravelLeg,
   type PlannerTravelSummary,
-} from './travel-estimates'
+} from './travel-estimates';
 
 export type PlannerMapLayerGroup =
   | 'visit'
@@ -19,34 +19,34 @@ export type PlannerMapLayerGroup =
   | 'activity'
   | 'hotel'
   | 'travel'
-  | 'recommendation'
+  | 'recommendation';
 
 export type PlannerMapStop = {
-  activity: PlannerActivity
-  dayId: string
-  dayIndex: number
-  color: string
-  markerNumber: number | null
-  isHotel: boolean
-  lat: number | null
-  lon: number | null
-}
+  activity: PlannerActivity;
+  dayId: string;
+  dayIndex: number;
+  color: string;
+  markerNumber: number | null;
+  isHotel: boolean;
+  lat: number | null;
+  lon: number | null;
+};
 
 export type PlannerMapSection = {
-  id: string
-  dayId: string
-  dayIndex: number
-  title: string
-  subtitle: string
-  dateLabel: string
-  color: string
-  activities: PlannerActivity[]
-  stops: PlannerMapStop[]
-}
+  id: string;
+  dayId: string;
+  dayIndex: number;
+  title: string;
+  subtitle: string;
+  dateLabel: string;
+  color: string;
+  activities: PlannerActivity[];
+  stops: PlannerMapStop[];
+};
 
 export type PlannerMapDayMetrics = PlannerTravelSummary & {
-  legs: PlannerTravelLeg[]
-}
+  legs: PlannerTravelLeg[];
+};
 
 export const PLANNER_MAP_DAY_COLORS = [
   '#7C5AE0',
@@ -55,33 +55,35 @@ export const PLANNER_MAP_DAY_COLORS = [
   '#FF7A59',
   '#35B56A',
   '#C98A37',
-] as const
+] as const;
 
 function routeEstimateKey(fromActivityId: string, toActivityId: string) {
-  return `${fromActivityId}:${toActivityId}`
+  return `${fromActivityId}:${toActivityId}`;
 }
 
 function activityCoordinates(activity: PlannerActivity) {
-  const place = plannerPrimaryPlace(activity)
-  const lat = place?.lat ?? null
-  const lon = place?.lon ?? null
+  const place = plannerPrimaryPlace(activity);
+  const lat = place?.lat ?? null;
+  const lon = place?.lon ?? null;
   if (typeof lat !== 'number' || typeof lon !== 'number') {
-    return null
+    return null;
   }
-  return { lat, lon }
+  return { lat, lon };
 }
 
 function isMarkerActivity(activity: PlannerActivity) {
-  return activity.category !== 'hotel' && activity.place?.lat != null && activity.place?.lon != null
+  return (
+    activity.category !== 'hotel' && activity.place?.lat != null && activity.place?.lon != null
+  );
 }
 
 export function buildPlannerMapSections(
   days: PlannerDay[],
   inboxActivities: PlannerActivity[],
 ): PlannerMapSection[] {
-  const sections: PlannerMapSection[] = []
-  const inboxColor = '#B59BFF'
-  let inboxMarkerNumber = 1
+  const sections: PlannerMapSection[] = [];
+  const inboxColor = '#B59BFF';
+  let inboxMarkerNumber = 1;
   sections.push({
     id: 'inbox',
     dayId: 'inbox',
@@ -94,8 +96,8 @@ export function buildPlannerMapSections(
     stops: [...inboxActivities]
       .sort((left, right) => left.order_index - right.order_index)
       .map((activity) => {
-        const point = activityCoordinates(activity)
-        const markerNumber = isMarkerActivity(activity) ? inboxMarkerNumber++ : null
+        const point = activityCoordinates(activity);
+        const markerNumber = isMarkerActivity(activity) ? inboxMarkerNumber++ : null;
         return {
           activity,
           dayId: 'inbox',
@@ -105,16 +107,17 @@ export function buildPlannerMapSections(
           isHotel: activity.category === 'hotel',
           lat: point?.lat ?? null,
           lon: point?.lon ?? null,
-        }
+        };
       }),
-  })
+  });
 
   days.forEach((day, index) => {
     const color =
-      PLANNER_MAP_DAY_COLORS[index % PLANNER_MAP_DAY_COLORS.length] ??
-      PLANNER_MAP_DAY_COLORS[0]
-    const activities = [...day.activities].sort((left, right) => left.order_index - right.order_index)
-    let markerNumber = 1
+      PLANNER_MAP_DAY_COLORS[index % PLANNER_MAP_DAY_COLORS.length] ?? PLANNER_MAP_DAY_COLORS[0];
+    const activities = [...day.activities].sort(
+      (left, right) => left.order_index - right.order_index,
+    );
+    let markerNumber = 1;
     sections.push({
       id: day.id,
       dayId: day.id,
@@ -129,8 +132,8 @@ export function buildPlannerMapSections(
       color,
       activities,
       stops: activities.map((activity) => {
-        const point = activityCoordinates(activity)
-        const nextMarkerNumber = isMarkerActivity(activity) ? markerNumber++ : null
+        const point = activityCoordinates(activity);
+        const nextMarkerNumber = isMarkerActivity(activity) ? markerNumber++ : null;
         return {
           activity,
           dayId: day.id,
@@ -140,12 +143,12 @@ export function buildPlannerMapSections(
           isHotel: activity.category === 'hotel',
           lat: point?.lat ?? null,
           lon: point?.lon ?? null,
-        }
+        };
       }),
-    })
-  })
+    });
+  });
 
-  return sections
+  return sections;
 }
 
 export function buildPlannerMapLegPayload(
@@ -154,14 +157,14 @@ export function buildPlannerMapLegPayload(
 ): RouteLegEstimateInput | null {
   const legs = sections.flatMap((section) =>
     section.activities.slice(1).flatMap((activity, index) => {
-      const previousActivity = section.activities[index]
+      const previousActivity = section.activities[index];
       if (!previousActivity) {
-        return []
+        return [];
       }
-      const origin = activityCoordinates(previousActivity)
-      const destination = activityCoordinates(activity)
+      const origin = activityCoordinates(previousActivity);
+      const destination = activityCoordinates(activity);
       if (!origin || !destination) {
-        return []
+        return [];
       }
       return [
         {
@@ -170,18 +173,18 @@ export function buildPlannerMapLegPayload(
           origin: { lat: origin.lat, lng: origin.lon },
           destination: { lat: destination.lat, lng: destination.lon },
         },
-      ]
+      ];
     }),
-  )
+  );
 
   if (!legs.length) {
-    return null
+    return null;
   }
 
   return {
     legs,
     travel_mode: travelMode,
-  }
+  };
 }
 
 export function buildPlannerMapMetricsForActivities(
@@ -194,20 +197,20 @@ export function buildPlannerMapMetricsForActivities(
       routeEstimateKey(item.from_activity_id, item.to_activity_id),
       item,
     ]),
-  )
-  const fallbackLegs = buildPlannerTravelLegs(activities, travelMode)
+  );
+  const fallbackLegs = buildPlannerTravelLegs(activities, travelMode);
   const legs = fallbackLegs.map((leg) => {
-    const estimate = estimatesByLegId.get(routeEstimateKey(leg.fromActivityId, leg.toActivityId))
+    const estimate = estimatesByLegId.get(routeEstimateKey(leg.fromActivityId, leg.toActivityId));
     return estimate
       ? {
           ...leg,
           distanceKm: estimate.distance_km,
           durationMin: estimate.duration_min,
         }
-      : leg
-  })
+      : leg;
+  });
 
-  return { ...summarizePlannerTravelLegs(legs), legs }
+  return { ...summarizePlannerTravelLegs(legs), legs };
 }
 
 export function buildPlannerMapDayMetrics(
@@ -217,9 +220,12 @@ export function buildPlannerMapDayMetrics(
 ): Record<string, PlannerMapDayMetrics> {
   return Object.fromEntries(
     sections.map((section) => {
-      return [section.dayId, buildPlannerMapMetricsForActivities(section.activities, estimateItems, travelMode)]
+      return [
+        section.dayId,
+        buildPlannerMapMetricsForActivities(section.activities, estimateItems, travelMode),
+      ];
     }),
-  )
+  );
 }
 
 export function filterVisibleStops(
@@ -235,7 +241,7 @@ export function filterVisibleStops(
         stop.lat != null &&
         stop.lon != null,
     ),
-  )
+  );
 }
 
 function routeDistance(
@@ -244,20 +250,20 @@ function routeDistance(
   travelMode: RouteTravelMode,
 ) {
   return orderedStops.slice(1).reduce((total, stop, index) => {
-    const previous = orderedStops[index]
+    const previous = orderedStops[index];
     if (!previous) {
-      return total
+      return total;
     }
-    const estimate = estimateMap.get(routeEstimateKey(previous.activity.id, stop.activity.id))
+    const estimate = estimateMap.get(routeEstimateKey(previous.activity.id, stop.activity.id));
     if (estimate?.duration_min != null) {
-      return total + estimate.duration_min
+      return total + estimate.duration_min;
     }
     if (estimate?.distance_km != null) {
-      return total + estimate.distance_km
+      return total + estimate.distance_km;
     }
-    const fallback = buildPlannerTravelLegs([previous.activity, stop.activity], travelMode)[0]
-    return total + (fallback?.durationMin ?? fallback?.distanceKm ?? 0)
-  }, 0)
+    const fallback = buildPlannerTravelLegs([previous.activity, stop.activity], travelMode)[0];
+    return total + (fallback?.durationMin ?? fallback?.distanceKm ?? 0);
+  }, 0);
 }
 
 export function optimizePlannerDayStops(
@@ -265,73 +271,81 @@ export function optimizePlannerDayStops(
   estimateItems: RouteLegEstimateItem[] = [],
   travelMode: RouteTravelMode = 'WALK',
 ) {
-  const markerStops = section.stops.filter((stop) => stop.markerNumber != null)
+  const markerStops = section.stops.filter((stop) => stop.markerNumber != null);
   if (markerStops.length < 3) {
-    return markerStops.map((stop) => stop.activity.id)
+    return markerStops.map((stop) => stop.activity.id);
   }
 
   const estimateMap = new Map(
-    estimateItems.map((item) => [routeEstimateKey(item.from_activity_id, item.to_activity_id), item]),
-  )
+    estimateItems.map((item) => [
+      routeEstimateKey(item.from_activity_id, item.to_activity_id),
+      item,
+    ]),
+  );
 
-  const remaining = [...markerStops]
-  const firstStop = remaining.shift()
+  const remaining = [...markerStops];
+  const firstStop = remaining.shift();
   if (!firstStop) {
-    return markerStops.map((stop) => stop.activity.id)
+    return markerStops.map((stop) => stop.activity.id);
   }
-  const ordered: PlannerMapStop[] = [firstStop]
+  const ordered: PlannerMapStop[] = [firstStop];
 
   while (remaining.length > 0) {
-    const current = ordered[ordered.length - 1]
+    const current = ordered[ordered.length - 1];
     if (!current) {
-      break
+      break;
     }
-    let bestIndex = 0
-    let bestCost = Number.POSITIVE_INFINITY
+    let bestIndex = 0;
+    let bestCost = Number.POSITIVE_INFINITY;
 
     remaining.forEach((candidate, index) => {
-      const estimate = estimateMap.get(routeEstimateKey(current.activity.id, candidate.activity.id))
-      const fallback = buildPlannerTravelLegs([current.activity, candidate.activity], travelMode)[0]
+      const estimate = estimateMap.get(
+        routeEstimateKey(current.activity.id, candidate.activity.id),
+      );
+      const fallback = buildPlannerTravelLegs(
+        [current.activity, candidate.activity],
+        travelMode,
+      )[0];
       const cost =
         estimate?.duration_min ??
         estimate?.distance_km ??
         fallback?.durationMin ??
         fallback?.distanceKm ??
-        Number.POSITIVE_INFINITY
+        Number.POSITIVE_INFINITY;
       if (cost < bestCost) {
-        bestCost = cost
-        bestIndex = index
+        bestCost = cost;
+        bestIndex = index;
       }
-    })
+    });
 
-    const [nextStop] = remaining.splice(bestIndex, 1)
+    const [nextStop] = remaining.splice(bestIndex, 1);
     if (!nextStop) {
-      continue
+      continue;
     }
-    ordered.push(nextStop)
+    ordered.push(nextStop);
   }
 
-  let best = [...ordered]
-  let improved = true
+  let best = [...ordered];
+  let improved = true;
   while (improved) {
-    improved = false
+    improved = false;
     for (let i = 1; i < best.length - 2; i += 1) {
       for (let j = i + 1; j < best.length - 1; j += 1) {
         const candidate = [
           ...best.slice(0, i),
           ...best.slice(i, j + 1).reverse(),
           ...best.slice(j + 1),
-        ]
+        ];
         if (
           routeDistance(candidate, estimateMap, travelMode) + 0.001 <
           routeDistance(best, estimateMap, travelMode)
         ) {
-          best = candidate
-          improved = true
+          best = candidate;
+          improved = true;
         }
       }
     }
   }
 
-  return best.map((stop) => stop.activity.id)
+  return best.map((stop) => stop.activity.id);
 }

@@ -27,7 +27,9 @@ def upgrade() -> None:
 
     op.execute("DROP TRIGGER IF EXISTS trg_lodging_offer_trip_day_matches_trip ON lodging_offer")
     op.execute("DROP FUNCTION IF EXISTS validate_lodging_offer_trip_day")
-    op.execute("DROP TRIGGER IF EXISTS trg_transport_offer_trip_day_matches_trip ON transport_offer")
+    op.execute(
+        "DROP TRIGGER IF EXISTS trg_transport_offer_trip_day_matches_trip ON transport_offer"
+    )
     op.execute("DROP FUNCTION IF EXISTS validate_transport_offer_trip_day")
 
     op.drop_table("lodging_offer")
@@ -82,19 +84,27 @@ def downgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_transport_offer")),
     )
-    op.create_index(op.f("ix_transport_offer_trip_id"), "transport_offer", ["trip_id"], unique=False)
+    op.create_index(
+        op.f("ix_transport_offer_trip_id"), "transport_offer", ["trip_id"], unique=False
+    )
     op.create_index(
         op.f("ix_transport_offer_trip_day_id"), "transport_offer", ["trip_day_id"], unique=False
     )
-    op.create_index(op.f("ix_transport_offer_provider"), "transport_offer", ["provider"], unique=False)
+    op.create_index(
+        op.f("ix_transport_offer_provider"), "transport_offer", ["provider"], unique=False
+    )
     op.create_index(
         op.f("ix_transport_offer_request_fingerprint"),
         "transport_offer",
         ["request_fingerprint"],
         unique=False,
     )
-    op.create_index(op.f("ix_transport_offer_expires_at"), "transport_offer", ["expires_at"], unique=False)
-    op.create_index(op.f("ix_transport_offer_is_current"), "transport_offer", ["is_current"], unique=False)
+    op.create_index(
+        op.f("ix_transport_offer_expires_at"), "transport_offer", ["expires_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_transport_offer_is_current"), "transport_offer", ["is_current"], unique=False
+    )
     op.create_index(
         op.f("ix_transport_offer_superseded_by_offer_id"),
         "transport_offer",
@@ -168,7 +178,9 @@ def downgrade() -> None:
         sa.PrimaryKeyConstraint("id", name=op.f("pk_lodging_offer")),
     )
     op.create_index(op.f("ix_lodging_offer_trip_id"), "lodging_offer", ["trip_id"], unique=False)
-    op.create_index(op.f("ix_lodging_offer_trip_day_id"), "lodging_offer", ["trip_day_id"], unique=False)
+    op.create_index(
+        op.f("ix_lodging_offer_trip_day_id"), "lodging_offer", ["trip_day_id"], unique=False
+    )
     op.create_index(op.f("ix_lodging_offer_provider"), "lodging_offer", ["provider"], unique=False)
     op.create_index(
         op.f("ix_lodging_offer_request_fingerprint"),
@@ -176,16 +188,24 @@ def downgrade() -> None:
         ["request_fingerprint"],
         unique=False,
     )
-    op.create_index(op.f("ix_lodging_offer_expires_at"), "lodging_offer", ["expires_at"], unique=False)
-    op.create_index(op.f("ix_lodging_offer_is_current"), "lodging_offer", ["is_current"], unique=False)
+    op.create_index(
+        op.f("ix_lodging_offer_expires_at"), "lodging_offer", ["expires_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_lodging_offer_is_current"), "lodging_offer", ["is_current"], unique=False
+    )
     op.create_index(
         op.f("ix_lodging_offer_superseded_by_offer_id"),
         "lodging_offer",
         ["superseded_by_offer_id"],
         unique=False,
     )
-    op.create_index("ix_lodging_offer_trip_created", "lodging_offer", ["trip_id", "created_at"], unique=False)
-    op.create_index(op.f("ix_lodging_offer_lodging_type"), "lodging_offer", ["lodging_type"], unique=False)
+    op.create_index(
+        "ix_lodging_offer_trip_created", "lodging_offer", ["trip_id", "created_at"], unique=False
+    )
+    op.create_index(
+        op.f("ix_lodging_offer_lodging_type"), "lodging_offer", ["lodging_type"], unique=False
+    )
     op.create_index(op.f("ix_lodging_offer_place_id"), "lodging_offer", ["place_id"], unique=False)
 
     op.execute(
@@ -259,7 +279,9 @@ def downgrade() -> None:
     )
 
     op.add_column("activity", sa.Column("linked_offer_kind", sa.String(length=16), nullable=True))
-    op.add_column("activity", sa.Column("linked_offer_id", postgresql.UUID(as_uuid=True), nullable=True))
+    op.add_column(
+        "activity", sa.Column("linked_offer_id", postgresql.UUID(as_uuid=True), nullable=True)
+    )
     op.create_index(
         "ix_activity_linked_offer_unique",
         "activity",

@@ -184,7 +184,9 @@ async def _enrich_place_payload(payload: PlaceCreateRequest) -> PlaceCreateReque
             if next_payload.source == "user_custom" and next_payload.address_text:
                 validation = await validate_address(next_payload.address_text)
                 if validation is not None:
-                    next_payload.address_text = validation.formatted_address or next_payload.address_text
+                    next_payload.address_text = (
+                        validation.formatted_address or next_payload.address_text
+                    )
                     metadata["google_address_validation"] = validation.metadata
                     if validation.region_code:
                         metadata["region_code"] = validation.region_code
@@ -192,7 +194,9 @@ async def _enrich_place_payload(payload: PlaceCreateRequest) -> PlaceCreateReque
             if next_payload.address_text and (next_payload.lat is None or next_payload.lon is None):
                 geocode = await geocode_address(next_payload.address_text)
                 if geocode is not None:
-                    next_payload.address_text = geocode.formatted_address or next_payload.address_text
+                    next_payload.address_text = (
+                        geocode.formatted_address or next_payload.address_text
+                    )
                     next_payload.lat = geocode.lat if geocode.lat is not None else next_payload.lat
                     next_payload.lon = geocode.lng if geocode.lng is not None else next_payload.lon
                     metadata = _merge_metadata(
@@ -265,7 +269,7 @@ async def create_place(
             fingerprint=fingerprint,
             status_code=201,
             response_body=response.model_dump(mode="json"),
-    )
+        )
     return response
 
 

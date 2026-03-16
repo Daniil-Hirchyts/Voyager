@@ -1,284 +1,157 @@
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap");
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
 
 @custom-variant dark (&:is(.dark *));
 
+@theme {
+  --color-border: rgba(91, 123, 159, 0.14);
+  --color-border-strong: rgba(91, 123, 159, 0.22);
+  --color-input: rgba(91, 123, 159, 0.18);
+  --color-ring: #1a1615;
+  --color-background: #fffdfc;
+  --color-foreground: #1a1615;
+
+  --color-primary: #1a1615;
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary-surface: #f8fafc;
+  --color-secondary-foreground: #475569;
+
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #1e293b;
+
+  --color-destructive-shadcn: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+
+  --radius: 18px;
+
+  --color-bg-soft: #fcfcfb;
+  --color-text: #1a1615;
+  --color-text-muted: #526072;
+  --color-cta: #1a1615;
+  --color-cta-foreground: #ffffff;
+  --color-danger: #c45f4f;
+  --color-success: #2d7c63;
+  --color-surface: rgba(255, 255, 255, 0.72);
+  --color-surface-strong: rgba(255, 255, 255, 0.84);
+}
+
 @layer base {
   :root {
-    --color-bg: #e4f0fb;
-    --color-bg-deep: #c5daf0;
-    --color-bg-soft: #f4f8fc;
-    --color-surface: rgba(255, 255, 255, 0.56);
-    --color-surface-strong: rgba(255, 255, 255, 0.78);
-    --color-surface-elevated: #ffffff;
-    --color-border: rgba(255, 255, 255, 0.72);
-    --color-border-strong: rgba(121, 156, 191, 0.28);
-    --color-text: #1a1615;
-    --color-text-muted: #5a6676;
-    --color-primary: #72aee6;
-    --color-primary-light: #b6d6f2;
-    --color-primary-foreground: #0b2337;
-    --color-accent: #1a1615;
-    --color-accent-soft: rgba(26, 22, 21, 0.08);
-    --color-cta: #1a1615;
-    --color-cta-foreground: #ffffff;
-    --color-success: #2d7c63;
-    --color-warning: #c98a37;
-    --color-danger: #c45f4f;
-    --color-info: #4f8fc8;
-    --color-shadow: rgba(44, 63, 88, 0.12);
-    --color-shadow-strong: rgba(31, 49, 75, 0.18);
-
-    /* shadcn/ui CSS variables */
-    --background: #e4f0fb;
-    --foreground: #1a1615;
-    --card: rgba(255, 255, 255, 0.78);
-    --card-foreground: #1a1615;
-    --popover: #ffffff;
-    --popover-foreground: #1a1615;
-    --primary: #1a1615;
-    --primary-foreground: #ffffff;
-    --secondary: rgba(255, 255, 255, 0.62);
-    --secondary-foreground: #445267;
-    --muted: rgba(255, 255, 255, 0.52);
-    --muted-foreground: #5a6676;
-    --accent: rgba(114, 174, 230, 0.16);
-    --accent-foreground: #17344c;
-    --destructive: #c45f4f;
-    --border: rgba(255, 255, 255, 0.72);
-    --input: rgba(255, 255, 255, 0.8);
-    --ring: rgba(114, 174, 230, 0.52);
-    --radius: 22px;
-    --sidebar-background: rgba(255, 255, 255, 0.72);
-    --sidebar-foreground: #1a1615;
-    --sidebar-primary: #1a1615;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: rgba(26, 22, 21, 0.05);
-    --sidebar-accent-foreground: #1a1615;
-    --sidebar-border: rgba(255, 255, 255, 0.82);
-    --sidebar-ring: rgba(114, 174, 230, 0.52);
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+    --radius: 0.5rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
   * {
-    box-sizing: border-box;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    @apply border-border;
   }
-
-  *::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-
-  *::selection {
-    background: rgba(114, 174, 230, 0.55);
-    color: #ffffff;
-  }
-
-  html {
-    height: 100%;
-    font-family: "Outfit", system-ui, sans-serif;
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
-
   body {
-    margin: 0;
-    height: 100%;
-    min-height: 100dvh;
-    overflow-x: hidden;
-    position: relative;
-    background:
-      radial-gradient(circle at 18% 12%, rgba(255, 255, 255, 0.92), transparent 22%),
-      radial-gradient(circle at 84% 18%, rgba(114, 174, 230, 0.22), transparent 20%),
-      radial-gradient(circle at 72% 76%, rgba(182, 214, 242, 0.4), transparent 24%),
-      linear-gradient(180deg, #d9e8f5 0%, #e4f0fb 32%, #edf5fc 100%);
-    color: var(--color-text);
-  }
-
-  html.voyager-app-scroll-lock,
-  body.voyager-app-scroll-lock {
-    height: 100dvh;
-    overflow: hidden;
-    overscroll-behavior: none;
-  }
-
-  html,
-  body,
-  #root {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar,
-  #root::-webkit-scrollbar {
-    width: 0;
-    height: 0;
-    display: none;
-  }
-
-  body.voyager-app-scroll-lock {
-    min-height: 100dvh;
-  }
-
-  html.voyager-app-shell,
-  body.voyager-app-shell {
-    background: #f3f5f7;
-  }
-
-  html.voyager-app-layout,
-  body.voyager-app-layout {
-    background: #f9fafb;
-  }
-
-  .voyager-app-shell [data-radix-scroll-area-scrollbar] {
-    display: none !important;
-  }
-
-  [data-radix-scroll-area-scrollbar] {
-    display: none !important;
-  }
-
-  body.voyager-app-shell {
-    background-image: none;
-  }
-
-  body.voyager-app-shell::before,
-  body.voyager-app-shell::after {
-    content: none;
-  }
-
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: -2;
-    background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.6), transparent 24%),
-      radial-gradient(circle at bottom right, rgba(114, 174, 230, 0.16), transparent 20%);
-  }
-
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: -1;
-    opacity: 0.32;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
-    background-size: 56px 56px;
-    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.95), transparent 90%);
-  }
-
-  #root {
-    min-height: 100%;
-    isolation: isolate;
-  }
-
-  body.voyager-app-scroll-lock #root {
-    height: 100dvh;
-    overflow: hidden;
-  }
-
-  a {
-    color: inherit;
-    text-decoration: none;
-  }
-
-  button,
-  input,
-  select,
-  textarea {
-    font: inherit;
-  }
-
-  input[type='number'] {
-    appearance: textfield;
-    -moz-appearance: textfield;
-  }
-
-  input[type='number']::-webkit-inner-spin-button,
-  input[type='number']::-webkit-outer-spin-button {
-    margin: 0;
-    -webkit-appearance: none;
-  }
-
-  .font-display {
-    font-family: "Outfit", system-ui, sans-serif;
-    letter-spacing: -0.03em;
+    @apply bg-background text-foreground;
   }
 }
 
 @layer utilities {
   .voyager-container {
-    margin-inline: auto;
     width: 100%;
-    max-width: 80rem;
+    max-width: 1440px;
+    margin-inline: auto;
     padding-inline: 1rem;
   }
 
   .voyager-page {
-    position: relative;
-    z-index: 10;
-    margin-inline: auto;
-    width: 100%;
-    max-width: 80rem;
+    min-height: 100svh;
     padding: 2rem 1rem;
   }
 
   .voyager-public-page {
-    position: relative;
-    z-index: 10;
-    margin-inline: auto;
-    width: 100%;
-    max-width: 80rem;
-    padding: 8rem 1rem 5rem;
+    padding: 8rem 1rem 6rem;
   }
 
   .voyager-app-page {
-    width: 100%;
     padding: 1rem;
   }
 
   .voyager-surface {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.98),
-      0 24px 60px -24px var(--color-shadow);
     backdrop-filter: blur(24px);
   }
 
   .voyager-surface-strong {
     background: var(--color-surface-strong);
     border: 1px solid rgba(255, 255, 255, 0.88);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 1),
-      0 28px 72px -28px var(--color-shadow);
     backdrop-filter: blur(28px);
   }
 
   .voyager-surface-solid {
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--color-border-strong);
-    box-shadow: 0 26px 70px -34px var(--color-shadow-strong);
   }
 
   .voyager-panel {
     border-radius: 32px;
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.98),
-      0 24px 60px -24px var(--color-shadow);
     backdrop-filter: blur(24px);
   }
 
@@ -286,9 +159,6 @@
     border-radius: 34px;
     background: var(--color-surface-strong);
     border: 1px solid rgba(255, 255, 255, 0.88);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 1),
-      0 28px 72px -28px var(--color-shadow);
     backdrop-filter: blur(28px);
   }
 
@@ -296,7 +166,6 @@
     border-radius: 30px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--color-border-strong);
-    box-shadow: 0 26px 70px -34px var(--color-shadow-strong);
   }
 
   .voyager-pill {
@@ -312,7 +181,6 @@
     background: rgba(255, 255, 255, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.8);
     color: var(--color-text-muted);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
   }
 
   .voyager-eyebrow {
@@ -328,11 +196,10 @@
     background: rgba(255, 255, 255, 0.72);
     border: 1px solid rgba(255, 255, 255, 0.8);
     color: var(--color-text-muted);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.96);
   }
 
   .voyager-heading-xl {
-    font-family: "Outfit", system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     font-size: clamp(3rem, 8vw, 6rem);
     font-weight: 600;
     line-height: 0.92;
@@ -341,7 +208,7 @@
   }
 
   .voyager-heading-lg {
-    font-family: "Outfit", system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     font-size: clamp(2.2rem, 5vw, 4rem);
     font-weight: 600;
     line-height: 0.95;
@@ -350,7 +217,7 @@
   }
 
   .voyager-heading-md {
-    font-family: "Outfit", system-ui, sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
     font-size: clamp(1.8rem, 3vw, 2.8rem);
     font-weight: 600;
     line-height: 0.98;
@@ -373,13 +240,11 @@
     border-radius: 24px;
     background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--color-border-strong);
-    box-shadow: 0 26px 70px -34px var(--color-shadow-strong);
     padding: 1rem;
   }
 
   .voyager-focus {
     outline: none;
-    box-shadow: 0 0 0 4px rgba(114, 174, 230, 0.22);
   }
 
   .voyager-google-map,
@@ -389,7 +254,6 @@
   .voyager-google-map .gm-style:focus,
   .voyager-google-map .gm-style:focus-visible {
     outline: none !important;
-    box-shadow: none !important;
   }
 
   .voyager-section-stack {
@@ -403,7 +267,7 @@
   }
 
   .voyager-noise::after {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -448,7 +312,6 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
-
 }
 
 @theme inline {

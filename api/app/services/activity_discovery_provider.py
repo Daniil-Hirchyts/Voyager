@@ -138,7 +138,9 @@ def _extract_address(value: Any) -> str | None:
 def _extract_coordinates(payload: dict[str, Any]) -> tuple[float | None, float | None]:
     coordinates = payload.get("coordinates")
     if isinstance(coordinates, dict):
-        return _coerce_float(coordinates.get("latitude")), _coerce_float(coordinates.get("longitude"))
+        return _coerce_float(coordinates.get("latitude")), _coerce_float(
+            coordinates.get("longitude")
+        )
     if isinstance(payload.get("latitude"), (int, float, str)) or isinstance(
         payload.get("longitude"), (int, float, str)
     ):
@@ -151,7 +153,12 @@ def _dict_or_empty(value: Any) -> dict[str, Any]:
 
 
 def _photo_from_payload(item: dict[str, Any]) -> dict[str, Any] | None:
-    image_url = item.get("image_link") or item.get("image_url") or item.get("featured_image") or item.get("url")
+    image_url = (
+        item.get("image_link")
+        or item.get("image_url")
+        or item.get("featured_image")
+        or item.get("url")
+    )
     if not isinstance(image_url, str) or not image_url:
         return None
     return {
@@ -159,7 +166,9 @@ def _photo_from_payload(item: dict[str, Any]) -> dict[str, Any] | None:
         "thumbnail_url": item.get("thumbnail") or item.get("thumbnail_url"),
         "width": _coerce_int(item.get("width")),
         "height": _coerce_int(item.get("height")),
-        "caption": item.get("caption") if isinstance(item.get("caption"), str) else item.get("title"),
+        "caption": item.get("caption")
+        if isinstance(item.get("caption"), str)
+        else item.get("title"),
     }
 
 
@@ -176,7 +185,11 @@ def _extract_photos(payload: dict[str, Any]) -> list[dict[str, Any]]:
             if photo:
                 photos.append(photo)
     featured = payload.get("featured_image")
-    if isinstance(featured, str) and featured and not any(p["image_url"] == featured for p in photos):
+    if (
+        isinstance(featured, str)
+        and featured
+        and not any(p["image_url"] == featured for p in photos)
+    ):
         photos.insert(
             0,
             {
@@ -262,16 +275,22 @@ def _normalize_reviews(payload: dict[str, Any]) -> list[dict[str, Any]]:
     for item in results:
         if not isinstance(item, dict):
             continue
-        reviewer = item.get("reviewer") if isinstance(item.get("reviewer"), dict) else item.get("user")
+        reviewer = (
+            item.get("reviewer") if isinstance(item.get("reviewer"), dict) else item.get("user")
+        )
         reviews.append(
             {
                 "review_id": str(item.get("review_id") or item.get("id") or ""),
                 "title": item.get("title"),
                 "text": item.get("text") or item.get("snippet_text"),
                 "rating": _coerce_float(item.get("rating")),
-                "published_at": item.get("published_at_date") or item.get("published_date") or item.get("created_at_date"),
+                "published_at": item.get("published_at_date")
+                or item.get("published_date")
+                or item.get("created_at_date"),
                 "reviewer_name": reviewer.get("name") if isinstance(reviewer, dict) else None,
-                "reviewer_username": reviewer.get("username") if isinstance(reviewer, dict) else None,
+                "reviewer_username": reviewer.get("username")
+                if isinstance(reviewer, dict)
+                else None,
                 "review_url": item.get("review_link") or item.get("url"),
             }
         )
@@ -313,7 +332,8 @@ def _base_item(
         "lon": lon,
         "tags": tags,
         "status_text": str(status_text).strip() if status_text not in (None, "") else None,
-        "is_attachable": entity_type in {ActivityEntityType.ATTRACTION, ActivityEntityType.RESTAURANT},
+        "is_attachable": entity_type
+        in {ActivityEntityType.ATTRACTION, ActivityEntityType.RESTAURANT},
     }
 
 
@@ -329,7 +349,9 @@ def normalize_provider_item(
     experiences = _dict_or_empty(payload.get("experiences"))
     cruise_company = _dict_or_empty(payload.get("cruise_company"))
     if entity_type == ActivityEntityType.ATTRACTION:
-        provider_ref = str(payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name"))
+        provider_ref = str(
+            payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name")
+        )
         return _base_item(
             item_id=item_id or f"attraction:{provider_ref}",
             entity_type=entity_type,
@@ -353,7 +375,9 @@ def normalize_provider_item(
         )
 
     if entity_type == ActivityEntityType.RESTAURANT:
-        provider_ref = str(payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name"))
+        provider_ref = str(
+            payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name")
+        )
         address = payload.get("address")
         return _base_item(
             item_id=item_id or f"restaurant:{provider_ref}",
@@ -378,9 +402,13 @@ def normalize_provider_item(
         )
 
     if entity_type == ActivityEntityType.HOTEL:
-        provider_ref = str(payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name"))
+        provider_ref = str(
+            payload.get("tripadvisor_entity_id") or payload.get("link") or payload.get("name")
+        )
         detailed_address = payload.get("detailed_address")
-        price_range = payload.get("price_range") if isinstance(payload.get("price_range"), dict) else {}
+        price_range = (
+            payload.get("price_range") if isinstance(payload.get("price_range"), dict) else {}
+        )
         return _base_item(
             item_id=item_id or f"hotel:{provider_ref}",
             entity_type=entity_type,
@@ -399,20 +427,28 @@ def normalize_provider_item(
             address_text=_extract_address(detailed_address) or payload.get("address"),
             lat=lat,
             lon=lon,
-            tags=_string_list(payload.get("hotel_styles"), payload.get("labels"), award.get("award_name")),
+            tags=_string_list(
+                payload.get("hotel_styles"), payload.get("labels"), award.get("award_name")
+            ),
             status_text=ranking.get("text") or award.get("award_name"),
         )
 
     ship = payload.get("ship") if isinstance(payload.get("ship"), dict) else {}
     destination = payload.get("destination") if isinstance(payload.get("destination"), dict) else {}
-    departure_port = payload.get("departure_port") if isinstance(payload.get("departure_port"), dict) else {}
+    departure_port = (
+        payload.get("departure_port") if isinstance(payload.get("departure_port"), dict) else {}
+    )
     provider_ref = str(
         ship.get("tripadvisor_entity_id")
         or payload.get("cruise_id")
         or ship.get("ship_id")
         or payload.get("cruise_title")
     )
-    sailings = payload.get("sailings", {}).get("results") if isinstance(payload.get("sailings"), dict) else []
+    sailings = (
+        payload.get("sailings", {}).get("results")
+        if isinstance(payload.get("sailings"), dict)
+        else []
+    )
     first_sailing = sailings[0] if isinstance(sailings, list) and sailings else {}
     return _base_item(
         item_id=item_id or f"cruise:{provider_ref}",
@@ -523,55 +559,63 @@ class TripAdvisorActivityProvider:
         if entity_type == ActivityEntityType.ATTRACTION:
             payload = await self._request(
                 "/attractions/list",
-                params=_params({
-                    "query": query,
-                    "page": page,
-                    "good_for": good_for,
-                    "min_rating": min_rating,
-                    "currency": currency,
-                    "locale": locale,
-                }),
+                params=_params(
+                    {
+                        "query": query,
+                        "page": page,
+                        "good_for": good_for,
+                        "min_rating": min_rating,
+                        "currency": currency,
+                        "locale": locale,
+                    }
+                ),
             )
         elif entity_type == ActivityEntityType.RESTAURANT:
             payload = await self._request(
                 "/restaurants/list",
-                params=_params({
-                    "query": query,
-                    "page": page,
-                    "min_rating": min_rating,
-                    "establishment_types": establishment_type,
-                    "meal_types": meal_type,
-                    "currency": currency,
-                    "locale": locale,
-                }),
+                params=_params(
+                    {
+                        "query": query,
+                        "page": page,
+                        "min_rating": min_rating,
+                        "establishment_types": establishment_type,
+                        "meal_types": meal_type,
+                        "currency": currency,
+                        "locale": locale,
+                    }
+                ),
             )
         elif entity_type == ActivityEntityType.HOTEL:
             check_in, check_out = trip_dates or (None, None)
             payload = await self._request(
                 "/hotels/list",
-                params=_params({
-                    "query": query,
-                    "page": page,
-                    "check_in_date": check_in,
-                    "check_out_date": check_out,
-                    "currency": currency,
-                    "locale": locale,
-                    "min_rating": min_rating,
-                }),
+                params=_params(
+                    {
+                        "query": query,
+                        "page": page,
+                        "check_in_date": check_in,
+                        "check_out_date": check_out,
+                        "currency": currency,
+                        "locale": locale,
+                        "min_rating": min_rating,
+                    }
+                ),
             )
         else:
             if not query.strip():
                 return 0, [], {"count": 0, "results": []}
             payload = await self._request(
                 "/cruises/list",
-                params=_params({
-                    "destination_name": query,
-                    "page": page,
-                    "departure_date": departure_date,
-                    "cruise_length": cruise_length,
-                    "currency": currency,
-                    "locale": locale,
-                }),
+                params=_params(
+                    {
+                        "destination_name": query,
+                        "page": page,
+                        "departure_date": departure_date,
+                        "cruise_length": cruise_length,
+                        "currency": currency,
+                        "locale": locale,
+                    }
+                ),
             )
 
         results = payload.get("results") if isinstance(payload.get("results"), list) else []

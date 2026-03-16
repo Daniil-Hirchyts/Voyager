@@ -71,7 +71,10 @@ def _cover_photo_from_place_photo(
     return TripCoverPhoto(
         source="place_photo",
         url=summary.image_url or summary.display_url,
-        thumbnail_url=summary.thumbnail_url or summary.display_thumbnail_url or summary.image_url or summary.display_url,
+        thumbnail_url=summary.thumbnail_url
+        or summary.display_thumbnail_url
+        or summary.image_url
+        or summary.display_url,
         photo_id=photo.id,
         place_id=place_id,
         attribution_text=summary.attribution_text,
@@ -87,7 +90,10 @@ def _cover_photo_from_place_photo_summary(
     return TripCoverPhoto(
         source="place_photo",
         url=photo.image_url or photo.display_url,
-        thumbnail_url=photo.thumbnail_url or photo.display_thumbnail_url or photo.image_url or photo.display_url,
+        thumbnail_url=photo.thumbnail_url
+        or photo.display_thumbnail_url
+        or photo.image_url
+        or photo.display_url,
         photo_id=photo.id,
         place_id=place_id,
         attribution_text=photo.attribution_text,
@@ -182,10 +188,7 @@ async def resolve_trip_cover_payloads(
         if cover_photo is None and preference is not None and preference.place_id is not None:
             if preference.photo_id is not None:
                 selected_photo = selected_photos_by_id.get(preference.photo_id)
-                if (
-                    selected_photo is not None
-                    and selected_photo.place_id == preference.place_id
-                ):
+                if selected_photo is not None and selected_photo.place_id == preference.place_id:
                     cover_photo = _cover_photo_from_place_photo(
                         photo=selected_photo,
                         place_id=preference.place_id,
@@ -216,7 +219,9 @@ async def resolve_trip_cover_payloads(
         if cover_photo is None and preference is not None and preference.place_id is not None:
             place = places_by_id.get(preference.place_id)
             metadata = place.metadata_json if place is not None else {}
-            seeded_image_url = metadata.get("seeded_image_url") if isinstance(metadata, dict) else None
+            seeded_image_url = (
+                metadata.get("seeded_image_url") if isinstance(metadata, dict) else None
+            )
             if isinstance(seeded_image_url, str) and seeded_image_url.strip():
                 cover_photo = _cover_photo_from_fallback(
                     url=seeded_image_url.strip(),

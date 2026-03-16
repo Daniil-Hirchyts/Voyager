@@ -112,7 +112,9 @@ async def _load_places(db: AsyncSession, *, place_ids: set[uuid.UUID]) -> dict[u
 
 
 def _activity_tags(activity: Activity) -> list[str]:
-    values = [activity.category.value if hasattr(activity.category, "value") else str(activity.category)]
+    values = [
+        activity.category.value if hasattr(activity.category, "value") else str(activity.category)
+    ]
     if activity.title:
         values.append(activity.title)
     if activity.description:
@@ -123,7 +125,11 @@ def _activity_tags(activity: Activity) -> list[str]:
 def _event_tags(event: EventSnapshot) -> list[str]:
     return [
         value
-        for value in ([event.entity_type] + list(event.tags_json or []) + [event.segment, event.genre, "event"])
+        for value in (
+            [event.entity_type]
+            + list(event.tags_json or [])
+            + [event.segment, event.genre, "event"]
+        )
         if value
     ]
 
@@ -147,7 +153,11 @@ def _candidate_day_id_for_event(
         return event.trip_day_id
     if event.start_at is not None:
         return scope_days_by_date.get(event.start_at.date())
-    raw_local_date = event.raw_payload_json.get("local_date") if isinstance(event.raw_payload_json, dict) else None
+    raw_local_date = (
+        event.raw_payload_json.get("local_date")
+        if isinstance(event.raw_payload_json, dict)
+        else None
+    )
     if isinstance(raw_local_date, str):
         try:
             from datetime import date
@@ -446,11 +456,7 @@ async def execute_itinerary_optimization_job(
         for order_index, item in enumerate(day_rows):
             item["order_index"] = order_index
 
-        place_ids = {
-            item["place_id"]
-            for item in day_rows
-            if item.get("place_id") is not None
-        }
+        place_ids = {item["place_id"] for item in day_rows if item.get("place_id") is not None}
         places_by_id = await _load_places(db, place_ids=place_ids)
         day_score = await _score_day(
             trip=trip,
@@ -462,7 +468,8 @@ async def execute_itinerary_optimization_job(
         proposal_rows.extend(day_rows)
 
     overall_total = round(
-        sum(score["total_score"] for score in per_day_scores.values()) / max(len(per_day_scores), 1),
+        sum(score["total_score"] for score in per_day_scores.values())
+        / max(len(per_day_scores), 1),
         2,
     )
     score_json = {"total_score": overall_total, "per_day": per_day_scores}
@@ -517,9 +524,7 @@ async def apply_proposal(
         current_manual_ids = {item.id for item in current_items if item.source != "generated"}
         current_generated_ids = {item.id for item in current_items if item.source == "generated"}
 
-        proposal_items = [
-            item for item in proposal.items if item.trip_day_id == day_id
-        ]
+        proposal_items = [item for item in proposal.items if item.trip_day_id == day_id]
         proposal_items.sort(key=lambda item: item.order_index)
 
         referenced_manual_ids = {

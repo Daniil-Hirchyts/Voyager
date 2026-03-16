@@ -1,4 +1,4 @@
-import { requestJson } from '@/shared/api/client'
+import { requestJson } from '@/shared/api/client';
 import type {
   Activity,
   ActivityCreateInput,
@@ -6,10 +6,10 @@ import type {
   ActivityMoveInput,
   ActivityReorderInput,
   ActivityUpdateInput,
-} from '@/shared/api/types'
+} from '@/shared/api/types';
 
 export async function getActivities(dayId: string): Promise<ActivityListResponse> {
-  return requestJson<ActivityListResponse>(`/days/${dayId}/activities`)
+  return requestJson<ActivityListResponse>(`/days/${dayId}/activities`);
 }
 
 export async function createActivity(
@@ -21,7 +21,7 @@ export async function createActivity(
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function createPlannerActivity(
@@ -33,7 +33,7 @@ export async function createPlannerActivity(
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function patchActivity(
@@ -43,13 +43,13 @@ export async function patchActivity(
   return requestJson<Activity>(`/activities/${activityId}`, {
     method: 'PATCH',
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function deleteActivity(activityId: string): Promise<void> {
   return requestJson<void>(`/activities/${activityId}`, {
     method: 'DELETE',
-  })
+  });
 }
 
 export async function reorderActivities(
@@ -61,7 +61,7 @@ export async function reorderActivities(
     method: 'POST',
     headers: { 'If-Match': String(tripVersion) },
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function moveActivity(
@@ -73,5 +73,5 @@ export async function moveActivity(
     method: 'POST',
     headers: { 'If-Match': String(tripVersion) },
     body: JSON.stringify(data),
-  })
+  });
 }

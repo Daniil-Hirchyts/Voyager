@@ -1,22 +1,22 @@
-'use client'
+'use client';
 
-import { createElement, type CSSProperties, type JSX } from 'react'
-import { motion, type Transition } from 'motion/react'
-import { cn } from '@/shared/lib/cn'
+import { createElement, type CSSProperties, type JSX } from 'react';
+import { motion, type Transition } from 'motion/react';
+import { cn } from '@/shared/lib/cn';
 
 export type TextShimmerWaveProps = {
-  children: string
-  as?: keyof JSX.IntrinsicElements
-  className?: string
-  duration?: number
-  zDistance?: number
-  xDistance?: number
-  yDistance?: number
-  spread?: number
-  scaleDistance?: number
-  rotateYDistance?: number
-  transition?: Transition
-}
+  children: string;
+  as?: keyof JSX.IntrinsicElements;
+  className?: string;
+  duration?: number;
+  zDistance?: number;
+  xDistance?: number;
+  yDistance?: number;
+  spread?: number;
+  scaleDistance?: number;
+  rotateYDistance?: number;
+  transition?: Transition;
+};
 
 export function TextShimmerWave({
   children,
@@ -31,8 +31,8 @@ export function TextShimmerWave({
   rotateYDistance = 10,
   transition,
 }: TextShimmerWaveProps) {
-  const text = children ?? ''
-  const charCount = Math.max(text.length, 1)
+  const text = children ?? '';
+  const charCount = Math.max(text.length, 1);
 
   return createElement(
     Component,
@@ -46,7 +46,7 @@ export function TextShimmerWave({
       style: { color: 'var(--base-color)' } as CSSProperties,
     },
     text.split('').map((char, index) => {
-      const delay = (index * duration * (1 / spread)) / charCount
+      const delay = (index * duration * (1 / spread)) / charCount;
 
       return (
         <motion.span
@@ -64,11 +64,7 @@ export function TextShimmerWave({
             translateY: [0, yDistance, 0],
             scale: [1, scaleDistance, 1],
             rotateY: [0, rotateYDistance, 0],
-            color: [
-              'var(--base-color)',
-              'var(--base-gradient-color)',
-              'var(--base-color)',
-            ],
+            color: ['var(--base-color)', 'var(--base-gradient-color)', 'var(--base-color)'],
           }}
           transition={{
             duration,
@@ -81,7 +77,7 @@ export function TextShimmerWave({
         >
           {char}
         </motion.span>
-      )
+      );
     }),
-  )
+  );
 }

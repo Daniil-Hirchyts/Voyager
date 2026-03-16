@@ -1,9 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listPlacePhotos, refreshPlacePhotos } from './api'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { listPlacePhotos, refreshPlacePhotos } from './api';
 
 export const photoKeys = {
   list: (placeId: string) => ['place-photos', placeId] as const,
-}
+};
 
 export function usePlacePhotos(placeId: string | null) {
   return useQuery({
@@ -11,17 +11,17 @@ export function usePlacePhotos(placeId: string | null) {
     queryFn: () => listPlacePhotos(placeId!),
     enabled: !!placeId,
     staleTime: 60_000,
-  })
+  });
 }
 
 export function useRefreshPlacePhotos(placeId: string) {
-  const qc = useQueryClient()
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (idempotencyKey: string) => refreshPlacePhotos(placeId, idempotencyKey),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: photoKeys.list(placeId) })
+      qc.invalidateQueries({ queryKey: photoKeys.list(placeId) });
       // also invalidate place detail so primary_photo updates
-      qc.invalidateQueries({ queryKey: ['place', placeId] })
+      qc.invalidateQueries({ queryKey: ['place', placeId] });
     },
-  })
+  });
 }

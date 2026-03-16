@@ -34,7 +34,12 @@ def upgrade() -> None:
         sa.Column("size_bytes", sa.Integer(), nullable=True),
         sa.Column("sha256", sa.String(length=64), nullable=True),
         sa.Column("error_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("finished_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
@@ -57,8 +62,12 @@ def upgrade() -> None:
     op.create_index(op.f("ix_trip_export_job_id"), "trip_export", ["job_id"], unique=False)
     op.create_index(op.f("ix_trip_export_user_id"), "trip_export", ["user_id"], unique=False)
     op.create_index(op.f("ix_trip_export_trip_id"), "trip_export", ["trip_id"], unique=False)
-    op.create_index("ix_trip_export_trip_created_desc", "trip_export", ["trip_id", "created_at"], unique=False)
-    op.create_index("ix_trip_export_user_created_desc", "trip_export", ["user_id", "created_at"], unique=False)
+    op.create_index(
+        "ix_trip_export_trip_created_desc", "trip_export", ["trip_id", "created_at"], unique=False
+    )
+    op.create_index(
+        "ix_trip_export_user_created_desc", "trip_export", ["user_id", "created_at"], unique=False
+    )
 
     op.create_table(
         "audit_log",
@@ -71,14 +80,23 @@ def upgrade() -> None:
         sa.Column("after_json", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column("correlation_id", sa.String(length=64), nullable=True),
         sa.Column("request_path", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.Column("id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_audit_log")),
     )
     op.create_index(op.f("ix_audit_log_user_id"), "audit_log", ["user_id"], unique=False)
     op.create_index(op.f("ix_audit_log_trip_id"), "audit_log", ["trip_id"], unique=False)
-    op.create_index("ix_audit_log_trip_created_desc", "audit_log", ["trip_id", "created_at"], unique=False)
-    op.create_index("ix_audit_log_user_created_desc", "audit_log", ["user_id", "created_at"], unique=False)
+    op.create_index(
+        "ix_audit_log_trip_created_desc", "audit_log", ["trip_id", "created_at"], unique=False
+    )
+    op.create_index(
+        "ix_audit_log_user_created_desc", "audit_log", ["user_id", "created_at"], unique=False
+    )
     op.create_index(
         "ix_audit_log_entity_created_desc",
         "audit_log",

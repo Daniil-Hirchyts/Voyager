@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
@@ -10,76 +10,68 @@ import {
   Sparkles,
   Star,
   X,
-} from 'lucide-react'
-import { motion } from 'motion/react'
-import { AiLoadingText } from '@/components/ui/ai-loading-text'
-import { AnimatedNumber } from '@/components/ui/animated-number'
-import { Button } from '@/components/ui/button'
-import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer'
-import {
-  CarouselContent,
-  CarouselItem,
-  useCarousel,
-} from '@/components/ui/carousel'
-import {
-  Disclosure,
-  DisclosureContent,
-  DisclosureTrigger,
-} from '@/components/ui/disclosure'
+} from 'lucide-react';
+import { motion } from 'motion/react';
+import { AiLoadingText } from '@/components/ui/ai-loading-text';
+import { AnimatedNumber } from '@/components/ui/animated-number';
+import { Button } from '@/components/ui/button';
+import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer';
+import { CarouselContent, CarouselItem, useCarousel } from '@/components/ui/carousel';
+import { Disclosure, DisclosureContent, DisclosureTrigger } from '@/components/ui/disclosure';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Skeleton } from '@/components/ui/skeleton'
-import { SheetClose } from '@/components/ui/sheet'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+} from '@/components/ui/dropdown-menu';
+import { Skeleton } from '@/components/ui/skeleton';
+import { SheetClose } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   useDiscoveredActivityDetail,
   useSavedActivityDetail,
-} from '@/entities/activity-discovery/queries'
-import { cn } from '@/shared/lib/cn'
-import type { ActivityDiscoveryDetail } from '@/shared/api/types'
-import { VoyagerLoader } from '@/widgets/app-shell/logo'
+} from '@/entities/activity-discovery/queries';
+import { cn } from '@/shared/lib/cn';
+import type { ActivityDiscoveryDetail } from '@/shared/api/types';
+import { VoyagerLoader } from '@/widgets/app-shell/logo';
 import type {
   PlannerRecommendationDestination,
   PlannerRecommendationEntry,
   PlannerRecommendationsController,
-} from './usePlannerRecommendations'
+} from './usePlannerRecommendations';
 
-const RECOMMENDATION_LOADING_COPY = 'Curating nearby picks...'
+const RECOMMENDATION_LOADING_COPY = 'Curating nearby picks...';
 
 function extractTags(detail: ActivityDiscoveryDetail | undefined) {
-  const payload = detail?.provider_payload
+  const payload = detail?.provider_payload;
   if (!payload || typeof payload !== 'object') {
-    return []
+    return [];
   }
 
-  const keys = ['categories', 'labels', 'cuisines', 'good_for', 'amenities']
-  const tags: string[] = []
+  const keys = ['categories', 'labels', 'cuisines', 'good_for', 'amenities'];
+  const tags: string[] = [];
   for (const key of keys) {
-    const value = (payload as Record<string, unknown>)[key]
+    const value = (payload as Record<string, unknown>)[key];
     if (typeof value === 'string' && value.trim()) {
-      tags.push(value.trim())
-      continue
+      tags.push(value.trim());
+      continue;
     }
     if (!Array.isArray(value)) {
-      continue
+      continue;
     }
     for (const item of value) {
       if (typeof item === 'string' && item.trim()) {
-        tags.push(item.trim())
-        continue
+        tags.push(item.trim());
+        continue;
       }
       if (item && typeof item === 'object') {
         const label =
           (item as Record<string, unknown>).name ??
           (item as Record<string, unknown>).label ??
-          (item as Record<string, unknown>).text
+          (item as Record<string, unknown>).text;
         if (typeof label === 'string' && label.trim()) {
-          tags.push(label.trim())
+          tags.push(label.trim());
         }
       }
     }
@@ -88,11 +80,11 @@ function extractTags(detail: ActivityDiscoveryDetail | undefined) {
   return tags.filter(
     (tag, index, values) =>
       values.findIndex((candidate) => candidate.toLowerCase() === tag.toLowerCase()) === index,
-  )
+  );
 }
 
 function recommendationAddress(entry: PlannerRecommendationEntry) {
-  return entry.matchedPlace?.address_text ?? entry.item.address_text
+  return entry.matchedPlace?.address_text ?? entry.item.address_text;
 }
 
 function AddDestinationMenu({
@@ -101,12 +93,12 @@ function AddDestinationMenu({
   className,
   align = 'end',
 }: {
-  entry: PlannerRecommendationEntry
-  recommendations: PlannerRecommendationsController
-  className?: string
-  align?: 'start' | 'center' | 'end'
+  entry: PlannerRecommendationEntry;
+  recommendations: PlannerRecommendationsController;
+  className?: string;
+  align?: 'start' | 'center' | 'end';
 }) {
-  const isAdding = recommendations.addingKey === entry.key
+  const isAdding = recommendations.addingKey === entry.key;
 
   return (
     <DropdownMenu>
@@ -116,15 +108,15 @@ function AddDestinationMenu({
           size="sm"
           variant="outline"
           className={cn(
-            'h-8 rounded-[10px] border-black/8 bg-white px-3 text-[0.78rem] shadow-none hover:bg-[var(--color-secondary-surface)]',
+            'h-8 rounded-[10px] border-black/8 bg-white px-3 text-[0.78rem] hover:bg-[var(--color-secondary-surface)]',
             className,
           )}
           disabled={isAdding}
           onClick={(event) => {
-            event.stopPropagation()
+            event.stopPropagation();
           }}
         >
-          {isAdding ? <VoyagerLoader className="h-3.5 w-3.5 " /> : null}
+          {isAdding ? <VoyagerLoader className="h-3.5 w-3.5" /> : null}
           Add
           <ChevronDown className="h-3.5 w-3.5" />
         </Button>
@@ -136,23 +128,23 @@ function AddDestinationMenu({
             key={destination.id}
             destination={destination}
             onSelect={() => {
-              void recommendations.addEntryToDestination(entry, destination.id)
+              void recommendations.addEntryToDestination(entry, destination.id);
             }}
           />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
-  )
+  );
 }
 
 const ITINERARY_ACTION_BUTTON_CLASS =
-  'h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]'
+  'h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]';
 
 export function CompactCarouselActions() {
-  const { index, itemsCount, setIndex } = useCarousel()
+  const { index, itemsCount, setIndex } = useCarousel();
 
   if (itemsCount <= 1) {
-    return null
+    return null;
   }
 
   return (
@@ -163,9 +155,9 @@ export function CompactCarouselActions() {
         size="icon"
         className={ITINERARY_ACTION_BUTTON_CLASS}
         onClick={(e) => {
-          e.stopPropagation()
+          e.stopPropagation();
           if (index > 0) {
-            setIndex(index - 1)
+            setIndex(index - 1);
           }
         }}
         disabled={index === 0}
@@ -180,9 +172,9 @@ export function CompactCarouselActions() {
         size="icon"
         className={ITINERARY_ACTION_BUTTON_CLASS}
         onClick={(e) => {
-          e.stopPropagation()
+          e.stopPropagation();
           if (index < itemsCount - 1) {
-            setIndex(index + 1)
+            setIndex(index + 1);
           }
         }}
         disabled={index + 1 >= itemsCount}
@@ -192,15 +184,15 @@ export function CompactCarouselActions() {
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>
-  )
+  );
 }
 
 export function CompactRefreshButton({
   recommendations,
   disabled = false,
 }: {
-  recommendations: PlannerRecommendationsController
-  disabled?: boolean
+  recommendations: PlannerRecommendationsController;
+  disabled?: boolean;
 }) {
   return (
     <Button
@@ -209,8 +201,8 @@ export function CompactRefreshButton({
       size="icon"
       className={ITINERARY_ACTION_BUTTON_CLASS}
       onClick={(e) => {
-        e.stopPropagation()
-        void recommendations.refresh()
+        e.stopPropagation();
+        void recommendations.refresh();
       }}
       disabled={disabled || recommendations.isRefreshing}
       aria-label="Refresh recommendations"
@@ -218,21 +210,21 @@ export function CompactRefreshButton({
     >
       <RefreshCw className={cn('h-4 w-4', recommendations.isRefreshing && '')} />
     </Button>
-  )
+  );
 }
 
 function DestinationMenuItem({
   destination,
   onSelect,
 }: {
-  destination: PlannerRecommendationDestination
-  onSelect: () => void
+  destination: PlannerRecommendationDestination;
+  onSelect: () => void;
 }) {
   return (
     <DropdownMenuItem
       onClick={(event) => {
-        event.stopPropagation()
-        onSelect()
+        event.stopPropagation();
+        onSelect();
       }}
     >
       <div className="flex flex-col gap-0.5">
@@ -240,7 +232,7 @@ function DestinationMenuItem({
         <span className="text-xs text-[var(--color-text-muted)]">{destination.description}</span>
       </div>
     </DropdownMenuItem>
-  )
+  );
 }
 
 function RecommendationCard({
@@ -249,15 +241,15 @@ function RecommendationCard({
   selected = false,
   onSelect,
 }: {
-  entry: PlannerRecommendationEntry
-  recommendations: PlannerRecommendationsController
-  selected?: boolean
-  onSelect?: (entry: PlannerRecommendationEntry) => void
+  entry: PlannerRecommendationEntry;
+  recommendations: PlannerRecommendationsController;
+  selected?: boolean;
+  onSelect?: (entry: PlannerRecommendationEntry) => void;
 }) {
   return (
     <article
       className={cn(
-        'overflow-hidden rounded-[22px] border bg-white p-3 shadow-[0_18px_48px_-34px_rgba(15,23,42,0.22)] transition-colors',
+        'overflow-hidden rounded-[22px] border bg-white p-3 transition-colors',
         onSelect && 'cursor-pointer',
         selected
           ? 'border-[var(--color-text)]/22 ring-1 ring-[var(--color-text)]/10'
@@ -274,7 +266,7 @@ function RecommendationCard({
                 className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-[18px] text-left"
                 aria-label={`Preview ${entry.item.title}`}
                 onClick={(event) => {
-                  event.stopPropagation()
+                  event.stopPropagation();
                 }}
               >
                 <img
@@ -293,7 +285,7 @@ function RecommendationCard({
 
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-start justify-between gap-3">
-            <h3 className="min-w-0 line-clamp-2 text-[0.98rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+            <h3 className="line-clamp-2 min-w-0 text-[0.98rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
               {entry.item.title}
             </h3>
             {entry.item.rating != null ? (
@@ -327,7 +319,7 @@ function RecommendationCard({
         </div>
       </div>
     </article>
-  )
+  );
 }
 
 function CompactRecommendationCard({
@@ -336,36 +328,36 @@ function CompactRecommendationCard({
   selected = false,
   onSelect,
 }: {
-  entry: PlannerRecommendationEntry
-  recommendations: PlannerRecommendationsController
-  selected?: boolean
-  onSelect?: (entry: PlannerRecommendationEntry) => void
+  entry: PlannerRecommendationEntry;
+  recommendations: PlannerRecommendationsController;
+  selected?: boolean;
+  onSelect?: (entry: PlannerRecommendationEntry) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
   const entityLabel = entry.item.entity_type
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+    .join(' ');
 
   const imageVariants = {
     collapsed: { scale: 1, filter: 'blur(0px)' },
     expanded: { scale: 1.03, filter: 'blur(1.5px)' },
-  }
+  };
   const contentVariants = {
     collapsed: { opacity: 0, y: -6 },
     expanded: { opacity: 1, y: 0 },
-  }
+  };
   const transition = {
     type: 'spring',
     stiffness: 150,
     damping: 20,
     mass: 0.65,
-  } as const
+  } as const;
 
   return (
     <article
       className={cn(
-        'relative h-[204px] overflow-hidden rounded-[18px] border bg-white shadow-[0_14px_30px_-26px_rgba(15,23,42,0.18)] transition-colors',
+        'relative h-[204px] overflow-hidden rounded-[18px] border bg-white transition-colors',
         onSelect && 'cursor-pointer',
         selected
           ? 'border-[var(--color-text)]/24 ring-1 ring-[var(--color-text)]/10'
@@ -393,8 +385,8 @@ function CompactRecommendationCard({
       </motion.div>
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_10%,rgba(255,255,255,0.12)_34%,rgba(255,255,255,0.72)_62%,#ffffff_100%)]" />
 
-      <div className="absolute left-2 top-2 flex flex-wrap items-center gap-1">
-        <span className="rounded-full border border-white/70 bg-white/88 px-2 py-1 text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-muted)] backdrop-blur">
+      <div className="absolute top-2 left-2 flex flex-wrap items-center gap-1">
+        <span className="rounded-full border border-white/70 bg-white/88 px-2 py-1 text-[0.55rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase backdrop-blur">
           {entry.source === 'discover' ? 'Nearby pick' : 'Recommendation'}
         </span>
         {entry.item.rating != null ? (
@@ -407,7 +399,7 @@ function CompactRecommendationCard({
       <Disclosure
         open={isOpen}
         onOpenChange={setIsOpen}
-        className="absolute inset-x-0 bottom-0 m-2 overflow-hidden rounded-[15px] border border-white/80 bg-white/90 shadow-[0_12px_24px_-20px_rgba(15,23,42,0.2)] backdrop-blur"
+        className="absolute inset-x-0 bottom-0 m-2 overflow-hidden rounded-[15px] border border-white/80 bg-white/90 backdrop-blur"
         variants={contentVariants}
         transition={transition}
       >
@@ -446,13 +438,14 @@ function CompactRecommendationCard({
         </DisclosureTrigger>
 
         <DisclosureContent>
-          <div className="px-2.5 pb-2.5 pt-1">
+          <div className="px-2.5 pt-1 pb-2.5">
             <p className="line-clamp-2 text-[0.7rem] leading-[1.15rem] text-[var(--color-text-muted)]">
-              {entry.item.summary || 'Open this card to add the place to a day or keep it in your inbox.'}
+              {entry.item.summary ||
+                'Open this card to add the place to a day or keep it in your inbox.'}
             </p>
 
             <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[0.62rem] font-medium uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+              <span className="text-[0.62rem] font-medium tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                 {entityLabel}
               </span>
               <AddDestinationMenu
@@ -466,7 +459,7 @@ function CompactRecommendationCard({
         </DisclosureContent>
       </Disclosure>
     </article>
-  )
+  );
 }
 
 function RecommendationSection({
@@ -477,12 +470,12 @@ function RecommendationSection({
   onSelectEntry,
   selectedEntryKey,
 }: {
-  title: string
-  description: string
-  entries: PlannerRecommendationEntry[]
-  recommendations: PlannerRecommendationsController
-  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
-  selectedEntryKey?: string | null
+  title: string;
+  description: string;
+  entries: PlannerRecommendationEntry[];
+  recommendations: PlannerRecommendationsController;
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void;
+  selectedEntryKey?: string | null;
 }) {
   return (
     <section className="space-y-3">
@@ -513,7 +506,7 @@ function RecommendationSection({
         </div>
       )}
     </section>
-  )
+  );
 }
 
 export function PlannerRecommendationsCompactSection({
@@ -522,18 +515,15 @@ export function PlannerRecommendationsCompactSection({
   onSelectEntry,
   selectedEntryKey,
 }: {
-  recommendations: PlannerRecommendationsController
-  maxItems?: number
-  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
-  selectedEntryKey?: string | null
+  recommendations: PlannerRecommendationsController;
+  maxItems?: number;
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void;
+  selectedEntryKey?: string | null;
 }) {
-  const visibleEntries = recommendations.discoverEntries.slice(0, maxItems)
+  const visibleEntries = recommendations.discoverEntries.slice(0, maxItems);
 
   return (
-    <div
-      className="flex flex-col gap-3"
-      data-testid="planner-compact-recommendations"
-    >
+    <div className="flex flex-col gap-3" data-testid="planner-compact-recommendations">
       {!recommendations.enabled ? (
         <div className="rounded-[18px] border border-dashed border-black/8 px-4 py-5 text-sm text-[var(--color-text-muted)]">
           Turn recommendations back on to see nearby places Voyager can add for you.
@@ -574,7 +564,7 @@ export function PlannerRecommendationsCompactSection({
         </div>
       )}
     </div>
-  )
+  );
 }
 
 export function PlannerRecommendationsPanel({
@@ -583,17 +573,20 @@ export function PlannerRecommendationsPanel({
   onSelectEntry,
   selectedEntryKey,
 }: {
-  recommendations: PlannerRecommendationsController
-  showCloseButton?: boolean
-  onSelectEntry?: (entry: PlannerRecommendationEntry) => void
-  selectedEntryKey?: string | null
+  recommendations: PlannerRecommendationsController;
+  showCloseButton?: boolean;
+  onSelectEntry?: (entry: PlannerRecommendationEntry) => void;
+  selectedEntryKey?: string | null;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-[#F3F5F7]" data-testid="planner-recommendations-sheet">
+    <div
+      className="flex min-h-0 flex-1 flex-col bg-[#F3F5F7]"
+      data-testid="planner-recommendations-sheet"
+    >
       <div className="border-b border-black/8 bg-white px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+            <p className="text-[0.72rem] font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
               Recommendations
             </p>
             <h2 className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-[var(--color-text)]">
@@ -611,7 +604,7 @@ export function PlannerRecommendationsPanel({
               size="icon"
               className="h-10 w-10 rounded-full border-black/8 bg-white"
               onClick={() => {
-                void recommendations.refresh()
+                void recommendations.refresh();
               }}
               disabled={recommendations.isRefreshing}
               aria-label="Refresh recommendations"
@@ -657,23 +650,21 @@ export function PlannerRecommendationsPanel({
         )}
       </div>
     </div>
-  )
+  );
 }
 
 function RecommendationLinkList({ detail }: { detail: ActivityDiscoveryDetail | undefined }) {
   const links = [
     ...(detail?.booking_links ?? []),
-    ...(detail?.detail_url
-      ? [{ label: 'Provider page', url: detail.detail_url }]
-      : []),
-  ]
+    ...(detail?.detail_url ? [{ label: 'Provider page', url: detail.detail_url }] : []),
+  ];
 
   if (!links.length) {
     return (
       <p className="rounded-[18px] border border-dashed border-black/8 px-4 py-6 text-sm text-[var(--color-text-muted)]">
         No provider links are available yet.
       </p>
-    )
+    );
   }
 
   return (
@@ -691,7 +682,7 @@ function RecommendationLinkList({ detail }: { detail: ActivityDiscoveryDetail | 
         </a>
       ))}
     </div>
-  )
+  );
 }
 
 export function PlannerRecommendationDetailPanel({
@@ -702,20 +693,20 @@ export function PlannerRecommendationDetailPanel({
   onBack,
   onClose,
 }: {
-  tripId: string
-  locale: string
-  entry: PlannerRecommendationEntry
-  recommendations: PlannerRecommendationsController
-  onBack?: () => void
-  onClose?: () => void
+  tripId: string;
+  locale: string;
+  entry: PlannerRecommendationEntry;
+  recommendations: PlannerRecommendationsController;
+  onBack?: () => void;
+  onClose?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState('about')
+  const [activeTab, setActiveTab] = useState('about');
 
   useEffect(() => {
-    setActiveTab('about')
-  }, [entry.key])
+    setActiveTab('about');
+  }, [entry.key]);
 
-  const savedDetailQuery = useSavedActivityDetail(entry.item.snapshot_id, locale)
+  const savedDetailQuery = useSavedActivityDetail(entry.item.snapshot_id, locale);
   const discoveredDetailQuery = useDiscoveredActivityDetail(
     tripId,
     entry.item.snapshot_id
@@ -726,13 +717,12 @@ export function PlannerRecommendationDetailPanel({
           provider_ref: entry.item.provider_ref,
           locale,
         },
-  )
-  const detail = entry.item.snapshot_id
-    ? savedDetailQuery.data
-    : discoveredDetailQuery.data
-  const isLoading =
-    entry.item.snapshot_id ? savedDetailQuery.isLoading : discoveredDetailQuery.isLoading
-  const tags = useMemo(() => extractTags(detail), [detail])
+  );
+  const detail = entry.item.snapshot_id ? savedDetailQuery.data : discoveredDetailQuery.data;
+  const isLoading = entry.item.snapshot_id
+    ? savedDetailQuery.isLoading
+    : discoveredDetailQuery.isLoading;
+  const tags = useMemo(() => extractTags(detail), [detail]);
 
   if (isLoading) {
     return (
@@ -741,7 +731,7 @@ export function PlannerRecommendationDetailPanel({
           <button
             type="button"
             onClick={onClose}
-            className="absolute right-5 top-5 z-[2] rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
+            className="absolute top-5 right-5 z-[2] rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -753,7 +743,7 @@ export function PlannerRecommendationDetailPanel({
           <Skeleton className="h-40 w-full rounded-[22px]" />
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -762,14 +752,16 @@ export function PlannerRecommendationDetailPanel({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-5 z-[2] rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] shadow-sm transition-colors hover:bg-white hover:text-[var(--color-text)]"
+          className="absolute top-5 right-5 z-[2] rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
       ) : null}
 
-      <div className={cn('shrink-0 border-b border-black/8 bg-white px-5 py-5', onClose && 'pr-16')}>
+      <div
+        className={cn('shrink-0 border-b border-black/8 bg-white px-5 py-5', onClose && 'pr-16')}
+      >
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-start gap-3">
             {onBack ? (
@@ -826,20 +818,35 @@ export function PlannerRecommendationDetailPanel({
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex min-h-0 flex-1 flex-col">
-        <TabsList className="shrink-0 flex h-auto w-full flex-wrap justify-start gap-2 rounded-none border-b border-black/8 bg-white/94 px-4 py-3 backdrop-blur">
-          <TabsTrigger value="about" className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white">
+        <TabsList className="flex h-auto w-full shrink-0 flex-wrap justify-start gap-2 rounded-none border-b border-black/8 bg-white/94 px-4 py-3 backdrop-blur">
+          <TabsTrigger
+            value="about"
+            className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white"
+          >
             About
           </TabsTrigger>
-          <TabsTrigger value="reserve" className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white">
+          <TabsTrigger
+            value="reserve"
+            className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white"
+          >
             Reserve
           </TabsTrigger>
-          <TabsTrigger value="reviews" className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white">
+          <TabsTrigger
+            value="reviews"
+            className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white"
+          >
             Reviews
           </TabsTrigger>
-          <TabsTrigger value="photos" className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white">
+          <TabsTrigger
+            value="photos"
+            className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white"
+          >
             Photos
           </TabsTrigger>
-          <TabsTrigger value="links" className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white">
+          <TabsTrigger
+            value="links"
+            className="h-9 rounded-full px-3.5 text-[0.76rem] font-medium data-[state=active]:bg-[var(--color-text)] data-[state=active]:text-white"
+          >
             Links
           </TabsTrigger>
         </TabsList>
@@ -870,7 +877,7 @@ export function PlannerRecommendationDetailPanel({
             </div>
             {entry.rationale ? (
               <div className="rounded-[22px] border border-[rgba(114,174,230,0.18)] bg-[rgba(114,174,230,0.08)] p-5">
-                <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+                <p className="text-[0.72rem] font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
                   Why it fits
                 </p>
                 <p className="mt-2 text-sm leading-7 text-[var(--color-text)]">{entry.rationale}</p>
@@ -897,7 +904,10 @@ export function PlannerRecommendationDetailPanel({
           <TabsContent value="reviews" className="mt-0 space-y-3">
             {detail?.reviews.length ? (
               detail.reviews.slice(0, 4).map((review) => (
-                <div key={review.review_id} className="rounded-[18px] border border-black/8 bg-white p-4">
+                <div
+                  key={review.review_id}
+                  className="rounded-[18px] border border-black/8 bg-white p-4"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-[var(--color-text)]">
                       {review.title || review.reviewer_name || 'Review'}
@@ -909,7 +919,9 @@ export function PlannerRecommendationDetailPanel({
                     ) : null}
                   </div>
                   {review.text ? (
-                    <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">{review.text}</p>
+                    <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
+                      {review.text}
+                    </p>
                   ) : null}
                 </div>
               ))
@@ -963,7 +975,7 @@ export function PlannerRecommendationDetailPanel({
 
       <div className="shrink-0 border-t border-black/8 bg-white px-4 py-4">
         <div className="flex flex-col gap-2">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]">
+          <p className="text-[0.72rem] font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
             Add this recommendation
           </p>
           <AddDestinationMenu
@@ -975,5 +987,5 @@ export function PlannerRecommendationDetailPanel({
         </div>
       </div>
     </div>
-  )
+  );
 }

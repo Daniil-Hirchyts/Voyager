@@ -1,4 +1,4 @@
-import { requestJson } from '@/shared/api/client'
+import { requestJson } from '@/shared/api/client';
 import type {
   Activity,
   ActivityAttachDayInput,
@@ -11,18 +11,18 @@ import type {
   ActivityRecommendationResponse,
   ActivityShortlistListResponse,
   ActivityShortlistSaveInput,
-} from '@/shared/api/types'
+} from '@/shared/api/types';
 
 function withQuery(
   params: Record<string, string | number | undefined | null> | ActivityDiscoverInput,
 ) {
-  const searchParams = new URLSearchParams()
+  const searchParams = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
-    if (value == null || value === '') continue
-    searchParams.set(key, String(value))
+    if (value == null || value === '') continue;
+    searchParams.set(key, String(value));
   }
-  const queryString = searchParams.toString()
-  return queryString ? `?${queryString}` : ''
+  const queryString = searchParams.toString();
+  return queryString ? `?${queryString}` : '';
 }
 
 export async function discoverActivities(
@@ -31,7 +31,7 @@ export async function discoverActivities(
 ): Promise<ActivityDiscoveryListResponse> {
   return requestJson<ActivityDiscoveryListResponse>(
     `/trips/${tripId}/activities/discover${withQuery(params)}`,
-  )
+  );
 }
 
 export async function saveActivityToShortlist(
@@ -43,7 +43,7 @@ export async function saveActivityToShortlist(
     method: 'POST',
     headers: { 'Idempotency-Key': idempotencyKey },
     body: JSON.stringify(data),
-  })
+  });
 }
 
 export async function listSavedActivities(
@@ -52,30 +52,28 @@ export async function listSavedActivities(
 ): Promise<ActivityShortlistListResponse> {
   return requestJson<ActivityShortlistListResponse>(
     `/trips/${tripId}/activities${withQuery(params)}`,
-  )
+  );
 }
 
 export async function getSavedActivityDetail(
   snapshotId: string,
   params: { locale?: string } = {},
 ): Promise<ActivityDiscoveryDetail> {
-  return requestJson<ActivityDiscoveryDetail>(
-    `/activities/${snapshotId}${withQuery(params)}`,
-  )
+  return requestJson<ActivityDiscoveryDetail>(`/activities/${snapshotId}${withQuery(params)}`);
 }
 
 export async function getDiscoveredActivityDetail(
   tripId: string,
   params: {
-    entity_type: ActivityEntityType
-    provider: string
-    provider_ref: string
-    locale?: string
+    entity_type: ActivityEntityType;
+    provider: string;
+    provider_ref: string;
+    locale?: string;
   },
 ): Promise<ActivityDiscoveryDetail> {
   return requestJson<ActivityDiscoveryDetail>(
     `/trips/${tripId}/activities/discover/detail${withQuery(params)}`,
-  )
+  );
 }
 
 export async function attachSavedActivityToDay(
@@ -85,17 +83,14 @@ export async function attachSavedActivityToDay(
   tripVersion: number,
   idempotencyKey: string,
 ): Promise<Activity> {
-  return requestJson<Activity>(
-    `/trips/${tripId}/activities/${snapshotId}/attach-day`,
-    {
-      method: 'POST',
-      headers: {
-        'If-Match': String(tripVersion),
-        'Idempotency-Key': idempotencyKey,
-      },
-      body: JSON.stringify(data),
+  return requestJson<Activity>(`/trips/${tripId}/activities/${snapshotId}/attach-day`, {
+    method: 'POST',
+    headers: {
+      'If-Match': String(tripVersion),
+      'Idempotency-Key': idempotencyKey,
     },
-  )
+    body: JSON.stringify(data),
+  });
 }
 
 export async function getActivityRecommendations(
@@ -108,5 +103,5 @@ export async function getActivityRecommendations(
       method: 'POST',
       body: JSON.stringify(data),
     },
-  )
+  );
 }

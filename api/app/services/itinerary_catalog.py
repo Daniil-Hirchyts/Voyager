@@ -205,7 +205,9 @@ ROME = {
                 address_text="Piazza di Santa Maria in Trastevere, 00153 Roma RM, Italy",
                 lat=41.8897,
                 lon=12.4696,
-                metadata={"website": "https://www.turismoroma.it/en/places/basilica-santa-maria-trastevere"},
+                metadata={
+                    "website": "https://www.turismoroma.it/en/places/basilica-santa-maria-trastevere"
+                },
             ),
         ),
     ],
@@ -241,7 +243,9 @@ ROME = {
                 address_text="Piazzale Giuseppe Garibaldi, 00165 Roma RM, Italy",
                 lat=41.8894,
                 lon=12.4663,
-                metadata={"website": "https://www.turismoroma.it/en/places/giuseppe-garibaldi-terrace"},
+                metadata={
+                    "website": "https://www.turismoroma.it/en/places/giuseppe-garibaldi-terrace"
+                },
             ),
         ),
         _seed(
@@ -471,7 +475,9 @@ PARIS = {
                 address_text="Place de la Contrescarpe, 75005 Paris, France",
                 lat=48.8421,
                 lon=2.3495,
-                metadata={"website": "https://parisjetaime.com/eng/place/2322/place-de-la-contrescarpe"},
+                metadata={
+                    "website": "https://parisjetaime.com/eng/place/2322/place-de-la-contrescarpe"
+                },
             ),
         ),
         _seed(
@@ -510,7 +516,9 @@ LISBON = {
                 address_text="Largo Portas do Sol, 1100-411 Lisboa, Portugal",
                 lat=38.7121,
                 lon=-9.1291,
-                metadata={"website": "https://www.visitlisboa.com/en/places/miradouro-das-portas-do-sol"},
+                metadata={
+                    "website": "https://www.visitlisboa.com/en/places/miradouro-das-portas-do-sol"
+                },
             ),
         ),
         _seed(
@@ -650,7 +658,9 @@ LISBON = {
                 address_text="Largo Monte, 1170-253 Lisboa, Portugal",
                 lat=38.7202,
                 lon=-9.1326,
-                metadata={"website": "https://www.visitlisboa.com/en/places/miradouro-da-senhora-do-monte"},
+                metadata={
+                    "website": "https://www.visitlisboa.com/en/places/miradouro-da-senhora-do-monte"
+                },
             ),
         ),
         _seed(
@@ -844,7 +854,9 @@ BARCELONA = {
                 address_text="Passeig Maritim de la Barceloneta, 16, 08003 Barcelona, Spain",
                 lat=41.378,
                 lon=2.1925,
-                metadata={"website": "https://www.barcelona.cat/en/what-to-do-in-bcn/beaches/barceloneta-beach_92086009636.html"},
+                metadata={
+                    "website": "https://www.barcelona.cat/en/what-to-do-in-bcn/beaches/barceloneta-beach_92086009636.html"
+                },
             ),
         ),
     ],
@@ -863,7 +875,9 @@ BARCELONA = {
                 address_text="Carrer de Marià Labèrnia, s/n, Horta-Guinardó, 08032 Barcelona, Spain",
                 lat=41.418,
                 lon=2.1527,
-                metadata={"website": "https://www.barcelona.cat/en/what-to-do-in-bcn/parks-and-gardens/turo-de-la-rovira_92086018673.html"},
+                metadata={
+                    "website": "https://www.barcelona.cat/en/what-to-do-in-bcn/parks-and-gardens/turo-de-la-rovira_92086018673.html"
+                },
             ),
         ),
         _seed(
@@ -880,7 +894,9 @@ BARCELONA = {
                 address_text="Placa Reial, Ciutat Vella, 08002 Barcelona, Spain",
                 lat=41.3802,
                 lon=2.1751,
-                metadata={"website": "https://www.barcelona.cat/en/what-to-do-in-bcn/parks-and-gardens/plaza-real_92086009769.html"},
+                metadata={
+                    "website": "https://www.barcelona.cat/en/what-to-do-in-bcn/parks-and-gardens/plaza-real_92086009769.html"
+                },
             ),
         ),
         _seed(
@@ -936,7 +952,9 @@ BERLIN = {
                 address_text="Bodestraße 1-3, 10178 Berlin, Germany",
                 lat=52.5169,
                 lon=13.401,
-                metadata={"website": "https://www.smb.museum/en/museums-institutions/museum-island-berlin/home/"},
+                metadata={
+                    "website": "https://www.smb.museum/en/museums-institutions/museum-island-berlin/home/"
+                },
             ),
         ),
         _seed(
@@ -1006,7 +1024,9 @@ BERLIN = {
                 address_text="Bodestraße 1-3, 10178 Berlin, Germany",
                 lat=52.5208,
                 lon=13.3989,
-                metadata={"website": "https://www.smb.museum/en/museums-institutions/neues-museum/home/"},
+                metadata={
+                    "website": "https://www.smb.museum/en/museums-institutions/neues-museum/home/"
+                },
             ),
         ),
         _seed(

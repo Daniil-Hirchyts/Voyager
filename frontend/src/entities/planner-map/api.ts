@@ -1,5 +1,5 @@
-import { requestJson } from '@/shared/api/client'
-import type { PlannerMapPlaceDetail } from '@/shared/api/types'
+import { requestJson } from '@/shared/api/client';
+import type { PlannerMapPlaceDetail } from '@/shared/api/types';
 
 export async function getPlannerMapPlaceDetail(
   tripId: string,
@@ -7,5 +7,5 @@ export async function getPlannerMapPlaceDetail(
 ): Promise<PlannerMapPlaceDetail> {
   return requestJson<PlannerMapPlaceDetail>(
     `/trips/${tripId}/planner-map/places/${placeId}/detail`,
-  )
+  );
 }

@@ -63,6 +63,7 @@ def _jsonable(value: Any) -> Any:
     # Pydantic models must be dumped to dict before further processing
     try:
         from pydantic import BaseModel as _BaseModel  # noqa: PLC0415
+
         if isinstance(value, _BaseModel):
             return _jsonable(value.model_dump())
     except ImportError:
@@ -171,7 +172,11 @@ async def mirror_job_to_thread(
     payload = job.payload_json if isinstance(job.payload_json, dict) else {}
     if str(payload.get("trip_id") or "") != str(trip_id):
         raise NotFoundError("Job not found")
-    _thread, user_message, assistant_message = await AssistantRepository.upsert_mirrored_job_messages(
+    (
+        _thread,
+        user_message,
+        assistant_message,
+    ) = await AssistantRepository.upsert_mirrored_job_messages(
         db,
         user_id=user_id,
         trip_id=trip_id,
@@ -268,7 +273,11 @@ def _tool_call_part(
 
 
 def _planner_result_part(operation: str, payload: dict[str, Any]) -> dict[str, Any]:
-    return {"type": "data", "name": "planner-result", "data": {"operation": operation, **_jsonable(payload)}}
+    return {
+        "type": "data",
+        "name": "planner-result",
+        "data": {"operation": operation, **_jsonable(payload)},
+    }
 
 
 def _job_progress_part(
@@ -291,7 +300,9 @@ def _job_progress_part(
     }
 
 
-def _serialize_place(place: Place | None, photo_summaries: dict[uuid.UUID, tuple[int, Any]]) -> dict[str, Any] | None:
+def _serialize_place(
+    place: Place | None, photo_summaries: dict[uuid.UUID, tuple[int, Any]]
+) -> dict[str, Any] | None:
     if place is None:
         return None
     photo_count, primary_photo = photo_summaries.get(place.id, (0, None))
@@ -336,12 +347,16 @@ async def _load_trip_snapshot(
             "id": str(activity.id),
             "trip_day_id": str(activity.trip_day_id) if activity.trip_day_id else None,
             "order_index": activity.order_index,
-            "category": activity.category.value if hasattr(activity.category, "value") else str(activity.category),
+            "category": activity.category.value
+            if hasattr(activity.category, "value")
+            else str(activity.category),
             "title": activity.title,
             "description": activity.description,
             "start_time": activity.start_time.isoformat() if activity.start_time else None,
             "duration_min": activity.duration_min,
-            "estimated_cost_amount": str(activity.estimated_cost_amount) if activity.estimated_cost_amount is not None else None,
+            "estimated_cost_amount": str(activity.estimated_cost_amount)
+            if activity.estimated_cost_amount is not None
+            else None,
             "estimated_cost_currency": activity.estimated_cost_currency,
             "place_id": str(activity.place_id) if activity.place_id else None,
             "notes": activity.notes,
@@ -382,7 +397,9 @@ async def _load_trip_snapshot(
     }
 
 
-async def _build_place_payload(arguments: dict[str, Any]) -> tuple[uuid.UUID | None, dict[str, Any] | None]:
+async def _build_place_payload(
+    arguments: dict[str, Any],
+) -> tuple[uuid.UUID | None, dict[str, Any] | None]:
     place_id_raw = _string(arguments.get("place_id"))
     inferred_external_id: str | None = None
     if place_id_raw:
@@ -414,7 +431,9 @@ async def _build_place_payload(arguments: dict[str, Any]) -> tuple[uuid.UUID | N
                 {"error": str(exc), "place_external_id": place_external_id},
             ) from exc
         if details is not None:
-            place_name = place_name or details.name or details.formatted_address or place_external_id
+            place_name = (
+                place_name or details.name or details.formatted_address or place_external_id
+            )
             place_address = place_address or details.formatted_address
             place_category = place_category or details.category
             place_lat = place_lat if place_lat is not None else details.lat
@@ -448,7 +467,9 @@ async def _ensure_place_for_activity(
     external_id = payload.get("external_id")
     if isinstance(external_id, str) and external_id.strip():
         existing = await db.execute(
-            select(Place).where(Place.external_id == external_id).where(Place.source == payload["source"])
+            select(Place)
+            .where(Place.external_id == external_id)
+            .where(Place.source == payload["source"])
         )
         place = existing.scalar_one_or_none()
         if place is not None:
@@ -471,12 +492,16 @@ async def _serialize_activity(
         "id": str(activity.id),
         "trip_day_id": str(activity.trip_day_id) if activity.trip_day_id else None,
         "order_index": activity.order_index,
-        "category": activity.category.value if hasattr(activity.category, "value") else str(activity.category),
+        "category": activity.category.value
+        if hasattr(activity.category, "value")
+        else str(activity.category),
         "title": activity.title,
         "description": activity.description,
         "start_time": activity.start_time.isoformat() if activity.start_time else None,
         "duration_min": activity.duration_min,
-        "estimated_cost_amount": str(activity.estimated_cost_amount) if activity.estimated_cost_amount is not None else None,
+        "estimated_cost_amount": str(activity.estimated_cost_amount)
+        if activity.estimated_cost_amount is not None
+        else None,
         "estimated_cost_currency": activity.estimated_cost_currency,
         "place_id": str(activity.place_id) if activity.place_id else None,
         "notes": activity.notes,
@@ -510,7 +535,9 @@ async def _queue_itinerary_job(
     normalized_days = day_ids or [str(day.id) for day in trip_days]
     invalid = [day_id for day_id in normalized_days if day_id not in allowed_ids]
     if invalid:
-        raise ValidationApiError("One or more day_ids are not part of the trip", {"day_ids": invalid})
+        raise ValidationApiError(
+            "One or more day_ids are not part of the trip", {"day_ids": invalid}
+        )
 
     job = await JobRepository.create_job(
         db,
@@ -753,7 +780,11 @@ async def _execute_tool_call(
 ) -> tuple[dict[str, Any], list[AssistantMessageResponse]]:
     if tool_name == "read_trip_snapshot":
         snapshot = await _load_trip_snapshot(db, user_id=user_id, trip_id=trip_id)
-        return {"trip": snapshot["trip"], "days": snapshot["days"], "inbox_activities": snapshot["inbox_activities"]}, []
+        return {
+            "trip": snapshot["trip"],
+            "days": snapshot["days"],
+            "inbox_activities": snapshot["inbox_activities"],
+        }, []
 
     if tool_name == "search_places":
         query = _string(arguments.get("query"))
@@ -789,7 +820,9 @@ async def _execute_tool_call(
     if tool_name == "create_activity":
         place_id = await _ensure_place_for_activity(db, arguments)
         payload = ActivityCreateRequest(
-            trip_day_id=uuid.UUID(arguments["trip_day_id"]) if _string(arguments.get("trip_day_id")) else None,
+            trip_day_id=uuid.UUID(arguments["trip_day_id"])
+            if _string(arguments.get("trip_day_id"))
+            else None,
             category=str(arguments.get("category") or "visit"),
             title=str(arguments.get("title") or "").strip(),
             description=_string(arguments.get("description")),
@@ -841,7 +874,9 @@ async def _execute_tool_call(
             uuid.UUID(activity_id),
             trip.version,
             ActivityMoveRequest(
-                target_day_id=uuid.UUID(arguments["target_day_id"]) if _string(arguments.get("target_day_id")) else None,
+                target_day_id=uuid.UUID(arguments["target_day_id"])
+                if _string(arguments.get("target_day_id"))
+                else None,
                 target_index=target_index,
             ),
         )
@@ -901,7 +936,11 @@ async def _execute_tool_call(
             request_text=request_text,
             action="reset",
         )
-        return {"job_id": str(job.id), "status": job.status.value, "day_ids": [str(item) for item in raw_day_ids]}, mirrored
+        return {
+            "job_id": str(job.id),
+            "status": job.status.value,
+            "day_ids": [str(item) for item in raw_day_ids],
+        }, mirrored
 
     raise ValidationApiError(f"Unsupported tool {tool_name}")
 
@@ -1015,7 +1054,9 @@ class PlannerAssistantSession:
     async def _emit_message(self, message: AssistantMessage) -> None:
         await self._emit(assistant_message_to_response(message))
 
-    async def _create_assistant_message(self, *, metadata: dict[str, Any] | None = None) -> AssistantMessage:
+    async def _create_assistant_message(
+        self, *, metadata: dict[str, Any] | None = None
+    ) -> AssistantMessage:
         message = await AssistantRepository.create_message(
             self._db,
             thread_id=self._thread_id,
@@ -1253,7 +1294,9 @@ class PlannerAssistantSession:
                         return
 
                     parts = list(assistant_message.parts_json or [])
-                    parts.append(_tool_call_part(tool_call_id=call_id, tool_name=tool_name, args=args))
+                    parts.append(
+                        _tool_call_part(tool_call_id=call_id, tool_name=tool_name, args=args)
+                    )
                     await AssistantRepository.update_message(
                         self._db,
                         assistant_message,
@@ -1335,7 +1378,12 @@ class PlannerAssistantSession:
             return
 
         parts = list(assistant_message.parts_json or [])
-        parts.append({"type": "text", "text": "I hit the tool-turn limit for this request. Please narrow the task and try again."})
+        parts.append(
+            {
+                "type": "text",
+                "text": "I hit the tool-turn limit for this request. Please narrow the task and try again.",
+            }
+        )
         await AssistantRepository.update_message(
             self._db,
             assistant_message,
@@ -1368,7 +1416,11 @@ class PlannerAssistantSession:
             thread_id=self._thread_id,
             role="user",
             parts=[{"type": "text", "text": request_text}],
-            metadata={"kind": "command", "command_name": normalized_name, "command_args": _jsonable(args)},
+            metadata={
+                "kind": "command",
+                "command_name": normalized_name,
+                "command_args": _jsonable(args),
+            },
             status="complete",
             message_id=client_message_id,
         )
@@ -1434,7 +1486,9 @@ class PlannerAssistantSession:
         payload = interrupt.get("payload")
         if not isinstance(payload, dict):
             raise ValidationApiError("Invalid confirmation payload")
-        tool_name = _string(payload.get("tool_name")) or _string(tool_part.get("toolName")) or "tool"
+        tool_name = (
+            _string(payload.get("tool_name")) or _string(tool_part.get("toolName")) or "tool"
+        )
         resolved_tool_name = (
             _string(tool_part.get("toolName")) or "generate_itinerary"
             if tool_name == "replace_itinerary"
@@ -1538,7 +1592,9 @@ async def stream_assistant_messages(
             settings.rate_limit_assistant_turns_per_min,
             window_seconds=60,
         )
-        thread = await AssistantRepository.get_or_create_thread(db, user_id=user_id, trip_id=trip_id)
+        thread = await AssistantRepository.get_or_create_thread(
+            db, user_id=user_id, trip_id=trip_id
+        )
         session = PlannerAssistantSession(
             db=db,
             redis=redis,
