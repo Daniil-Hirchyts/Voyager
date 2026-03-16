@@ -124,7 +124,7 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
     const Icon = meta.icon;
     return (
       <DropdownMenuItem key={fmt} onClick={() => handleExport(fmt)} disabled={isExporting}>
-        <Icon className="mr-2 h-4 w-4" />
+        <Icon className="mr-3 size-[1.1rem] opacity-70" />
         <span>{meta.label}</span>
       </DropdownMenuItem>
     );
@@ -138,8 +138,8 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          {items}
+        <DropdownMenuContent align="end" className="w-[14rem]">
+          <div className="flex flex-col gap-0.5">{items}</div>
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -153,8 +153,8 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
           Export
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        {items}
+      <DropdownMenuContent align="end" className="w-[14rem]">
+        <div className="flex flex-col gap-0.5">{items}</div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

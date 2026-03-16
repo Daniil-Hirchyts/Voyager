@@ -107,6 +107,7 @@ export function PlannerInbox({
                         ? () => onToggleVisited(activity.id, activity.visited_at)
                         : undefined
                     }
+                    color="#B59BFF"
                   />
                 ))}
               </div>

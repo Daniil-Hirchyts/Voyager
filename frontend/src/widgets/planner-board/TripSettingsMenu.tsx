@@ -370,11 +370,11 @@ export function TripSettingsMenu({
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
-          side={isMobile ? 'bottom' : 'right'}
+          side={isMobile ? 'bottom' : 'left'}
           className={
             isMobile
               ? 'flex h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] p-0 sm:max-w-none'
-              : 'flex h-[100dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl'
+              : 'left-14 flex h-[100dvh] w-[calc(100vw-56px)] max-w-[calc(100vw-56px)] flex-col gap-0 overflow-hidden p-0 lg:w-[clamp(380px,46vw,500px)] lg:max-w-[clamp(380px,46vw,500px)]'
           }
         >
           <SheetHeader className="shrink-0 border-b border-[var(--color-border)] bg-white px-6 py-5">
@@ -825,11 +825,11 @@ export function TripSettingsMenu({
 
       <Sheet open={collaborationOpen} onOpenChange={onCollaborationOpenChange}>
         <SheetContent
-          side={isMobile ? 'bottom' : 'right'}
+          side={isMobile ? 'bottom' : 'left'}
           className={
             isMobile
               ? 'flex h-[90dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
-              : 'flex h-[100dvh] w-full max-w-2xl flex-col gap-0 overflow-hidden border-l border-[var(--color-border)] bg-white p-0 sm:max-w-2xl'
+              : 'left-14 flex h-[100dvh] w-[calc(100vw-56px)] max-w-[calc(100vw-56px)] flex-col gap-0 overflow-hidden border-r border-[var(--color-border)] bg-white p-0 lg:w-[clamp(380px,46vw,500px)] lg:max-w-[clamp(380px,46vw,500px)]'
           }
         >
           <SheetHeader className="shrink-0 border-b border-[var(--color-border)] p-6 pr-[120px] pb-6">
@@ -846,10 +846,10 @@ export function TripSettingsMenu({
           </SheetHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
-            <div className="grid gap-8 md:grid-cols-[1fr_1.2fr]">
+            <div className="flex flex-col gap-10">
               {/* Members List */}
               <div className="flex flex-col gap-4">
-                <h3 className="text-sm font-bold tracking-tight text-[var(--color-text)]">
+                <h3 className="text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                   Members
                 </h3>
 
@@ -929,10 +929,12 @@ export function TripSettingsMenu({
                 )}
               </div>
 
+              <div className="h-px bg-[var(--color-border)]" />
+
               {/* Pending Invites */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold tracking-tight text-[var(--color-text)]">
+                  <h3 className="text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     {isOwner ? 'Pending invites' : 'Access rules'}
                   </h3>
                   {isOwner ? (

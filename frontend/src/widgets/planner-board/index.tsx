@@ -622,8 +622,15 @@ export default function PlannerBoard({ tripId }: Props) {
         scrollIntoView(document.querySelector(`[data-planner-section="${section}"]`));
       }
     }
+    const { assistantPanelOpenByTrip } = usePlannerStore.getState();
+    const isAssistantOpen = assistantPanelOpenByTrip[tripId] ?? false;
     setPlannerInstruments({
-      onOpenAssistant: () => setAssistantPanelOpen(tripId, true),
+      isAssistantOpen,
+      onToggleAssistant: () => {
+        const { assistantPanelOpenByTrip: current } = usePlannerStore.getState();
+        setAssistantPanelOpen(tripId, !(current[tripId] ?? false));
+      },
+      onCloseAssistant: () => setAssistantPanelOpen(tripId, false),
       onOpenSettings: () => setSettingsMenuOpen(true),
       onShare: () => setCollaborationMenuOpen(true),
       days,

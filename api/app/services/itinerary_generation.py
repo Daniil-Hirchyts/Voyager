@@ -725,9 +725,34 @@ async def _resolve_candidates_for_scope(
             return llm_resolution
         accumulated_errors = llm_resolution.provider_errors
 
+    if progress:
+        await progress.step(
+            "Using deterministic fallback",
+            "Building catalog candidates because LLM output was incomplete",
+            phase="planning",
+        )
+
+    fallback_resolution = await _resolve_catalog_candidates_for_scope(
+        db,
+        trip=trip,
+        days=days,
+        seed=seed,
+        constraints=constraints,
+        progress=progress,
+    )
+    fallback_resolution.provider_errors = (
+        accumulated_errors + fallback_resolution.provider_errors
+    )
+    fallback_resolution.fallback_used = True
+    fallback_resolution.llm_model = llm_result.model
+
+    if fallback_resolution.unresolved_activity_count == 0:
+        return fallback_resolution
+
     _raise_strict_grounding_error(
-        provider_errors=accumulated_errors,
+        provider_errors=fallback_resolution.provider_errors,
         llm_model=llm_result.model,
+        unresolved_activity_count=fallback_resolution.unresolved_activity_count,
     )
     raise AssertionError("unreachable")
 

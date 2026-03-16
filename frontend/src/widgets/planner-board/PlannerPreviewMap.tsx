@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { motion } from 'motion/react';
 import { config } from '@/app/config';
 import {
   VoyagerMap,
@@ -20,14 +21,32 @@ function toLatLng(point: PreviewPoint) {
 
 function PlannerMapMarker({ title }: { title: string }) {
   return (
-    <div className="origin-bottom pb-1 transition-transform">
+    <motion.div
+      initial={{ y: -40, opacity: 0, scale: 0.5 }}
+      animate={{
+        y: 0,
+        opacity: 1,
+        scale: 1,
+        scaleX: [1, 0.8, 1.25, 0.9, 1.1, 1],
+        scaleY: [1, 1.3, 0.75, 1.15, 0.95, 1],
+      }}
+      whileHover={{ scale: 1.05 }}
+      transition={{
+        y: { type: 'spring', stiffness: 300, damping: 15 },
+        opacity: { duration: 0.2 },
+        scale: { duration: 0.2 },
+        scaleX: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+        scaleY: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+      }}
+      className="origin-bottom pb-1"
+    >
       <div className="relative flex h-7 w-7 -rotate-45 items-center justify-center rounded-[50%_50%_50%_10%] border-[1.5px] border-white bg-[var(--color-primary)]">
         <div className="flex rotate-45 items-center justify-center">
           <div className="h-2 w-2 rounded-full bg-white" />
         </div>
         <span className="sr-only">{title}</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

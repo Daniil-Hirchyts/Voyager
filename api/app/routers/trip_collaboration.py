@@ -4,10 +4,11 @@ from datetime import datetime
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from redis.asyncio import Redis
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cache.redis_helpers import cache_delete_prefix
-from app.db.models import UserProfile
+from app.db.models import TripCollaborator, UserProfile
 from app.db.repositories import AuditRepository, TripRepository
 from app.db.session import get_db_session, get_redis
 from app.errors import ConflictError, ForbiddenError, NotFoundError, ValidationApiError
@@ -97,17 +98,35 @@ def _invitation_response(invitation) -> TripInvitationResponse:
     )
 
 
-def _collaborator_payload(item) -> dict:
+def _collaborator_payload(item, *, user: UserProfile | None = None) -> dict:
+    payload_user = user if user is not None else item.__dict__.get("user")
     return {
         "id": str(item.id),
         "trip_id": str(item.trip_id),
         "user_id": str(item.user_id),
         "role": item.role.value if hasattr(item.role, "value") else str(item.role),
-        "email": item.user.email if item.user is not None else None,
-        "display_name": item.user.display_name if item.user is not None else "Traveler",
+        "email": payload_user.email if payload_user is not None else None,
+        "display_name": payload_user.display_name if payload_user is not None else "Traveler",
         "invited_by_user_id": str(item.invited_by_user_id) if item.invited_by_user_id else None,
         "created_at": item.created_at.isoformat(),
         "updated_at": item.updated_at.isoformat(),
+    }
+
+
+def _collaborator_payload_from_snapshot(snapshot: dict) -> dict:
+    role = snapshot["role"]
+    return {
+        "id": str(snapshot["id"]),
+        "trip_id": str(snapshot["trip_id"]),
+        "user_id": str(snapshot["user_id"]),
+        "role": role.value if hasattr(role, "value") else str(role),
+        "email": snapshot["email"],
+        "display_name": snapshot["display_name"] or "Traveler",
+        "invited_by_user_id": (
+            str(snapshot["invited_by_user_id"]) if snapshot["invited_by_user_id"] else None
+        ),
+        "created_at": snapshot["created_at"].isoformat(),
+        "updated_at": snapshot["updated_at"].isoformat(),
     }
 
 
@@ -373,11 +392,30 @@ async def accept_trip_invitation(
         invitation=await TripRepository.get_trip_invitation_by_id(db, invitation_id=invitation_id),
     )
     before = _invitation_payload(invitation)
-    accepted_invitation, collaborator = await TripRepository.accept_trip_invitation(
+    accepted_invitation, _ = await TripRepository.accept_trip_invitation(
         db,
         invitation=invitation,
         accepted_by_user_id=auth.user_id,
     )
+    collaborator_snapshot_row = await db.execute(
+        select(
+            TripCollaborator.id.label("id"),
+            TripCollaborator.trip_id.label("trip_id"),
+            TripCollaborator.user_id.label("user_id"),
+            TripCollaborator.role.label("role"),
+            TripCollaborator.invited_by_user_id.label("invited_by_user_id"),
+            TripCollaborator.created_at.label("created_at"),
+            TripCollaborator.updated_at.label("updated_at"),
+            UserProfile.email.label("email"),
+            UserProfile.display_name.label("display_name"),
+        )
+        .outerjoin(UserProfile, UserProfile.id == TripCollaborator.user_id)
+        .where(TripCollaborator.trip_id == accepted_invitation.trip_id)
+        .where(TripCollaborator.user_id == auth.user_id)
+    )
+    collaborator_snapshot = collaborator_snapshot_row.mappings().one_or_none()
+    if collaborator_snapshot is None:
+        raise NotFoundError("Trip collaborator not found")
     await AuditRepository.create_entry(
         db,
         user_id=auth.user_id,
@@ -393,10 +431,10 @@ async def accept_trip_invitation(
         user_id=auth.user_id,
         trip_id=accepted_invitation.trip_id,
         entity_type="trip_collaborator",
-        entity_id=collaborator.id,
+        entity_id=collaborator_snapshot["id"],
         action="CREATE",
         before=None,
-        after=_collaborator_payload(collaborator),
+        after=_collaborator_payload_from_snapshot(collaborator_snapshot),
     )
     await _invalidate_trip_collaboration_caches(redis)
     summary = await TripRepository.get_trip_access_summary(

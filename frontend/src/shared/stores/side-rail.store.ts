@@ -11,7 +11,9 @@ export type DayAnchor = {
 export type PlannerSectionAnchor = 'itinerary' | 'hotel' | 'travel';
 
 type PlannerInstruments = {
-  onOpenAssistant: () => void;
+  isAssistantOpen: boolean;
+  onToggleAssistant: () => void;
+  onCloseAssistant: () => void;
   onOpenSettings: () => void;
   onShare: () => void;
   days: DayAnchor[];

@@ -136,12 +136,12 @@ export function ActivityDetailsDrawer({
   return (
     <Sheet open={open} onOpenChange={(next) => (!next ? onClose() : undefined)}>
       <SheetContent
-        side={isMobile ? 'bottom' : 'right'}
+        side={isMobile ? 'bottom' : 'left'}
         className={cn(
           'flex flex-col overflow-hidden bg-[var(--color-secondary-surface)] p-0',
           isMobile
             ? 'h-[94dvh] rounded-t-[16px] border-x-0 border-b-0 sm:max-w-none'
-            : 'h-full w-full max-w-[28rem] sm:max-w-[28rem]',
+            : 'left-14 h-full w-[calc(100vw-56px)] max-w-[calc(100vw-56px)] lg:w-[clamp(380px,46vw,500px)] lg:max-w-[clamp(380px,46vw,500px)]',
         )}
       >
         <SheetTitle className="sr-only">{activity.title}</SheetTitle>

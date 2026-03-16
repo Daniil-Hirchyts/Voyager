@@ -16,11 +16,7 @@ export function TravelConnector({ durationMin, distanceKm, testId }: TravelConne
       <div className="pointer-events-none absolute top-0 bottom-0 left-[1.05rem] border-l border-dashed border-[var(--color-border)]" />
       <div
         className={cn(
-          'ml-6 flex items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]',
-          hasEstimate
-            ? 'bg-[var(--color-secondary-surface)]'
-            : 'bg-[var(--color-secondary-surface)]/70',
-        )}
+          'ml-6 flex items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]')}
       >
         <Route className="h-3.5 w-3.5 shrink-0" />
         {hasEstimate ? (

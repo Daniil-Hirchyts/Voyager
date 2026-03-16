@@ -9,6 +9,7 @@ import { cn } from '@/shared/lib/cn';
 import type { PlannerActivity, PlannerDay, RouteTravelMode } from '@/shared/api/types';
 import { ActivityCard } from './ActivityCard';
 import { TravelConnector } from './TravelConnector';
+import { PLANNER_MAP_DAY_COLORS } from './planner-map-utils';
 import {
   buildPlannerTravelLegs,
   formatTravelDistance,
@@ -172,6 +173,10 @@ export function DayColumn({
                     onToggleVisited
                       ? () => onToggleVisited(activity.id, activity.visited_at)
                       : undefined
+                  }
+                  color={
+                    PLANNER_MAP_DAY_COLORS[day.day_index % PLANNER_MAP_DAY_COLORS.length] ??
+                    PLANNER_MAP_DAY_COLORS[0]
                   }
                 />
               </Fragment>

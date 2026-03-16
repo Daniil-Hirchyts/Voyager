@@ -26,6 +26,7 @@ interface BaseProps {
   isSelected?: boolean;
   dragHandleProps?: ButtonHTMLAttributes<HTMLButtonElement>;
   showDragHandle?: boolean;
+  color?: string;
 }
 
 const CATEGORY_ICON: Record<ActivityCategory, typeof Landmark> = {
@@ -62,6 +63,7 @@ export function ActivityCardView({
   isSelected = false,
   dragHandleProps,
   showDragHandle = false,
+  color,
 }: BaseProps) {
   const schedule = scheduleLabel(activity);
   const categoryLabel = plannerCategoryLabel(activity.category);
@@ -78,14 +80,24 @@ export function ActivityCardView({
   const CategoryIcon = CATEGORY_ICON[activity.category] ?? Landmark;
   const shouldRenderDragHandle = Boolean(dragHandleProps || showDragHandle);
 
+  const ringStyle =
+    isSelected && color
+      ? {
+          boxShadow: `0 0 0 2px ${color}`,
+          borderColor: color,
+        }
+      : {};
+
   return (
     <article
       className={cn(
-        'group flex flex-col rounded-[12px] bg-[#F3F5F7] transition-[box-shadow,background-color]',
-        isSelected && 'bg-white ring-2 ring-black/6',
+        'group flex flex-col rounded-[12px] transition-[box-shadow,background-color] border border-[var(--color-border)] bg-zinc-50/60',
+        isSelected && !color && 'bg-white ring-2 ring-[var(--color-info)]',
+        isSelected && color && 'bg-white',
         isDragging && 'bg-white ring-2 ring-black/10',
         activity.visited_at && 'bg-[rgba(0,201,120,0.08)]',
       )}
+      style={ringStyle}
       aria-label={`Activity: ${activity.title}`}
     >
       <div className="flex items-start justify-between gap-2 px-3 pt-2 pb-1">
@@ -186,6 +198,7 @@ export function ActivityCard({
   onToggleVisited,
   isDragging = false,
   isSelected = false,
+  color,
 }: SortableProps) {
   const {
     attributes,
@@ -218,6 +231,7 @@ export function ActivityCard({
         onToggleVisited={onToggleVisited}
         isDragging={isDragging || isSortableDragging}
         isSelected={isSelected}
+        color={color}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
     </div>

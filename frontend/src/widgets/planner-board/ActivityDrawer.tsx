@@ -472,7 +472,7 @@ function PlaceSelector({
   const showResults = normalizedQuery.length >= 3;
   const showSelectedSummary = !normalizedQuery && Boolean(selectedCandidate);
   return (
-    <div className="rounded-[16px] bg-[#F3F5F7] p-3">
+    <div className="rounded-[16px] p-3">
       {' '}
       <div className="relative">
         {' '}
@@ -604,7 +604,7 @@ function TravelTimeWheelPicker({
   };
 
   return (
-    <div className="rounded-[16px] bg-[#F3F5F7] p-3">
+    <div className="rounded-[16px] p-3">
       {' '}
       <div className="">
         {' '}
@@ -653,7 +653,7 @@ function TravelTimeWheelPicker({
           />{' '}
         </WheelPickerWrapper>{' '}
         <span className="text-base leading-none font-semibold text-[var(--color-text-muted)]">:</span>{' '}
-        <WheelPickerWrapper className="w-full rounded-[12px] bg-[#F3F5F7] px-1 shadow-none">
+        <WheelPickerWrapper className="w-full rounded-[12px] px-1 shadow-none">
           {' '}
           <WheelPicker
             value={minute}
@@ -1359,11 +1359,11 @@ export function ActivityDrawer({
     <Sheet open={open} onOpenChange={(nextOpen) => (!nextOpen ? onClose() : undefined)}>
       {' '}
       <SheetContent
-        side={isMobile ? 'bottom' : 'right'}
+        side={isMobile ? 'bottom' : 'left'}
         className={
           isMobile
             ? 'flex h-[94dvh] flex-col overflow-hidden rounded-t-[24px] p-0 sm:max-w-none'
-            : 'flex h-full w-full max-w-[36rem] flex-col overflow-hidden p-0 sm:max-w-[36rem]'
+            : 'left-14 flex h-full w-[calc(100vw-56px)] max-w-[calc(100vw-56px)] flex-col overflow-hidden p-0 lg:w-[clamp(380px,46vw,500px)] lg:max-w-[clamp(380px,46vw,500px)]'
         }
       >
         {' '}

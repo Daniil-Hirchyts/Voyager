@@ -1033,6 +1033,7 @@ export default function TripCreatePage() {
           <MapClickPickerEffect enabled={step === 1} onLocationPicked={handleMapLocationPicked} />
           {mapCenter && (
             <VoyagerMarker
+              key={`destination-${mapCenter.lat}-${mapCenter.lng}`}
               position={mapCenter}
               title={selectedDestinationSuggestion?.label ?? ''}
             />

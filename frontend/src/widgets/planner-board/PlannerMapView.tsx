@@ -285,7 +285,7 @@ type PreviewPlan = {
 };
 
 const FLOATING_ICON_BUTTON_CLASS =
-  'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] backdrop-blur transition-colors hover:bg-white';
+  'pointer-events-auto inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] backdrop-blur transition-colors hover:bg-white shadow-sm hover:shadow-md';
 const RECOMMENDATION_MARKER_COLOR = '#00C978';
 const SAVED_RECOMMENDATION_MARKER_COLOR = '#FFA200';
 
@@ -409,7 +409,7 @@ export function reconcileDayAccordionState(
   sectionDayIds: string[],
 ) {
   return Object.fromEntries(
-    sectionDayIds.map((dayId) => [dayId, currentDayAccordionState?.[dayId] ?? dayId !== 'inbox']),
+    sectionDayIds.map((dayId) => [dayId, currentDayAccordionState?.[dayId] ?? false]),
   ) as Record<string, boolean>;
 }
 
@@ -436,6 +436,7 @@ type BudgetGroup = {
 type PlannerStandaloneActivityGroup = {
   id: string;
   dayId: string | null;
+  dayIndex: number | null;
   title: string;
   subtitle: string;
   activities: PlannerActivity[];
@@ -459,6 +460,7 @@ function buildStandaloneActivityGroups(
     groups.push({
       id: `${bucket}::inbox`,
       dayId: null,
+      dayIndex: null,
       title: 'Unassigned',
       subtitle: 'Keep flexible until you assign a day',
       activities: unassignedActivities,
@@ -477,6 +479,7 @@ function buildStandaloneActivityGroups(
     groups.push({
       id: `${bucket}::${day.id}`,
       dayId: day.id,
+      dayIndex: day.day_index,
       title: `Day ${day.day_index + 1}`,
       subtitle: format(parseISO(day.date), 'MMM d, yyyy'),
       activities: dayActivities,
@@ -1345,10 +1348,9 @@ function SearchResultList({
     <div className="space-y-2">
       {items.map((item) => (
         <button
-          key={`${item.kind}:${item.id}`}
-          type="button"
+          key={String(item.id)}
+          className="group relative flex w-full cursor-pointer items-start gap-4 rounded-[16px] px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-secondary-surface)]"
           onClick={() => onSelect(item)}
-          className="w-full rounded-[16px] bg-white px-4 py-3 text-left transition-colors hover:bg-[var(--color-secondary-surface)]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1451,18 +1453,31 @@ function PlannerMapPin({
   visited?: boolean;
 }) {
   return (
-    <div
-      className={cn(
-        'pointer-events-none relative origin-bottom pb-1 transition-transform',
-        selected && 'scale-110',
-      )}
+    <motion.div
+      initial={{ y: -40, opacity: 0, scale: 0.5 }}
+      animate={{
+        y: 0,
+        opacity: 1,
+        scale: selected ? 1.1 : 1,
+        scaleX: [1, 0.8, 1.25, 0.9, 1.1, 1],
+        scaleY: [1, 1.3, 0.75, 1.15, 0.95, 1],
+      }}
+      whileHover={{ scale: selected ? 1.15 : 1.05 }}
+      transition={{
+        y: { type: 'spring', stiffness: 300, damping: 15 },
+        opacity: { duration: 0.2 },
+        scale: { duration: 0.2 },
+        scaleX: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+        scaleY: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+      }}
+      className={cn('pointer-events-none relative origin-bottom pb-1')}
     >
       <div
-        className="flex h-9 w-9 -rotate-45 items-center justify-center rounded-[50%_50%_50%_10%] border-[1.5px] border-white"
+        className="flex h-10 w-10 -rotate-45 items-center justify-center rounded-[50%_50%_50%_10%] border-[2px] border-white shadow-sm"
         style={{ backgroundColor: selected ? '#111827' : `${color}` }}
       >
         <div className="flex rotate-45 items-center justify-center">
-          <span className="text-[14px] leading-none font-bold tracking-tight text-white">
+          <span className="text-[15px] leading-none font-bold tracking-tight text-white">
             {label}
           </span>
         </div>
@@ -1472,7 +1487,7 @@ function PlannerMapPin({
           <Check className="h-2.5 w-2.5 text-white" />
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 }
 
@@ -1685,7 +1700,7 @@ function PlannerMapDayAccordion({
       value={section.dayId}
       ref={setNodeRef}
       className={cn(
-        'overflow-hidden rounded-[18px] bg-white transition-all',
+        'overflow-hidden rounded-[18px] bg-white transition-[box-shadow,ring]',
         isSelected && '',
         isOver && 'ring-2 ring-black/6',
       )}
@@ -1717,7 +1732,7 @@ function PlannerMapDayAccordion({
 
               <div className="flex shrink-0 items-center gap-1">
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  {!isInbox ? (
+                  {!isInbox && section.stops.length > 0 ? (
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -1786,6 +1801,13 @@ function PlannerMapDayAccordion({
         <div className="border-t border-[var(--color-border)] pt-2">
           {orderedActivities.length > 0 ? (
             <>
+              {displayMetrics?.hotelToFirstLeg ? (
+                <TravelConnector
+                  durationMin={displayMetrics.hotelToFirstLeg.durationMin}
+                  distanceKm={displayMetrics.hotelToFirstLeg.distanceKm}
+                  testId={`planner-map-travel-leg-hotel-to-first-${section.dayId}`}
+                />
+              ) : null}
               <SortableContext
                 items={orderedActivities.map((activity) => activity.id)}
                 strategy={verticalListSortingStrategy}
@@ -1809,6 +1831,7 @@ function PlannerMapDayAccordion({
                         }}
                         isSelected={selectedStop?.activity.id === activity.id}
                         onToggleVisited={() => onToggleVisited(activity.id, activity.visited_at)}
+                        color={section.color}
                       />
                       {leg && nextActivity ? (
                         <TravelConnector
@@ -1821,6 +1844,14 @@ function PlannerMapDayAccordion({
                   );
                 })}
               </SortableContext>
+
+              {displayMetrics?.lastToHotelLeg ? (
+                <TravelConnector
+                  durationMin={displayMetrics.lastToHotelLeg.durationMin}
+                  distanceKm={displayMetrics.lastToHotelLeg.distanceKm}
+                  testId={`planner-map-travel-leg-last-to-hotel-${section.dayId}`}
+                />
+              ) : null}
 
               <div
                 ref={setEndZoneRef}
@@ -1877,9 +1908,17 @@ function PlannerStandaloneActivityGroupCard({
       items={group.activities.map((activity) => activity.id)}
       strategy={verticalListSortingStrategy}
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 p-0.5">
         {group.activities.map((activity) => {
           const stop = stopByActivityId.get(activity.id) ?? null;
+          const dayIndex = group.dayIndex ?? -1;
+          const color =
+            stop?.color ??
+            (dayIndex >= 0
+              ? (PLANNER_MAP_DAY_COLORS[dayIndex % PLANNER_MAP_DAY_COLORS.length] ??
+                PLANNER_MAP_DAY_COLORS[0])
+              : '#B59BFF');
+
           return (
             <ActivityCard
               key={activity.id}
@@ -1891,6 +1930,7 @@ function PlannerStandaloneActivityGroupCard({
               }}
               isSelected={selectedStop?.activity.id === activity.id}
               onToggleVisited={() => onToggleVisited(activity.id, activity.visited_at)}
+              color={color}
             />
           );
         })}
@@ -2479,12 +2519,12 @@ function DetailSheetContent({
                 <Skeleton className={cn('col-span-2 rounded-[18px]', compact ? 'h-9' : 'h-10')} />
               </div>
             ) : activeTab === 'about' ? (
-              <div className="grid grid-cols-2 gap-3">
-                {/* Row 1 col 1 — Summary (hidden when no content) */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Row 1 col 1-2 — Summary (hidden when no content) */}
                 {summary ? (
                   <div
                     className={cn(
-                      'rounded-[22px] bg-white',
+                      'col-span-2 rounded-[22px] bg-white',
                       compact ? 'p-3.5' : 'p-4',
                     )}
                   >
@@ -2507,7 +2547,7 @@ function DetailSheetContent({
                   </div>
                 ) : null}
 
-                {/* Row 1 col 2 — Photo (spans both cols when no summary) */}
+                {/* Row 1 col 3 — Photo (spans both rows, or all 3 cols when no summary) */}
                 {detailPhotoUrl ? (
                   <PhotoViewerProvider>
                     <PhotoViewer src={resolveMediaUrl(heroPhoto?.image_url) ?? detailPhotoUrl}>
@@ -2515,8 +2555,9 @@ function DetailSheetContent({
                         type="button"
                         className={cn(
                           'group relative block w-full overflow-hidden rounded-[22px] bg-[var(--color-secondary-surface)] text-left',
-                          !summary && 'col-span-2',
-                          compact ? 'h-[6rem]' : 'h-[8rem]',
+                          !summary && 'col-span-3',
+                          summary ? 'row-span-2' : '',
+                          compact ? 'max-h-[12rem] min-h-[5rem]' : 'max-h-[14rem] min-h-[6rem]',
                         )}
                         aria-label={`Preview ${title}`}
                       >
@@ -3003,7 +3044,7 @@ export function PlannerMapView({
       const stored = localStorage.getItem(`planner-rail-sections:${tripId}`);
       if (stored) return JSON.parse(stored) as string[];
     } catch {}
-    return ['recommendations', 'travel', 'accommodation'];
+    return [];
   });
   const handleRailSectionsChange = (next: string[]) => {
     setRailSections(next);
@@ -3023,16 +3064,75 @@ export function PlannerMapView({
       });
     });
   }, [onRegisterSectionOpener, tripId]);
+  const previewByDayId = usePlannerStore((s) => s.previewByDayId);
+
+  const previewAwareDays = useMemo(() => {
+    return days.map((day) => {
+      const preview = previewByDayId[day.id];
+      if (!preview?.order.length) return day;
+
+      const merged = mergeBucketActivityOrder(day.activities, 'main', preview.order);
+      // We apply a stable but temporary order_index for the preview
+      return {
+        ...day,
+        activities: merged.map((a, i) => ({ ...a, order_index: i })),
+      };
+    });
+  }, [days, previewByDayId]);
+
+  const previewAwareInbox = useMemo(() => {
+    const preview = previewByDayId['inbox'];
+    if (!preview?.order.length) return inboxActivities;
+
+    const merged = mergeBucketActivityOrder(inboxActivities, 'main', preview.order);
+    return merged.map((a, i) => ({ ...a, order_index: i }));
+  }, [inboxActivities, previewByDayId]);
+
   const sections = useMemo(
-    () => buildPlannerMapSections(days, inboxActivities),
-    [days, inboxActivities],
+    () => buildPlannerMapSections(previewAwareDays, previewAwareInbox),
+    [previewAwareDays, previewAwareInbox],
   );
+
   const itinerarySections = useMemo(
     () =>
       buildPlannerMapSections(
-        filterPlannerDaysByBucket(days, 'main'),
-        filterPlannerActivitiesByBucket(inboxActivities, 'main'),
+        filterPlannerDaysByBucket(previewAwareDays, 'main'),
+        filterPlannerActivitiesByBucket(previewAwareInbox, 'main'),
       ),
+    [previewAwareDays, previewAwareInbox],
+  );
+  const itineraryAccommodationByDayId = useMemo(
+    () => {
+      const allAccommodationActivities = [...inboxActivities, ...days.flatMap((day) => day.activities)]
+        .filter((activity) => activity.category === 'hotel');
+      const uniqueAccommodationActivities = Array.from(
+        new Map(allAccommodationActivities.map((activity) => [activity.id, activity])).values(),
+      );
+      const singleUnassignedAccommodation =
+        uniqueAccommodationActivities.length === 1 &&
+        uniqueAccommodationActivities[0]?.trip_day_id == null
+          ? uniqueAccommodationActivities[0]
+          : null;
+
+      return Object.fromEntries(
+        days.map((day) => {
+          const dayAccommodationFromActivities = [...day.activities]
+            .sort((left, right) => left.order_index - right.order_index)
+            .find((activity) => activity.category === 'hotel');
+          const dayAccommodationFromGlobal = uniqueAccommodationActivities.find(
+            (activity) => activity.trip_day_id === day.id,
+          );
+
+          return [
+            day.id,
+            dayAccommodationFromActivities ??
+              dayAccommodationFromGlobal ??
+              singleUnassignedAccommodation ??
+              null,
+          ] as const;
+        }),
+      );
+    },
     [days, inboxActivities],
   );
   const accommodationGroups = useMemo(
@@ -3095,7 +3195,8 @@ export function PlannerMapView({
   const [addingToTrip, setAddingToTrip] = useState(false);
   const [togglingVisited, setTogglingVisited] = useState(false);
   const [optimizingDayId, setOptimizingDayId] = useState<string | null>(null);
-  const [previewByDayId, setPreviewByDayId] = useState<Record<string, PreviewPlan | null>>({});
+  // No longer using local state for previewByDayId, it's in the store
+  const setPreviewByDayId = usePlannerStore((s) => s.setPreviewByDayId);
   const deferredSearchText = useDeferredValue(searchText);
   const [viewport, setViewport] = useState(() => {
     const firstStop = sections
@@ -3115,14 +3216,19 @@ export function PlannerMapView({
 
   const { data: tripLayersData } = useTripMapLayers(tripId);
   const routeLegPayload = useMemo(
-    () => buildPlannerMapLegPayload(itinerarySections, travelMode),
-    [itinerarySections, travelMode],
+    () => buildPlannerMapLegPayload(itinerarySections, travelMode, itineraryAccommodationByDayId),
+    [itinerarySections, travelMode, itineraryAccommodationByDayId],
   );
   const routeLegEstimates = useRouteLegEstimates(routeLegPayload);
   const dayMetrics = useMemo(
     () =>
-      buildPlannerMapDayMetrics(itinerarySections, routeLegEstimates.data?.items ?? [], travelMode),
-    [itinerarySections, routeLegEstimates.data?.items, travelMode],
+      buildPlannerMapDayMetrics(
+        itinerarySections,
+        routeLegEstimates.data?.items ?? [],
+        travelMode,
+        itineraryAccommodationByDayId,
+      ),
+    [itinerarySections, routeLegEstimates.data?.items, travelMode, itineraryAccommodationByDayId],
   );
   const sectionDayIds = useMemo(
     () => itinerarySections.map((section) => section.dayId),
@@ -3964,13 +4070,18 @@ export function PlannerMapView({
       const markerOrder = optimizePlannerDayStops(section, result.items, travelMode);
       const fullOrder = buildApplyPreviewOrder(section, markerOrder);
       const previewActivities = orderedSectionActivities(section, fullOrder);
-      setPreviewByDayId((current) => ({
-        ...current,
+      setPreviewByDayId({
+        ...previewByDayId,
         [section.dayId]: {
           order: fullOrder,
-          metrics: buildPlannerMapMetricsForActivities(previewActivities, result.items, travelMode),
+          metrics: buildPlannerMapMetricsForActivities(
+            previewActivities,
+            result.items,
+            travelMode,
+            itineraryAccommodationByDayId[section.dayId] ?? null,
+          ),
         },
-      }));
+      });
       toast.success('Optimised preview ready');
     } catch {
       toast.error('Could not compute an optimized order for this day');
@@ -4004,7 +4115,7 @@ export function PlannerMapView({
         tripVersion,
       );
       await queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
-      setPreviewByDayId((current) => ({ ...current, [section.dayId]: null }));
+      setPreviewByDayId({ ...previewByDayId, [section.dayId]: null });
       toast.success('Optimized order applied');
     } catch {
       toast.error('Could not apply the optimized order');
@@ -4012,7 +4123,7 @@ export function PlannerMapView({
   };
 
   const handleCancelPreview = (dayId: string) => {
-    setPreviewByDayId((current) => ({ ...current, [dayId]: null }));
+    setPreviewByDayId({ ...previewByDayId, [dayId]: null });
   };
 
   const selectedSection = selectedStop
@@ -4314,10 +4425,7 @@ export function PlannerMapView({
               defaultCenter={{ lat: viewport.latitude, lng: viewport.longitude }}
               defaultZoom={viewport.zoom}
               style={{ width: '100%', height: '100%' }}
-              disableDefaultUI={false}
-              streetViewControl={false}
-              mapTypeControl={false}
-              fullscreenControl={false}
+              disableDefaultUI
               onClick={handleMapPoiSelection}
               onCameraChanged={(event) => {
                 setViewport({
@@ -4491,6 +4599,7 @@ export function PlannerMapView({
               selectedSearchItem.lon != null &&
               !isRecommendationSearchItem(selectedSearchItem) ? (
                 <VoyagerMarker
+                  key={`search-result-${selectedSearchItem.id}-${selectedSearchItem.lat}-${selectedSearchItem.lon}`}
                   position={{ lat: selectedSearchItem.lat, lng: selectedSearchItem.lon }}
                   title={selectedSearchItem.name}
                   color="#6B7280"
@@ -4533,212 +4642,230 @@ export function PlannerMapView({
                   ))
                 : null}
 
-              <VoyagerMapControl position={ControlPosition.TOP_LEFT}>
-                <div className="pointer-events-auto relative z-[5] m-4 flex flex-wrap items-center gap-2">
-                  <ExportMenu
-                    tripId={tripId}
-                    tripVersion={tripVersion}
-                    trigger={
-                      <button
-                        type="button"
-                        className={FLOATING_ICON_BUTTON_CLASS}
-                        aria-label="Export"
-                        title="Export"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
-                    }
-                  />
-                </div>
-              </VoyagerMapControl>
-
-              <VoyagerMapControl position={ControlPosition.TOP_RIGHT}>
-                <div className="pointer-events-auto relative z-[5] m-4 flex flex-col items-end gap-2">
-                  <Popover open={searchOpen} onOpenChange={setSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <FloatingPopoverIconTrigger
-                        icon={<Search className="h-4 w-4" />}
-                        label="Search"
-                        dataTestId="planner-map-search-trigger"
+              {!isMobile && (
+                <>
+                  <VoyagerMapControl position={ControlPosition.TOP_LEFT}>
+                    <div className="pointer-events-auto relative z-[5] m-4 flex flex-wrap items-center gap-2">
+                      <ExportMenu
+                        tripId={tripId}
+                        tripVersion={tripVersion}
+                        trigger={
+                          <button
+                            type="button"
+                            className={FLOATING_ICON_BUTTON_CLASS}
+                            aria-label="Export"
+                            title="Export"
+                          >
+                            <Download className="h-5 w-5" />
+                          </button>
+                        }
                       />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      sideOffset={10}
-                      className="w-[360px] rounded-[24px] border-[var(--color-border)] p-4"
-                    >
-                      <div className="space-y-3">
-                        <div className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
-                            <input
-                              value={searchText}
-                              onChange={(event) =>
-                                startTransition(() => {
-                                  setActiveQuickCategory(null);
-                                  setSearchText(event.target.value);
-                                })
-                              }
-                              placeholder="Search a place"
-                              className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--color-text-muted)]"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          {QUICK_CATEGORIES.map((category) => (
-                            <button
-                              key={category.id}
-                              type="button"
-                              onClick={() => {
-                                setActiveQuickCategory(category);
-                                setSearchText(category.query);
-                              }}
-                              className={cn(
-                                'rounded-full px-3 py-2 text-[0.76rem] font-medium',
-                                activeQuickCategory?.id === category.id
-                                  ? 'bg-[var(--color-text)] text-white'
-                                  : 'bg-[var(--color-secondary-surface)] text-[var(--color-text)]',
-                              )}
-                            >
-                              {category.label}
-                            </button>
-                          ))}
-                        </div>
-                        <ScrollArea className="max-h-[22rem]">
-                          <SearchResultList
-                            items={allSearchResults}
-                            onSelect={handleSearchSelection}
+                    </div>
+                  </VoyagerMapControl>
+
+                  <VoyagerMapControl position={ControlPosition.TOP_RIGHT}>
+                    <div className="pointer-events-auto relative z-[5] m-4 flex flex-col items-end gap-2">
+                      <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                        <PopoverTrigger asChild>
+                          <FloatingPopoverIconTrigger
+                            icon={<Search className="h-5 w-5" />}
+                            label="Search"
+                            dataTestId="planner-map-search-trigger"
                           />
-                        </ScrollArea>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  <Popover open={layersOpen} onOpenChange={setLayersOpen}>
-                    <PopoverTrigger asChild>
-                      <FloatingPopoverIconTrigger
-                        icon={<Layers3 className="h-4 w-4" />}
-                        label="Layers"
-                        dataTestId="planner-map-layers-trigger"
-                      />
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      sideOffset={10}
-                      className="w-[min(22rem,calc(100vw-1.25rem))] overflow-hidden rounded-[20px] border-[var(--color-border)] p-0"
-                    >
-                      <ScrollArea className="max-h-[min(70dvh,34rem)]">
-                        <div className="space-y-4 p-3">
-                          <div>
-                            <p className="px-2 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
-                              Categories
-                            </p>
-                            <div className="mt-1 space-y-0.5">
-                              {(
-                                [
-                                  ['visit', 'Visits', Landmark],
-                                  ['eat', 'Eat', Utensils],
-                                  ['activity', 'Activities', Sparkles],
-                                  ['recommendation', 'Recommendations', Compass],
-                                  ['hotel', 'Hotels', BedDouble],
-                                  ['travel', 'Travel', Route],
-                                ] as const
-                              ).map(([key, label, Icon]) => (
-                                <label
-                                  key={key}
-                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]"
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="end"
+                          sideOffset={10}
+                          className="w-[min(30rem,calc(100vw-1.25rem))]"
+                        >
+                          <div className="flex flex-col gap-2">
+                            <div className="rounded-[16px] border border-[var(--color-border)] bg-[#FDFDFD] px-3.5 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <Search className="h-5 w-5 opacity-70" />
+                                <input
+                                  value={searchText}
+                                  onChange={(event) =>
+                                    startTransition(() => {
+                                      setActiveQuickCategory(null);
+                                      setSearchText(event.target.value);
+                                    })
+                                  }
+                                  placeholder="Search a place"
+                                  className="w-full bg-transparent text-[0.93rem] outline-none placeholder:text-[var(--color-text-muted)]"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {QUICK_CATEGORIES.map((category) => (
+                                <button
+                                  key={category.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveQuickCategory(category);
+                                    setSearchText(category.query);
+                                  }}
+                                  className={cn(
+                                    'rounded-[14px] px-3.5 py-2 text-[0.85rem] font-medium transition-colors',
+                                    activeQuickCategory?.id === category.id
+                                      ? 'bg-[var(--color-text)] text-white'
+                                      : 'bg-[rgba(23,23,23,0.06)] text-[var(--color-text)] hover:bg-[rgba(23,23,23,0.1)]',
+                                  )}
                                 >
-                                  <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                    <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--color-text-muted)]" />
-                                    <span className="truncate">{label}</span>
-                                  </span>
-                                  <Checkbox
-                                    checked={visibleGroups.has(key)}
-                                    onCheckedChange={() => toggleVisibleGroup(key)}
-                                  />
-                                </label>
+                                  {category.label}
+                                </button>
                               ))}
                             </div>
+                            <ScrollArea className="max-h-[22rem]">
+                              <SearchResultList
+                                items={allSearchResults}
+                                onSelect={handleSearchSelection}
+                              />
+                            </ScrollArea>
                           </div>
+                        </PopoverContent>
+                      </Popover>
 
-                          <div>
-                            <p className="px-2 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
-                              Routes
-                            </p>
-                            <div className="mt-1 space-y-0.5">
-                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]">
-                                <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                  Route lines
-                                </span>
-                                <Checkbox
-                                  checked={showRoutes}
-                                  onCheckedChange={(checked) => {
-                                    setMapVisibilityCustomized(true);
-                                    setShowRoutes(Boolean(checked));
-                                  }}
-                                />
-                              </label>
-                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]">
-                                <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                  Custom layers
-                                </span>
-                                <Checkbox
-                                  checked={showCustomLayers}
-                                  onCheckedChange={(checked) => {
-                                    setMapVisibilityCustomized(true);
-                                    setShowCustomLayers(Boolean(checked));
-                                  }}
-                                />
-                              </label>
-                              {sections.map((section) => (
-                                <label
-                                  key={section.dayId}
-                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]"
-                                >
-                                  <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                    <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">
-                                      <span
-                                        className="h-3 w-3 rounded-full"
-                                        style={{ backgroundColor: section.color }}
+                      <Popover open={layersOpen} onOpenChange={setLayersOpen}>
+                        <PopoverTrigger asChild>
+                          <FloatingPopoverIconTrigger
+                            icon={<Layers3 className="h-5 w-5" />}
+                            label="Layers"
+                            dataTestId="planner-map-layers-trigger"
+                          />
+                        </PopoverTrigger>
+                        <PopoverContent
+                          align="end"
+                          sideOffset={10}
+                          className="w-[min(22rem,calc(100vw-1.25rem))]"
+                        >
+                          <ScrollArea className="max-h-[min(70dvh,34rem)]">
+                            <div className="flex flex-col gap-4">
+                              <div className="flex flex-col gap-0.5">
+                                <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
+                                  Categories
+                                </p>
+                                <div className="mt-1 space-y-0.5">
+                                  {(
+                                    [
+                                      ['visit', 'Visits', Landmark],
+                                      ['eat', 'Eat', Utensils],
+                                      ['activity', 'Activities', Sparkles],
+                                      ['recommendation', 'Recommendations', Compass],
+                                      ['hotel', 'Hotels', BedDouble],
+                                      ['travel', 'Travel', Route],
+                                    ] as const
+                                  ).map(([key, label, Icon]) => (
+                                    <label
+                                      key={key}
+                                      className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                                    >
+                                      <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                        <Icon className="h-[1.1rem] w-[1.1rem] shrink-0 opacity-70" />
+                                        <span className="truncate">{label}</span>
+                                      </span>
+                                      <Checkbox
+                                        checked={visibleGroups.has(key)}
+                                        onCheckedChange={() => toggleVisibleGroup(key)}
                                       />
-                                    </div>
-                                    <span className="truncate">{section.title}</span>
-                                  </span>
-                                  <Checkbox
-                                    checked={visibleDayIds.has(section.dayId)}
-                                    onCheckedChange={() => toggleVisibleDay(section.dayId)}
-                                  />
-                                </label>
-                              ))}
+                                    </label>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col gap-0.5">
+                                <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
+                                  Routes
+                                </p>
+                                <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                                  <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
+                                      Route lines
+                                    </span>
+                                    <Checkbox
+                                      checked={showRoutes}
+                                      onCheckedChange={(checked) => {
+                                        setMapVisibilityCustomized(true);
+                                        setShowRoutes(Boolean(checked));
+                                      }}
+                                    />
+                                  </label>
+                                <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                                  <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
+                                      Custom layers
+                                    </span>
+                                    <Checkbox
+                                      checked={showCustomLayers}
+                                      onCheckedChange={(checked) => {
+                                        setMapVisibilityCustomized(true);
+                                        setShowCustomLayers(Boolean(checked));
+                                      }}
+                                    />
+                                  </label>
+                                  {sections.map((section) => (
+                                    <label
+                                      key={section.dayId}
+                                      className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                                    >
+                                      <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                        <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
+                                          <span
+                                            className="h-3 w-3 rounded-full"
+                                            style={{ backgroundColor: section.color }}
+                                          />
+                                        </div>
+                                        <span className="truncate">{section.title}</span>
+                                      </span>
+                                      <Checkbox
+                                        checked={visibleDayIds.has(section.dayId)}
+                                        onCheckedChange={() => toggleVisibleDay(section.dayId)}
+                                      />
+                                    </label>
+                                  ))}
+                              </div>
                             </div>
-                          </div>
-                        </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  </VoyagerMapControl>
 
-                  {recommendations.enabled &&
-                  recommendationsDismissed &&
-                  !hasPlaceSelection &&
-                  !selectedRecommendation &&
-                  isMobile ? (
-                    <FloatingIconButton
-                      icon={<Compass className="h-4 w-4" />}
-                      label="Recommendations"
-                      onClick={() => {
-                        setRecommendationsDismissed(false);
-                        setDetailOpen(true);
-                      }}
-                      isMobile={isMobile}
-                    />
-                  ) : null}
-                </div>
-              </VoyagerMapControl>
+                  {selectedSection && (
+                    <VoyagerMapControl position={ControlPosition.BOTTOM_LEFT}>
+                      <div className="pointer-events-auto relative z-[5] m-4 inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium backdrop-blur shadow-sm">
+                        <CalendarDays className="h-5 w-5 text-[var(--color-text-muted)]" />
+                        <span>{selectedSection.title}</span>
+                        {dayProgressLabel(selectedSection, selectedStop) ? (
+                          <span className="text-[var(--color-text-muted)]">
+                            {dayProgressLabel(selectedSection, selectedStop)}
+                          </span>
+                        ) : null}
+                      </div>
+                    </VoyagerMapControl>
+                  )}
+                </>
+              )}
+            </VoyagerMap>
+          )}
 
-              {selectedSection ? (
-                <VoyagerMapControl position={ControlPosition.BOTTOM_LEFT}>
-                  <div className="pointer-events-auto relative z-[5] m-4 inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/94 px-4 py-3 text-sm backdrop-blur">
-                    <CalendarDays className="h-4 w-4 text-[var(--color-text-muted)]" />
+          {isMobile && config.map.apiKey && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[10] flex items-end justify-between p-4 pb-11">
+              <div className="pointer-events-auto flex flex-col-reverse items-start gap-2">
+                <ExportMenu
+                  tripId={tripId}
+                  tripVersion={tripVersion}
+                  trigger={
+                    <button
+                      type="button"
+                      className={FLOATING_ICON_BUTTON_CLASS}
+                      aria-label="Export"
+                      title="Export"
+                    >
+                      <Download className="h-5 w-5" />
+                    </button>
+                  }
+                />
+                {selectedSection ? (
+                  <div className="inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium backdrop-blur shadow-sm">
+                    <CalendarDays className="h-5 w-5 text-[var(--color-text-muted)]" />
                     <span>{selectedSection.title}</span>
                     {dayProgressLabel(selectedSection, selectedStop) ? (
                       <span className="text-[var(--color-text-muted)]">
@@ -4746,9 +4873,187 @@ export function PlannerMapView({
                       </span>
                     ) : null}
                   </div>
-                </VoyagerMapControl>
-              ) : null}
-            </VoyagerMap>
+                ) : null}
+              </div>
+
+              <div className="pointer-events-auto flex flex-col items-end gap-2">
+                <Popover open={searchOpen} onOpenChange={setSearchOpen}>
+                  <PopoverTrigger asChild>
+                    <FloatingPopoverIconTrigger
+                      icon={<Search className="h-5 w-5" />}
+                      label="Search"
+                      dataTestId="planner-map-search-trigger"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    sideOffset={10}
+                    className="w-[min(30rem,calc(100vw-1.25rem))]"
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="rounded-[16px] border border-[var(--color-border)] bg-[#FDFDFD] px-3.5 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <Search className="h-5 w-5 opacity-70" />
+                          <input
+                            value={searchText}
+                            onChange={(event) =>
+                              startTransition(() => {
+                                setActiveQuickCategory(null);
+                                setSearchText(event.target.value);
+                              })
+                            }
+                            placeholder="Search a place"
+                            className="w-full bg-transparent text-[0.93rem] outline-none placeholder:text-[var(--color-text-muted)]"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_CATEGORIES.map((category) => (
+                          <button
+                            key={category.id}
+                            type="button"
+                            onClick={() => {
+                              setActiveQuickCategory(category);
+                              setSearchText(category.query);
+                            }}
+                            className={cn(
+                              'rounded-[14px] px-3.5 py-2 text-[0.85rem] font-medium transition-colors',
+                              activeQuickCategory?.id === category.id
+                                ? 'bg-[var(--color-text)] text-white'
+                                : 'bg-[rgba(23,23,23,0.06)] text-[var(--color-text)] hover:bg-[rgba(23,23,23,0.1)]',
+                            )}
+                          >
+                            {category.label}
+                          </button>
+                        ))}
+                      </div>
+                      <ScrollArea className="max-h-[22rem]">
+                        <SearchResultList
+                          items={allSearchResults}
+                          onSelect={handleSearchSelection}
+                        />
+                      </ScrollArea>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
+                <Popover open={layersOpen} onOpenChange={setLayersOpen}>
+                  <PopoverTrigger asChild>
+                    <FloatingPopoverIconTrigger
+                      icon={<Layers3 className="h-5 w-5" />}
+                      label="Layers"
+                      dataTestId="planner-map-layers-trigger"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    sideOffset={10}
+                    className="w-[min(22rem,calc(100vw-1.25rem))]"
+                  >
+                    <ScrollArea className="max-h-[min(70dvh,34rem)]">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex flex-col gap-0.5">
+                          <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
+                            Categories
+                          </p>
+                          <div className="mt-1 space-y-0.5">
+                            {(
+                              [
+                                ['visit', 'Visits', Landmark],
+                                ['eat', 'Eat', Utensils],
+                                ['activity', 'Activities', Sparkles],
+                                ['recommendation', 'Recommendations', Compass],
+                                ['hotel', 'Hotels', BedDouble],
+                                ['travel', 'Travel', Route],
+                              ] as const
+                            ).map(([key, label, Icon]) => (
+                              <label
+                                key={key}
+                                className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                              >
+                                <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                  <Icon className="h-[1.1rem] w-[1.1rem] shrink-0 opacity-70" />
+                                  <span className="truncate">{label}</span>
+                                </span>
+                                <Checkbox
+                                  checked={visibleGroups.has(key)}
+                                  onCheckedChange={() => toggleVisibleGroup(key)}
+                                />
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-0.5">
+                          <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
+                            Routes
+                          </p>
+                          <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                            <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
+                                Route lines
+                              </span>
+                              <Checkbox
+                                checked={showRoutes}
+                                onCheckedChange={(checked) => {
+                                  setMapVisibilityCustomized(true);
+                                  setShowRoutes(Boolean(checked));
+                                }}
+                              />
+                            </label>
+                          <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                            <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
+                                Custom layers
+                              </span>
+                              <Checkbox
+                                checked={showCustomLayers}
+                                onCheckedChange={(checked) => {
+                                  setMapVisibilityCustomized(true);
+                                  setShowCustomLayers(Boolean(checked));
+                                }}
+                              />
+                            </label>
+                            {sections.map((section) => (
+                              <label
+                                key={section.dayId}
+                                className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                              >
+                                <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                  <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
+                                    <span
+                                      className="h-3 w-3 rounded-full"
+                                      style={{ backgroundColor: section.color }}
+                                    />
+                                  </div>
+                                  <span className="truncate">{section.title}</span>
+                                </span>
+                                <Checkbox
+                                  checked={visibleDayIds.has(section.dayId)}
+                                  onCheckedChange={() => toggleVisibleDay(section.dayId)}
+                                />
+                              </label>
+                            ))}
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+
+                {recommendations.enabled &&
+                recommendationsDismissed &&
+                !hasPlaceSelection &&
+                !selectedRecommendation ? (
+                  <FloatingIconButton
+                    icon={<Compass className="h-5 w-5" />}
+                    label="Recommendations"
+                    onClick={() => {
+                      setRecommendationsDismissed(false);
+                      setDetailOpen(true);
+                    }}
+                    isMobile={isMobile}
+                  />
+                ) : null}
+              </div>
+            </div>
           )}
 
           {selectedSection && selectedSection.dayId !== 'inbox' ? (
@@ -4757,7 +5062,10 @@ export function PlannerMapView({
                 <button
                   type="button"
                   onClick={() => void handlePreviewOptimize(selectedSection)}
-                  className="absolute right-5 bottom-5 flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff8c62,#7c5ae0)] text-white"
+                  className={cn(
+                    "absolute flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff8c62,#7c5ae0)] text-white",
+                    isMobile ? "right-5 bottom-32" : "right-5 bottom-5"
+                  )}
                   aria-label="Optimise itinerary"
                 >
                   <Sparkles className="h-6 w-6" />
@@ -4944,12 +5252,12 @@ export function ActivityMapDetailSheet({
       }}
     >
       <SheetContent
-        side={isMobile ? 'bottom' : 'right'}
+        side={isMobile ? 'bottom' : 'left'}
         hideCloseButton
         className={
           isMobile
             ? 'flex h-[82dvh] flex-col overflow-hidden rounded-t-[28px] border-x-0 border-b-0 bg-[#F3F5F7] p-0 sm:max-w-none'
-            : 'flex h-full w-full max-w-[28rem] flex-col overflow-hidden bg-[#F3F5F7] p-0 sm:max-w-[28rem]'
+            : 'left-14 flex h-full w-[calc(100vw-56px)] max-w-[calc(100vw-56px)] flex-col overflow-hidden bg-[#F3F5F7] p-0 lg:w-[clamp(380px,46vw,500px)] lg:max-w-[clamp(380px,46vw,500px)]'
         }
       >
         <SheetHeader className="sr-only">

@@ -515,15 +515,14 @@ export default function TripsPage() {
 
   return (
     <WorkspacePage className="gap-6 !p-0 pb-10 md:gap-8 md:pb-14 lg:gap-10 lg:!p-6">
-      <header className="relative overflow-hidden border-white/75 px-4 py-8 md:px-6 md:py-6 lg:rounded-2xl lg:border">
+      <header className="relative overflow-hidden  px-4 py-8 md:px-6 md:py-6 lg:rounded-xl lg:border lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-10 lg:py-10">
         <img
           src="/images/trips/trips-hero.jpg"
           alt=""
           aria-hidden="true"
           loading="eager"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-50 mix-blend-luminosity"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-20"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.65)_0%,rgba(243,247,251,0.95)_100%)]" />
         <div className="relative">
           <div className="flex flex-col items-center justify-center py-6 text-center md:py-10">
             <h1 className="max-w-[25ch] text-[2rem] leading-[1.05] font-semibold tracking-[-0.06em] text-[var(--color-text)] sm:text-[2.4rem] md:text-[3.2rem]">

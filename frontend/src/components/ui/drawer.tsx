@@ -9,7 +9,7 @@ const Drawer = ({
 }: React.ComponentProps<typeof DrawerPrimitive.Root>) => (
   <DrawerPrimitive.Root
     shouldScaleBackground={shouldScaleBackground}
-    direction="right"
+    direction="left"
     {...props}
   />
 );
@@ -42,7 +42,7 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-md flex-col bg-[rgba(250,250,250,0.85)] backdrop-blur-2xl transition-transform duration-300',
+        'fixed top-0 left-0 bottom-0 z-50 flex w-full max-w-md flex-col bg-[rgba(250,250,250,0.85)] backdrop-blur-2xl transition-transform duration-300',
         className,
       )}
       {...props}

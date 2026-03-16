@@ -1218,10 +1218,7 @@ export default function MapWorkspace({ tripId }: Props) {
               defaultCenter={{ lat: viewport.latitude, lng: viewport.longitude }}
               defaultZoom={viewport.zoom}
               style={{ width: '100%', height: '100%' }}
-              disableDefaultUI={false}
-              streetViewControl={false}
-              mapTypeControl={false}
-              fullscreenControl={false}
+              disableDefaultUI
               onCameraChanged={(event) => {
                 setViewport({
                   latitude: event.detail.center.lat,
@@ -1286,6 +1283,7 @@ export default function MapWorkspace({ tripId }: Props) {
               />
               {selectedResult?.lat != null && selectedResult?.lon != null ? (
                 <VoyagerMarker
+                  key={`selected-${selectedResult.id}-${selectedResult.lat}-${selectedResult.lon}`}
                   position={{ lat: selectedResult.lat, lng: selectedResult.lon }}
                   title={selectedResult.name}
                   selected

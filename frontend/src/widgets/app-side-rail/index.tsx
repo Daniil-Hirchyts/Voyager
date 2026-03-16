@@ -40,6 +40,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/shared/lib/cn';
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store';
+import { usePlannerStore } from '@/shared/stores/planner.store';
 
 function getInitials(name: string) {
   return (
@@ -70,11 +71,11 @@ const RAIL_HOVER_TRANSITION = {
   duration: 0.3,
 } satisfies NonNullable<AnimatedBackgroundProps['transition']>;
 
-function Divider() {
-  return <div className="mx-auto my-1 w-6 border-t border-[var(--color-border)]" />;
+function Divider({ className }: { className?: string }) {
+  return <div className={cn('mx-auto my-1 w-6 border-t border-[var(--color-border)]', className)} />;
 }
 
-function RailTooltip({ label, children }: { label: string; children: React.ReactNode }) {
+function RailTooltip({ label, children }: { label: string; children: ReactNode }) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
@@ -213,9 +214,14 @@ function AppSideRail() {
   const planMatch = useMatch('/app/trips/:tripId/plan');
   const tripsExactMatch = useMatch({ path: '/app/trips', end: true });
   const newTripMatch = useMatch('/app/trips/new');
+  const anyTripMatch = useMatch('/app/trips/:tripId/*');
   const { plannerInstruments, mobilePlannerView, setMobilePlannerView } = useSideRailStore();
 
   const isPlannerPage = Boolean(planMatch);
+  const tripId = planMatch?.params.tripId || anyTripMatch?.params.tripId;
+  const isSpecificTripOpen = Boolean(tripId) && tripId !== 'new';
+  const assistantPanelOpenByTrip = usePlannerStore((s) => s.assistantPanelOpenByTrip);
+  const isAssistantOpen = tripId ? (assistantPanelOpenByTrip[tripId] ?? false) : false;
   const userName =
     profile?.display_name || (auth.user?.profile?.name as string | undefined) || 'Traveler';
   const userEmail =
@@ -231,7 +237,7 @@ function AppSideRail() {
 
   return (
     <aside
-      className="relative z-[60] flex h-full w-[56px] shrink-0 flex-col items-center border-r border-[var(--color-border)] bg-white py-3"
+      className="relative z-30 flex h-full w-[56px] shrink-0 flex-col items-center border-r border-[var(--color-border)] bg-white py-3 lg:z-[60]"
       data-testid="app-side-rail"
     >
       {/* Logo */}
@@ -259,15 +265,17 @@ function AppSideRail() {
           >
             <LayoutGrid className="size-[1rem]" />
           </RailActionLink>
-          <RailActionLink
-            data-id="new-trip"
-            tooltip="New trip"
-            to="/app/trips/new"
-            aria-label="New trip"
-            className={newTripMatch ? BTN_ACTIVE : BTN_RAIL}
-          >
-            <Plus className="size-[1rem]" />
-          </RailActionLink>
+          {!isSpecificTripOpen && (
+            <RailActionLink
+              data-id="new-trip"
+              tooltip="New trip"
+              to="/app/trips/new"
+              aria-label="New trip"
+              className={newTripMatch ? BTN_ACTIVE : BTN_RAIL}
+            >
+              <Plus className="size-[1rem]" />
+            </RailActionLink>
+          )}
         </RailAnimatedColumn>
       </nav>
 
@@ -275,29 +283,14 @@ function AppSideRail() {
       {isPlannerPage && plannerInstruments ? (
         <>
           <Divider />
-          <div className="relative z-[60] flex flex-col items-center py-1.5">
-            <RailTooltip label="Open assistant">
-              <div className="relative">
-                <button
-                  data-id="planner-assistant"
-                  type="button"
-                  aria-label="Open planner assistant"
-                  onClick={plannerInstruments.onOpenAssistant}
-                  className={BTN_ASSISTANT}
-                >
-                  <Bot className="size-[1.05rem]" />
-                </button>
-              </div>
-            </RailTooltip>
-          </div>
-
+         
           <RailAnimatedColumn>
             <RailActionButton
               data-id="share-trip"
               tooltip="Collaboration & Share"
               type="button"
               aria-label="Share trip"
-              onClick={plannerInstruments.onShare}
+              onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onShare(); }}
               className={BTN_RAIL}
             >
               <Share2 className="size-[1rem]" />
@@ -307,7 +300,7 @@ function AppSideRail() {
               tooltip="Trip settings"
               type="button"
               aria-label="Trip settings"
-              onClick={plannerInstruments.onOpenSettings}
+              onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onOpenSettings(); }}
               className={BTN_RAIL}
             >
               <SlidersHorizontal className="size-[1rem]" />
@@ -324,9 +317,10 @@ function AppSideRail() {
                 aria-label={
                   mobilePlannerView === 'cards' ? 'Switch to map view' : 'Switch to itinerary view'
                 }
-                onClick={() =>
-                  setMobilePlannerView(mobilePlannerView === 'cards' ? 'map' : 'cards')
-                }
+                onClick={() => {
+                  plannerInstruments.onCloseAssistant();
+                  setMobilePlannerView(mobilePlannerView === 'cards' ? 'map' : 'cards');
+                }}
                 className={cn(BTN_RAIL, mobilePlannerView === 'map' && 'text-[var(--color-cta)]')}
               >
                 {mobilePlannerView === 'cards' ? (
@@ -344,7 +338,10 @@ function AppSideRail() {
               <RailAnimatedColumn className="max-h-[38vh] w-full overflow-y-auto">
                 {renderDayAnchors({
                   days: plannerInstruments.days,
-                  onScrollToDay: plannerInstruments.onScrollToDay,
+                  onScrollToDay: (dayId) => {
+                    plannerInstruments.onCloseAssistant();
+                    plannerInstruments.onScrollToDay(dayId);
+                  },
                 })}
               </RailAnimatedColumn>
               <Divider />
@@ -354,7 +351,7 @@ function AppSideRail() {
                   tooltip="Accommodation"
                   type="button"
                   aria-label="Scroll to accommodation"
-                  onClick={() => plannerInstruments.onScrollToSection('hotel')}
+                  onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onScrollToSection('hotel'); }}
                   className={BTN_RAIL}
                 >
                   <BedDouble className="size-[1rem]" />
@@ -364,7 +361,7 @@ function AppSideRail() {
                   tooltip="Travel"
                   type="button"
                   aria-label="Scroll to travel"
-                  onClick={() => plannerInstruments.onScrollToSection('travel')}
+                  onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onScrollToSection('travel'); }}
                   className={BTN_RAIL}
                 >
                   <Plane className="size-[1rem]" />
@@ -372,6 +369,22 @@ function AppSideRail() {
               </RailAnimatedColumn>
             </>
           )}
+           <Divider />
+          <div className="relative z-30 flex flex-col items-center py-1.5">
+            <RailTooltip label={isAssistantOpen ? 'Close assistant' : 'Open assistant'}>
+              <div className="relative">
+                <button
+                  data-id="planner-assistant"
+                  type="button"
+                  aria-label={isAssistantOpen ? 'Close planner assistant' : 'Open planner assistant'}
+                  onClick={plannerInstruments.onToggleAssistant}
+                  className={cn(BTN_ASSISTANT, isAssistantOpen && 'bg-[#2A2A2A]')}
+                >
+                  <Bot className="size-[1.05rem]" />
+                </button>
+              </div>
+            </RailTooltip>
+          </div>
         </>
       ) : null}
 
@@ -405,9 +418,9 @@ function AppSideRail() {
           side="right"
           align="end"
           sideOffset={10}
-          className="w-56 rounded-[14px] border-black/8 p-1.5"
+          className="w-56"
         >
-          <DropdownMenuLabel className="px-2 py-1.5 tracking-normal normal-case">
+          <DropdownMenuLabel className="px-3 py-2 tracking-normal normal-case">
             <div className="flex flex-col gap-0.5">
               <span className="text-[0.92rem] font-medium text-[var(--color-text)]">
                 {userName}
@@ -415,21 +428,20 @@ function AppSideRail() {
               {userEmail && <span className="text-xs font-normal text-[var(--color-text-muted)]">{userEmail}</span>}
             </div>
           </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-black/8" />
-          <DropdownMenuItem asChild className="rounded-[10px] px-2.5 py-2">
+          <DropdownMenuSeparator className="bg-[var(--color-border)]" />
+          <DropdownMenuItem asChild>
             <Link to="/app/settings">
-              <Settings2 className="mr-2 size-4" />
+              <Settings2 className="mr-3 size-[1.1rem] opacity-70" />
               Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="rounded-[10px] px-2.5 py-2"
             onSelect={(e) => {
               e.preventDefault();
               auth.signoutRedirect();
             }}
           >
-            <LogOut className="mr-2 size-4" />
+            <LogOut className="mr-3 size-[1.1rem] opacity-70" />
             Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>

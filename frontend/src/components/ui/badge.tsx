@@ -10,11 +10,11 @@ const badgeVariants = cva(
         default:
           'border-[var(--color-accent-blue)]/20 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue)]',
         accent:
-          'border-[var(--color-accent-blue)]/20 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue)]',
+          'border-[var(--color-accent-blue)]/20 py-0.25 px-1.5 bg-[var(--color-accent-blue)]/10 text-[var(--color-accent-blue)] backdrop-blur-sm',
         neutral: 'border-[var(--color-border-strong)] bg-white/70 text-[var(--color-text-muted)]',
         secondary: 'border-[var(--color-border-strong)] bg-white/70 text-[var(--color-text-muted)]',
         outline:
-          'border-[var(--color-border-strong)] bg-transparent text-[var(--color-text-muted)]',
+          'border-[var(--color-border-strong)] bg-transparent text-[var(--color-text-muted)] py-0.25 px-1.5 backdrop-blur-sm',
         destructive:
           'border-[rgba(255,81,14,0.2)] bg-[rgba(255,81,14,0.10)] text-[var(--color-danger)]',
         danger: 'border-[rgba(255,81,14,0.2)] bg-[rgba(255,81,14,0.10)] text-[var(--color-danger)]',

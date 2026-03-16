@@ -2,6 +2,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@keyframes accordion-down {
+  from { height: 0; }
+  to { height: var(--radix-accordion-content-height); }
+}
+@keyframes accordion-up {
+  from { height: var(--radix-accordion-content-height); }
+  to { height: 0; }
+}
+
 @theme {
   --color-border: rgba(23, 23, 23, 0.08);
   --color-border-strong: rgba(23, 23, 23, 0.14);
@@ -371,15 +380,28 @@
   --radius-md: 20px;
   --radius-lg: 24px;
   --radius-xl: 32px;
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
+  --animate-accordion-down: accordion-down 0.3s cubic-bezier(0.87, 0, 0.13, 1);
+  --animate-accordion-up: accordion-up 0.3s cubic-bezier(0.87, 0, 0.13, 1);
   
+  --animate-sheet-left-in: sheet-left-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-sheet-left-out: sheet-left-out 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-sheet-right-in: sheet-right-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-sheet-right-out: sheet-right-out 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-sheet-bottom-in: sheet-bottom-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-sheet-bottom-out: sheet-bottom-out 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-fade-out: fade-out 0.3s ease-in;
+  --animate-popover-in: popover-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-popover-out: popover-out 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+  @keyframes popover-in {
+    from { opacity: 0; transform: scale(0.92) translateY(-8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes popover-out {
+    from { opacity: 1; transform: scale(1) translateY(0); }
+    to { opacity: 0; transform: scale(0.96) translateY(-4px); }
+  }
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -388,6 +410,14 @@
   @keyframes fade-out {
     from { opacity: 1; }
     to { opacity: 0; }
+  }
+  @keyframes sheet-left-in {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes sheet-left-out {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
   }
   @keyframes sheet-right-in {
     from { transform: translateX(100%); }
@@ -404,14 +434,5 @@
   @keyframes sheet-bottom-out {
     from { transform: translateY(0); }
     to { transform: translateY(100%); }
-  }
-
-  @keyframes accordion-down {
-    from { height: 0; }
-    to { height: var(--radix-accordion-content-height); }
-  }
-  @keyframes accordion-up {
-    from { height: var(--radix-accordion-content-height); }
-    to { height: 0; }
   }
 }

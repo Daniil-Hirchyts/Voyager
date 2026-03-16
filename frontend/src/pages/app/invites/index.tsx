@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Link2, MapPinned, ShieldCheck, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, MapPinned, ShieldCheck, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,14 +11,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { useAcceptTripInvitation, useTripInvitationPreview } from '@/entities/trip-sharing/queries';
 import { isApiError } from '@/shared/api/client';
 import { WorkspacePage } from '@/shared/layouts/workspace-shell';
 import { VoyagerLoader } from '@/widgets/app-shell/logo';
-
-const heroClassName =
-  'rounded-[28px] border border-[var(--color-border)] bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_52%,rgba(240,247,255,0.92)_100%)] p-6 md:p-8';
 
 function formatInviteDate(value: string) {
   return new Intl.DateTimeFormat('en-US', {
@@ -50,138 +46,131 @@ export default function TripInvitePage() {
       : 'This invitation is not available anymore.';
 
   return (
-    <WorkspacePage className="gap-5 pb-10 md:gap-6">
-      <section className={heroClassName}>
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex max-w-2xl flex-col gap-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="accent">
-                <UserPlus data-icon="inline-start" />
-                Collaboration invite
-              </Badge>
-              <Badge variant="outline">
-                <ShieldCheck data-icon="inline-start" />
-                Authenticated access
-              </Badge>
+    <WorkspacePage className="flex min-h-[80svh] items-center justify-center p-4">
+      <div className="w-full max-w-[540px] animate-in fade-in zoom-in-95 duration-500">
+        <Card variant="elevated" className="overflow-hidden rounded-[32px] border-white/60 shadow-xl">
+          <CardHeader className="items-center pb-2 text-center">
+            <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+              <UserPlus className="size-7" />
             </div>
-            <div className="flex flex-col gap-2">
-              <h1 className="text-[2rem] font-semibold tracking-[-0.06em] text-[var(--color-text)] md:text-[2.6rem]">
-                Join a shared trip
-              </h1>
-              <p className="max-w-[42rem] text-sm leading-6 text-[var(--color-text-muted)] md:text-[0.98rem]">
-                Accept this single-use invitation to collaborate on the same itinerary, assets, and
-                map context as the rest of the trip team.
-              </p>
-            </div>
-          </div>
+            <CardTitle className="text-[1.8rem] font-bold tracking-tight text-[var(--color-text)] md:text-[2.2rem]">
+              Join the trip
+            </CardTitle>
+            <CardDescription className="max-w-[320px] text-sm leading-relaxed text-[var(--color-text-muted)]">
+              You've been invited to collaborate on a shared itinerary and map context.
+            </CardDescription>
+          </CardHeader>
 
-          <div className="grid gap-2 rounded-[20px] bg-white px-4 py-4 text-sm text-[var(--color-text-muted)]">
-            <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-              How it works
-            </span>
-            <p>1. Review the invite details.</p>
-            <p>2. Accept once while signed in.</p>
-            <p>3. Open the shared planner immediately.</p>
-          </div>
-        </div>
-      </section>
-
-      <Card variant="elevated" className="overflow-hidden">
-        <CardHeader>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">
-              <Link2 data-icon="inline-start" />
-              Single-use link
-            </Badge>
-            <Badge variant="outline">
-              <Users data-icon="inline-start" />
-              Shared editing
-            </Badge>
-          </div>
-          <CardTitle>Invitation details</CardTitle>
-          <CardDescription>
-            Voyager only activates the link after you confirm the trip below.
-          </CardDescription>
-        </CardHeader>
-
-        <CardContent className="flex flex-col gap-5">
-          {preview.isLoading ? (
-            <div className="rounded-[22px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-8">
-              <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
-                <VoyagerLoader className="size-4" />
-                Loading invitation preview…
+          <CardContent className="flex flex-col gap-6 px-6 py-6 md:px-10">
+            {preview.isLoading ? (
+              <div className="flex flex-col items-center justify-center py-10 text-[var(--color-text-muted)]">
+                <VoyagerLoader className="mb-3 size-6" />
+                <p className="text-sm font-medium">Fetching invitation details…</p>
               </div>
-            </div>
-          ) : preview.data ? (
-            <>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] bg-[#F3F5F7] px-5 py-5">
-                  <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                    Trip
-                  </p>
-                  <h2 className="mt-3 text-[1.4rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
+            ) : preview.data ? (
+              <div className="flex flex-col gap-5">
+                {/* Trip Info Box */}
+                <div className="rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-secondary-surface)] p-5">
+                  <span className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
+                    Shared trip
+                  </span>
+                  <h2 className="mt-2 text-[1.4rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
                     {preview.data.trip_title}
                   </h2>
-                  <p className="mt-2 flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
-                    <MapPinned className="size-4" />
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-[var(--color-text-muted)]">
+                    <MapPinned className="size-3.5" />
                     {preview.data.destination_text}
                   </p>
                 </div>
 
-                <div className="rounded-[22px] bg-[#F3F5F7] px-5 py-5">
-                  <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                    Invited by
-                  </p>
-                  <h2 className="mt-3 text-[1.2rem] font-semibold tracking-[-0.04em] text-[var(--color-text)]">
-                    {preview.data.inviter_display_name}
-                  </h2>
-                  <div className="mt-2 flex flex-col gap-1 text-sm text-[var(--color-text-muted)]">
-                    <p>{preview.data.inviter_email || 'Email unavailable'}</p>
-                    <p>Created {formatInviteDate(preview.data.created_at)}</p>
+                {/* Meta details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[0.65rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+                      Invited by
+                    </span>
+                    <p className="truncate text-[0.85rem] font-semibold text-[var(--color-text)]">
+                      {preview.data.inviter_display_name}
+                    </p>
+                    <p className="text-[0.72rem] text-[var(--color-text-muted)]">
+                      {formatInviteDate(preview.data.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[0.65rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+                      Your role
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <Badge variant="accent" className="h-5 px-1.5 text-[0.68rem]">
+                        {preview.data.role === 'editor' ? 'Editor' : preview.data.role}
+                      </Badge>
+                      <span className="text-[0.72rem] text-[var(--color-text-muted)]">
+                        Full access
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security badges */}
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <div className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
+                    <ShieldCheck className="size-3 text-[var(--color-success)]" />
+                    Authenticated access
+                  </div>
+                  <div className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
+                    <Users className="size-3" />
+                    Shared editing
                   </div>
                 </div>
               </div>
-
-              <Separator className="bg-[var(--color-border)]" />
-
-              <div className="grid gap-3 rounded-[22px] bg-white px-5 py-5 text-sm text-[var(--color-text-muted)]">
-                <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                  Granted role
+            ) : (
+              <div className="rounded-2xl border border-dashed border-[var(--color-danger)]/30 bg-[var(--color-danger)]/5 p-6 text-center">
+                <p className="text-sm font-medium leading-relaxed text-[var(--color-danger)]">
+                  {errorMessage}
                 </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="accent">
-                    {preview.data.role === 'editor' ? 'Editor' : preview.data.role}
-                  </Badge>
-                  <span>
-                    You will be able to edit trip details, activities, map content, and assets.
-                  </span>
-                </div>
+                <Button asChild variant="link" className="mt-2 text-xs">
+                  <Link to="/app/trips">Go back to your trips</Link>
+                </Button>
               </div>
-            </>
-          ) : (
-            <div className="rounded-[22px] border border-dashed border-[rgba(255,81,14,0.24)] bg-[rgba(255,240,238,0.84)] px-5 py-6">
-              <p className="text-sm leading-6 text-[var(--color-danger)]">{errorMessage}</p>
-            </div>
-          )}
-        </CardContent>
+            )}
+          </CardContent>
 
-        <CardFooter className="flex flex-wrap justify-between gap-3 border-t border-[var(--color-border)]">
-          <Button asChild variant="outline">
-            <Link to="/app/trips">Back to trips</Link>
-          </Button>
+          <CardFooter className="flex flex-col gap-3 px-6 pb-8 md:px-10">
+            {preview.data ? (
+              <>
+                <Button
+                  onClick={() => void handleAcceptInvite()}
+                  disabled={acceptInvitation.isPending}
+                  className="h-12 w-full rounded-full text-[0.95rem] font-semibold shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  {acceptInvitation.isPending ? (
+                    <VoyagerLoader className="mr-2 size-4" />
+                  ) : (
+                    <UserPlus className="mr-2 size-4" />
+                  )}
+                  Accept and open trip
+                </Button>
+                <Button asChild variant="ghost" className="h-10 w-full rounded-full text-[0.88rem] text-[var(--color-text-muted)] hover:bg-[var(--color-secondary-surface)]">
+                  <Link to="/app/trips">
+                    <ArrowLeft className="mr-2 size-3.5" />
+                    Back to trips
+                  </Link>
+                </Button>
+              </>
+            ) : (
+              <Button asChild variant="outline" className="h-11 w-full rounded-full">
+                <Link to="/app/trips">Back to trips</Link>
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
 
-          {preview.data ? (
-            <Button onClick={() => void handleAcceptInvite()} disabled={acceptInvitation.isPending}>
-              {acceptInvitation.isPending ? (
-                <VoyagerLoader data-icon="inline-start" />
-              ) : (
-                <UserPlus data-icon="inline-start" />
-              )}
-              Accept and open trip
-            </Button>
-          ) : null}
-        </CardFooter>
-      </Card>
+        {/* Footer info */}
+        <p className="mt-6 px-4 text-center text-[0.78rem] leading-relaxed text-[var(--color-text-muted)]">
+          By joining, you'll be able to see and edit all activities, assets, and route details
+          for this trip. This invitation link is unique to you.
+        </p>
+      </div>
     </WorkspacePage>
   );
 }

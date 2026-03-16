@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { motion } from 'motion/react';
 import {
   APIProvider,
   AdvancedMarker,
@@ -217,13 +218,32 @@ export function fitBoundsForPoints(
   if (!points.length) return;
   const bounds = new google.maps.LatLngBounds();
   points.forEach((point) => bounds.extend(point));
+
   if (points.length === 1) {
     const firstPoint = points[0];
     if (!firstPoint) return;
+
+    const currentCenter = map.getCenter();
+    const targetZoom = options?.singlePointZoom ?? 13;
+
+    const isSamePoint =
+      currentCenter &&
+      Math.abs(currentCenter.lat() - firstPoint.lat) < 0.0001 &&
+      Math.abs(currentCenter.lng() - firstPoint.lng) < 0.0001;
+
+    if (isSamePoint && map.getZoom() === targetZoom) return;
+
     map.panTo(firstPoint);
-    map.setZoom(options?.singlePointZoom ?? 13);
+    if (map.getZoom() !== targetZoom) {
+      google.maps.event.addListenerOnce(map, 'idle', () => {
+        setTimeout(() => {
+          if (map.getZoom() !== targetZoom) map.setZoom(targetZoom);
+        }, 150);
+      });
+    }
     return;
   }
+
   if (options?.maxZoom != null) {
     google.maps.event.addListenerOnce(map, 'idle', () => {
       if ((map.getZoom() ?? 0) > options.maxZoom!) {
@@ -318,10 +338,17 @@ export function MapFitBounds({
 }) {
   const map = useMap();
   const signature = useMemo(() => stringifyCoordinates(points), [points]);
+  const lastFitRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!map || points.length === 0) return;
-    fitBoundsForPoints(map, points, padding, { maxZoom, singlePointZoom });
+    if (!map || points.length === 0 || lastFitRef.current === signature) return;
+
+    const timer = setTimeout(() => {
+      lastFitRef.current = signature;
+      fitBoundsForPoints(map, points, padding, { maxZoom, singlePointZoom });
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [map, maxZoom, padding, signature, singlePointZoom]);
 
   return null;
@@ -332,10 +359,33 @@ export function MapPanTo({ point, zoom }: { point: LatLngPoint | null; zoom?: nu
 
   useEffect(() => {
     if (!map || !point) return;
-    map.panTo(point);
-    if (zoom != null) {
-      map.setZoom(zoom);
-    }
+
+    const timer = setTimeout(() => {
+      const currentCenter = map.getCenter();
+      const currentZoom = map.getZoom();
+
+      const isSamePoint =
+        currentCenter &&
+        Math.abs(currentCenter.lat() - point.lat) < 0.00001 &&
+        Math.abs(currentCenter.lng() - point.lng) < 0.00001;
+
+      const isSameZoom = zoom == null || currentZoom === zoom;
+
+      if (isSamePoint && isSameZoom) return;
+
+      map.panTo(point);
+
+      if (zoom != null && currentZoom !== zoom) {
+        google.maps.event.addListenerOnce(map, 'idle', () => {
+          // Delay zoom slightly after pan completes for a smoother feel
+          setTimeout(() => {
+            if (zoom != null) map.setZoom(zoom);
+          }, 150);
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [map, point, zoom]);
 
   return null;
@@ -349,7 +399,7 @@ export function VoyagerMap({ className, ...props }: React.ComponentProps<typeof 
         disableDefaultUI
         gestureHandling="greedy"
         mapId={config.map.mapId || undefined}
-        renderingType="RASTER"
+        renderingType="VECTOR"
         {...props}
       />
     </div>
@@ -396,7 +446,26 @@ export function VoyagerMarker({
     return (
       <AdvancedMarker position={position} title={title} zIndex={zIndex} onClick={onClick}>
         {children ?? (
-          <div className="origin-bottom pb-1 transition-transform hover:scale-110">
+          <motion.div
+            key={`marker-${position.lat}-${position.lng}`}
+            initial={{ y: -40, opacity: 0, scale: 0.5 }}
+            animate={{
+              y: 0,
+              opacity: 1,
+              scale: selected ? 1.1 : 1,
+              scaleX: [1, 0.8, 1.25, 0.9, 1.1, 1],
+              scaleY: [1, 1.3, 0.75, 1.15, 0.95, 1],
+            }}
+            whileHover={{ scale: selected ? 1.15 : 1.05 }}
+            transition={{
+              y: { type: 'spring', stiffness: 300, damping: 15 },
+              opacity: { duration: 0.2 },
+              scale: { duration: 0.2 },
+              scaleX: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+              scaleY: { duration: 0.6, times: [0, 0.2, 0.4, 0.6, 0.8, 1] },
+            }}
+            className="origin-bottom pb-1"
+          >
             <div
               className={`flex -rotate-45 items-center justify-center rounded-[50%_50%_50%_10%] border-[1.5px] border-white ${label ? 'h-9 w-9' : 'h-7 w-7'}`}
               style={{
@@ -413,7 +482,7 @@ export function VoyagerMarker({
                 )}
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
       </AdvancedMarker>
     );

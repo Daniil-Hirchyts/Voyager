@@ -20,7 +20,6 @@ import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'motion/react';
 import {
   ArrowUp,
-  Bot,
   Check,
   ChevronRight,
   Clock3,
@@ -30,7 +29,6 @@ import {
   MessageSquarePlus,
   MoreHorizontal,
   Pencil,
-  Radio,
   Search,
   Slash,
   Sparkles,
@@ -764,7 +762,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
 
 function TextBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-[18px] bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
+    <div className="rounded-[18px] rounded-tl-[8px] bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)] border border-b border-[var(--color-border)]">
       <Markdown
         className="flex flex-col gap-3 text-[0.84rem] leading-7 [&_code]:rounded-[6px] [&_code]:bg-black/[0.04] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.78rem]"
         components={MESSAGE_MARKDOWN_COMPONENTS}
@@ -790,7 +788,8 @@ function PlannerResultCard({ part }: { part: AssistantDataPart }) {
   const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null;
 
   return (
-    <div className="rounded-[18px] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3 rounded-tl-[8px] border border-[var(--color-border)]
+">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           <WandSparkles className="size-3.5" />
@@ -843,14 +842,19 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
     : null;
 
   return (
-    <div className="rounded-[18px] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3 rounded-tl-[8px] border border-[var(--color-border)]
+">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
-          {part.isError ? <XCircle className="size-3.5" /> : <Sparkles className="size-3.5" />}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(15,23,42,0.04)] text-[var(--color-text)]">
+          {part.isError ? (
+            <XCircle className="h-4 w-4 text-[rgba(255,81,14,1)]" />
+          ) : (
+            <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
+          )}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 py-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">
+            <p className="text-[0.84rem] font-medium text-[var(--color-text)]">
               {formatToolLabel(part.toolName)}
             </p>
             <span className={toneChipClasses(stateTone)}>{stateLabel}</span>
@@ -939,20 +943,21 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         : null;
 
   return (
-    <div className="rounded-[18px] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3 rounded-tl-[8px] border border-[var(--color-border)]
+">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(15,23,42,0.04)] text-[var(--color-text)]">
           {jobStatus === 'SUCCEEDED' ? (
-            <Check className="size-4" />
+            <Check className="h-4 w-4 text-[rgba(21,128,61,1)]" />
           ) : jobStatus === 'FAILED' ? (
-            <XCircle className="size-4" />
+            <XCircle className="h-4 w-4 text-[rgba(255,81,14,1)]" />
           ) : (
-            <Loader2 className="size-4 animate-spin" />
+            <Sparkles className="h-4 w-4 text-[var(--color-primary)]" />
           )}
         </div>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 py-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[0.84rem] font-semibold text-[var(--color-text)]">{requestText}</p>
+            <p className="text-[0.84rem] font-medium text-[var(--color-text)]">{requestText}</p>
             <span className={toneChipClasses(jobTone)}>
               {isRunning ? 'In progress' : jobStatus}
             </span>
@@ -971,12 +976,12 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="mt-3 flex items-center gap-2 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5 text-[0.76rem] text-[var(--color-text-muted)]">
-          <Clock3 className="size-3.5" />
-          <span>Queued and waiting for worker pickup.</span>
+        <div className="mt-2.5 flex items-center gap-2 rounded-xl bg-[rgba(15,23,42,0.03)] px-3 py-2 text-[0.76rem] text-[var(--color-text-muted)]">
+          <Clock3 className="h-3.5 w-3.5" />
+          <span>Starting up…</span>
         </div>
       ) : (
-        <div className="mt-3 rounded-[14px] bg-[rgba(244,246,248,0.55)] px-3 py-2.5">
+        <div className="mt-2.5 rounded-xl border border-[var(--color-border)] bg-white/40 px-3 py-2.5 shadow-sm">
           <ChainOfThought>
             {rows.map((row) => {
               if (row.kind === 'done') {
@@ -985,7 +990,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     <ChainOfThoughtTrigger
                       leftIcon={jobRowIcon(row)}
                       className={cn(
-                        'py-1 text-[0.78rem] font-medium',
+                        'py-1.5 text-[0.78rem] font-medium transition-colors',
                         row.status === 'SUCCEEDED'
                           ? 'text-[rgba(21,128,61,1)]'
                           : 'text-[rgba(255,81,14,1)]',
@@ -1008,7 +1013,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     <ChainOfThoughtTrigger
                       leftIcon={jobRowIcon(row)}
                       className={cn(
-                        'py-1 text-[0.78rem] font-medium',
+                        'py-1.5 text-[0.78rem] font-medium transition-colors',
                         isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]',
                       )}
                     >
@@ -1016,7 +1021,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </ChainOfThoughtTrigger>
                     {detail ? (
                       <ChainOfThoughtContent>
-                        <ChainOfThoughtItem className="text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                        <ChainOfThoughtItem className="pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
                           {detail}
                         </ChainOfThoughtItem>
                       </ChainOfThoughtContent>
@@ -1048,7 +1053,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                   <ChainOfThoughtTrigger
                     leftIcon={jobRowIcon(row)}
                     className={cn(
-                      'py-1 text-[0.78rem] font-medium',
+                      'py-1.5 text-[0.78rem] font-medium transition-colors',
                       isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text)]',
                     )}
                   >
@@ -1058,7 +1063,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </span>
                   </ChainOfThoughtTrigger>
                   <ChainOfThoughtContent>
-                    <ChainOfThoughtItem className="text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                    <ChainOfThoughtItem className="pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
                       {toolSummary}
                     </ChainOfThoughtItem>
                   </ChainOfThoughtContent>
@@ -1070,14 +1075,14 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
       )}
 
       {summaryEntries.length > 0 ? (
-        <div className="mt-3 rounded-[14px] bg-[rgba(244,246,248,0.72)] px-3 py-2.5">
-          <p className="text-[0.67rem] font-medium tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+        <div className="mt-2.5 rounded-xl border border-[var(--color-border)] bg-white/40 px-3 py-2.5 shadow-sm">
+          <p className="text-[0.67rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
             Summary
           </p>
-          <div className="mt-2 space-y-1.5">
+          <div className="mt-2 space-y-2">
             {summaryEntries.map(([key, value]) => (
               <div key={key} className="flex gap-2 text-[0.74rem] leading-5">
-                <span className="min-w-[6.5rem] text-[var(--color-text-muted)]">
+                <span className="min-w-[5.5rem] font-medium text-[var(--color-text-muted)]">
                   {formatToolLabel(key)}
                 </span>
                 <span className="flex-1 break-words text-[var(--color-text)]">{value}</span>
@@ -1100,11 +1105,11 @@ function EmptyThreadState({
   return (
     <div className="flex min-h-[12rem] flex-col justify-center px-1 pt-1 pb-3">
       <div className="flex gap-2 pb-2.5">
-        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-primary)]">
-          <Bot className="size-3.5" />
+        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-primary)] border border-[var(--color-border)]">
+          <Sparkles className="size-3.5" />
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="rounded-[18px] bg-white px-3 py-2.5">
+        <div className="min-w-0 flex-1 mt-3">
+          <div className="rounded-[18px] rounded-tl-[8px] bg-white px-3 py-2.5 border border-[var(--color-border)]">
             <p className="text-[0.84rem] leading-7 text-[var(--color-text)]">
               I can help shape <span className="font-semibold">{destination || 'this trip'}</span>.
               Ask me to add places, rebalance a day, or use{' '}
@@ -1319,9 +1324,9 @@ function UserMessage() {
     .join('\n');
 
   return (
-    <MessagePrimitive.Root className="flex justify-end pb-2.5">
-      <div className="max-w-[86%] rounded-[18px] rounded-br-[8px] bg-[#111827] px-3 py-2.5 text-white">
-        <p className="text-[0.83rem] leading-6 whitespace-pre-wrap">{text}</p>
+    <MessagePrimitive.Root className="flex justify-end pb-3">
+      <div className="max-w-[85%] rounded-[20px] rounded-br-[8px] bg-[#1a1a1a] px-3.5 py-2.5 text-white">
+        <p className="text-[0.85rem] leading-[1.4rem] whitespace-pre-wrap">{text}</p>
       </div>
     </MessagePrimitive.Root>
   );
@@ -1333,14 +1338,7 @@ function AssistantMessageView() {
   const messageId = state.id;
 
   return (
-    <MessagePrimitive.Root className="flex gap-2 pb-2.5">
-      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-primary)]">
-        {state.status?.type === 'running' ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : (
-          <Bot className="size-3.5" />
-        )}
-      </span>
+    <MessagePrimitive.Root className="flex gap-2.5 pb-3">
       <div className="min-w-0 flex-1 space-y-2">
         {parts.map((part, index) => {
           if (isTextPart(part)) {
@@ -1835,7 +1833,7 @@ export function PlannerAssistantPanel({
       <div className="border-b border-[var(--color-border)] px-3 py-3 text-left">
         <div className="flex items-center gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
-            <Bot className="size-4" />
+            <Sparkles className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
             {viewingConvId !== null ? (
@@ -1892,18 +1890,7 @@ export function PlannerAssistantPanel({
                   <MessageSquarePlus className="mr-2 size-3.5" />
                   New conversation
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => handleSwitchConversation(null)}
-                  className={cn(
-                    'flex items-center',
-                    viewingConvId === null && 'text-[var(--color-primary)]',
-                  )}
-                >
-                  <Radio className="mr-2 size-3.5 shrink-0" />
-                  <span className="flex-1 truncate">Live thread</span>
-                  {viewingConvId === null && <Check className="ml-2 size-3.5 shrink-0" />}
-                </DropdownMenuItem>
+                
                 {savedConversations.length > 0 ? (
                   <>
                     <DropdownMenuSeparator />
@@ -1960,18 +1947,16 @@ export function PlannerAssistantPanel({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {!isMobile ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="size-8 rounded-full border-[var(--color-border)] bg-white/78 text-[var(--color-text-muted)]"
-                onClick={() => onOpenChange(false)}
-              >
-                <X className="size-4" />
-                <span className="sr-only">Close assistant</span>
-              </Button>
-            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="size-8 rounded-full border-[var(--color-border)] bg-white/78 text-[var(--color-text-muted)]"
+              onClick={() => onOpenChange(false)}
+            >
+              <X className="size-4" />
+              <span className="sr-only">Close assistant</span>
+            </Button>
           </div>
         </div>
       </div>
@@ -2071,6 +2056,7 @@ export function PlannerAssistantPanel({
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
+            hideCloseButton={true}
             className="flex h-[min(88vh,48rem)] w-full flex-col gap-0 overflow-hidden rounded-t-[28px] border-x-0 border-b-0 border-[var(--color-border)] bg-[#fcfcfb] p-0"
           >
             <SheetHeader className="sr-only">
@@ -2088,7 +2074,7 @@ export function PlannerAssistantPanel({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-              className="absolute inset-y-0 left-0 z-40 flex w-[46%] max-w-full min-w-[380px] flex-col overflow-hidden border-r border-[var(--color-border)] bg-[#fcfcfb]"
+              className="absolute inset-y-0 left-0 z-40 flex w-full lg:w-[clamp(380px,46vw,500px)] max-w-full flex-col overflow-hidden border-r border-[var(--color-border)] bg-[#fcfcfb]"
             >
               {assistantSurface}
             </motion.aside>

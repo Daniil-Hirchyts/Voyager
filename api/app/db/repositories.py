@@ -941,8 +941,12 @@ class TripRepository:
                 message="Trip is already shared with this user",
             ) from exc
         await db.refresh(invitation)
-        await db.refresh(collaborator)
-        return invitation, collaborator
+        collaborator_row = await db.execute(
+            select(TripCollaborator)
+            .options(selectinload(TripCollaborator.user))
+            .where(TripCollaborator.id == collaborator.id)
+        )
+        return invitation, collaborator_row.scalar_one()
 
     @staticmethod
     async def _sync_days_to_date_range(db: AsyncSession, trip: Trip) -> None:

@@ -32,13 +32,14 @@ const sheetVariants = cva(
         top: 'inset-x-0 top-0',
         bottom:
           'inset-x-0 bottom-0 data-[state=open]:animate-sheet-bottom-in data-[state=closed]:animate-sheet-bottom-out',
-        left: 'inset-y-0 left-0 h-full w-3/4 sm:max-w-sm',
+        left:
+          'inset-y-0 left-0 h-full w-3/4 data-[state=open]:animate-sheet-left-in data-[state=closed]:animate-sheet-left-out sm:max-w-md',
         right:
           'inset-y-0 right-0 h-full w-3/4 data-[state=open]:animate-sheet-right-in data-[state=closed]:animate-sheet-right-out sm:max-w-md',
       },
     },
     defaultVariants: {
-      side: 'right',
+      side: 'left',
     },
   },
 );
@@ -56,7 +57,7 @@ const SheetContent = React.forwardRef<
   SheetContentProps
 >(
   (
-    { side = 'right', className, children, hideCloseButton = false, overlayClassName, ...props },
+    { side = 'left', className, children, hideCloseButton = false, overlayClassName, ...props },
     ref,
   ) => (
     <SheetPortal>

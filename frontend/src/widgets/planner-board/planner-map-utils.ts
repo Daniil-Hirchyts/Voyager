@@ -46,6 +46,8 @@ export type PlannerMapSection = {
 
 export type PlannerMapDayMetrics = PlannerTravelSummary & {
   legs: PlannerTravelLeg[];
+  hotelToFirstLeg: PlannerTravelLeg | null;
+  lastToHotelLeg: PlannerTravelLeg | null;
 };
 
 export const PLANNER_MAP_DAY_COLORS = [
@@ -58,6 +60,31 @@ export const PLANNER_MAP_DAY_COLORS = [
 
 function routeEstimateKey(fromActivityId: string, toActivityId: string) {
   return `${fromActivityId}:${toActivityId}`;
+}
+
+function applyEstimateToLeg(
+  leg: PlannerTravelLeg,
+  estimatesByLegId: Map<string, RouteLegEstimateItem>,
+) {
+  const estimate = estimatesByLegId.get(routeEstimateKey(leg.fromActivityId, leg.toActivityId));
+  return estimate
+    ? {
+        ...leg,
+        distanceKm: estimate.distance_km,
+        durationMin: estimate.duration_min,
+      }
+    : leg;
+}
+
+function buildBoundaryLeg(
+  originActivity: PlannerActivity | null | undefined,
+  destinationActivity: PlannerActivity | null | undefined,
+  travelMode: RouteTravelMode,
+) {
+  if (!originActivity || !destinationActivity) {
+    return null;
+  }
+  return buildPlannerTravelLegs([originActivity, destinationActivity], travelMode)[0] ?? null;
 }
 
 function activityCoordinates(activity: PlannerActivity) {
@@ -153,9 +180,10 @@ export function buildPlannerMapSections(
 export function buildPlannerMapLegPayload(
   sections: PlannerMapSection[],
   travelMode: RouteLegEstimateInput['travel_mode'] = 'WALK',
+  accommodationByDayId: Record<string, PlannerActivity | null | undefined> = {},
 ): RouteLegEstimateInput | null {
-  const legs = sections.flatMap((section) =>
-    section.activities.slice(1).flatMap((activity, index) => {
+  const legs = sections.flatMap((section) => {
+    const betweenActivityLegs = section.activities.slice(1).flatMap((activity, index) => {
       const previousActivity = section.activities[index];
       if (!previousActivity) {
         return [];
@@ -173,8 +201,35 @@ export function buildPlannerMapLegPayload(
           destination: { lat: destination.lat, lng: destination.lon },
         },
       ];
-    }),
-  );
+    });
+
+    const firstActivity = section.activities[0] ?? null;
+    const lastActivity = section.activities[section.activities.length - 1] ?? null;
+    const hotelActivity = accommodationByDayId[section.dayId] ?? null;
+    const hotelCoordinates = hotelActivity ? activityCoordinates(hotelActivity) : null;
+    const firstCoordinates = firstActivity ? activityCoordinates(firstActivity) : null;
+    const lastCoordinates = lastActivity ? activityCoordinates(lastActivity) : null;
+
+    const boundaryLegs: RouteLegEstimateInput['legs'] = [];
+    if (hotelActivity && firstActivity && hotelCoordinates && firstCoordinates) {
+      boundaryLegs.push({
+        from_activity_id: hotelActivity.id,
+        to_activity_id: firstActivity.id,
+        origin: { lat: hotelCoordinates.lat, lng: hotelCoordinates.lon },
+        destination: { lat: firstCoordinates.lat, lng: firstCoordinates.lon },
+      });
+    }
+    if (hotelActivity && lastActivity && hotelCoordinates && lastCoordinates) {
+      boundaryLegs.push({
+        from_activity_id: lastActivity.id,
+        to_activity_id: hotelActivity.id,
+        origin: { lat: lastCoordinates.lat, lng: lastCoordinates.lon },
+        destination: { lat: hotelCoordinates.lat, lng: hotelCoordinates.lon },
+      });
+    }
+
+    return [...betweenActivityLegs, ...boundaryLegs];
+  });
 
   if (!legs.length) {
     return null;
@@ -190,6 +245,7 @@ export function buildPlannerMapMetricsForActivities(
   activities: PlannerActivity[],
   estimateItems: RouteLegEstimateItem[] = [],
   travelMode: RouteTravelMode = 'WALK',
+  accommodationActivity: PlannerActivity | null = null,
 ): PlannerMapDayMetrics {
   const estimatesByLegId = new Map(
     estimateItems.map((item) => [
@@ -198,30 +254,50 @@ export function buildPlannerMapMetricsForActivities(
     ]),
   );
   const fallbackLegs = buildPlannerTravelLegs(activities, travelMode);
-  const legs = fallbackLegs.map((leg) => {
-    const estimate = estimatesByLegId.get(routeEstimateKey(leg.fromActivityId, leg.toActivityId));
-    return estimate
-      ? {
-          ...leg,
-          distanceKm: estimate.distance_km,
-          durationMin: estimate.duration_min,
-        }
-      : leg;
-  });
+  const legs = fallbackLegs.map((leg) => applyEstimateToLeg(leg, estimatesByLegId));
 
-  return { ...summarizePlannerTravelLegs(legs), legs };
+  const firstActivity = activities[0] ?? null;
+  const lastActivity = activities[activities.length - 1] ?? null;
+  const hotelToFirstLeg = buildBoundaryLeg(accommodationActivity, firstActivity, travelMode);
+  const lastToHotelLeg = buildBoundaryLeg(lastActivity, accommodationActivity, travelMode);
+  const resolvedHotelToFirstLeg = hotelToFirstLeg
+    ? applyEstimateToLeg(hotelToFirstLeg, estimatesByLegId)
+    : null;
+  const resolvedLastToHotelLeg = lastToHotelLeg
+    ? applyEstimateToLeg(lastToHotelLeg, estimatesByLegId)
+    : null;
+  const summary = summarizePlannerTravelLegs(
+    [
+      ...legs,
+      resolvedHotelToFirstLeg,
+      resolvedLastToHotelLeg,
+    ].filter((leg): leg is PlannerTravelLeg => leg != null),
+  );
+
+  return {
+    ...summary,
+    legs,
+    hotelToFirstLeg: resolvedHotelToFirstLeg,
+    lastToHotelLeg: resolvedLastToHotelLeg,
+  };
 }
 
 export function buildPlannerMapDayMetrics(
   sections: PlannerMapSection[],
   estimateItems: RouteLegEstimateItem[] = [],
   travelMode: RouteTravelMode = 'WALK',
+  accommodationByDayId: Record<string, PlannerActivity | null | undefined> = {},
 ): Record<string, PlannerMapDayMetrics> {
   return Object.fromEntries(
     sections.map((section) => {
       return [
         section.dayId,
-        buildPlannerMapMetricsForActivities(section.activities, estimateItems, travelMode),
+        buildPlannerMapMetricsForActivities(
+          section.activities,
+          estimateItems,
+          travelMode,
+          accommodationByDayId[section.dayId] ?? null,
+        ),
       ];
     }),
   );

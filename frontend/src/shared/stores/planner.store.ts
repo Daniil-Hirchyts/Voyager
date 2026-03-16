@@ -29,6 +29,9 @@ interface PlannerStore {
   mapDayAccordionStateByTrip: Record<string, Record<string, boolean>>;
   setMapDayAccordionState: (tripId: string, dayStates: Record<string, boolean>) => void;
   clearMapDayAccordionState: (tripId: string) => void;
+
+  previewByDayId: Record<string, any | null>;
+  setPreviewByDayId: (preview: Record<string, any | null>) => void;
 }
 
 const plannerStoreInitialState = {
@@ -38,6 +41,7 @@ const plannerStoreInitialState = {
   expandedActivityId: null,
   activityDrafts: {},
   mapDayAccordionStateByTrip: {},
+  previewByDayId: {},
 } satisfies Pick<
   PlannerStore,
   | 'pendingJobIds'
@@ -46,6 +50,7 @@ const plannerStoreInitialState = {
   | 'expandedActivityId'
   | 'activityDrafts'
   | 'mapDayAccordionStateByTrip'
+  | 'previewByDayId'
 >;
 
 type PlannerStorePersistedState = Pick<PlannerStore, 'mapDayAccordionStateByTrip'>;
@@ -153,6 +158,8 @@ export const usePlannerStore = create<PlannerStore>()(
           delete next[tripId];
           return { mapDayAccordionStateByTrip: next };
         }),
+
+      setPreviewByDayId: (preview) => set({ previewByDayId: preview }),
     }),
     {
       name: 'voyager-planner-store',
