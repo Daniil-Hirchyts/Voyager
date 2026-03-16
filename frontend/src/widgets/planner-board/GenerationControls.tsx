@@ -92,7 +92,7 @@ export function PlannerGenerationInlineCard({
   });
 
   return (
-    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
@@ -127,7 +127,7 @@ export function PlannerGenerationInlineCard({
                     'flex cursor-pointer items-start gap-3 rounded-[14px] border px-3 py-2.5 transition-colors',
                     mode === option
                       ? 'border-black/14 bg-[rgba(244,246,248,0.7)]'
-                      : 'border-black/8 bg-white hover:bg-[rgba(244,246,248,0.45)]',
+                      : 'border-[var(--color-border)] bg-white hover:bg-[rgba(244,246,248,0.45)]',
                   )}
                 >
                   <input type="radio" value={option} {...register('mode')} className="mt-0.5" />
@@ -144,7 +144,7 @@ export function PlannerGenerationInlineCard({
             </div>
           </div>
         ) : (
-          <p className="rounded-[14px] border border-[rgba(196,95,79,0.16)] bg-[rgba(196,95,79,0.05)] px-3 py-2.5 text-[0.77rem] leading-6 text-[var(--color-text)]">
+          <p className="rounded-[14px] border border-[rgba(255,81,14,0.16)] bg-[rgba(255,81,14,0.05)] px-3 py-2.5 text-[0.77rem] leading-6 text-[var(--color-text)]">
             Reset only removes generated activities from the selected days. Manual edits stay in
             place.
           </p>
@@ -153,7 +153,7 @@ export function PlannerGenerationInlineCard({
         {days.length > 0 ? (
           <div className="flex flex-col gap-2">
             <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">Days</p>
-            <div className="max-h-44 overflow-y-auto rounded-[14px] border border-black/8 bg-[rgba(244,246,248,0.28)] p-2">
+            <div className="max-h-44 overflow-y-auto rounded-[14px] border border-[var(--color-border)] bg-[rgba(244,246,248,0.28)] p-2">
               <div className="flex flex-col gap-1">
                 {days.map((day, index) => (
                   <label

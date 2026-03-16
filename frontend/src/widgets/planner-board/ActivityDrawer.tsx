@@ -182,6 +182,43 @@ function splitTimeParts(value: string | null | undefined) {
   return { hour, minute };
 }
 
+function normalizeTypedTime(value: string) {
+  const compactValue = value.trim().replace(/[^\d:]/g, '');
+  if (!compactValue) return null;
+
+  let hour: number;
+  let minute: number;
+
+  if (compactValue.includes(':')) {
+    const [rawHour = '', ...rawMinuteParts] = compactValue.split(':');
+    const hourDigits = rawHour.replace(/\D/g, '').slice(0, 2);
+    const minuteDigits = rawMinuteParts.join('').replace(/\D/g, '').slice(0, 2);
+    if (!hourDigits) return null;
+    hour = Number(hourDigits);
+    minute = minuteDigits ? Number(minuteDigits.padStart(2, '0')) : 0;
+  } else {
+    const digits = compactValue.replace(/\D/g, '').slice(0, 4);
+    if (!digits) return null;
+
+    if (digits.length <= 2) {
+      hour = Number(digits);
+      minute = 0;
+    } else if (digits.length === 3) {
+      hour = Number(digits.slice(0, 1));
+      minute = Number(digits.slice(1));
+    } else {
+      hour = Number(digits.slice(0, 2));
+      minute = Number(digits.slice(2));
+    }
+  }
+
+  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
+    return null;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 function formatAttachmentBytes(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
@@ -435,7 +472,7 @@ function PlaceSelector({
   const showResults = normalizedQuery.length >= 3;
   const showSelectedSummary = !normalizedQuery && Boolean(selectedCandidate);
   return (
-    <div className="rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] p-3">
+    <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-3">
       {' '}
       <div className="relative">
         {' '}
@@ -446,13 +483,13 @@ function PlaceSelector({
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="h-11 rounded-[12px] border-black/8 bg-white pl-10"
+          className="h-11 rounded-[12px] border-[var(--color-border)] bg-white pl-10"
         />{' '}
       </div>{' '}
       {showSelectedSummary && selectedCandidate ? (
-        <div className="mt-3 flex items-start gap-3 rounded-[12px] border border-black/8 bg-white px-3 py-3">
+        <div className="mt-3 flex items-start gap-3 rounded-[12px] border border-[var(--color-border)] bg-white px-3 py-3">
           {' '}
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-secondary-surface)]">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--color-secondary-surface)]">
             {' '}
             <MapPin className="h-4 w-4 text-[var(--color-text-muted)]" />{' '}
           </div>{' '}
@@ -497,12 +534,12 @@ function PlaceSelector({
                   className={cn(
                     'flex w-full items-start gap-3 rounded-[12px] border px-3 py-3 text-left transition-colors',
                     isSelected
-                      ? 'border-[rgba(26,22,21,0.12)] bg-white'
+                      ? 'border-[rgba(23,23,23,0.12)] bg-white'
                       : 'border-transparent hover:bg-white',
                   )}
                 >
                   {' '}
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-white">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white">
                     {' '}
                     <MapPin className="h-4 w-4 text-[var(--color-text-muted)]" />{' '}
                   </div>{' '}
@@ -545,34 +582,60 @@ function TravelTimeWheelPicker({
 }) {
   const { hour, minute } = splitTimeParts(value);
   const normalizedValue = `${hour}:${minute}`;
+  const [draftValue, setDraftValue] = useState(normalizedValue);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isInputFocused) {
+      setDraftValue(normalizedValue);
+    }
+  }, [isInputFocused, normalizedValue]);
+
+  const commitTypedValue = (rawValue: string = draftValue) => {
+    const nextValue = normalizeTypedTime(rawValue);
+    if (nextValue) {
+      setDraftValue(nextValue);
+      if (nextValue !== normalizedValue) {
+        onChange(nextValue);
+      }
+      return;
+    }
+    setDraftValue(normalizedValue);
+  };
+
   return (
-    <div className="flex flex-col gap-2 rounded-[14px] bg-[var(--color-secondary-surface)] px-2.5 py-2.5">
+    <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-3">
       {' '}
-      <div className="flex items-center justify-between gap-3 px-1">
+      <div className="">
         {' '}
-        <div className="min-w-0">
+        <p className="text-[0.64rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
           {' '}
-          <p className="text-[0.68rem] font-medium tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-            {' '}
-            Type time{' '}
-          </p>{' '}
-          <p className="text-[0.72rem] text-[var(--color-text-muted)]">
-            {' '}
-            Faster than scrolling{' '}
-          </p>{' '}
-        </div>{' '}
+          Selected time{' '}
+        </p>{' '}
         <Input
-          type="time"
-          step={60}
+          type="text"
+          inputMode="numeric"
           aria-label={inputAriaLabel}
-          value={normalizedValue}
-          onChange={(event) => onChange(event.target.value || normalizedValue)}
-          className="h-10 w-[8.25rem] rounded-[10px] border-black/8 bg-white px-3 text-sm font-semibold tracking-[-0.02em]"
+          value={draftValue}
+          onFocus={() => setIsInputFocused(true)}
+          onChange={(event) => setDraftValue(event.target.value)}
+          onBlur={(event) => {
+            setIsInputFocused(false);
+            commitTypedValue(event.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Enter') {
+              return;
+            }
+            event.preventDefault();
+            event.currentTarget.blur();
+          }}
+          className="mt-1 h-auto border-0 bg-transparent px-0 py-0 text-[1.05rem] font-semibold tracking-[0.08em] tabular-nums text-[var(--color-text)] shadow-none focus:border-transparent focus:ring-0"
         />{' '}
       </div>{' '}
-      <div className="flex items-center justify-center gap-2 rounded-[14px] bg-white px-2 py-3">
+      <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] bg-white ">
         {' '}
-        <WheelPickerWrapper className="w-[6rem] rounded-[12px] border-0 bg-transparent px-1">
+        <WheelPickerWrapper className="w-full rounded-[12px] px-1 shadow-none">
           {' '}
           <WheelPicker
             value={hour}
@@ -583,15 +646,14 @@ function TravelTimeWheelPicker({
             visibleCount={7}
             classNames={{
               optionItem: 'text-[0.78rem] font-medium text-[var(--color-text-muted)]',
-              highlightWrapper:
-                'rounded-[10px] bg-[var(--color-secondary-surface)] text-[var(--color-text)] ring-0',
+              highlightWrapper: 'rounded-[10px] bg-white text-[var(--color-text)] ring-0',
               highlightItem:
                 'text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]',
             }}
           />{' '}
         </WheelPickerWrapper>{' '}
-        <span className="text-[0.95rem] font-semibold text-[var(--color-text-muted)]">:</span>{' '}
-        <WheelPickerWrapper className="w-[6rem] rounded-[12px] border-0 bg-transparent px-1">
+        <span className="text-base leading-none font-semibold text-[var(--color-text-muted)]">:</span>{' '}
+        <WheelPickerWrapper className="w-full rounded-[12px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-1 shadow-none">
           {' '}
           <WheelPicker
             value={minute}
@@ -602,8 +664,7 @@ function TravelTimeWheelPicker({
             visibleCount={7}
             classNames={{
               optionItem: 'text-[0.78rem] font-medium text-[var(--color-text-muted)]',
-              highlightWrapper:
-                'rounded-[10px] bg-[var(--color-secondary-surface)] text-[var(--color-text)] ring-0',
+              highlightWrapper: 'rounded-[10px] bg-white text-[var(--color-text)] ring-0',
               highlightItem:
                 'text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]',
             }}
@@ -624,7 +685,7 @@ function PendingActivityAttachments({
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
-    <section className="rounded-[18px] border border-black/8 bg-white p-4">
+    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
       {' '}
       <div className="flex items-start justify-between gap-4">
         {' '}
@@ -642,7 +703,7 @@ function PendingActivityAttachments({
         <Button
           type="button"
           variant="outline"
-          className="h-9 rounded-full border-black/8 px-3 text-[0.76rem] font-semibold"
+          className="h-9 rounded-full border-[var(--color-border)] px-3 text-[0.76rem] font-semibold"
           onClick={() => inputRef.current?.click()}
         >
           {' '}
@@ -671,7 +732,7 @@ function PendingActivityAttachments({
             return (
               <div
                 key={fileKey}
-                className="flex items-center gap-3 rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5"
+                className="flex items-center gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5"
               >
                 {' '}
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white">
@@ -705,7 +766,7 @@ function PendingActivityAttachments({
           })}{' '}
         </div>
       ) : (
-        <div className="mt-4 flex items-center justify-center rounded-[16px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 py-6 text-center">
+        <div className="mt-4 flex items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 py-6 text-center">
           {' '}
           <div>
             {' '}
@@ -1301,12 +1362,12 @@ export function ActivityDrawer({
         side={isMobile ? 'bottom' : 'right'}
         className={
           isMobile
-            ? 'flex h-[94dvh] flex-col overflow-hidden rounded-t-[18px] border-x-0 border-b-0 bg-[#f6f7f8] p-0 sm:max-w-none'
-            : 'flex h-full w-full max-w-[36rem] flex-col overflow-hidden bg-[#f6f7f8] p-0 sm:max-w-[36rem]'
+            ? 'flex h-[94dvh] flex-col overflow-hidden rounded-t-[24px] p-0 sm:max-w-none'
+            : 'flex h-full w-full max-w-[36rem] flex-col overflow-hidden p-0 sm:max-w-[36rem]'
         }
       >
         {' '}
-        <SheetHeader className="gap-2 border-b border-black/8 bg-[#f6f7f8] px-5 py-5">
+        <SheetHeader className="gap-2 border-b border-[var(--color-border)] px-5 py-5">
           {' '}
           <div className="flex items-start gap-3">
             {' '}
@@ -1352,7 +1413,7 @@ export function ActivityDrawer({
             <div className="mx-auto flex w-full max-w-[32rem] flex-col gap-4">
               {' '}
               {step === 0 && isCreate && createFlow === 'itinerary' ? (
-                <section className="grid gap-2.5 md:grid-cols-2">
+                <section className="flex flex-col gap-3">
                   {' '}
                   {allowedCreateCategories.map((value) => {
                     const meta = PLANNER_CATEGORY_META[value];
@@ -1364,32 +1425,38 @@ export function ActivityDrawer({
                         onClick={() => handleCategorySelect(value)}
                         aria-pressed={category === value}
                         className={cn(
-                          'cursor-pointer rounded-[18px] border bg-white px-4 py-4 text-left transition-colors',
+                          'group cursor-pointer rounded-[24px] px-5 py-5 text-left transition-all duration-300',
                           category === value
-                            ? 'border-[rgba(26,22,21,0.14)] bg-[var(--color-secondary-surface)]'
-                            : 'border-black/8 hover:border-black/12 hover:bg-[var(--color-secondary-surface)]',
+                            ? 'bg-[var(--color-primary)] text-white'
+                            : 'bg-[rgba(240,240,240,0.8)] text-[var(--color-text)] hover:bg-[rgba(230,230,230,0.9)]',
                         )}
                       >
                         {' '}
-                        <div className="flex items-start gap-3">
+                        <div className="flex items-center gap-4">
                           {' '}
-                          <div className="mt-0.5 flex size-10 items-center justify-center rounded-[12px] bg-white">
+                          <div className={cn(
+                            "flex size-12 items-center justify-center rounded-[16px] transition-colors duration-300",
+                            category === value ? "bg-white/20" : "bg-white"
+                          )}>
                             {' '}
-                            <Icon className="h-5 w-5 text-[var(--color-text)]" />{' '}
+                            <Icon className={cn("h-6 w-6", category === value ? "text-white" : "text-[var(--color-text)]")} />{' '}
                           </div>{' '}
                           <div className="min-w-0 flex-1">
                             {' '}
                             <div className="flex items-center justify-between gap-3">
                               {' '}
-                              <p className="text-sm font-semibold text-[var(--color-text)]">
+                              <p className="text-base font-bold tracking-tight">
                                 {' '}
                                 {meta.label}{' '}
                               </p>{' '}
                               {category === value ? (
-                                <Check className="h-4 w-4 text-[var(--color-text)]" />
+                                <Check className="h-5 w-5 text-white" />
                               ) : null}{' '}
                             </div>{' '}
-                            <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+                            <p className={cn(
+                              "mt-1 text-sm leading-snug",
+                              category === value ? "text-white/70" : "text-[var(--color-text-muted)]"
+                            )}>
                               {' '}
                               {meta.description}{' '}
                             </p>{' '}
@@ -1401,7 +1468,7 @@ export function ActivityDrawer({
                 </section>
               ) : null}{' '}
               {step === 1 && createFlow === 'itinerary' ? (
-                <section className="rounded-[18px] border border-black/8 bg-white p-4">
+                <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
                   {' '}
                   <div className="flex items-start justify-between gap-4">
                     {' '}
@@ -1434,7 +1501,7 @@ export function ActivityDrawer({
               ) : null}
               {step === 2 ? (
                 <div className="grid gap-3">
-                  <section className="rounded-[18px] border border-black/8 bg-white p-4">
+                  <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
@@ -1463,7 +1530,7 @@ export function ActivityDrawer({
                   </section>
 
                   {category === 'travel' ? (
-                    <section className="rounded-[18px] border border-black/8 bg-white p-4">
+                    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
                       <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Travel details
                       </p>
@@ -1483,7 +1550,7 @@ export function ActivityDrawer({
                                 >
                                   <SelectTrigger
                                     id="travel-mode"
-                                    className="h-11 rounded-[10px] border-black/8"
+                                    className="h-11 rounded-[12px] border-[var(--color-border)]"
                                   >
                                     <SelectValue placeholder="Select travel mode" />
                                   </SelectTrigger>
@@ -1584,7 +1651,7 @@ export function ActivityDrawer({
                   ) : null}
 
                   {category === 'hotel' ? (
-                    <section className="rounded-[18px] border border-black/8 bg-white p-4">
+                    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
                       <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Accommodation details
                       </p>
@@ -1626,7 +1693,7 @@ export function ActivityDrawer({
                                     onChange={field.onChange}
                                     invalid={Boolean(fieldState.error)}
                                     placeholder="Choose check-in date"
-                                    className="h-11 rounded-[10px] border-black/8 bg-white"
+                                    className="h-11 rounded-[12px] border-[var(--color-border)] bg-white"
                                   />
                                 </FieldContent>
                                 {fieldState.error ? (
@@ -1649,7 +1716,7 @@ export function ActivityDrawer({
                                     onChange={field.onChange}
                                     invalid={Boolean(fieldState.error)}
                                     placeholder="Choose checkout date"
-                                    className="h-11 rounded-[10px] border-black/8 bg-white"
+                                    className="h-11 rounded-[12px] border-[var(--color-border)] bg-white"
                                   />
                                 </FieldContent>
                                 {fieldState.error ? (
@@ -1683,7 +1750,7 @@ export function ActivityDrawer({
                     </section>
                   ) : null}
 
-                  <section className="rounded-[18px] border border-black/8 bg-white p-4">
+                  <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
                     <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Activity details
                     </p>
@@ -1702,7 +1769,7 @@ export function ActivityDrawer({
                               placeholder="Select day"
                               searchPlaceholder="Search day"
                               emptyText="No days found"
-                              triggerClassName="border-black/8"
+                              triggerClassName="border-[var(--color-border)]"
                             />
                           </FieldContent>
                         </Field>
@@ -1715,7 +1782,7 @@ export function ActivityDrawer({
                             id="activity-title"
                             placeholder="Name this activity"
                             aria-invalid={Boolean(errors.title)}
-                            className="h-11 rounded-[10px] border-black/8 bg-white"
+                            className="h-11 rounded-[12px] border-[var(--color-border)] bg-white"
                             {...titleField}
                           />
                         </FieldContent>
@@ -1729,13 +1796,13 @@ export function ActivityDrawer({
                             id="activity-description"
                             rows={5}
                             placeholder="What should this activity include?"
-                            className="rounded-[10px] border-black/8 bg-white"
+                            className="rounded-[12px] border-[var(--color-border)] bg-white"
                             {...register('description')}
                           />
                         </FieldContent>
                       </Field>
 
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-row-2">
                         {category !== 'travel' && category !== 'hotel' ? (
                           <Controller
                             name="start_time"
@@ -1772,7 +1839,7 @@ export function ActivityDrawer({
                                     type="number"
                                     min={0}
                                     max={1000000}
-                                    className="h-11 rounded-[10px] border-black/8 bg-white"
+                                    className="h-11 rounded-[12px] border-[var(--color-border)] bg-white"
                                     value={field.value ?? ''}
                                     onChange={(event) =>
                                       field.onChange(
@@ -1806,7 +1873,7 @@ export function ActivityDrawer({
                                   min={0}
                                   max={1000000000}
                                   step="0.01"
-                                  className="h-11 rounded-[10px] border-black/8 bg-white"
+                                  className="h-11 rounded-[12px] border-[var(--color-border)] bg-white"
                                   value={field.value ?? ''}
                                   onChange={(event) =>
                                     field.onChange(
@@ -1838,7 +1905,7 @@ export function ActivityDrawer({
                                   searchPlaceholder="Search currency"
                                   emptyText="No currencies found"
                                   invalid={Boolean(fieldState.error)}
-                                  triggerClassName="border-black/8"
+                                  triggerClassName="border-[var(--color-border)]"
                                 />
                               </FieldContent>
                               {fieldState.error ? <FieldError errors={[fieldState.error]} /> : null}
@@ -1854,7 +1921,7 @@ export function ActivityDrawer({
                             id="activity-notes"
                             rows={4}
                             placeholder="Operational notes, booking reminders, logistics..."
-                            className="rounded-[10px] border-black/8 bg-white"
+                            className="rounded-[12px] border-[var(--color-border)] bg-white"
                             {...register('notes')}
                           />
                         </FieldContent>
@@ -1889,13 +1956,13 @@ export function ActivityDrawer({
               ) : null}
             </div>
           </div>
-          <SheetFooter className="border-t border-black/8 bg-white px-4 py-3">
+          <SheetFooter className="border-t border-[var(--color-border)] px-4 py-3">
             <div className="flex w-full items-center justify-end gap-2">
               {step === minimumStep ? (
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-[10px]"
+                  className="rounded-[12px]"
                   onClick={onClose}
                 >
                   Cancel
@@ -1904,7 +1971,7 @@ export function ActivityDrawer({
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-[10px]"
+                  className="rounded-[12px]"
                   onClick={handleBack}
                 >
                   Back
@@ -1916,7 +1983,7 @@ export function ActivityDrawer({
                   <Button
                     key="continue-step"
                     type="button"
-                    className="rounded-[10px]"
+                    className="rounded-[12px]"
                     onClick={(event) => {
                       event.preventDefault();
                       handleNextStep();
@@ -1928,7 +1995,7 @@ export function ActivityDrawer({
                   <Button
                     key="submit-step"
                     type="submit"
-                    className="rounded-[10px]"
+                    className="rounded-[12px]"
                     disabled={isSaving || createPlaceMutation.isPending}
                   >
                     {isSaving || createPlaceMutation.isPending ? (

@@ -162,7 +162,7 @@ function AppSidebarLink({ to, label, icon: Icon, end = false }: NavItem) {
         asChild
         isActive={!!match}
         className={cn(
-          'h-8 rounded-[8px] px-2 text-[0.92rem] font-normal text-[#5f6b7a] transition-colors [&>svg]:size-[0.95rem]',
+          'h-8 rounded-[8px] px-2 text-[0.92rem] font-normal text-[var(--color-text-muted)] transition-colors [&>svg]:size-[0.95rem]',
           'hover:bg-transparent hover:text-[var(--color-text)]',
           'data-[active=true]: data-[active=true]:bg-transparent data-[active=true]:font-medium data-[active=true]:text-[var(--color-text)]',
         )}
@@ -191,7 +191,7 @@ function AppRecentTripLink({ trip, isActive }: { trip: Trip; isActive: boolean }
       >
         <span
           className={cn(
-            'truncate text-[#5f6b7a]',
+            'truncate text-[var(--color-text-muted)]',
             isActive ? 'font-medium text-[var(--color-text)]' : 'font-normal',
           )}
         >
@@ -218,21 +218,21 @@ function AppShellPagination({
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5"
+        className="h-8 rounded-[8px] border-[var(--color-border)] bg-transparent px-2.5"
         onClick={pagination.onPreviousPage}
         disabled={pagination.currentPage <= 1 || pagination.isFetching}
         aria-label="Previous page"
       >
         <ChevronLeft className="size-3.5" />
       </Button>
-      <span className="min-w-[3.5rem] text-center text-[0.78rem] font-medium text-[#5f6b7a]">
+      <span className="min-w-[3.5rem] text-center text-[0.78rem] font-medium text-[var(--color-text-muted)]">
         {pagination.currentPage} / {pagination.totalPages}
       </span>
       <Button
         type="button"
         variant="outline"
         size="sm"
-        className="h-8 rounded-[8px] border-black/8 bg-transparent px-2.5"
+        className="h-8 rounded-[8px] border-[var(--color-border)] bg-transparent px-2.5"
         onClick={pagination.onNextPage}
         disabled={pagination.currentPage >= pagination.totalPages || pagination.isFetching}
         aria-label="Next page"
@@ -274,12 +274,12 @@ function AppShellUserMenu({
                 <span className="truncate text-[0.92rem] font-medium">{userName}</span>
               </div>
 
-              <MoreVertical className="size-[0.95rem] text-[#7b8794]" />
+              <MoreVertical className="size-[0.95rem] text-[var(--color-text-muted)]" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-[14px] border-black/8 p-1.5 backdrop-blur-none"
+            className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-[14px] border-[var(--color-border)] p-1.5 backdrop-blur-none"
             side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={6}
@@ -296,13 +296,13 @@ function AppShellUserMenu({
                   <span className="truncate text-[0.95rem] font-medium text-[var(--color-text)]">
                     {userName}
                   </span>
-                  <span className="truncate text-xs font-normal tracking-normal text-[#6b7280] normal-case">
+                  <span className="truncate text-xs font-normal tracking-normal text-[var(--color-text-muted)] normal-case">
                     {userEmail || 'Signed in'}
                   </span>
                 </div>
               </div>
             </DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-black/8" />
+            <DropdownMenuSeparator className="bg-[var(--color-border)]" />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild className="rounded-[10px] px-2.5 py-2 font-medium">
                 <Link to="/app/settings">
@@ -450,7 +450,7 @@ export function AppShellLayout({
 
           {shouldShowRecentTrips ? (
             <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium tracking-normal text-[#8b94a3] normal-case">
+              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium tracking-normal text-[var(--color-text-muted)] normal-case">
                 Recent trips
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -465,7 +465,7 @@ export function AppShellLayout({
 
           {tripNavItems.length > 0 ? (
             <SidebarGroup className="p-0">
-              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium tracking-normal text-[#8b94a3] normal-case">
+              <SidebarGroupLabel className="h-5 px-2 text-[0.69rem] font-medium tracking-normal text-[var(--color-text-muted)] normal-case">
                 Current trip
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -484,25 +484,25 @@ export function AppShellLayout({
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="min-h-0 flex-1 overflow-hidden bg-white md:border md:border-black/8 md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:rounded-[12px] md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2">
+      <SidebarInset className="min-h-0 flex-1 overflow-hidden bg-white md:border md:border-[var(--color-border)] md:peer-data-[variant=inset]:m-3 md:peer-data-[variant=inset]:rounded-[var(--radius-lg)] md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-3">
         <header
           className={cn(
-            'relative z-20 flex shrink-0 flex-nowrap items-center justify-between gap-3 border-b border-black/8 bg-transparent px-3.5 md:px-4',
+            'relative z-20 flex shrink-0 flex-nowrap items-center justify-between gap-3 border-b border-[var(--color-border)] bg-transparent px-3.5 md:px-4',
             headerMeta ? 'h-12 md:min-h-[4.25rem] md:py-2.5' : 'h-12 md:min-h-[3.25rem]',
           )}
         >
           <div className="flex max-w-full min-w-0 flex-1 shrink-0 items-center gap-2">
-            <SidebarTrigger className="-ml-1 size-7 shrink-0 rounded-[8px] border-none bg-transparent text-[#5f6b7a] hover:bg-black/4 hover:text-[var(--color-text)]" />
+            <SidebarTrigger className="-ml-1 size-7 shrink-0 rounded-[8px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)]" />
             <Separator
               orientation="vertical"
-              className="mx-1.5 hidden h-4 shrink-0 bg-black/8 md:block"
+              className="mx-1.5 hidden h-4 shrink-0 bg-[var(--color-border)] md:block"
             />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[1rem] font-medium tracking-[-0.01em] text-[var(--color-text)]">
                 {currentSection}
               </p>
               {headerMeta ? (
-                <div className="mt-0.5 line-clamp-1 hidden max-w-full min-w-0 overflow-hidden text-[0.8rem] text-[#5f6b7a] md:block">
+                <div className="mt-0.5 line-clamp-1 hidden max-w-full min-w-0 overflow-hidden text-[0.8rem] text-[var(--color-text-muted)] md:block">
                   {headerMeta}
                 </div>
               ) : null}

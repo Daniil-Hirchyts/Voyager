@@ -25,21 +25,20 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
               classNames: {
                 toast:
                   'group flex items-center gap-3 px-4 py-3 rounded-full border border-white/10 backdrop-blur-xl transition-all',
-                default: 'bg-zinc-900/90 dark:bg-black/80 text-white',
+                default: 'bg-[#171717]/90 text-white',
                 success:
-                  'bg-emerald-950/90 dark:bg-emerald-950/50 text-emerald-50 border-emerald-800/50 dark:border-emerald-500/20',
+                  'bg-[#00C978]/90 text-white border-[#00C978]/20',
                 error:
-                  'bg-red-950/90 dark:bg-red-950/50 text-red-50 border-red-800/50 dark:border-red-500/20',
+                  'bg-[#FF510E]/90 text-white border-[#FF510E]/20',
                 warning:
-                  'bg-amber-950/90 dark:bg-amber-950/50 text-amber-50 border-amber-800/50 dark:border-amber-500/20',
-                info: 'bg-blue-950/90 dark:bg-blue-950/50 text-blue-50 border-blue-800/50 dark:border-blue-500/20',
+                  'bg-[#FFA200]/90 text-white border-[#FFA200]/20',
+                info: 'bg-[#00B1FF]/90 text-white border-[#00B1FF]/20',
                 title: 'text-[13px] font-medium leading-snug',
                 description: 'text-xs opacity-90',
                 actionButton:
-                  'bg-white text-zinc-900 font-medium rounded-full px-3 py-1 text-[11px] transition-colors hover:bg-zinc-200',
-                cancelButton:
-                  'bg-zinc-800 text-white font-medium rounded-full px-3 py-1 text-[11px] transition-colors hover:bg-zinc-700',
-                icon: 'w-4 h-4 shrink-0',
+                  'bg-white text-[var(--color-text)] font-medium rounded-full px-3 py-1 text-[11px] transition-colors hover:bg-[var(--color-accent)]',
+                  cancelButton:
+                  'bg-[var(--color-primary)] text-white font-medium rounded-full px-3 py-1 text-[11px] transition-colors hover:bg-[#2A2A2A]',                icon: 'w-4 h-4 shrink-0',
                 content: 'flex-1 min-w-0',
               },
             }}

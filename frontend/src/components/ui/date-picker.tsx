@@ -57,7 +57,7 @@ export function DatePicker({
           className={cn(
             'h-10 w-full justify-start rounded-[10px] px-3 text-left text-sm font-normal',
             !selected && 'text-[var(--color-text-muted)]/60',
-            invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(196,95,79,0.12)]',
+            invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(255,81,14,0.12)]',
             className,
           )}
         >

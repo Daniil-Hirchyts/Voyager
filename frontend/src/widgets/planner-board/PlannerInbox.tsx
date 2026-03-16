@@ -48,13 +48,13 @@ export function PlannerInbox({
     <section
       ref={setNodeRef}
       className={cn(
-        'flex h-full min-h-0 w-full flex-col rounded-[14px] border border-black/8 bg-white lg:w-[320px] lg:max-w-[320px] lg:min-w-[320px]',
+        'flex h-full min-h-0 w-full flex-col rounded-[14px] border border-[var(--color-border)] bg-white lg:w-[320px] lg:max-w-[320px] lg:min-w-[320px]',
         isOver && 'border-black/16 ring-2 ring-black/6',
         className,
       )}
       aria-label={title}
     >
-      <header className="hidden h-[4.5rem] flex-col justify-center border-b border-black/8 bg-[var(--color-secondary-surface)] px-4 lg:flex">
+      <header className="hidden h-[4.5rem] flex-col justify-center border-b border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 lg:flex">
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-white text-[var(--color-text-muted)]">
@@ -70,7 +70,7 @@ export function PlannerInbox({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-[8px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-black/4 hover:text-[var(--color-text)]"
+              className="h-8 w-8 rounded-[12px] border-none bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)]"
               onClick={onToggleDetached}
               title={isDetached ? 'Attach to side' : 'Detach from side'}
             >
@@ -86,7 +86,7 @@ export function PlannerInbox({
 
       <div className="flex min-h-0 flex-1 flex-col px-2.5 py-2.5">
         {activities.length === 0 ? (
-          <div className="flex min-h-[160px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-4 text-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex min-h-[160px] flex-1 items-center justify-center rounded-[12px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 text-center text-sm text-[var(--color-text-muted)]">
             {emptyMessage}
           </div>
         ) : (
@@ -124,11 +124,11 @@ export function PlannerInbox({
       </div>
 
       {onAddActivity ? (
-        <div className="border-t border-black/8 p-2.5">
+        <div className="border-t border-[var(--color-border)] p-2.5">
           <Button
             type="button"
             variant="outline"
-            className="h-9 w-full rounded-[10px] border-dashed border-black/8 bg-white text-[var(--color-text-muted)] hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
+            className="h-9 w-full rounded-[12px] border-dashed border-[var(--color-border)] bg-white text-[var(--color-text-muted)] hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
             onClick={() => onAddActivity()}
           >
             Add activity

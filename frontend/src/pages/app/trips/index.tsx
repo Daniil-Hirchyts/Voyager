@@ -154,7 +154,7 @@ function SectionIntro({
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>
         {eyebrow && (
-          <p className="text-[0.72rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
+          <p className="text-[0.72rem] font-semibold tracking-[0.22em] text-[var(--color-text-muted)] uppercase">
             {eyebrow}
           </p>
         )}
@@ -181,7 +181,7 @@ function TripCard({ trip, cover }: { trip: Trip; cover: TripCardCover }) {
   return (
     <Link to={`/app/trips/${trip.id}`} className="group block" draggable={false}>
       <article className="overflow-hidden rounded-[20px] border border-white/70 bg-white transition-all duration-300 group-hover:-translate-y-0.5">
-        <div className="relative aspect-[16/9] overflow-hidden bg-[linear-gradient(135deg,#b8cfe8_0%,#8aafc9_100%)]">
+        <div className="relative aspect-[16/9] overflow-hidden bg-[linear-gradient(135deg,#d4d4d4_0%,#a3a3a3_100%)]">
           {cover.url && (
             <img
               src={cover.url}
@@ -200,7 +200,7 @@ function TripCard({ trip, cover }: { trip: Trip; cover: TripCardCover }) {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.0)_0%,rgba(7,12,18,0.12)_40%,rgba(7,12,18,0.78)_100%)]" />
 
           <div className="absolute top-3 left-3">
-            <span className="rounded-full border border-white/50 bg-[rgba(255,244,236,0.9)] px-2.5 py-[3px] text-[0.65rem] font-semibold tracking-[0.02em] text-[#c96541]">
+            <span className="rounded-full border border-white/50 bg-[rgba(255,162,0,0.10)] px-2.5 py-[3px] text-[0.65rem] font-semibold tracking-[0.02em] backdrop-blur-sm text-[var(--color-primary-foreground)]">
               {timingLabel}
             </span>
           </div>
@@ -224,15 +224,15 @@ function TripCard({ trip, cover }: { trip: Trip; cover: TripCardCover }) {
         <div className="flex items-center justify-between gap-3 px-3.5 py-2.5">
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[#94a3b8]" />
-              <span className="truncate text-[0.78rem] text-[#64748b]">{dateLabel}</span>
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" />
+              <span className="truncate text-[0.78rem] text-[var(--color-text-muted)]">{dateLabel}</span>
             </div>
             {shareBadge ? (
-              <span className="text-[0.74rem] font-medium text-[#7a8796]">{shareBadge.detail}</span>
+              <span className="text-[0.74rem] font-medium text-[var(--color-text-muted)]">{shareBadge.detail}</span>
             ) : null}
           </div>
           {tripLengthLabel && (
-            <span className="shrink-0 rounded-full bg-[#f1f5f9] px-2 py-0.5 text-[0.7rem] font-medium text-[#64748b]">
+            <span className="shrink-0 rounded-full bg-[var(--color-accent)] px-2 py-0.5 text-[0.7rem] font-medium text-[var(--color-text-muted)]">
               {tripLengthLabel}
             </span>
           )}
@@ -257,26 +257,26 @@ function WorldExplorerMap({
 
   if (!config.map.apiKey) {
     return (
-      <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(180deg,#d7e8f3_0%,#edf5fa_100%)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.84),transparent_22%),radial-gradient(circle_at_78%_28%,rgba(114,174,230,0.18),transparent_24%)]" />
+      <div className="relative h-full w-full overflow-hidden bg-[linear-gradient(180deg,#e5e5e5_0%,#f5f5f5_100%)]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.84),transparent_22%),radial-gradient(circle_at_78%_28%,rgba(23,23,23,0.02),transparent_24%)]" />
         <div className="relative flex h-full flex-col justify-between p-5">
-          <div className="max-w-sm rounded-[20px] border border-white/70 bg-white/74 px-4 py-3 text-[#17344c] backdrop-blur-md">
-            <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[#7a8a9b] uppercase">
+          <div className="max-w-sm rounded-[20px] border border-white/70 bg-white/74 px-4 py-3 text-[var(--color-text)] backdrop-blur-md">
+            <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
               Live explorer
             </p>
-            <p className="mt-2 text-sm leading-6 text-[#4d5c6c]">
+            <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
               A Google Maps API key is required to render the live explorer map on this page.
             </p>
           </div>
           {activeDestination ? (
-            <div className="max-w-md rounded-[20px] border border-white/70 bg-white/74 px-4 py-4 text-[#17344c] backdrop-blur-md">
-              <p className="text-[0.68rem] tracking-[0.18em] text-[#7a8a9b] uppercase">
+            <div className="max-w-md rounded-[20px] border border-white/70 bg-white/74 px-4 py-4 text-[var(--color-text)] backdrop-blur-md">
+              <p className="text-[0.68rem] tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                 Selected destination
               </p>
               <h3 className="mt-2 text-[1.25rem] font-semibold tracking-[-0.04em]">
                 {activeDestination.destinationText}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-[#4d5c6c]">
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
                 Add `VITE_GOOGLE_MAPS_API_KEY` to switch this panel to a live map.
               </p>
             </div>
@@ -287,7 +287,7 @@ function WorldExplorerMap({
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-[#dceaf2]">
+    <div className="relative h-full w-full overflow-hidden bg-[#e5e5e5]">
       <VoyagerMap
         defaultCenter={{ lat: 24, lng: 10 }}
         defaultZoom={2}
@@ -348,10 +348,10 @@ function WorldExplorerMap({
         })}
       </VoyagerMap>
 
-      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.02)_24%,rgba(14,29,44,0.08)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-[linear-gradient(180deg,rgba(220,234,242,0.0),rgba(220,234,242,0.82))]" />
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(255,255,255,0.14)_0%,rgba(255,255,255,0.02)_24%,rgba(23,23,23,0.08)_100%)]" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-28 bg-[linear-gradient(180deg,rgba(229,229,229,0.0),rgba(229,229,229,0.82))]" />
 
-      <div className="absolute top-4 right-4 z-20 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[0.72rem] font-medium text-[#4d5c6c] backdrop-blur-md">
+      <div className="absolute top-4 right-4 z-20 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-[0.72rem] font-medium text-[var(--color-text-muted)] backdrop-blur-md">
         {destinations.length} live markers
       </div>
     </div>
@@ -376,8 +376,8 @@ function DestinationListCard({
       className={cn(
         'group flex w-full items-center gap-3 rounded-[12px] border border-transparent px-3 py-2.5 text-left transition-colors lg:rounded-[14px] lg:px-3 lg:py-2.5',
         selected
-          ? 'bg-[#f8fafc] lg:border-[#cfdbe6] lg:bg-white'
-          : 'border-transparent bg-white hover:bg-[#f9fbfd] lg:border-transparent lg:bg-transparent lg:hover:border-[#dbe4ec] lg:hover:bg-white',
+          ? 'bg-[var(--color-secondary-surface)] lg:border-[var(--color-border)] lg:bg-white'
+          : 'border-transparent bg-white hover:bg-[var(--color-secondary-surface)] lg:border-transparent lg:bg-transparent lg:hover:border-[var(--color-border)] lg:hover:bg-white',
       )}
     >
       <button
@@ -404,7 +404,7 @@ function DestinationListCard({
           <p className="truncate text-[0.82rem] font-medium text-[var(--color-text)]">
             {destination.name}
           </p>
-          <p className="truncate text-[0.72rem] text-[#7a8796]">{destination.country}</p>
+          <p className="truncate text-[0.72rem] text-[var(--color-text-muted)]">{destination.country}</p>
         </div>
       </button>
       {selected && (
@@ -567,7 +567,7 @@ export default function TripsPage() {
                     <CarouselNavigation
                       alwaysShow={true}
                       className="relative top-auto left-auto inline-flex w-fit translate-y-0 justify-start gap-2 px-0"
-                      classNameButton="h-9 w-9 p-0 flex items-center justify-center bg-white border border-[#dce6ef]"
+                      classNameButton="h-9 w-9 p-0 flex items-center justify-center bg-white border border-[var(--color-border)]"
                     />
                   </div>
                 }
@@ -626,7 +626,7 @@ export default function TripsPage() {
         <div className="flex flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between lg:px-0">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-[0.72rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
+              <p className="text-[0.72rem] font-semibold tracking-[0.22em] text-[var(--color-text-muted)] uppercase">
                 Curated destinations
               </p>
             </div>
@@ -635,7 +635,7 @@ export default function TripsPage() {
             </h2>
           </div>
 
-          <div className="hidden w-full rounded-[14px] border border-black/5 bg-black/5 p-1 md:w-auto lg:flex">
+          <div className="hidden w-full rounded-[14px] border border-[var(--color-border)] bg-[var(--color-border)] p-1 md:w-auto lg:flex">
             <AnimatedBackground
               defaultValue={activeTab}
               className="rounded-[10px] bg-black"
@@ -656,7 +656,7 @@ export default function TripsPage() {
                   type="button"
                   className={cn(
                     'flex flex-1 items-center justify-center rounded-[10px] px-4 py-2 transition-colors md:flex-none md:py-1.5',
-                    activeTab === id ? 'text-white' : 'text-[#6f7d8d] hover:text-black',
+                    activeTab === id ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
                   )}
                   aria-pressed={activeTab === id}
                 >
@@ -670,7 +670,7 @@ export default function TripsPage() {
           </div>
         </div>
 
-        <div className="mt-4 border-y-0 border-[#dce5ed] bg-transparent md:mt-8 lg:overflow-hidden lg:rounded-xl lg:border lg:border-[#d8e0e8] lg:bg-white">
+        <div className="mt-4 border-y-0 border-[var(--color-border)] bg-transparent md:mt-8 lg:overflow-hidden lg:rounded-xl lg:border lg:border-[var(--color-border-strong)] lg:bg-white">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
             {/* Map or Info Area */}
             <div className="relative hidden h-[17rem] overflow-y-auto bg-white md:h-[30rem] lg:block lg:h-[34rem]">
@@ -685,33 +685,33 @@ export default function TripsPage() {
               ) : activeDestination ? (
                 <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
                   <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[#6f7d8d] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
+                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.region}
                     </span>
-                    <span className="rounded-full border border-[#dce5ed] bg-[#f8fafc] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[#6f7d8d] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
+                    <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.bestFor}
                     </span>
                   </div>
                   <h3 className="text-[1.28rem] leading-[1.08] font-semibold tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
                     {activeDestination.name}
                   </h3>
-                  <p className="mt-1.5 text-[0.82rem] leading-5 text-[#556171] md:mt-2 md:text-[1rem] md:leading-7">
+                  <p className="mt-1.5 text-[0.82rem] leading-5 text-[var(--color-text-muted)] md:mt-2 md:text-[1rem] md:leading-7">
                     {activeDestination.teaser}
                   </p>
 
                   <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
-                    <div className="rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 md:rounded-[16px] md:p-4">
-                      <CalendarDays className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[#8b97a7] uppercase">
+                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
+                      <CalendarDays className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
+                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Dates
                       </p>
                       <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">
                         {formatTripDates(activeDestination.startDate, activeDestination.endDate)}
                       </p>
                     </div>
-                    <div className="rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 md:rounded-[16px] md:p-4">
-                      <Compass className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[#8b97a7] uppercase">
+                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
+                      <Compass className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
+                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Budget
                       </p>
                       <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">
@@ -721,9 +721,9 @@ export default function TripsPage() {
                         )}
                       </p>
                     </div>
-                    <div className="col-span-2 rounded-[12px] border border-[#e8eef4] bg-[#f8fafc] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
-                      <Route className="mb-1 size-3.5 text-[#8b97a7] md:mb-2 md:size-4" />
-                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[#8b97a7] uppercase">
+                    <div className="col-span-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
+                      <Route className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
+                      <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Travel
                       </p>
                       <p className="mt-0.5 text-[0.78rem] font-medium text-[var(--color-text)] md:mt-1 md:text-[0.85rem]">
@@ -733,14 +733,14 @@ export default function TripsPage() {
                   </div>
 
                   <div className="mt-5 md:mt-8">
-                    <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.18em] text-[#8b97a7] uppercase md:mb-3">
+                    <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase md:mb-3">
                       Highlights
                     </p>
                     <ul className="flex flex-wrap gap-1.5 md:gap-2">
                       {activeDestination.highlights.map((highlight) => (
                         <li
                           key={highlight}
-                          className="rounded-full border border-[#dce5ed] bg-white px-2.5 py-1 text-[0.72rem] text-[#4d5c6c] md:px-3 md:py-1.5 md:text-[0.78rem]"
+                          className="rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.72rem] text-[var(--color-text-muted)] md:px-3 md:py-1.5 md:text-[0.78rem]"
                         >
                           {highlight}
                         </li>
@@ -748,15 +748,15 @@ export default function TripsPage() {
                     </ul>
                   </div>
 
-                  <div className="mt-4 border-t border-[#e8eef4] pt-4 md:mt-8 md:pt-8">
-                    <p className="[display:-webkit-box] overflow-hidden pb-2 text-[0.8rem] leading-5 text-[#556171] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:[display:block] md:pb-10 md:text-[0.92rem] md:leading-7 md:[-webkit-line-clamp:unset]">
+                  <div className="mt-4 border-t border-[var(--color-border)] pt-4 md:mt-8 md:pt-8">
+                    <p className="[display:-webkit-box] overflow-hidden pb-2 text-[0.8rem] leading-5 text-[var(--color-text-muted)] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:[display:block] md:pb-10 md:text-[0.92rem] md:leading-7 md:[-webkit-line-clamp:unset]">
                       {activeDestination.summary}
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
-                  <p className="text-sm text-[#556171]">
+                  <p className="text-sm text-[var(--color-text-muted)]">
                     No destination details are available right now.
                   </p>
                 </div>
@@ -764,16 +764,16 @@ export default function TripsPage() {
             </div>
 
             {/* Destination list sidebar */}
-            <aside className="flex flex-col lg:h-[34rem] lg:border-t-0 lg:border-l lg:border-[#d8e0e8] lg:bg-[#f8fafc]">
+            <aside className="flex flex-col lg:h-[34rem] lg:border-t-0 lg:border-l lg:border-[var(--color-border-strong)] lg:bg-[var(--color-secondary-surface)]">
               {/* Sidebar header */}
-              <div className="flex shrink-0 items-center justify-between border-b-0 border-[#e8eef4] bg-transparent px-4 py-3 lg:border-b lg:bg-[#f8fafc]">
-                <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[#8b97a7] uppercase">
+              <div className="flex shrink-0 items-center justify-between border-b-0 border-[var(--color-border)] bg-transparent px-4 py-3 lg:border-b lg:bg-[var(--color-secondary-surface)]">
+                <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   {CURATED_DESTINATIONS.length} editorial routes
                 </p>
               </div>
 
               {/* Scrollable card list */}
-              <div className="relative flex-1 overflow-y-visible bg-transparent lg:overflow-y-auto lg:bg-[#f8fafc]">
+              <div className="relative flex-1 overflow-y-visible bg-transparent lg:overflow-y-auto lg:bg-[var(--color-secondary-surface)]">
                 <div className="flex flex-col gap-2 px-4 py-3 lg:gap-2 lg:p-3">
                   {CURATED_DESTINATIONS.map((destination) => (
                     <DestinationListCard
@@ -790,14 +790,14 @@ export default function TripsPage() {
                 </div>
 
                 {/* Bottom fade */}
-                <div className="pointer-events-none sticky bottom-0 hidden h-6 bg-[linear-gradient(to_top,#f8fafc,transparent)] lg:block" />
+                <div className="pointer-events-none sticky bottom-0 hidden h-6 bg-[linear-gradient(to_top,var(--color-secondary-surface),transparent)] lg:block" />
               </div>
             </aside>
           </div>
         </div>
       </section>
 
-      <footer className="mt-8 overflow-hidden border-t border-[#e2e8f0] bg-white px-6 py-10 md:mt-12 lg:rounded-[24px] lg:border lg:border-white/75 lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-8 lg:py-10">
+      <footer className="mt-8 overflow-hidden border-t border-[var(--color-border)] bg-white px-6 py-10 md:mt-12 lg:rounded-[24px] lg:border lg:border-white/75 lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-8 lg:py-10">
         {/* Brand + link columns */}
         <div className="grid gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2.7fr)] lg:gap-16">
           {/* Brand column */}
@@ -867,7 +867,7 @@ export default function TripsPage() {
               },
             ].map(({ label, links }) => (
               <div key={label}>
-                <p className="mb-4 text-[0.64rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
+                <p className="mb-4 text-[0.64rem] font-semibold tracking-[0.22em] text-[var(--color-text-muted)] uppercase">
                   {label}
                 </p>
                 <ul className="flex flex-col gap-2.5">

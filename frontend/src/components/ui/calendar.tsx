@@ -36,7 +36,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day: cn(
           'relative size-10 p-0 text-center text-sm focus-within:relative focus-within:z-20',
           !isSingleMode && [
-            '[&:has([aria-selected])]:bg-[rgba(26,22,21,0.07)]',
+            '[&:has([aria-selected])]:bg-[var(--color-secondary-surface)]',
             '[&:has(.day-range-start)]:rounded-l-xl',
             '[&:has(.day-range-end)]:rounded-r-xl',
             'first:[&:has([aria-selected])]:rounded-l-xl',
@@ -46,22 +46,22 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         day_button: cn(
           'inline-flex size-10 aspect-square items-center justify-center rounded-full p-0 text-sm font-normal',
           'text-[var(--color-text)] transition-colors',
-          'hover:bg-[rgba(26,22,21,0.08)]',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]/50',
+          'hover:bg-[var(--color-secondary-surface)]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-blue)]/50',
           'disabled:pointer-events-none disabled:opacity-40',
           'aria-selected:opacity-100',
         ),
         range_start: 'day-range-start',
         range_end: 'day-range-end',
         selected:
-          'bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)] hover:text-white focus:bg-[var(--color-primary)] focus:text-white rounded-full',
+          'bg-[var(--color-accent-blue)] text-white hover:bg-[var(--color-accent-blue)] hover:text-white focus:bg-[var(--color-accent-blue)] focus:text-white rounded-full',
         today:
           '[&>button]:rounded-full [&>button]: [&>button]:text-[var(--color-text)] [&>button]:font-semibold',
         outside:
-          'day-outside text-[var(--color-text-muted)]/30 aria-selected:bg-[rgba(26,22,21,0.04)] aria-selected:text-[var(--color-text-muted)]/30',
+          'day-outside text-[var(--color-text-muted)]/30 aria-selected:bg-[var(--color-secondary-surface)] aria-selected:text-[var(--color-text-muted)]/30',
         disabled: 'text-[var(--color-text-muted)]/30 opacity-50',
         range_middle:
-          'aria-selected:bg-[rgba(26,22,21,0.07)] aria-selected:text-[var(--color-text)] rounded-none',
+          'aria-selected:bg-[var(--color-secondary-surface)] aria-selected:text-[var(--color-text)] rounded-none',
         hidden: 'invisible',
         ...classNames,
       }}

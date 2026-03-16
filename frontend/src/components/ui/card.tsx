@@ -2,12 +2,12 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/shared/lib/cn';
 
-const cardVariants = cva('rounded-[28px] border text-[var(--color-text)]', {
+const cardVariants = cva('rounded-[var(--radius-max)] text-[var(--color-text)]', {
   variants: {
     variant: {
-      glass: 'voyager-surface border-[rgba(255,255,255,0.84)]',
-      solid: 'voyager-surface-solid border-[var(--color-border-strong)]',
-      elevated: 'border-[rgba(218,230,243,0.88)] bg-white',
+      glass: 'bg-[rgba(250,250,250,0.6)] backdrop-blur-xl',
+      solid: 'bg-[rgba(245,245,245,0.8)] backdrop-blur-lg',
+      elevated: 'bg-[rgba(255,255,255,0.9)] backdrop-blur-2xl',
     },
   },
   defaultVariants: {
@@ -26,7 +26,7 @@ Card.displayName = 'Card';
 
 const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex flex-col gap-2 p-6', className)} {...props} />
+    <div ref={ref} className={cn('flex flex-col gap-2 p-8', className)} {...props} />
   ),
 );
 CardHeader.displayName = 'CardHeader';
@@ -59,14 +59,14 @@ CardDescription.displayName = 'CardDescription';
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
+    <div ref={ref} className={cn('p-8 pt-0', className)} {...props} />
   ),
 );
 CardContent.displayName = 'CardContent';
 
 const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('flex items-center p-6 pt-0', className)} {...props} />
+    <div ref={ref} className={cn('flex items-center p-8 pt-0', className)} {...props} />
   ),
 );
 CardFooter.displayName = 'CardFooter';

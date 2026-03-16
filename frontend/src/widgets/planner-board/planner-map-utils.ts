@@ -49,12 +49,11 @@ export type PlannerMapDayMetrics = PlannerTravelSummary & {
 };
 
 export const PLANNER_MAP_DAY_COLORS = [
-  '#7C5AE0',
-  '#48A2FF',
-  '#3AC5B3',
-  '#FF7A59',
-  '#35B56A',
-  '#C98A37',
+  '#FF510E',
+  '#FFA200',
+  '#FFCC6B',
+  '#00B1FF',
+  '#00C978',
 ] as const;
 
 function routeEstimateKey(fromActivityId: string, toActivityId: string) {

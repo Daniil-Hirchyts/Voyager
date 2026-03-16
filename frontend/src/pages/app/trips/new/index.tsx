@@ -624,8 +624,8 @@ export default function TripCreatePage() {
                               className={cn(
                                 'relative rounded-[calc(var(--radius)+2px)] p-[2px] transition-colors',
                                 fieldState.error
-                                  ? 'bg-[rgba(196,95,79,0.16)]'
-                                  : 'focus-within:bg-[rgba(114,174,230,0.18)]',
+                                  ? 'bg-[rgba(255,81,14,0.16)]'
+                                  : 'focus-within:bg-[rgba(23,23,23,0.02)]',
                               )}
                             >
                               <Input

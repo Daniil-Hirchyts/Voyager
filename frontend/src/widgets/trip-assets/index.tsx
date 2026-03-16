@@ -238,7 +238,7 @@ export default function TripAssetManager({
                             </a>
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="cursor-pointer rounded-[10px] text-red-600 focus:bg-red-50 focus:text-red-700"
+                            className="cursor-pointer rounded-[10px] text-[var(--color-danger)] focus:bg-[#FF510E]/10 focus:text-[var(--color-danger)]"
                             disabled={deletingAssetId === asset.id}
                             onClick={() => void handleDelete(asset.id)}
                           >

@@ -37,7 +37,7 @@ function PageLoader() {
   return (
     <div className="voyager-page flex min-h-[100dvh] items-center justify-center">
       <div className="voyager-panel flex items-center gap-3 px-5 py-4 text-sm font-medium text-[var(--color-text-muted)]">
-        <VoyagerLoader className="size-5 text-[var(--color-primary)]" />
+        <VoyagerLoader className="size-5 text-[var(--color-accent-blue)]" />
         Loading workspace
       </div>
     </div>

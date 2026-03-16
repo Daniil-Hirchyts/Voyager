@@ -336,15 +336,15 @@ function DetailSegmentedTabs({
   return (
     <div
       className={cn(
-        'shrink-0 border-b border-black/8 bg-white/94 backdrop-blur',
+        'shrink-0 border-b border-[var(--color-border)] bg-white/94 backdrop-blur',
         compact ? 'px-2.5 py-1.5' : 'px-3 py-1.5',
       )}
     >
       <div className={cn('flex items-center gap-2', !tabs.length && 'justify-end')}>
         {tabs.length ? (
-          <div className="min-w-0 flex-1 overflow-x-auto">
+          <div className="min-w-0 overflow-x-auto">
             <div
-              className="inline-flex min-w-max items-center gap-0 rounded-[11px] border border-black/10 bg-black/[0.04] p-[2px]"
+              className="inline-flex min-w-max items-center gap-0 rounded-[40px] border border-[var(--color-border)] bg-[var(--color-border)] p-[2px]"
               role="tablist"
               aria-label="Place detail sections"
             >
@@ -355,7 +355,7 @@ function DetailSegmentedTabs({
                     onTabChange(value);
                   }
                 }}
-                className="rounded-[9px] bg-[#1a1a1a]"
+                className="rounded-[40px] bg-[#1a1a1a]"
                 transition={{
                   ease: 'easeInOut',
                   duration: 0.18,
@@ -387,7 +387,7 @@ function DetailSegmentedTabs({
                       }
                     }}
                     className={cn(
-                      'inline-flex shrink-0 items-center justify-center rounded-[9px] font-semibold tracking-[-0.02em] whitespace-nowrap text-[#5f6b7e] transition-[transform,color] duration-200 hover:text-[#1a1a1a] active:scale-[0.98] data-[checked=true]:text-white',
+                      'inline-flex shrink-0 items-center justify-center rounded-[40px] font-semibold tracking-[-0.02em] whitespace-nowrap text-[#5f6b7e] transition-[transform,color] duration-200 hover:text-[#1a1a1a] active:scale-[0.98] data-[checked=true]:text-white',
                       compact ? 'h-7 px-2.5 text-[0.72rem]' : 'h-8 px-3 text-[0.78rem]',
                     )}
                   >
@@ -987,7 +987,7 @@ function PlannerTripHeroCard({
 
   return (
     <section
-      className="overflow-hidden rounded-[26px] border border-black/8 bg-white"
+      className="overflow-hidden rounded-[26px] bg-white"
       data-testid="planner-trip-hero"
     >
       <div className="relative overflow-hidden rounded-[22px]">
@@ -1050,7 +1050,7 @@ function PlannerTripHeroCard({
                       }
                       alt={name}
                     />
-                    <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[#526072]">
+                    <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[var(--color-text-muted)]">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -1059,7 +1059,7 @@ function PlannerTripHeroCard({
               {/* My avatar (front) */}
               <Avatar className="h-8 w-8 rounded-full border-2 border-white">
                 <AvatarImage src={myAvatar ?? undefined} alt={myName} />
-                <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[#526072]">
+                <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[var(--color-text-muted)]">
                   {myInitials}
                 </AvatarFallback>
               </Avatar>
@@ -1180,7 +1180,7 @@ function PlannerBudgetOverview({
 
   return (
     <div className="flex flex-col gap-3" data-testid="planner-budget-summary">
-      <div className="rounded-[22px] border border-black/8 bg-white px-5 py-5">
+      <div className="rounded-[22px] bg-white px-5 py-5">
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <div className="flex flex-col gap-1">
@@ -1198,7 +1198,7 @@ function PlannerBudgetOverview({
 
             <div className="flex items-center">
               <div
-                className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-black/8 bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-black/5"
+                className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-[var(--color-border)]"
                 aria-busy={patchTrip.isPending}
                 onBlur={(event) => {
                   const nextFocused = event.relatedTarget;
@@ -1235,7 +1235,7 @@ function PlannerBudgetOverview({
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="h-5 w-px bg-black/8" />
+                <div className="h-5 w-px bg-[var(--color-border)]" />
                 <Input
                   aria-label="Trip budget amount"
                   type="number"
@@ -1261,7 +1261,7 @@ function PlannerBudgetOverview({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 border-t border-black/5 pt-5">
+          <div className="grid grid-cols-2 gap-4 border-t border-[var(--color-border)] pt-5">
             <div className="flex flex-col gap-1">
               <span className="text-[0.65rem] font-bold tracking-[0.1em] text-[var(--color-text-muted)] uppercase">
                 Spent
@@ -1283,8 +1283,8 @@ function PlannerBudgetOverview({
                   'text-[1.1rem] font-bold',
                   budgetOverview.currentBudgetAmount !== null &&
                     budgetOverview.currentBudgetAmount < 0
-                    ? 'text-red-500'
-                    : 'text-emerald-600',
+                    ? 'text-[var(--color-danger)]'
+                    : 'text-[var(--color-success)]',
                 )}
               >
                 {currentBudgetAmount != null ? (
@@ -1335,7 +1335,7 @@ function SearchResultList({
 }) {
   if (!items.length) {
     return (
-      <p className="rounded-[16px] border border-dashed border-black/8 px-4 py-6 text-sm text-[var(--color-text-muted)]">
+      <p className="rounded-[16px] border border-dashed border-[var(--color-border)] px-4 py-6 text-sm text-[var(--color-text-muted)]">
         No places matched this search near the current map area.
       </p>
     );
@@ -1348,7 +1348,7 @@ function SearchResultList({
           key={`${item.kind}:${item.id}`}
           type="button"
           onClick={() => onSelect(item)}
-          className="w-full rounded-[16px] border border-black/8 bg-white px-4 py-3 text-left transition-colors hover:bg-[var(--color-secondary-surface)]"
+          className="w-full rounded-[16px] bg-white px-4 py-3 text-left transition-colors hover:bg-[var(--color-secondary-surface)]"
         >
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
@@ -1468,7 +1468,7 @@ function PlannerMapPin({
         </div>
       </div>
       {visited ? (
-        <div className="absolute -top-0 -right-0 z-20 flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] border-white/90 bg-emerald-500">
+        <div className="absolute -top-0 -right-0 z-20 flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] border-white/90 bg-[var(--color-success)]">
           <Check className="h-2.5 w-2.5 text-white" />
         </div>
       ) : null}
@@ -1685,7 +1685,7 @@ function PlannerMapDayAccordion({
       value={section.dayId}
       ref={setNodeRef}
       className={cn(
-        'overflow-hidden rounded-[18px] border border-black/8 bg-white/96 transition-all',
+        'overflow-hidden rounded-[18px] bg-white transition-all',
         isSelected && '',
         isOver && 'ring-2 ring-black/6',
       )}
@@ -1723,7 +1723,7 @@ function PlannerMapDayAccordion({
                         <Button
                           type="button"
                           variant="ghost"
-                          className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                          className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)]"
                           onClick={onPreviewOptimize}
                           disabled={optimizing}
                           aria-label="Optimise itinerary"
@@ -1739,7 +1739,7 @@ function PlannerMapDayAccordion({
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                    className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)]"
                     onClick={() => onAddActivity(dropDayId)}
                     aria-label={`Add activity to ${section.title}`}
                   >
@@ -1783,7 +1783,7 @@ function PlannerMapDayAccordion({
       ) : null}
 
       <AccordionContent className="px-4 pt-0 pb-3">
-        <div className="border-t border-black/6 pt-2">
+        <div className="border-t border-[var(--color-border)] pt-2">
           {orderedActivities.length > 0 ? (
             <>
               <SortableContext
@@ -1825,14 +1825,14 @@ function PlannerMapDayAccordion({
               <div
                 ref={setEndZoneRef}
                 className={cn(
-                  'overflow-hidden rounded-[10px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+                  'overflow-hidden rounded-[12px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
                   isDragActive ? 'min-h-8 opacity-100' : 'min-h-0 opacity-0',
                   isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
                 )}
               />
             </>
           ) : (
-            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-5 text-center">
+            <div className="flex min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 text-center">
               <p className="text-sm text-[var(--color-text-muted)]">
                 Drop activities here or add one manually.
               </p>
@@ -1912,7 +1912,7 @@ function PlannerStandaloneActivityGroupCard({
         <div
           ref={setEndZoneRef}
           className={cn(
-            'mt-2 overflow-hidden rounded-[10px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+            'mt-2 overflow-hidden rounded-[12px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
             isDragActive ? 'min-h-8 opacity-100' : 'min-h-0 opacity-0',
             isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
           )}
@@ -1925,12 +1925,12 @@ function PlannerStandaloneActivityGroupCard({
     <section
       ref={setNodeRef}
       className={cn(
-        'overflow-hidden rounded-[18px] border border-black/8 bg-white/96 px-3.5 py-3 transition-all',
+        'overflow-hidden rounded-[18px] bg-white px-3.5 py-3 transition-all',
         isOver && 'ring-2 ring-black/6',
       )}
       data-testid={`planner-${bucket}-group-${group.dayId ?? 'inbox'}`}
     >
-      <div className="flex items-start justify-between gap-3 border-b border-black/6 pb-2.5">
+      <div className="flex items-start justify-between gap-3 border-b border-[var(--color-border)] pb-2.5">
         <div className="min-w-0">
           <p className="text-[0.8rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
             {group.title}
@@ -1939,7 +1939,7 @@ function PlannerStandaloneActivityGroupCard({
         </div>
         <Badge
           variant="outline"
-          className="rounded-full border-black/8 bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.64rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase"
+          className="rounded-full border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-2.5 py-1 text-[0.64rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase"
         >
           {group.activities.length} {group.activities.length === 1 ? 'item' : 'items'}
         </Badge>
@@ -1951,7 +1951,7 @@ function PlannerStandaloneActivityGroupCard({
         <div
           ref={setEndZoneRef}
           className={cn(
-            'mt-2 overflow-hidden rounded-[10px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
+            'mt-2 overflow-hidden rounded-[12px] border border-dashed border-transparent transition-[min-height,opacity,background-color,border-color]',
             isDragActive ? 'min-h-8 opacity-100' : 'min-h-0 opacity-0',
             isOverEnd && 'border-black/16 bg-[var(--color-secondary-surface)]',
           )}
@@ -1987,7 +1987,7 @@ function PlannerStandaloneActivitySection({
   return (
     <AccordionItem
       value={bucket}
-      className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5"
+      className="overflow-hidden rounded-[20px] bg-white px-3.5"
       data-planner-section={sectionCategory}
       data-testid={`planner-${bucket}-section`}
     >
@@ -2000,7 +2000,7 @@ function PlannerStandaloneActivitySection({
             <Button
               type="button"
               variant="ghost"
-              className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
+              className="h-7.5 w-7.5 rounded-full p-0 text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)]"
               onClick={(event) => {
                 event.stopPropagation();
                 onAddActivity(null, sectionCategory);
@@ -2029,7 +2029,7 @@ function PlannerStandaloneActivitySection({
             ))}
           </div>
         ) : (
-          <div className="flex min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-5 text-center">
+          <div className="flex min-h-[88px] flex-col items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 text-center">
             <p className="text-sm text-[var(--color-text-muted)]">
               {standaloneSectionEmptyCopy(bucket)}
             </p>
@@ -2220,7 +2220,7 @@ function DetailSheetContent({
   const showActivityActions = Boolean(activity && (onEditActivity || onDeleteActivity));
   const hasActionButtons = canToggleVisited || showActivityActions || !isAdded;
   const actionButtonClass =
-    'inline-flex h-7.5 w-7.5 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-black/5 hover:text-[var(--color-text)] disabled:opacity-50';
+    'inline-flex h-7.5 w-7.5 items-center justify-center rounded-full text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-border)] hover:text-[var(--color-text)] disabled:opacity-50';
   const actionIconClass = 'h-3.5 w-3.5';
 
   const actionButtons = hasActionButtons ? (
@@ -2233,7 +2233,7 @@ function DetailSheetContent({
           className={cn(
             actionButtonClass,
             visitedAt
-              ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700'
+              ? 'bg-[rgba(0,201,120,0.08)] text-[var(--color-success)] hover:bg-[rgba(0,201,120,0.08)] hover:text-[var(--color-success)]'
               : '',
           )}
           aria-label={visitedAt ? 'Mark as not visited' : 'Mark as visited'}
@@ -2262,7 +2262,7 @@ function DetailSheetContent({
               <Trash2 className={actionIconClass} />
             </button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="rounded-[14px] border-black/8 bg-white">
+          <AlertDialogContent className="rounded-[14px] border-[var(--color-border)] bg-white">
             <AlertDialogHeader>
               <AlertDialogTitle>Delete activity</AlertDialogTitle>
               <AlertDialogDescription>
@@ -2270,9 +2270,9 @@ function DetailSheetContent({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="rounded-[10px]">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="rounded-[12px]">Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="rounded-[10px]"
+                className="rounded-[12px]"
                 onClick={() => {
                   onDeleteActivity(activity.id);
                   onClose?.();
@@ -2302,7 +2302,7 @@ function DetailSheetContent({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-[200px] shrink-0 rounded-[14px] border border-black/8 bg-white/94 p-2 backdrop-blur-xl"
+            className="w-[200px] shrink-0 rounded-[14px] border border-[var(--color-border)] bg-white/94 p-2 backdrop-blur-xl"
           >
             <DropdownMenuLabel className="px-2 py-1.5 text-xs font-semibold text-[var(--color-text-muted)]">
               Where should this go?
@@ -2317,7 +2317,7 @@ function DetailSheetContent({
                     onAddToTrip(destination.id);
                   }
                 }}
-                className="flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm text-[var(--color-text)] outline-none select-none hover:bg-black/4 focus:bg-black/4"
+                className="flex cursor-pointer items-center rounded-lg px-2 py-2 text-sm text-[var(--color-text)] outline-none select-none hover:bg-[var(--color-border)] focus:bg-[var(--color-border)]"
               >
                 <span>{destination.label}</span>
               </DropdownMenuItem>
@@ -2332,7 +2332,7 @@ function DetailSheetContent({
       type="button"
       onClick={onClose}
       className={cn(
-        'absolute z-10 rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]',
+        'absolute z-10 rounded-full border border-[var(--color-border)] bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]',
         compact ? 'top-3.5 right-3.5' : 'top-4 right-4',
       )}
       aria-label="Close place details"
@@ -2346,7 +2346,7 @@ function DetailSheetContent({
       {closeButton}
       <div
         className={cn(
-          'shrink-0 border-b border-black/8 bg-white',
+          'shrink-0 border-b border-[var(--color-border)] bg-white',
           compact ? 'px-4 py-4' : 'px-5 py-5',
           onClose && (compact ? 'pr-14' : 'pr-16'),
         )}
@@ -2484,7 +2484,7 @@ function DetailSheetContent({
                 {summary ? (
                   <div
                     className={cn(
-                      'rounded-[22px] border border-black/8 bg-white',
+                      'rounded-[22px] bg-white',
                       compact ? 'p-3.5' : 'p-4',
                     )}
                   >
@@ -2514,7 +2514,7 @@ function DetailSheetContent({
                       <button
                         type="button"
                         className={cn(
-                          'group relative block w-full overflow-hidden rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] text-left',
+                          'group relative block w-full overflow-hidden rounded-[22px] bg-[var(--color-secondary-surface)] text-left',
                           !summary && 'col-span-2',
                           compact ? 'h-[6rem]' : 'h-[8rem]',
                         )}
@@ -2534,7 +2534,7 @@ function DetailSheetContent({
                 {visibleTags.length ? (
                   <div
                     className={cn(
-                      'rounded-[22px] border border-black/8 bg-white',
+                      'rounded-[22px] bg-white',
                       compact ? 'p-3.5' : 'p-4',
                     )}
                   >
@@ -2561,7 +2561,7 @@ function DetailSheetContent({
                       {hiddenTagCount ? (
                         <span
                           className={cn(
-                            'rounded-full border border-dashed border-black/8 text-[var(--color-text-muted)]',
+                            'rounded-full border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]',
                             compact ? 'px-2.5 py-1 text-[0.7rem]' : 'px-2.5 py-1 text-[0.72rem]',
                           )}
                         >
@@ -2576,7 +2576,7 @@ function DetailSheetContent({
                 {detail?.rating != null || detailMeta.length > 0 || detailLinks.length > 0 ? (
                   <div
                     className={cn(
-                      'rounded-[22px] border border-black/8 bg-white',
+                      'rounded-[22px] bg-white',
                       compact ? 'p-3.5' : 'p-4',
                     )}
                   >
@@ -2633,7 +2633,7 @@ function DetailSheetContent({
                 {visibleHours.length ? (
                   <div
                     className={cn(
-                      'col-span-2 rounded-[22px] border border-black/8 bg-white',
+                      'col-span-2 rounded-[22px] bg-white',
                       compact ? 'px-3.5 pt-1 pb-1' : 'px-4 pt-2 pb-2',
                     )}
                   >
@@ -2689,7 +2689,7 @@ function DetailSheetContent({
                     <div
                       key={review.review_id}
                       className={cn(
-                        'rounded-[18px] border border-black/8 bg-white',
+                        'rounded-[18px] bg-white',
                         compact ? 'p-3.5' : 'p-4',
                       )}
                     >
@@ -2729,7 +2729,7 @@ function DetailSheetContent({
               ) : (
                 <p
                   className={cn(
-                    'rounded-[18px] border border-dashed border-black/8 text-[var(--color-text-muted)]',
+                    'rounded-[18px] border border-dashed border-[var(--color-border)] text-[var(--color-text-muted)]',
                     compact ? 'px-3.5 py-4 text-[0.84rem]' : 'px-4 py-6 text-sm',
                   )}
                 >
@@ -2749,7 +2749,7 @@ function DetailSheetContent({
                         <PhotoViewer key={`${photo.image_url}-${index}`} src={fullUrl}>
                           <button
                             type="button"
-                            className="group block overflow-hidden rounded-[18px] border border-black/8 bg-white text-left"
+                            className="group block overflow-hidden rounded-[18px] bg-white text-left"
                             aria-label={`Preview ${photo.caption || title}`}
                           >
                             <div className="relative overflow-hidden">
@@ -2786,7 +2786,7 @@ function DetailSheetContent({
                 {activity.description ? (
                   <div
                     className={cn(
-                      'rounded-[18px] border border-black/8 bg-white',
+                      'rounded-[18px] bg-white',
                       compact ? 'px-3.5 py-3' : 'px-4 py-4',
                     )}
                   >
@@ -2833,7 +2833,7 @@ function DetailSheetContent({
                         <div
                           key={item.key}
                           className={cn(
-                            'rounded-[18px] border border-black/8 bg-white',
+                            'rounded-[18px] bg-white',
                             compact ? 'px-3.5 py-3' : 'px-4 py-3',
                           )}
                         >
@@ -2856,7 +2856,7 @@ function DetailSheetContent({
                 {activity.category === 'travel' && activityTravelRoute.length > 0 ? (
                   <div
                     className={cn(
-                      'rounded-[18px] border border-black/8 bg-white',
+                      'rounded-[18px] bg-white',
                       compact ? 'px-3.5 py-3' : 'px-4 py-4',
                     )}
                   >
@@ -2867,7 +2867,7 @@ function DetailSheetContent({
                       {activityTravelRoute.map((point, idx) => (
                         <div
                           key={`${point.label}-${idx}`}
-                          className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5"
+                          className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5"
                         >
                           <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                             {idx === 0 ? 'Origin' : 'Destination'}
@@ -2889,7 +2889,7 @@ function DetailSheetContent({
                 {activity.category === 'hotel' ? (
                   <div
                     className={cn(
-                      'rounded-[18px] border border-black/8 bg-white',
+                      'rounded-[18px] bg-white',
                       compact ? 'px-3.5 py-3' : 'px-4 py-4',
                     )}
                   >
@@ -2898,7 +2898,7 @@ function DetailSheetContent({
                     </p>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       {typeof activityDetails?.checkin_date === 'string' ? (
-                        <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                        <div className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5">
                           <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                             Check-in
                           </p>
@@ -2913,7 +2913,7 @@ function DetailSheetContent({
                         </div>
                       ) : null}
                       {typeof activityDetails?.checkout_date === 'string' ? (
-                        <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                        <div className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5">
                           <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                             Check-out
                           </p>
@@ -2934,7 +2934,7 @@ function DetailSheetContent({
                 {activity.notes ? (
                   <div
                     className={cn(
-                      'rounded-[18px] border border-black/8 bg-white',
+                      'rounded-[18px] bg-white',
                       compact ? 'px-3.5 py-3' : 'px-4 py-4',
                     )}
                   >
@@ -4099,10 +4099,10 @@ export function PlannerMapView({
 
   return (
     <TooltipProvider delayDuration={120}>
-      <div className="grid h-full min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(380px,0.46fr)_minmax(0,0.54fr)]">
+      <div className="grid h-full min-h-0 gap-0 overflow-hidden lg:grid-cols-[minmax(380px,500px)_minmax(0,1fr)]">
         <div
           className={cn(
-            'min-h-0 min-w-0 flex-col',
+            'min-h-0 min-w-0 flex-col bg-[#F3F5F7]',
             mobilePlannerView === 'map' ? 'hidden lg:flex' : 'flex',
           )}
         >
@@ -4168,11 +4168,11 @@ export function PlannerMapView({
               >
                 <AccordionItem
                   value="recommendations"
-                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5"
+                  className="overflow-hidden rounded-[20px] bg-white "
                   data-testid="planner-recommendations-section"
                 >
                   <Carousel className="w-full">
-                    <AccordionTrigger className="py-3 hover:no-underline">
+                    <AccordionTrigger className="py-3 px-3.5 hover:no-underline">
                       <PlannerSidebarSectionTrigger
                         icon={<Compass className="h-4 w-4" />}
                         title="Recommendations"
@@ -4250,7 +4250,7 @@ export function PlannerMapView({
               >
                 <AccordionItem
                   value="budget"
-                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5"
+                  className="overflow-hidden rounded-[20px] bg-white px-3.5"
                   data-testid="planner-budget-section"
                 >
                   <AccordionTrigger className="py-3 hover:no-underline">
@@ -4267,7 +4267,7 @@ export function PlannerMapView({
 
                 <AccordionItem
                   value="files"
-                  className="overflow-hidden rounded-[20px] border border-black/8 bg-white px-3.5"
+                  className="overflow-hidden rounded-[20px] bg-white px-3.5"
                   data-testid="planner-files-section"
                 >
                   <AccordionTrigger className="py-3 hover:no-underline">
@@ -4294,7 +4294,7 @@ export function PlannerMapView({
         <section
           ref={mapContainerRef}
           className={cn(
-            'relative min-h-0 overflow-hidden border-black/8 bg-[var(--color-secondary-surface)] lg:border-l',
+            'relative min-h-0 overflow-hidden border-[var(--color-border)] bg-[var(--color-secondary-surface)] lg:border-l',
             mobilePlannerView === 'cards' ? 'hidden lg:block' : '',
           )}
           data-testid="planner-map-container"
@@ -4565,10 +4565,10 @@ export function PlannerMapView({
                     <PopoverContent
                       align="end"
                       sideOffset={10}
-                      className="w-[360px] rounded-[24px] border-black/8 p-4"
+                      className="w-[360px] rounded-[24px] border-[var(--color-border)] p-4"
                     >
                       <div className="space-y-3">
-                        <div className="rounded-[18px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2">
+                        <div className="rounded-[18px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2">
                           <div className="flex items-center gap-2">
                             <Search className="h-4 w-4 text-[var(--color-text-muted)]" />
                             <input
@@ -4625,7 +4625,7 @@ export function PlannerMapView({
                     <PopoverContent
                       align="end"
                       sideOffset={10}
-                      className="w-[min(22rem,calc(100vw-1.25rem))] overflow-hidden rounded-[20px] border-black/8 p-0"
+                      className="w-[min(22rem,calc(100vw-1.25rem))] overflow-hidden rounded-[20px] border-[var(--color-border)] p-0"
                     >
                       <ScrollArea className="max-h-[min(70dvh,34rem)]">
                         <div className="space-y-4 p-3">
@@ -4646,7 +4646,7 @@ export function PlannerMapView({
                               ).map(([key, label, Icon]) => (
                                 <label
                                   key={key}
-                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4"
+                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]"
                                 >
                                   <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
                                     <Icon className="h-[18px] w-[18px] shrink-0 text-[var(--color-text-muted)]" />
@@ -4666,7 +4666,7 @@ export function PlannerMapView({
                               Routes
                             </p>
                             <div className="mt-1 space-y-0.5">
-                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]">
                                 <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
                                   Route lines
                                 </span>
@@ -4678,7 +4678,7 @@ export function PlannerMapView({
                                   }}
                                 />
                               </label>
-                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4">
+                              <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]">
                                 <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
                                   Custom layers
                                 </span>
@@ -4693,7 +4693,7 @@ export function PlannerMapView({
                               {sections.map((section) => (
                                 <label
                                   key={section.dayId}
-                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-black/4"
+                                  className="group flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-2.5 transition-colors hover:bg-[var(--color-border)]"
                                 >
                                   <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
                                     <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center">
@@ -4779,7 +4779,7 @@ export function PlannerMapView({
                   aria-labelledby="planner-map-detail-title"
                   aria-describedby="planner-map-detail-description"
                   data-testid="planner-map-detail-sheet"
-                  className="pointer-events-auto relative flex h-[min(60%,34rem)] w-full flex-col overflow-hidden rounded-[28px] border border-black/8 bg-[#F3F5F7]"
+                  className="pointer-events-auto relative flex h-[min(60%,34rem)] w-full flex-col overflow-hidden rounded-[28px] border border-[var(--color-border)] bg-[#F3F5F7]"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8 }}

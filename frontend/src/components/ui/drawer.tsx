@@ -42,7 +42,7 @@ const DrawerContent = React.forwardRef<
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
-        'fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-md flex-col border-l border-[var(--color-border-strong)] bg-[#F3F5F7] transition-transform duration-300',
+        'fixed top-0 right-0 bottom-0 z-50 flex w-full max-w-md flex-col bg-[rgba(250,250,250,0.85)] backdrop-blur-2xl transition-transform duration-300',
         className,
       )}
       {...props}
@@ -54,12 +54,12 @@ const DrawerContent = React.forwardRef<
 DrawerContent.displayName = 'DrawerContent';
 
 const DrawerHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('flex flex-col gap-1.5 px-6 py-5', className)} {...props} />
+  <div className={cn('flex flex-col gap-1.5 px-8 py-6', className)} {...props} />
 );
 DrawerHeader.displayName = 'DrawerHeader';
 
 const DrawerFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('mt-auto flex items-center gap-3 px-6 py-5', className)} {...props} />
+  <div className={cn('mt-auto flex items-center gap-3 px-8 py-6', className)} {...props} />
 );
 DrawerFooter.displayName = 'DrawerFooter';
 

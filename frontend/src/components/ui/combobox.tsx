@@ -106,10 +106,10 @@ export function Combobox({
           aria-invalid={invalid}
           disabled={disabled}
           className={cn(
-            'h-11 w-full justify-between rounded-[10px] border-black/8 bg-white px-3 text-left text-sm font-normal hover:bg-white',
+            'h-11 w-full justify-between rounded-[10px] border-[var(--color-border)] bg-white px-3 text-left text-sm font-normal hover:bg-white',
             invalid
-              ? 'border-[var(--color-danger)] ring-4 ring-[rgba(196,95,79,0.12)]'
-              : 'focus-visible:ring-4 focus-visible:ring-[rgba(26,22,21,0.06)]',
+              ? 'border-[var(--color-danger)] ring-4 ring-[rgba(255,81,14,0.12)]'
+              : 'focus-visible:ring-4 focus-visible:ring-[rgba(23,23,23,0.06)]',
             triggerClassName,
           )}
         >
@@ -128,7 +128,7 @@ export function Combobox({
         align="start"
         sideOffset={8}
         className={cn(
-          'w-[var(--radix-popover-trigger-width)] min-w-[16rem] rounded-[12px] border-black/8 bg-white p-0 backdrop-blur-none',
+          'w-[var(--radix-popover-trigger-width)] min-w-[16rem] rounded-[12px] border-[var(--color-border)] bg-white p-0 backdrop-blur-none',
           contentClassName,
         )}
       >

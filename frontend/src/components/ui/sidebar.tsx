@@ -191,7 +191,7 @@ const Sidebar = React.forwardRef<
             side={side}
             data-sidebar="sidebar"
             data-mobile="true"
-            className="text-sidebar-foreground w-[var(--sidebar-width)] border-r border-black/8 bg-[#f3f5f7] p-0 backdrop-blur-none will-change-transform data-[state=closed]:duration-150 data-[state=open]:duration-200 [&>button]:hidden"
+            className="text-sidebar-foreground w-[var(--sidebar-width)] border-r border-[var(--color-border)] bg-[#f3f5f7] p-0 backdrop-blur-none will-change-transform data-[state=closed]:duration-150 data-[state=open]:duration-200 [&>button]:hidden"
             style={{ '--sidebar-width': SIDEBAR_WIDTH_MOBILE } as React.CSSProperties}
           >
             <SheetHeader className="sr-only">

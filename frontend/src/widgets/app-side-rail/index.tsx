@@ -38,7 +38,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { GlowEffect } from '@/components/ui/glow-effect';
 import { cn } from '@/shared/lib/cn';
 import { useSideRailStore, type DayAnchor } from '@/shared/stores/side-rail.store';
 
@@ -54,16 +53,16 @@ function getInitials(name: string) {
 }
 
 const BTN =
-  'flex size-9 items-center justify-center rounded-[12px] text-[#526072] transition-colors duration-300';
-const BTN_RAIL = cn(BTN, 'hover:text-[#1D2430] data-[checked=true]:text-[#1D2430]');
+  'flex size-9 items-center justify-center rounded-[12px] text-[var(--color-text-muted)] transition-colors duration-300';
+const BTN_RAIL = cn(BTN, 'hover:text-[var(--color-text)] data-[checked=true]:text-[var(--color-text)]');
 const BTN_ACTIVE = cn(
   BTN_RAIL,
   'text-[var(--color-cta)] data-[checked=true]:text-[var(--color-cta)]',
 );
-const BTN_STANDALONE = cn(BTN, 'hover:bg-[#ECEEF0] hover:text-[#1D2430]');
+const BTN_STANDALONE = cn(BTN, 'hover:bg-[var(--color-accent)] hover:text-[var(--color-text)]');
 const BTN_ASSISTANT = cn(
   BTN,
-  'relative rounded-full border border-black/10 bg-white text-[#1D2430] transition-all duration-300 hover:border-black/15 hover:scale-105 active:scale-95',
+  'relative rounded-[12px] bg-[var(--color-primary)] text-white transition-all duration-300 hover:bg-[#2A2A2A] active:scale-95',
 );
 const RAIL_HOVER_TRANSITION = {
   type: 'spring',
@@ -72,7 +71,7 @@ const RAIL_HOVER_TRANSITION = {
 } satisfies NonNullable<AnimatedBackgroundProps['transition']>;
 
 function Divider() {
-  return <div className="mx-auto my-1 w-6 border-t border-black/[0.08]" />;
+  return <div className="mx-auto my-1 w-6 border-t border-[var(--color-border)]" />;
 }
 
 function RailTooltip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -130,7 +129,7 @@ function RailAnimatedColumn({ children, className }: { children: ReactNode; clas
   return (
     <div className={cn('flex flex-col items-center gap-0.5 py-1.5', className)}>
       <AnimatedBackground
-        className="rounded-[12px] bg-[#ECEEF0]"
+        className="rounded-[12px] bg-[var(--color-secondary-surface)]"
         transition={RAIL_HOVER_TRANSITION}
         enableHover
       >
@@ -166,10 +165,10 @@ function renderDayAnchors({
           <Inbox className="size-4" />
         ) : (
           <span className="flex flex-col items-center gap-0">
-            <span className="text-[0.55rem] leading-none font-semibold tracking-[0.06em] text-[#94a3b8] uppercase">
+            <span className="text-[0.55rem] leading-none font-semibold tracking-[0.06em] text-[var(--color-text-muted)] uppercase">
               {monthStr}
             </span>
-            <span className="mt-[1px] text-[0.9rem] leading-none font-bold tracking-[-0.02em] text-[#1D2430]">
+            <span className="mt-[1px] text-[0.9rem] leading-none font-bold tracking-[-0.02em] text-[var(--color-text)]">
               {dayStr}
             </span>
           </span>
@@ -200,7 +199,7 @@ function renderDayAnchors({
         onClick={() => onScrollToDay(middleDay.dayId)}
         className={cn(BTN_RAIL, 'group')}
       >
-        <div className="size-1.5 rounded-full bg-[#94a3b8] transition-all group-hover:scale-125 group-hover:bg-[#1D2430]" />
+        <div className="size-1.5 rounded-full bg-[var(--color-text-muted)] transition-all group-hover:scale-125 group-hover:bg-[var(--color-text)]" />
       </RailActionButton>,
     );
   }
@@ -232,7 +231,7 @@ function AppSideRail() {
 
   return (
     <aside
-      className="relative z-[60] flex h-full w-[56px] shrink-0 flex-col items-center border-r border-black/[0.07] bg-white py-3"
+      className="relative z-[60] flex h-full w-[56px] shrink-0 flex-col items-center border-r border-[var(--color-border)] bg-white py-3"
       data-testid="app-side-rail"
     >
       {/* Logo */}
@@ -240,7 +239,7 @@ function AppSideRail() {
         <Link
           to="/app/trips"
           aria-label="Voyager — go to trips"
-          className="mb-2 flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#1a1a1a] text-white transition-opacity hover:opacity-80"
+          className="mb-2 flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#171717] text-white transition-opacity hover:opacity-80"
         >
           <VoyagerLogo className="size-[0.95rem] translate-y-[1px]" />
         </Link>
@@ -279,14 +278,6 @@ function AppSideRail() {
           <div className="relative z-[60] flex flex-col items-center py-1.5">
             <RailTooltip label="Open assistant">
               <div className="relative">
-                <GlowEffect
-                  colors={['#818cf8', '#38bdf8', '#fb923c']}
-                  mode="breathe"
-                  blur="medium"
-                  duration={4}
-                  scale={1.1}
-                  className="rounded-full opacity-45"
-                />
                 <button
                   data-id="planner-assistant"
                   type="button"
@@ -400,9 +391,9 @@ function AppSideRail() {
                 'mt-1.5 overflow-hidden p-0 text-[0.7rem] font-semibold tracking-wide',
               )}
             >
-              <Avatar className="size-9 rounded-[12px] border-0 bg-[#ECEEF0]">
+              <Avatar className="size-9 rounded-[12px] border-0 bg-[var(--color-accent)]">
                 <AvatarImage src={avatarUrl} alt={userName} />
-                <AvatarFallback className="rounded-[12px] bg-[#ECEEF0] text-[0.7rem] font-semibold tracking-wide text-[#526072]">
+                <AvatarFallback className="rounded-[12px] bg-[var(--color-accent)] text-[0.7rem] font-semibold tracking-wide text-[var(--color-text-muted)]">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -421,7 +412,7 @@ function AppSideRail() {
               <span className="text-[0.92rem] font-medium text-[var(--color-text)]">
                 {userName}
               </span>
-              {userEmail && <span className="text-xs font-normal text-[#6b7280]">{userEmail}</span>}
+              {userEmail && <span className="text-xs font-normal text-[var(--color-text-muted)]">{userEmail}</span>}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-black/8" />

@@ -18,7 +18,7 @@ import { WorkspacePage } from '@/shared/layouts/workspace-shell';
 import { VoyagerLoader } from '@/widgets/app-shell/logo';
 
 const heroClassName =
-  'rounded-[28px] border border-black/8 bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_52%,rgba(240,247,255,0.92)_100%)] p-6 md:p-8';
+  'rounded-[28px] border border-[var(--color-border)] bg-[linear-gradient(145deg,rgba(250,244,238,0.92)_0%,rgba(255,255,255,0.98)_52%,rgba(240,247,255,0.92)_100%)] p-6 md:p-8';
 
 function formatInviteDate(value: string) {
   return new Intl.DateTimeFormat('en-US', {
@@ -75,7 +75,7 @@ export default function TripInvitePage() {
             </div>
           </div>
 
-          <div className="grid gap-2 rounded-[20px] border border-black/8 bg-white/74 px-4 py-4 text-sm text-[var(--color-text-muted)]">
+          <div className="grid gap-2 rounded-[20px] border border-[var(--color-border)] bg-white/74 px-4 py-4 text-sm text-[var(--color-text-muted)]">
             <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               How it works
             </span>
@@ -106,7 +106,7 @@ export default function TripInvitePage() {
 
         <CardContent className="flex flex-col gap-5">
           {preview.isLoading ? (
-            <div className="rounded-[22px] border border-dashed border-black/8 bg-[var(--color-secondary-surface)] px-5 py-8">
+            <div className="rounded-[22px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-8">
               <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
                 <VoyagerLoader className="size-4" />
                 Loading invitation preview…
@@ -115,7 +115,7 @@ export default function TripInvitePage() {
           ) : preview.data ? (
             <>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] px-5 py-5">
+                <div className="rounded-[22px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-5">
                   <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Trip
                   </p>
@@ -128,7 +128,7 @@ export default function TripInvitePage() {
                   </p>
                 </div>
 
-                <div className="rounded-[22px] border border-black/8 bg-[var(--color-secondary-surface)] px-5 py-5">
+                <div className="rounded-[22px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-5">
                   <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Invited by
                   </p>
@@ -142,9 +142,9 @@ export default function TripInvitePage() {
                 </div>
               </div>
 
-              <Separator className="bg-black/8" />
+              <Separator className="bg-[var(--color-border)]" />
 
-              <div className="grid gap-3 rounded-[22px] border border-black/8 bg-white/78 px-5 py-5 text-sm text-[var(--color-text-muted)]">
+              <div className="grid gap-3 rounded-[22px] border border-[var(--color-border)] bg-white/78 px-5 py-5 text-sm text-[var(--color-text-muted)]">
                 <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                   Granted role
                 </p>
@@ -159,13 +159,13 @@ export default function TripInvitePage() {
               </div>
             </>
           ) : (
-            <div className="rounded-[22px] border border-dashed border-[rgba(196,95,79,0.24)] bg-[rgba(255,240,238,0.84)] px-5 py-6">
+            <div className="rounded-[22px] border border-dashed border-[rgba(255,81,14,0.24)] bg-[rgba(255,240,238,0.84)] px-5 py-6">
               <p className="text-sm leading-6 text-[var(--color-danger)]">{errorMessage}</p>
             </div>
           )}
         </CardContent>
 
-        <CardFooter className="flex flex-wrap justify-between gap-3 border-t border-black/8">
+        <CardFooter className="flex flex-wrap justify-between gap-3 border-t border-[var(--color-border)]">
           <Button asChild variant="outline">
             <Link to="/app/trips">Back to trips</Link>
           </Button>

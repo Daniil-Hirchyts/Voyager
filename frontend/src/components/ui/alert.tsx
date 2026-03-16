@@ -3,17 +3,17 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/shared/lib/cn';
 
 const alertVariants = cva(
-  'relative flex w-full items-start gap-3 rounded-[22px] border p-4 [&>svg]:shrink-0 [&>svg]:mt-0.5',
+  'relative flex w-full items-start gap-3 rounded-[var(--radius-md)] border p-4 shadow-[var(--shadow-sm)] [&>svg]:shrink-0 [&>svg]:mt-0.5',
   {
     variants: {
       variant: {
         default: 'border-[var(--color-border-strong)] bg-white/72 text-[var(--color-text)]',
         destructive:
-          'border-[rgba(196,95,79,0.22)] bg-[rgba(255,240,238,0.92)] text-[var(--color-danger)]',
+          'border-[rgba(255,81,14,0.22)] bg-[rgba(255,240,238,0.92)] text-[var(--color-danger)]',
         warning:
-          'border-[rgba(201,138,55,0.24)] bg-[rgba(255,247,231,0.94)] text-[var(--color-warning)]',
+          'border-[rgba(255,162,0,0.24)] bg-[rgba(255,247,231,0.94)] text-[var(--color-warning)]',
         success:
-          'border-[rgba(45,124,99,0.22)] bg-[rgba(239,249,245,0.94)] text-[var(--color-success)]',
+          'border-[rgba(0,201,120,0.22)] bg-[rgba(239,249,245,0.94)] text-[var(--color-success)]',
       },
     },
     defaultVariants: {

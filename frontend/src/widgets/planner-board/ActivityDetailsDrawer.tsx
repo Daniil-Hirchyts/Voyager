@@ -149,7 +149,7 @@ export function ActivityDetailsDrawer({
           {categoryDescription || dayLabel || 'Activity details'}
         </SheetDescription>
         {/* Header */}
-        <div className="shrink-0 border-b border-black/8 bg-white px-5 py-5">
+        <div className="shrink-0 border-b border-[var(--color-border)] bg-white px-5 py-5">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
               <Badge variant="outline" className="rounded-full">
@@ -170,7 +170,7 @@ export function ActivityDetailsDrawer({
               <button
                 type="button"
                 onClick={() => onEdit(activity)}
-                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
+                className="rounded-full border border-[var(--color-border)] bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
                 aria-label="Edit activity"
               >
                 <Pencil className="h-4 w-4" />
@@ -179,13 +179,13 @@ export function ActivityDetailsDrawer({
                 <AlertDialogTrigger asChild>
                   <button
                     type="button"
-                    className="hover:text-destructive rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white"
+                    className="hover:text-destructive rounded-full border border-[var(--color-border)] bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white"
                     aria-label="Delete activity"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-[14px] border-black/8 bg-white">
+                <AlertDialogContent className="rounded-[14px] border-[var(--color-border)] bg-white">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete activity</AlertDialogTitle>
                     <AlertDialogDescription>
@@ -193,9 +193,9 @@ export function ActivityDetailsDrawer({
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel className="rounded-[10px]">Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-[12px]">Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      className="rounded-[10px]"
+                      className="rounded-[12px]"
                       onClick={() => {
                         onDelete(activity.id);
                         onClose();
@@ -209,7 +209,7 @@ export function ActivityDetailsDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-full border border-black/8 bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
+                className="rounded-full border border-[var(--color-border)] bg-white/90 p-2 text-[var(--color-text-muted)] transition-colors hover:bg-white hover:text-[var(--color-text)]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -224,7 +224,7 @@ export function ActivityDetailsDrawer({
             <MapPreview activity={activity} />
 
             {activity.description ? (
-              <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
+              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Summary
                 </p>
@@ -237,7 +237,7 @@ export function ActivityDetailsDrawer({
             {infoItems.map((item) => (
               <div
                 key={item.key}
-                className="rounded-[18px] border border-black/8 bg-white px-4 py-3"
+                className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-3"
               >
                 <div className="flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   <item.Icon className="h-3.5 w-3.5" />
@@ -248,7 +248,7 @@ export function ActivityDetailsDrawer({
             ))}
 
             {activity.category === 'travel' && travelRoute.length > 0 ? (
-              <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
+              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Route
                 </p>
@@ -256,7 +256,7 @@ export function ActivityDetailsDrawer({
                   {travelRoute.map((point, idx) => (
                     <div
                       key={`${point.label}-${idx}`}
-                      className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5"
+                      className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5"
                     >
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         {idx === 0 ? 'Origin' : 'Destination'}
@@ -269,13 +269,13 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {activity.category === 'hotel' ? (
-              <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
+              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Stay
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {typeof details.checkin_date === 'string' ? (
-                    <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-in
                       </p>
@@ -285,7 +285,7 @@ export function ActivityDetailsDrawer({
                     </div>
                   ) : null}
                   {typeof details.checkout_date === 'string' ? (
-                    <div className="rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-out
                       </p>
@@ -295,7 +295,7 @@ export function ActivityDetailsDrawer({
                     </div>
                   ) : null}
                   {typeof details.room_type === 'string' ? (
-                    <div className="col-span-2 rounded-[12px] border border-black/8 bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="col-span-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Room
                       </p>
@@ -307,7 +307,7 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {activity.notes ? (
-              <div className="rounded-[18px] border border-black/8 bg-white px-4 py-4">
+              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Notes
                 </p>

@@ -11,7 +11,7 @@ const toggleVariants = cva(
         default:
           'border-transparent bg-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)] data-[state=on]:bg-[var(--color-secondary-surface)] data-[state=on]:text-[var(--color-text)]',
         outline:
-          'border-black/8 bg-white text-[var(--color-text)] hover:bg-[var(--color-secondary-surface)] data-[state=on]:border-black/12 data-[state=on]:bg-[var(--color-secondary-surface)]',
+          'border-[var(--color-border)] bg-white text-[var(--color-text)] hover:bg-[var(--color-secondary-surface)] data-[state=on]:border-[var(--color-border-strong)] data-[state=on]:bg-[var(--color-secondary-surface)]',
       },
       size: {
         default: 'h-10 min-w-10 rounded-[10px] px-3',

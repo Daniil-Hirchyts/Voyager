@@ -13,10 +13,10 @@ export function TravelConnector({ durationMin, distanceKm, testId }: TravelConne
 
   return (
     <div data-testid={testId} className="relative px-1 py-0.5">
-      <div className="pointer-events-none absolute top-0 bottom-0 left-[1.05rem] border-l border-dashed border-black/10" />
+      <div className="pointer-events-none absolute top-0 bottom-0 left-[1.05rem] border-l border-dashed border-[var(--color-border)]" />
       <div
         className={cn(
-          'ml-6 flex items-center gap-2 rounded-[10px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]',
+          'ml-6 flex items-center gap-2 rounded-[12px] px-2.5 py-1.5 text-[0.72rem] text-[var(--color-text-muted)]',
           hasEstimate
             ? 'bg-[var(--color-secondary-surface)]'
             : 'bg-[var(--color-secondary-surface)]/70',

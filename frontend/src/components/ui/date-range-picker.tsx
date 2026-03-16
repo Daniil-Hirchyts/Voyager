@@ -97,8 +97,8 @@ export function DateRangePicker({
           data-invalid={invalid ? true : undefined}
           className={cn(
             'h-auto w-full justify-start rounded-[22px] border border-white/80 bg-white/88 px-4 py-3 text-left backdrop-blur-sm transition-colors hover:bg-white',
-            'data-[state=open]:border-[rgba(114,174,230,0.42)] data-[state=open]:bg-white',
-            invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(196,95,79,0.12)]',
+            'data-[state=open]:border-[var(--color-primary)] data-[state=open]:bg-white',
+            invalid && 'border-[var(--color-danger)] ring-4 ring-[rgba(255,81,14,0.12)]',
             className,
           )}
         >
@@ -123,7 +123,7 @@ export function DateRangePicker({
               </span>
             </div>
             {durationLabel ? (
-              <span className="rounded-full border border-[rgba(114,174,230,0.24)] bg-[rgba(114,174,230,0.14)] px-3 py-1 text-[0.68rem] font-semibold tracking-[0.16em] text-[var(--color-primary-foreground)] uppercase">
+              <span className="rounded-full border border-[var(--color-primary)]/24 bg-[var(--color-primary)]/10 px-3 py-1 text-[0.68rem] font-semibold tracking-[0.16em] text-[var(--color-primary)] uppercase">
                 {durationLabel}
               </span>
             ) : null}

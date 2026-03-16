@@ -112,7 +112,7 @@ function FieldLabel({ className, ...props }: React.ComponentProps<typeof Label>)
         'has-[>[data-slot=field]]:rounded-md has-[>[data-slot=field]]:border',
         '[&>[data-slot=field]]:p-4',
         'has-data-[state=checked]:border-[var(--color-primary)]',
-        'has-data-[state=checked]:bg-[rgba(114,174,230,0.12)]',
+        'has-data-[state=checked]:bg-[rgba(23,23,23,0.04)]',
         className,
       )}
       {...props}

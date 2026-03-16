@@ -373,11 +373,11 @@ export function TripSettingsMenu({
           side={isMobile ? 'bottom' : 'right'}
           className={
             isMobile
-              ? 'flex h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
-              : 'flex h-[100dvh] w-full flex-col gap-0 overflow-hidden border-l border-black/8 bg-white p-0 sm:max-w-xl'
+              ? 'flex h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] p-0 sm:max-w-none'
+              : 'flex h-[100dvh] w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-xl'
           }
         >
-          <SheetHeader className="shrink-0 border-b border-black/5 bg-white px-6 py-5">
+          <SheetHeader className="shrink-0 border-b border-[var(--color-border)] bg-white px-6 py-5">
             <div className="flex items-center gap-3">
               <div className="flex size-10 items-center justify-center rounded-xl bg-black text-white">
                 <Settings2 className="size-5" />
@@ -400,7 +400,7 @@ export function TripSettingsMenu({
                     <Input
                       value={form.title}
                       maxLength={100}
-                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"
+                      className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-visible:ring-[var(--color-border)]"
                       onChange={(event) =>
                         setForm((current) => ({ ...current, title: event.target.value }))
                       }
@@ -420,7 +420,7 @@ export function TripSettingsMenu({
                         destinationSearch.isFetching ? 'Searching...' : 'No destinations found'
                       }
                       isLoading={destinationSearch.isFetching}
-                      triggerClassName="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
+                      triggerClassName="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]"
                     />
                   </div>
 
@@ -429,7 +429,7 @@ export function TripSettingsMenu({
                     <DatePicker
                       value={form.start_date}
                       onChange={(value) => setForm((f) => ({ ...f, start_date: value }))}
-                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
+                      className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]"
                     />
                   </div>
 
@@ -438,7 +438,7 @@ export function TripSettingsMenu({
                     <DatePicker
                       value={form.end_date}
                       onChange={(value) => setForm((f) => ({ ...f, end_date: value }))}
-                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
+                      className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]"
                     />
                   </div>
 
@@ -450,7 +450,7 @@ export function TripSettingsMenu({
                       max={1000000000}
                       step="0.01"
                       value={form.budget_amount}
-                      className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus-visible:ring-black/5"
+                      className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-visible:ring-[var(--color-border)]"
                       onChange={(event) =>
                         setForm((current) => ({ ...current, budget_amount: event.target.value }))
                       }
@@ -466,15 +466,15 @@ export function TripSettingsMenu({
                         setForm((current) => ({ ...current, budget_currency: value }))
                       }
                     >
-                      <SelectTrigger className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5">
+                      <SelectTrigger className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="max-h-64 rounded-[18px] border-black/8">
+                      <SelectContent className="max-h-64 rounded-[18px] border-[var(--color-border)]">
                         {CURRENCY_OPTIONS.map((option) => (
                           <SelectItem
                             key={option.value}
                             value={option.value}
-                            className="rounded-[10px]"
+                            className="rounded-[12px]"
                           >
                             {option.label}
                             {option.description ? ` ${option.description}` : ''}
@@ -492,15 +492,15 @@ export function TripSettingsMenu({
                         setForm((current) => ({ ...current, trip_type: value }))
                       }
                     >
-                      <SelectTrigger className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5">
+                      <SelectTrigger className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[18px] border-black/8">
+                      <SelectContent className="rounded-[18px] border-[var(--color-border)]">
                         {TRIP_TYPES.map((tripType) => (
                           <SelectItem
                             key={tripType}
                             value={tripType}
-                            className="rounded-[10px] capitalize"
+                            className="rounded-[12px] capitalize"
                           >
                             {tripType.replace(/_/g, ' ')}
                           </SelectItem>
@@ -522,16 +522,16 @@ export function TripSettingsMenu({
                     >
                       <SelectTrigger
                         aria-label="Travel time mode"
-                        className="h-11 rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] focus:ring-black/5"
+                        className="h-11 rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus:ring-[var(--color-border)]"
                       >
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-[18px] border-black/8">
+                      <SelectContent className="rounded-[18px] border-[var(--color-border)]">
                         {ROUTE_TRAVEL_MODE_OPTIONS.map((option) => (
                           <SelectItem
                             key={option.value}
                             value={option.value}
-                            className="rounded-[10px]"
+                            className="rounded-[12px]"
                           >
                             {option.label}
                           </SelectItem>
@@ -550,7 +550,7 @@ export function TripSettingsMenu({
                   <label className={fieldLabelClassName}>Collaboration</label>
                   <Button
                     variant="outline"
-                    className="h-11 w-full justify-between rounded-[14px] border-black/8 bg-[var(--color-secondary-surface)] px-4 font-normal text-[var(--color-text)] hover:bg-black/5 hover:text-[var(--color-text)]"
+                    className="h-11 w-full justify-between rounded-[14px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 font-normal text-[var(--color-text)] hover:bg-[var(--color-border)] hover:text-[var(--color-text)]"
                     onClick={() => onCollaborationOpenChange?.(true)}
                   >
                     <span className="flex items-center gap-2">
@@ -687,7 +687,7 @@ export function TripSettingsMenu({
                         );
                       })
                     ) : (
-                      <div className="col-span-3 rounded-[18px] border border-dashed border-black/8 py-8 text-center text-[0.8rem] text-black/40">
+                      <div className="col-span-3 rounded-[18px] border border-dashed border-[var(--color-border)] py-8 text-center text-[0.8rem] text-black/40">
                         {coverPhotoRefreshError || 'No city photos available.'}
                       </div>
                     )}
@@ -707,7 +707,7 @@ export function TripSettingsMenu({
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-11 justify-start rounded-[14px] border-black/8 px-4 text-[0.82rem] font-semibold text-[var(--color-text)] hover:bg-black/5"
+                    className="h-11 justify-start rounded-[14px] border-[var(--color-border)] px-4 text-[0.82rem] font-semibold text-[var(--color-text)] hover:bg-[var(--color-border)]"
                     onClick={() => void handleDuplicate()}
                     disabled={duplicateTrip.isPending}
                   >
@@ -722,7 +722,7 @@ export function TripSettingsMenu({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 justify-start rounded-[14px] border-black/8 px-4 text-[0.82rem] font-semibold text-orange-600 hover:bg-black/5 hover:text-orange-700"
+                      className="h-11 justify-start rounded-[14px] border-[var(--color-border)] px-4 text-[0.82rem] font-semibold text-[var(--color-warning)] hover:bg-[var(--color-border)] hover:text-[#E59200]"
                       onClick={() => setShowResetConfirm(true)}
                       disabled={isResetting}
                     >
@@ -738,7 +738,7 @@ export function TripSettingsMenu({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-11 justify-start rounded-[14px] border-black/8 px-4 text-[0.82rem] font-semibold text-red-600 hover:bg-black/5 hover:text-red-700"
+                      className="h-11 justify-start rounded-[14px] border-[var(--color-border)] px-4 text-[0.82rem] font-semibold text-[var(--color-danger)] hover:bg-[var(--color-border)] hover:text-[#E5480D]"
                       onClick={() => setShowDeleteConfirm(true)}
                     >
                       <Trash2 className="mr-3 size-4" />
@@ -749,7 +749,7 @@ export function TripSettingsMenu({
               </div>
             </div>
           </div>
-          <div className="flex shrink-0 items-center justify-between border-t border-black/5 bg-white px-6 py-5">
+          <div className="flex shrink-0 items-center justify-between border-t border-[var(--color-border)] bg-white px-6 py-5">
             <Button
               variant="ghost"
               className="rounded-full px-6 font-bold text-black/40 hover:text-black"
@@ -784,7 +784,7 @@ export function TripSettingsMenu({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-full bg-red-600 px-6 font-bold text-white hover:bg-red-700"
+              className="rounded-full bg-[var(--color-danger)] px-6 font-bold text-white hover:bg-[#E5480D]"
               onClick={(event) => {
                 event.preventDefault();
                 void handleDelete();
@@ -810,7 +810,7 @@ export function TripSettingsMenu({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="rounded-full bg-orange-600 px-6 font-bold text-white hover:bg-orange-700"
+              className="rounded-full bg-[var(--color-warning)] px-6 font-bold text-white hover:bg-[#E59200]"
               onClick={(event) => {
                 event.preventDefault();
                 void handleReset();
@@ -829,10 +829,10 @@ export function TripSettingsMenu({
           className={
             isMobile
               ? 'flex h-[90dvh] flex-col gap-0 overflow-hidden rounded-t-[24px] border-x-0 border-b-0 bg-white p-0 sm:max-w-none'
-              : 'flex h-[100dvh] w-full max-w-2xl flex-col gap-0 overflow-hidden border-l border-black/8 bg-white p-0 sm:max-w-2xl'
+              : 'flex h-[100dvh] w-full max-w-2xl flex-col gap-0 overflow-hidden border-l border-[var(--color-border)] bg-white p-0 sm:max-w-2xl'
           }
         >
-          <SheetHeader className="shrink-0 border-b border-black/5 p-6 pr-[120px] pb-6">
+          <SheetHeader className="shrink-0 border-b border-[var(--color-border)] p-6 pr-[120px] pb-6">
             <div className="flex flex-col gap-2.5 text-left">
               <SheetTitle className="text-xl font-bold tracking-tight text-[var(--color-text)]">
                 Collaboration
@@ -873,14 +873,14 @@ export function TripSettingsMenu({
                           className="group flex items-center justify-between gap-3 py-2"
                         >
                           <div className="flex min-w-0 items-center gap-3">
-                            <Avatar className="size-10 border border-black/10">
+                            <Avatar className="size-10 border border-[var(--color-border)]">
                               {collaborator.avatar_url ? (
                                 <AvatarImage
                                   src={collaborator.avatar_url}
                                   alt={getCollaboratorName(collaborator)}
                                 />
                               ) : null}
-                              <AvatarFallback className="bg-[#ECEEF0] text-[0.7rem] font-semibold tracking-wide text-[#526072]">
+                              <AvatarFallback className="bg-[#ECEEF0] text-[0.7rem] font-semibold tracking-wide text-[var(--color-text-muted)]">
                                 {getCollaboratorName(collaborator)
                                   .split(/\s+/)
                                   .filter(Boolean)
@@ -897,7 +897,7 @@ export function TripSettingsMenu({
                                 {isOwnerRow ? (
                                   <Badge
                                     variant="outline"
-                                    className="h-[22px] border-black/8 bg-transparent px-2 text-[0.65rem] font-semibold tracking-wider whitespace-nowrap text-black/60 uppercase"
+                                    className="h-[22px] border-[var(--color-border)] bg-transparent px-2 text-[0.65rem] font-semibold tracking-wider whitespace-nowrap text-black/60 uppercase"
                                   >
                                     Owner
                                   </Badge>
@@ -914,7 +914,7 @@ export function TripSettingsMenu({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-8 shrink-0 rounded-full text-black/40 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-black/5 hover:text-[var(--color-danger)]"
+                              className="size-8 shrink-0 rounded-full text-black/40 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-[var(--color-border)] hover:text-[var(--color-danger)]"
                               onClick={() => void handleRemoveCollaborator(collaborator.user_id)}
                               disabled={removeTripCollaborator.isPending}
                               title="Remove member"
@@ -962,7 +962,7 @@ export function TripSettingsMenu({
                       {pendingInvitations.map((invitation) => (
                         <div
                           key={invitation.id}
-                          className="group flex items-center justify-between gap-3 rounded-[12px] border border-black/8 bg-transparent p-3.5 transition-colors hover:bg-black/[0.02]"
+                          className="group flex items-center justify-between gap-3 rounded-[12px] border border-[var(--color-border)] bg-transparent p-3.5 transition-colors hover:bg-black/[0.02]"
                         >
                           <div className="flex min-w-0 flex-col gap-2">
                             <div className="flex items-center gap-2">
@@ -985,7 +985,7 @@ export function TripSettingsMenu({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-8 rounded-full text-black/60 hover:bg-black/5 hover:text-black"
+                              className="size-8 rounded-full text-black/60 hover:bg-[var(--color-border)] hover:text-black"
                               onClick={() => void handleCopyInvite(invitation)}
                               title="Copy link"
                             >
@@ -995,7 +995,7 @@ export function TripSettingsMenu({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="size-8 rounded-full text-black/40 hover:bg-black/5 hover:text-[var(--color-danger)]"
+                              className="size-8 rounded-full text-black/40 hover:bg-[var(--color-border)] hover:text-[var(--color-danger)]"
                               onClick={() => void handleRevokeInvite(invitation.id)}
                               disabled={revokeTripInvite.isPending}
                               title="Revoke link"
@@ -1007,13 +1007,13 @@ export function TripSettingsMenu({
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-[16px] border border-dashed border-black/10 bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                    <div className="rounded-[16px] border border-dashed border-[var(--color-border)] bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
                       No active invite links. Create one when you want another traveler to
                       collaborate on this trip.
                     </div>
                   )
                 ) : (
-                  <div className="rounded-[16px] border border-dashed border-black/10 bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
+                  <div className="rounded-[16px] border border-dashed border-[var(--color-border)] bg-black/[0.02] p-4 text-sm leading-relaxed text-[var(--color-text-muted)]">
                     You can edit trip details, activities, assets, and map content. Only the trip
                     owner can create invite links, revoke access, or delete the trip.
                   </div>

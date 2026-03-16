@@ -110,13 +110,13 @@ export function DayColumn({
   return (
     <section
       className={cn(
-        'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[14px] border border-black/8 bg-white lg:w-[320px] lg:max-w-[320px] lg:min-w-[320px]',
+        'flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-white lg:w-[320px] lg:max-w-[320px] lg:min-w-[320px]',
         isOver && 'border-black/16 ring-2 ring-black/6',
         className,
       )}
       aria-label={`Day ${day.day_index + 1}`}
     >
-      <header className="hidden h-[4.5rem] flex-col justify-center border-b border-black/8 bg-[var(--color-secondary-surface)] px-4 lg:flex">
+      <header className="hidden h-[4.5rem] flex-col justify-center border-b border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 lg:flex">
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex flex-col items-start gap-0.5">
             <div className="flex items-baseline gap-2">
@@ -185,7 +185,7 @@ export function DayColumn({
               'flex min-h-[160px] flex-1 flex-col items-center justify-center rounded-[12px] border border-dashed px-5 text-center',
               isOver
                 ? 'border-black/16 bg-[var(--color-secondary-surface)]'
-                : 'border-black/8 bg-[var(--color-secondary-surface)]',
+                : 'border-[var(--color-border)] bg-[var(--color-secondary-surface)]',
             )}
           >
             <Plus className="h-5 w-5 text-[var(--color-text-muted)]" />
@@ -205,11 +205,11 @@ export function DayColumn({
         )}
       </div>
 
-      <div className="border-t border-black/8 p-2.5">
+      <div className="border-t border-[var(--color-border)] p-2.5">
         <Button
           type="button"
           variant="outline"
-          className="h-9 w-full rounded-[10px] border-dashed border-black/8 bg-white text-[var(--color-text-muted)] hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
+          className="h-9 w-full rounded-[12px] border-dashed border-[var(--color-border)] bg-white text-[var(--color-text-muted)] hover:border-black/12 hover:bg-[var(--color-secondary-surface)] hover:text-[var(--color-text)]"
           onClick={() => onAddActivity(day.id)}
         >
           Add activity

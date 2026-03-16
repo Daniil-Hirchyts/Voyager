@@ -105,7 +105,7 @@ export function PromptInput({
         <div
           onClick={handleClick}
           className={cn(
-            'transition- cursor-text rounded-[24px] border border-black/10 bg-white p-2',
+            'transition- cursor-text rounded-[24px] border border-[var(--color-border)] bg-white p-2',
             disabled && 'cursor-not-allowed opacity-70',
             className,
           )}

@@ -24,7 +24,7 @@ type WorkspaceStatCardProps = {
 };
 
 export function WorkspacePage({ children, className }: WorkspacePageProps) {
-  return <div className={cn('voyager-app-page flex flex-col gap-6', className)}>{children}</div>;
+  return <div className={cn('voyager-app-page flex flex-col gap-6 mx-auto w-full max-w-[1440px]', className)}>{children}</div>;
 }
 
 export function WorkspaceHeader({
@@ -74,7 +74,7 @@ export function WorkspaceStatCard({
           {label}
         </span>
         {Icon ? (
-          <span className="flex size-9 items-center justify-center rounded-full bg-[rgba(114,174,230,0.14)] text-[var(--color-primary-foreground)]">
+          <span className="flex size-9 items-center justify-center rounded-[12px] bg-[var(--color-secondary-surface)] text-[var(--color-text)]">
             <Icon className="size-4" />
           </span>
         ) : null}

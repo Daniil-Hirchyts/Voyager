@@ -252,7 +252,7 @@ function RecommendationCard({
         'overflow-hidden rounded-[22px] border bg-white p-3 transition-colors',
         onSelect && 'cursor-pointer',
         selected
-          ? 'border-[var(--color-text)]/22 ring-1 ring-[var(--color-text)]/10'
+          ? 'border-[var(--color-text)]/22'
           : 'border-black/8',
       )}
       onClick={() => onSelect?.(entry)}
@@ -357,16 +357,16 @@ function CompactRecommendationCard({
   return (
     <article
       className={cn(
-        'relative h-[204px] overflow-hidden rounded-[18px] border bg-white transition-colors',
+        'relative h-[204px] overflow-hidden rounded-[18px] border bg-white transition duration-300',
         onSelect && 'cursor-pointer',
         selected
-          ? 'border-[var(--color-text)]/24 ring-1 ring-[var(--color-text)]/10'
+          ? 'border-[var(--color-text)]/22'
           : 'border-black/8',
       )}
       onClick={() => onSelect?.(entry)}
     >
       <motion.div
-        className="absolute inset-0"
+        className="absolute inset-0 overflow-hidden rounded-[17px]"
         animate={isOpen ? 'expanded' : 'collapsed'}
         variants={imageVariants}
         transition={transition}
@@ -543,11 +543,11 @@ export function PlannerRecommendationsCompactSection({
           </div>
         </div>
       ) : visibleEntries.length ? (
-        <CarouselContent className="mt-0.5 items-stretch">
+        <CarouselContent className="mt-0.5 items-stretch gap-3 px-3">
           {visibleEntries.map((entry) => (
             <CarouselItem
               key={entry.key}
-              className="basis-[68%] px-1 sm:basis-[44%] xl:basis-[52%]"
+              className="basis-[68%]"
             >
               <CompactRecommendationCard
                 entry={entry}

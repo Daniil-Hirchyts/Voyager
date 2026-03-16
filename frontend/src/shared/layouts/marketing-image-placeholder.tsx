@@ -17,7 +17,7 @@ export function MarketingImagePlaceholder({
       )}
     >
       <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.44),transparent_48%,rgba(114,174,230,0.18))]" />
-      <div className="relative rounded-full border border-white/80 bg-white/72 px-5 py-2 text-sm font-semibold tracking-[0.16em] text-slate-700 uppercase">
+      <div className="relative rounded-full border border-[var(--color-border)] bg-white/72 px-5 py-2 text-sm font-semibold tracking-[0.16em] text-[var(--color-text)] uppercase shadow-[var(--shadow-sm)]">
         {label}
       </div>
     </div>

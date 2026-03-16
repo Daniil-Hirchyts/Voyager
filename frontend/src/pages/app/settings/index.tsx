@@ -28,7 +28,7 @@ import {
 import { WorkspacePage } from '@/shared/layouts/workspace-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const sectionClassName = 'rounded-xl border border-black/5 bg-white p-6';
+const sectionClassName = 'rounded-[16px] border border-[var(--color-border)] bg-white p-6';
 const fieldLabelClassName =
   'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]';
 
@@ -159,7 +159,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <WorkspacePage className="gap-4">
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5">
+        <div className="flex items-center justify-between gap-4 rounded-[16px] border border-[var(--color-border)] bg-white p-5">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-16 rounded-full" />
             <Skeleton className="h-6 w-32" />
@@ -220,7 +220,7 @@ export default function SettingsPage() {
 
   return (
     <WorkspacePage className="gap-4">
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-black/5 bg-white p-5">
+      <div className="flex items-center justify-between gap-4 rounded-[16px] border border-[var(--color-border)] bg-white p-5">
         <div className="flex flex-col gap-1.5">
           <span className="w-fit rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
             Settings
@@ -288,10 +288,10 @@ export default function SettingsPage() {
                   }))
                 }
               >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white">
+                <SelectTrigger className="rounded-[14px] border-[var(--color-border)] bg-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[16px] border-black/8">
+                <SelectContent className="rounded-[16px] border-[var(--color-border)]">
                   <SelectItem value="any">Any rating</SelectItem>
                   <SelectItem value="3">3.0+</SelectItem>
                   <SelectItem value="4">4.0+</SelectItem>
@@ -314,10 +314,10 @@ export default function SettingsPage() {
                   }))
                 }
               >
-                <SelectTrigger className="rounded-[14px] border-black/8 bg-white">
+                <SelectTrigger className="rounded-[14px] border-[var(--color-border)] bg-white">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-[16px] border-black/8">
+                <SelectContent className="rounded-[16px] border-[var(--color-border)]">
                   {AUDIENCE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -331,7 +331,7 @@ export default function SettingsPage() {
 
         <section className={sectionClassName}>
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(114,174,230,0.14)] text-[var(--color-text)]">
+            <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(23,23,23,0.04)] text-[var(--color-text)]">
               <Map className="size-4" />
             </span>
             <div>
@@ -345,7 +345,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-5 grid gap-4">
-            <label className="flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
+            <label className="flex items-center justify-between rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-[var(--color-text)]">
                   Show routes by default
@@ -368,7 +368,7 @@ export default function SettingsPage() {
               />
             </label>
 
-            <label className="flex items-center justify-between rounded-[16px] border border-black/8 bg-[var(--color-secondary-surface)] px-4 py-3">
+            <label className="flex items-center justify-between rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 py-3">
               <div>
                 <p className="text-sm font-medium text-[var(--color-text)]">
                   Show custom layers by default
@@ -407,12 +407,12 @@ export default function SettingsPage() {
           </div>
 
           <div className="mt-5 grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-            <div className="rounded-lg border border-black/5 bg-[var(--color-secondary-surface)] p-4">
+            <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-4">
               <p className={fieldLabelClassName}>Avatar</p>
               <div className="mt-4 flex flex-col items-center text-center">
-                <Avatar className="size-24 rounded-xl border border-black/8 bg-white">
+                <Avatar className="size-24 rounded-[16px] border border-[var(--color-border)] bg-white">
                   <AvatarImage src={avatarUrl} alt={displayName} />
-                  <AvatarFallback className="rounded-xl text-lg font-semibold">
+                  <AvatarFallback className="rounded-[16px] text-lg font-semibold">
                     {getInitials(displayName)}
                   </AvatarFallback>
                 </Avatar>
@@ -477,7 +477,7 @@ export default function SettingsPage() {
                 </label>
               </div>
 
-              <div className="rounded-lg border border-black/5 bg-[var(--color-secondary-surface)] p-4">
+              <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-4">
                 <p className={fieldLabelClassName}>Signed in as</p>
                 <p className="mt-2 text-base font-medium text-[var(--color-text)]">{displayName}</p>
                 <p className="mt-1 text-sm text-[var(--color-text-muted)]">{userEmail}</p>

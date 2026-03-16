@@ -588,7 +588,7 @@ function toneChipClasses(tone: 'neutral' | 'success' | 'warning' | 'danger') {
     'inline-flex items-center rounded-full px-2 py-0.5 text-[0.66rem] font-medium',
     tone === 'success' && 'bg-[rgba(34,197,94,0.12)] text-[rgba(21,128,61,1)]',
     tone === 'warning' && 'bg-[rgba(245,158,11,0.12)] text-[rgba(180,83,9,1)]',
-    tone === 'danger' && 'bg-[rgba(196,95,79,0.12)] text-[rgba(185,71,54,1)]',
+    tone === 'danger' && 'bg-[rgba(255,81,14,0.12)] text-[rgba(255,81,14,1)]',
     tone === 'neutral' && 'bg-[rgba(15,23,42,0.06)] text-[var(--color-text-muted)]',
   );
 }
@@ -682,7 +682,7 @@ const MESSAGE_MARKDOWN_COMPONENTS = {
     </a>
   ),
   blockquote: ({ children }: { children?: ReactNode }) => (
-    <blockquote className="m-0 border-l-2 border-black/10 pl-3 text-[var(--color-text-muted)]">
+    <blockquote className="m-0 border-l-2 border-[var(--color-border)] pl-3 text-[var(--color-text-muted)]">
       {children}
     </blockquote>
   ),
@@ -723,7 +723,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
     <button
       type="button"
       onClick={() => selectSuggestedPlace(place)}
-      className="group flex w-full items-stretch overflow-hidden rounded-[18px] border border-black/8 bg-[#faf8f4] text-left transition-colors hover:border-black/12 hover:bg-white"
+      className="group flex w-full items-stretch overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[#faf8f4] text-left transition-colors hover:border-black/12 hover:bg-white"
     >
       <div className="relative aspect-[1.08] w-[5.8rem] shrink-0 overflow-hidden bg-[linear-gradient(135deg,#ece7df_0%,#f7f1e8_100%)]">
         {heroPhotoUrl ? (
@@ -764,7 +764,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
 
 function TextBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
+    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
       <Markdown
         className="flex flex-col gap-3 text-[0.84rem] leading-7 [&_code]:rounded-[6px] [&_code]:bg-black/[0.04] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.78rem]"
         components={MESSAGE_MARKDOWN_COMPONENTS}
@@ -790,7 +790,7 @@ function PlannerResultCard({ part }: { part: AssistantDataPart }) {
   const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null;
 
   return (
-    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           <WandSparkles className="size-3.5" />
@@ -843,7 +843,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
     : null;
 
   return (
-    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           {part.isError ? <XCircle className="size-3.5" /> : <Sparkles className="size-3.5" />}
@@ -868,7 +868,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
       ) : null}
 
       {errorDetail ? (
-        <div className="mt-3 rounded-[14px] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.74rem] leading-5 text-[rgba(185,71,54,1)]">
+        <div className="mt-3 rounded-[14px] bg-[rgba(255,81,14,0.06)] px-3 py-2 text-[0.74rem] leading-5 text-[rgba(255,81,14,1)]">
           {errorDetail}
         </div>
       ) : null}
@@ -939,7 +939,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         : null;
 
   return (
-    <div className="rounded-[18px] border border-black/7 bg-white px-3 py-3">
+    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           {jobStatus === 'SUCCEEDED' ? (
@@ -988,7 +988,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                         'py-1 text-[0.78rem] font-medium',
                         row.status === 'SUCCEEDED'
                           ? 'text-[rgba(21,128,61,1)]'
-                          : 'text-[rgba(196,95,79,1)]',
+                          : 'text-[rgba(255,81,14,1)]',
                       )}
                       swapIconOnHover={false}
                     >
@@ -1100,11 +1100,11 @@ function EmptyThreadState({
   return (
     <div className="flex min-h-[12rem] flex-col justify-center px-1 pt-1 pb-3">
       <div className="flex gap-2 pb-2.5">
-        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
+        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-primary)]">
           <Bot className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="rounded-[18px] border border-black/7 bg-white px-3 py-2.5">
+          <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-2.5">
             <p className="text-[0.84rem] leading-7 text-[var(--color-text)]">
               I can help shape <span className="font-semibold">{destination || 'this trip'}</span>.
               Ask me to add places, rebalance a day, or use{' '}
@@ -1194,9 +1194,9 @@ function PlannerAssistantComposer({
   }, [draft, onSubmitInput, setDraft, setStreamError, textareaRef]);
 
   return (
-    <div className="border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
+    <div className="border-t border-[var(--color-border)] bg-[#fcfcfb] px-3 py-3">
       {streamError ? (
-        <div className="mb-2 rounded-[14px] border border-[rgba(196,95,79,0.18)] bg-[rgba(196,95,79,0.06)] px-3 py-2 text-[0.75rem] text-[rgba(196,95,79,1)]">
+        <div className="mb-2 rounded-[14px] border border-[rgba(255,81,14,0.18)] bg-[rgba(255,81,14,0.06)] px-3 py-2 text-[0.75rem] text-[rgba(255,81,14,1)]">
           {streamError}
         </div>
       ) : null}
@@ -1210,7 +1210,7 @@ function PlannerAssistantComposer({
               exit={{ opacity: 0, y: 8 }}
               className="absolute inset-x-0 bottom-full z-10 mb-2"
             >
-              <Command className="overflow-hidden rounded-[20px] border border-black/8 bg-white">
+              <Command className="overflow-hidden rounded-[20px] border border-[var(--color-border)] bg-white">
                 <CommandList className="max-h-[13rem] p-1.5">
                   <CommandEmpty>No matching commands.</CommandEmpty>
                   <CommandGroup heading="Commands">
@@ -1251,7 +1251,7 @@ function PlannerAssistantComposer({
           }}
           onSubmit={() => void submitComposer()}
           textareaRef={textareaRef}
-          className="rounded-[24px] border-black/8 bg-white p-0"
+          className="rounded-[24px] border-[var(--color-border)] bg-white p-0"
         >
           <PromptInputTextarea
             placeholder="Ask about this trip or type /generate…"
@@ -1263,7 +1263,7 @@ function PlannerAssistantComposer({
                 <Button
                   type="button"
                   size="icon"
-                  className="size-8 rounded-full border border-black/8 bg-[rgba(15,23,42,0.05)] text-[var(--color-text)] hover:bg-[rgba(15,23,42,0.09)]"
+                  className="size-8 rounded-full border border-[var(--color-border)] bg-[rgba(15,23,42,0.05)] text-[var(--color-text)] hover:bg-[rgba(15,23,42,0.09)]"
                   onClick={() => {
                     setCommandMenuForcedOpen(true);
                     textareaRef.current?.focus();
@@ -1279,7 +1279,7 @@ function PlannerAssistantComposer({
                   className={cn(
                     'text-[0.68rem] tabular-nums',
                     draft.length > MAX_INPUT_LENGTH
-                      ? 'text-[rgba(196,95,79,1)]'
+                      ? 'text-[rgba(255,81,14,1)]'
                       : 'text-[var(--color-text-muted)]',
                   )}
                 >
@@ -1334,7 +1334,7 @@ function AssistantMessageView() {
 
   return (
     <MessagePrimitive.Root className="flex gap-2 pb-2.5">
-      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-black/6 bg-white text-[var(--color-primary)]">
+      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-primary)]">
         {state.status?.type === 'running' ? (
           <Loader2 className="size-3 animate-spin" />
         ) : (
@@ -1832,7 +1832,7 @@ export function PlannerAssistantPanel({
 
   const assistantSurface = (
     <>
-      <div className="border-b border-black/6 px-3 py-3 text-left">
+      <div className="border-b border-[var(--color-border)] px-3 py-3 text-left">
         <div className="flex items-center gap-3">
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
             <Bot className="size-4" />
@@ -1861,7 +1861,7 @@ export function PlannerAssistantPanel({
                     }
                   }}
                   placeholder="Conversation name…"
-                  className="min-w-0 flex-1 rounded-[8px] border border-black/10 bg-white px-2 py-0.5 text-[0.84rem] font-semibold tracking-[-0.02em] text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
+                  className="min-w-0 flex-1 rounded-[12px] border border-[var(--color-border)] bg-white px-2 py-0.5 text-[0.84rem] font-semibold tracking-[-0.02em] text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]"
                 />
               </form>
             ) : (
@@ -1881,7 +1881,7 @@ export function PlannerAssistantPanel({
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="size-8 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
+                  className="size-8 rounded-full border-[var(--color-border)] bg-white/78 text-[var(--color-text-muted)]"
                 >
                   <MoreHorizontal className="size-4" />
                   <span className="sr-only">Conversation options</span>
@@ -1926,7 +1926,7 @@ export function PlannerAssistantPanel({
                         ) : (
                           <button
                             type="button"
-                            className="ml-2 shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:bg-black/8 hover:text-[rgba(196,95,79,1)]"
+                            className="ml-2 shrink-0 rounded p-0.5 text-[var(--color-text-muted)] hover:bg-[var(--color-border)] hover:text-[rgba(255,81,14,1)]"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDeleteSavedConversation(conv.id);
@@ -1951,7 +1951,7 @@ export function PlannerAssistantPanel({
                   Rename conversation
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="text-[rgba(196,95,79,1)] focus:text-[rgba(196,95,79,1)]"
+                  className="text-[rgba(255,81,14,1)] focus:text-[rgba(255,81,14,1)]"
                   onClick={handleClearConversation}
                   disabled={viewingConvId !== null}
                 >
@@ -1965,7 +1965,7 @@ export function PlannerAssistantPanel({
                 type="button"
                 variant="outline"
                 size="icon"
-                className="size-8 rounded-full border-black/10 bg-white/78 text-[var(--color-text-muted)]"
+                className="size-8 rounded-full border-[var(--color-border)] bg-white/78 text-[var(--color-text-muted)]"
                 onClick={() => onOpenChange(false)}
               >
                 <X className="size-4" />
@@ -1977,8 +1977,8 @@ export function PlannerAssistantPanel({
       </div>
 
       {viewingConvId !== null ? (
-        <div className="flex items-center justify-between border-b border-amber-200/50 bg-amber-50/60 px-3 py-2">
-          <div className="flex items-center gap-1.5 text-[0.73rem] text-amber-700/90">
+        <div className="flex items-center justify-between border-b border-[var(--color-gold)]/20 bg-[var(--color-gold)]/10 px-3 py-2">
+          <div className="flex items-center gap-1.5 text-[0.73rem] text-[var(--color-warning)]/90">
             <History className="size-3.5" />
             <span>Viewing archived conversation</span>
           </div>
@@ -2033,10 +2033,10 @@ export function PlannerAssistantPanel({
                 ) : null}
               </ThreadPrimitive.Viewport>
               {viewingConvId !== null ? (
-                <div className="border-t border-black/6 bg-[#fcfcfb] px-3 py-3">
+                <div className="border-t border-[var(--color-border)] bg-[#fcfcfb] px-3 py-3">
                   <button
                     type="button"
-                    className="w-full rounded-[24px] border border-black/8 bg-white px-4 py-3 text-[0.84rem] text-[var(--color-text-muted)] transition-colors hover:bg-[#faf8f4]"
+                    className="w-full rounded-[24px] border border-[var(--color-border)] bg-white px-4 py-3 text-[0.84rem] text-[var(--color-text-muted)] transition-colors hover:bg-[#faf8f4]"
                     onClick={() => handleSwitchConversation(null)}
                   >
                     Return to live thread to send messages
@@ -2071,7 +2071,7 @@ export function PlannerAssistantPanel({
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="flex h-[min(88vh,48rem)] w-full flex-col gap-0 overflow-hidden rounded-t-[28px] border-x-0 border-b-0 border-black/8 bg-[#fcfcfb] p-0"
+            className="flex h-[min(88vh,48rem)] w-full flex-col gap-0 overflow-hidden rounded-t-[28px] border-x-0 border-b-0 border-[var(--color-border)] bg-[#fcfcfb] p-0"
           >
             <SheetHeader className="sr-only">
               <SheetTitle>Planner Assistant</SheetTitle>
@@ -2088,7 +2088,7 @@ export function PlannerAssistantPanel({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-              className="absolute inset-y-0 left-0 z-40 flex w-[46%] max-w-full min-w-[380px] flex-col overflow-hidden border-r border-black/8 bg-[#fcfcfb]"
+              className="absolute inset-y-0 left-0 z-40 flex w-[46%] max-w-full min-w-[380px] flex-col overflow-hidden border-r border-[var(--color-border)] bg-[#fcfcfb]"
             >
               {assistantSurface}
             </motion.aside>
