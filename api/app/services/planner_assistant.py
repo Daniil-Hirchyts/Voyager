@@ -16,7 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.db.models import Activity, AssistantMessage, Job, Place
+from app.db.models import Activity, AssistantMessage, Job, Place, UserProfile
 from app.db.repositories import (
     ActivityRepository,
     AssistantRepository,
@@ -211,7 +211,7 @@ def _extract_text(parts: list[dict] | None) -> str | None:
     return joined or None
 
 
-def _message_to_openrouter(message: AssistantMessage) -> dict[str, Any] | None:
+def _message_to_llm_payload(message: AssistantMessage) -> dict[str, Any] | None:
     if message.role == "user":
         text = _extract_text(message.parts_json)
         if text:
@@ -715,26 +715,40 @@ def _system_prompt() -> str:
     )
 
 
-async def _call_openrouter(
+async def _call_llm(
     *,
     history: list[dict[str, Any]],
+    llm_provider: str = "openrouter",
 ) -> dict[str, Any]:
     settings = get_settings()
-    if not settings.llm_openrouter_api_key:
+
+    if llm_provider == "mistral":
+        models = settings.itinerary_mistral_model_order()
+        api_key = settings.llm_mistral_api_key
+        base_url = settings.llm_mistral_base_url
+        timeout_sec = settings.llm_mistral_timeout_sec
+    else:
+        llm_provider = "openrouter"
+        models = settings.itinerary_llm_model_order()
+        api_key = settings.llm_openrouter_api_key
+        base_url = settings.llm_openrouter_base_url
+        timeout_sec = settings.llm_openrouter_timeout_sec
+
+    if not api_key:
         raise ServiceUnavailableError(
             "INTEGRATION_NOT_CONFIGURED",
-            "OpenRouter API key is not configured",
-            {"missing_env_vars": ["VOYAGER_LLM_OPENROUTER_API_KEY"]},
+            f"{llm_provider} API key is not configured",
+            {"missing_env_vars": [f"VOYAGER_LLM_{llm_provider.upper()}_API_KEY"]},
         )
 
-    endpoint = f"{settings.llm_openrouter_base_url.rstrip('/')}/chat/completions"
+    endpoint = f"{base_url.rstrip('/')}/chat/completions"
     headers = {
-        "Authorization": f"Bearer {settings.llm_openrouter_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     last_error: Exception | None = None
-    async with httpx.AsyncClient(timeout=settings.llm_openrouter_timeout_sec) as client:
-        for model in settings.itinerary_llm_model_order():
+    async with httpx.AsyncClient(timeout=timeout_sec) as client:
+        for model in models:
             payload = {
                 "model": model,
                 "temperature": 0.2,
@@ -1185,6 +1199,9 @@ class PlannerAssistantSession:
                 {"max_chars": settings.assistant_max_input_chars},
             )
 
+        user = await self._db.get(UserProfile, self._user_id)
+        llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
+
         thread, history = await AssistantRepository.get_thread_with_messages(
             self._db,
             user_id=self._user_id,
@@ -1205,14 +1222,14 @@ class PlannerAssistantSession:
 
         provider_history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt()}]
         for item in history:
-            payload = _message_to_openrouter(item)
+            payload = _message_to_llm_payload(item)
             if payload is not None:
                 provider_history.append(payload)
         provider_history.append({"role": "user", "content": request_text})
         provider_history = _trim_provider_history(provider_history)
 
         for _ in range(MAX_TOOL_TURNS):
-            provider_message = await _call_openrouter(history=provider_history)
+            provider_message = await _call_llm(history=provider_history, llm_provider=llm_provider)
             tool_calls = provider_message.get("tool_calls")
             if isinstance(tool_calls, list) and tool_calls:
                 provider_history.append(

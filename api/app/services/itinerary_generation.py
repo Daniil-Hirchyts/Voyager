@@ -8,7 +8,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Activity, ActivityCategory, Job, Place, Trip, TripDay
+from app.db.models import Activity, ActivityCategory, Job, Place, Trip, TripDay, UserProfile
 from app.db.repositories import (
     ActivityRepository,
     PlacePhotoRepository,
@@ -23,7 +23,7 @@ from app.services.google_maps import (
     search_google_places,
 )
 from app.services.itinerary_catalog import CatalogPlaceSeed, build_catalog_candidates
-from app.services.itinerary_llm import generate_with_openrouter
+from app.services.itinerary_llm import generate_with_llm
 from app.services.job_progress import ProgressTracker
 
 PHOTO_ENRICHMENT_LIMIT = 6
@@ -654,6 +654,7 @@ async def _resolve_llm_candidates_for_scope(
 async def _resolve_candidates_for_scope(
     db: AsyncSession,
     *,
+    llm_provider: str,
     trip: Trip,
     days: list[TripDay],
     seed: int | None,
@@ -671,7 +672,8 @@ async def _resolve_candidates_for_scope(
             phase="llm",
         )
 
-    llm_result = await generate_with_openrouter(
+    llm_result = await generate_with_llm(
+        provider=llm_provider,
         trip=trip,
         days=days,
         seed=seed,
@@ -1005,6 +1007,8 @@ async def execute_itinerary_job(
         raise NonRetryableJobError("JOB_PAYLOAD_INVALID", "Job payload must be an object")
 
     trip = await _load_trip_for_job(db, payload)
+    user = await db.get(UserProfile, trip.user_id)
+    llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
 
     if progress:
         await progress.step("Loaded trip", str(trip.destination_text or ""), phase="setup")
@@ -1054,6 +1058,7 @@ async def execute_itinerary_job(
             )
         candidate_resolution = await _resolve_candidates_for_scope(
             db,
+            llm_provider=llm_provider,
             trip=trip,
             days=scope_days,
             seed=seed,

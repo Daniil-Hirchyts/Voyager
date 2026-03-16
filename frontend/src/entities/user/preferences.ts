@@ -7,6 +7,8 @@ export type RecommendationAudiencePreference =
   | 'friends'
   | 'solo_travelers';
 
+export type LlmProviderPreference = 'openrouter' | 'mistral';
+
 export interface VoyagerRecommendationPreferences {
   resultLimit: number;
   minRating: number | null;
@@ -18,9 +20,14 @@ export interface VoyagerMapPreferences {
   showCustomLayersByDefault: boolean;
 }
 
+export interface VoyagerAssistantPreferences {
+  llmProvider: LlmProviderPreference;
+}
+
 export interface VoyagerPreferences {
   recommendations: VoyagerRecommendationPreferences;
   map: VoyagerMapPreferences;
+  assistant: VoyagerAssistantPreferences;
 }
 
 export const DEFAULT_VOYAGER_PREFERENCES: VoyagerPreferences = {
@@ -32,6 +39,9 @@ export const DEFAULT_VOYAGER_PREFERENCES: VoyagerPreferences = {
   map: {
     showRoutesByDefault: true,
     showCustomLayersByDefault: true,
+  },
+  assistant: {
+    llmProvider: 'openrouter',
   },
 };
 
@@ -79,6 +89,20 @@ function coerceAudience(
   }
 }
 
+function coerceLlmProvider(
+  value: unknown,
+  fallback: LlmProviderPreference,
+): LlmProviderPreference {
+  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  switch (normalized) {
+    case 'openrouter':
+    case 'mistral':
+      return normalized;
+    default:
+      return fallback;
+  }
+}
+
 export function readVoyagerPreferences(
   source: Pick<UserProfile, 'preferences'> | Record<string, unknown> | null | undefined,
 ): VoyagerPreferences {
@@ -86,6 +110,7 @@ export function readVoyagerPreferences(
   const voyager = asRecord(root.voyager);
   const recommendations = asRecord(voyager.recommendations);
   const map = asRecord(voyager.map);
+  const assistant = asRecord(voyager.assistant);
 
   return {
     recommendations: {
@@ -114,6 +139,12 @@ export function readVoyagerPreferences(
         DEFAULT_VOYAGER_PREFERENCES.map.showCustomLayersByDefault,
       ),
     },
+    assistant: {
+      llmProvider: coerceLlmProvider(
+        assistant.llmProvider,
+        DEFAULT_VOYAGER_PREFERENCES.assistant.llmProvider,
+      ),
+    },
   };
 }
 
@@ -131,6 +162,10 @@ export function mergeVoyagerPreferences(
     map: {
       ...current.map,
       ...patch.map,
+    },
+    assistant: {
+      ...current.assistant,
+      ...patch.assistant,
     },
   };
 

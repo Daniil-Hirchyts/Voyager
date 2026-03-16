@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.config import get_settings
-from app.db.models import Activity, EventSnapshot, Place, Trip, TripDay
+from app.db.models import Activity, EventSnapshot, Place, Trip, TripDay, UserProfile
 from app.db.repositories import EventRepository, TripRepository
 from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
@@ -146,22 +146,36 @@ async def _llm_rationales(
     redis: Redis | None,
     trip: Trip,
     recommendations: list[dict[str, Any]],
+    llm_provider: str = "openrouter",
 ) -> dict[uuid.UUID, str]:
     settings = get_settings()
+    
+    if llm_provider == "mistral":
+        models = settings.itinerary_mistral_model_order()
+        api_key = settings.llm_mistral_api_key
+        base_url = settings.llm_mistral_base_url
+        timeout_sec = settings.llm_mistral_timeout_sec
+    else:
+        llm_provider = "openrouter"
+        models = settings.itinerary_llm_model_order()
+        api_key = settings.llm_openrouter_api_key
+        base_url = settings.llm_openrouter_base_url
+        timeout_sec = settings.llm_openrouter_timeout_sec
+
     if (
         not settings.itinerary_llm_enabled
-        or not settings.llm_openrouter_api_key
+        or not api_key
         or not recommendations
-        or not settings.itinerary_llm_model_order()
+        or not models
     ):
         return {}
 
-    model = settings.itinerary_llm_model_order()[0]
+    model = models[0]
     await increment_itinerary_llm_metric(redis, "attempt")
     await enforce_limit(
         redis,
         prefix="rl:provider",
-        identifier=f"openrouter:{model}",
+        identifier=f"{llm_provider}:{model}",
         scope="itinerary.recommendations",
         limit=settings.rate_limit_itinerary_provider_per_min,
         window_seconds=60,
@@ -191,7 +205,7 @@ async def _llm_rationales(
             for item in recommendations
         ],
     }
-    endpoint = f"{settings.llm_openrouter_base_url.rstrip('/')}/chat/completions"
+    endpoint = f"{base_url.rstrip('/')}/chat/completions"
     body = {
         "model": model,
         "temperature": 0.2,
@@ -212,11 +226,11 @@ async def _llm_rationales(
         ],
     }
     headers = {
-        "Authorization": f"Bearer {settings.llm_openrouter_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     try:
-        async with httpx.AsyncClient(timeout=settings.llm_openrouter_timeout_sec) as client:
+        async with httpx.AsyncClient(timeout=timeout_sec) as client:
             response = await client.post(endpoint, headers=headers, json=body)
         response.raise_for_status()
         response_payload = response.json()
@@ -259,6 +273,9 @@ async def recommend_shortlist_items(
     use_llm_rationale: bool,
 ) -> list[dict[str, Any]]:
     trip = await TripRepository.get_trip(db, user_id, trip_id)
+    user = await db.get(UserProfile, trip.user_id)
+    llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
+    
     all_days = await TripRepository.list_days(db, user_id, trip_id)
     if day_ids:
         scoped_days = [day for day in all_days if day.id in set(day_ids)]
@@ -351,7 +368,7 @@ async def recommend_shortlist_items(
     )
     top_items = scored[:limit]
     llm_rationales = (
-        await _llm_rationales(redis=redis, trip=trip, recommendations=top_items)
+        await _llm_rationales(redis=redis, trip=trip, recommendations=top_items, llm_provider=llm_provider)
         if use_llm_rationale
         else {}
     )

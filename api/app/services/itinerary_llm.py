@@ -36,7 +36,7 @@ MAX_FINAL_OUTPUT_REPAIRS = 2
 
 
 @dataclass
-class OpenRouterGenerationResult:
+class LlmGenerationResult:
     attempted: bool
     success: bool
     model: str | None
@@ -46,13 +46,14 @@ class OpenRouterGenerationResult:
 
 def _sanitize_error(
     *,
+    provider: str,
     code: str,
     message: str,
     model: str | None,
     details: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = {
-        "provider": "openrouter",
+        "provider": provider,
         "code": code,
         "message": message,
     }
@@ -499,25 +500,28 @@ def _get_redis_client():
     return session_redis_client
 
 
-async def _call_openrouter(
+async def _call_provider(
     *,
+    provider: str,
+    base_url: str,
+    api_key: str,
+    timeout_sec: int,
     model: str,
     trip: Trip,
     days: list[TripDay],
     seed: int | None,
     progress: ProgressTracker | None = None,
 ) -> dict[uuid.UUID, list[dict[str, Any]]]:
-    settings = get_settings()
-    endpoint = f"{settings.llm_openrouter_base_url.rstrip('/')}/chat/completions"
+    endpoint = f"{base_url.rstrip('/')}/chat/completions"
     headers = {
-        "Authorization": f"Bearer {settings.llm_openrouter_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": _system_prompt()},
         {"role": "user", "content": _user_prompt(trip=trip, days=days, seed=seed)},
     ]
-    async with httpx.AsyncClient(timeout=settings.llm_openrouter_timeout_sec) as client:
+    async with httpx.AsyncClient(timeout=timeout_sec) as client:
         max_tool_turns = max(MIN_TOOL_TURNS, len(days) * MAX_TOOL_TURNS_PER_DAY)
         final_output_repairs = 0
         for turn_index in range(max_tool_turns):
@@ -618,17 +622,18 @@ async def _call_openrouter(
     raise ValueError("Provider did not finish grounded itinerary generation")
 
 
-async def generate_with_openrouter(
+async def generate_with_llm(
     *,
+    provider: str,
     trip: Trip,
     days: list[TripDay],
     seed: int | None,
     constraints: dict[str, Any],
     progress: ProgressTracker | None = None,
-) -> OpenRouterGenerationResult:
+) -> LlmGenerationResult:
     settings = get_settings()
     if not settings.itinerary_llm_enabled:
-        return OpenRouterGenerationResult(
+        return LlmGenerationResult(
             attempted=False,
             success=False,
             model=None,
@@ -636,35 +641,48 @@ async def generate_with_openrouter(
             errors=[],
         )
 
-    models = settings.itinerary_llm_model_order()
+    if provider == "mistral":
+        models = settings.itinerary_mistral_model_order()
+        api_key = settings.llm_mistral_api_key
+        base_url = settings.llm_mistral_base_url
+        timeout_sec = settings.llm_mistral_timeout_sec
+    else:
+        provider = "openrouter"
+        models = settings.itinerary_llm_model_order()
+        api_key = settings.llm_openrouter_api_key
+        base_url = settings.llm_openrouter_base_url
+        timeout_sec = settings.llm_openrouter_timeout_sec
+
     if not models:
-        return OpenRouterGenerationResult(
+        return LlmGenerationResult(
             attempted=True,
             success=False,
             model=None,
             candidates_by_day={},
             errors=[
                 _sanitize_error(
+                    provider=provider,
                     code="INTEGRATION_NOT_CONFIGURED",
-                    message="No OpenRouter models configured",
+                    message=f"No {provider} models configured",
                     model=None,
-                    details={"missing_env_vars": ["VOYAGER_LLM_OPENROUTER_MODEL_ORDER"]},
+                    details={"missing_env_vars": [f"VOYAGER_LLM_{provider.upper()}_MODEL_ORDER"]},
                 )
             ],
         )
 
-    if not settings.llm_openrouter_api_key:
-        return OpenRouterGenerationResult(
+    if not api_key:
+        return LlmGenerationResult(
             attempted=True,
             success=False,
             model=None,
             candidates_by_day={},
             errors=[
                 _sanitize_error(
+                    provider=provider,
                     code="INTEGRATION_NOT_CONFIGURED",
-                    message="OpenRouter API key is not configured",
+                    message=f"{provider} API key is not configured",
                     model=None,
-                    details={"missing_env_vars": ["VOYAGER_LLM_OPENROUTER_API_KEY"]},
+                    details={"missing_env_vars": [f"VOYAGER_LLM_{provider.upper()}_API_KEY"]},
                 )
             ],
         )
@@ -677,7 +695,7 @@ async def generate_with_openrouter(
             await enforce_limit(
                 redis,
                 prefix="rl:provider",
-                identifier=f"openrouter:{model}",
+                identifier=f"{provider}:{model}",
                 scope="itinerary.generate",
                 limit=settings.rate_limit_itinerary_provider_per_min,
                 window_seconds=60,
@@ -685,6 +703,7 @@ async def generate_with_openrouter(
         except TooManyRequestsError as exc:
             errors.append(
                 _sanitize_error(
+                    provider=provider,
                     code="PROVIDER_LIMITED",
                     message="Itinerary provider rate limit exceeded",
                     model=model,
@@ -694,7 +713,11 @@ async def generate_with_openrouter(
             continue
 
         try:
-            candidates = await _call_openrouter(
+            candidates = await _call_provider(
+                provider=provider,
+                base_url=base_url,
+                api_key=api_key,
+                timeout_sec=timeout_sec,
                 model=model,
                 trip=trip,
                 days=days,
@@ -704,8 +727,9 @@ async def generate_with_openrouter(
         except httpx.TimeoutException:
             errors.append(
                 _sanitize_error(
+                    provider=provider,
                     code="UPSTREAM_PROVIDER_TIMEOUT",
-                    message="OpenRouter request timed out",
+                    message=f"{provider} request timed out",
                     model=model,
                 )
             )
@@ -715,16 +739,18 @@ async def generate_with_openrouter(
             if text == "PROVIDER_LIMITED":
                 errors.append(
                     _sanitize_error(
+                        provider=provider,
                         code="PROVIDER_LIMITED",
-                        message="OpenRouter returned provider-limited response",
+                        message=f"{provider} returned provider-limited response",
                         model=model,
                     )
                 )
             elif text.startswith("PROVIDER_ERROR:"):
                 errors.append(
                     _sanitize_error(
+                        provider=provider,
                         code="UPSTREAM_PROVIDER_ERROR",
-                        message="OpenRouter upstream provider error",
+                        message=f"{provider} upstream provider error",
                         model=model,
                         details={"status_code": text.split(":")[1]},
                     )
@@ -732,8 +758,9 @@ async def generate_with_openrouter(
             else:
                 errors.append(
                     _sanitize_error(
+                        provider=provider,
                         code="UPSTREAM_PROVIDER_ERROR",
-                        message="OpenRouter request failed",
+                        message=f"{provider} request failed",
                         model=model,
                         details={"error": text},
                     )
@@ -742,19 +769,21 @@ async def generate_with_openrouter(
         except (ValueError, json.JSONDecodeError) as exc:
             errors.append(
                 _sanitize_error(
+                    provider=provider,
                     code="PROVIDER_RESPONSE_INVALID",
-                    message="OpenRouter response validation failed",
+                    message=f"{provider} response validation failed",
                     model=model,
                     details={"error": str(exc)},
                 )
             )
             continue
         except Exception as exc:  # pragma: no cover - defensive fallback
-            logger.exception("openrouter_unexpected_error", extra={"trace_id": "-"})
+            logger.exception("provider_unexpected_error", extra={"trace_id": "-"})
             errors.append(
                 _sanitize_error(
+                    provider=provider,
                     code="UPSTREAM_PROVIDER_ERROR",
-                    message="Unexpected OpenRouter integration error",
+                    message=f"Unexpected {provider} integration error",
                     model=model,
                     details={"error": str(exc)},
                 )
@@ -762,7 +791,7 @@ async def generate_with_openrouter(
             continue
 
         await increment_itinerary_llm_metric(redis, "success")
-        return OpenRouterGenerationResult(
+        return LlmGenerationResult(
             attempted=True,
             success=True,
             model=model,
@@ -772,7 +801,7 @@ async def generate_with_openrouter(
 
     if errors:
         await increment_itinerary_llm_metric(redis, "failure")
-    return OpenRouterGenerationResult(
+    return LlmGenerationResult(
         attempted=True,
         success=False,
         model=None,

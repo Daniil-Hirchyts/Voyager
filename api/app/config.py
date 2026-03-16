@@ -100,10 +100,20 @@ class Settings(BaseSettings):
         default="https://openrouter.ai/api/v1", alias="VOYAGER_LLM_OPENROUTER_BASE_URL"
     )
     llm_openrouter_model_order_raw: str = Field(
-        default=("stepfun/step-3.5-flash:free,z-ai/glm-4.5-air:free"),
+        default="stepfun/step-3.5-flash:free,z-ai/glm-4.5-air:free",
         alias="VOYAGER_LLM_OPENROUTER_MODEL_ORDER",
     )
     llm_openrouter_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_OPENROUTER_TIMEOUT_SEC")
+
+    llm_mistral_api_key: str | None = Field(default=None, alias="VOYAGER_LLM_MISTRAL_API_KEY")
+    llm_mistral_base_url: str = Field(
+        default="https://api.mistral.ai/v1", alias="VOYAGER_LLM_MISTRAL_BASE_URL"
+    )
+    llm_mistral_model_order_raw: str = Field(
+        default="mistral-large-latest",
+        alias="VOYAGER_LLM_MISTRAL_MODEL_ORDER",
+    )
+    llm_mistral_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_MISTRAL_TIMEOUT_SEC")
     rate_limit_itinerary_provider_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )
@@ -224,6 +234,11 @@ class Settings(BaseSettings):
     def itinerary_llm_model_order(self) -> list[str]:
         return [
             part.strip() for part in self.llm_openrouter_model_order_raw.split(",") if part.strip()
+        ]
+
+    def itinerary_mistral_model_order(self) -> list[str]:
+        return [
+            part.strip() for part in self.llm_mistral_model_order_raw.split(",") if part.strip()
         ]
 
     @property

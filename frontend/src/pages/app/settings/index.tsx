@@ -1,6 +1,6 @@
 import { type ChangeEvent, useEffect, useRef, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
-import { Camera, Map, Sparkles, UserRound } from 'lucide-react';
+import { Camera, Map, Sparkles, UserRound, Bot } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import {
   mergeVoyagerPreferences,
   readVoyagerPreferences,
   type RecommendationAudiencePreference,
+  type LlmProviderPreference,
 } from '@/entities/user/preferences';
 import {
   useDeleteProfileAvatar,
@@ -389,6 +390,48 @@ export default function SettingsPage() {
                   }))
                 }
               />
+            </label>
+          </div>
+        </section>
+
+        <section className={sectionClassName}>
+          <div className="flex items-center gap-3">
+            <span className="flex size-10 items-center justify-center rounded-full bg-[rgba(16,185,129,0.14)] text-[var(--color-text)]">
+              <Bot className="size-4" />
+            </span>
+            <div>
+              <h2 className="text-[1rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
+                Assistant defaults
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+                Choose the AI provider for your assistant.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-4">
+            <label className="space-y-2">
+              <span className={fieldLabelClassName}>AI Provider</span>
+              <Select
+                value={settings.assistant.llmProvider}
+                onValueChange={(value) =>
+                  setSettings((current) => ({
+                    ...current,
+                    assistant: {
+                      ...current.assistant,
+                      llmProvider: value as LlmProviderPreference,
+                    },
+                  }))
+                }
+              >
+                <SelectTrigger className="rounded-[14px] border-[var(--color-border)] bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-[16px] border-[var(--color-border)]">
+                  <SelectItem value="openrouter">OpenRouter</SelectItem>
+                  <SelectItem value="mistral">Mistral API</SelectItem>
+                </SelectContent>
+              </Select>
             </label>
           </div>
         </section>
