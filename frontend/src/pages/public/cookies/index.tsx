@@ -49,7 +49,7 @@ function LegalPage({
             { label: 'Privacy Policy', to: '/privacy' },
             { label: 'Terms of Service', to: '/terms' },
             { label: 'Cookie Policy', to: '/cookies' },
-            { label: 'Imprint', to: '/imprint' },
+
           ].map(({ label, to }) => (
             <Link
               key={label}

@@ -28,7 +28,7 @@ import {
 import { WorkspacePage } from '@/shared/layouts/workspace-shell';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const sectionClassName = 'rounded-[16px] border border-[var(--color-border)] bg-white p-6';
+const sectionClassName = 'rounded-[16px] bg-white p-6';
 const fieldLabelClassName =
   'text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-text-muted)]';
 
@@ -159,7 +159,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <WorkspacePage className="gap-4">
-        <div className="flex items-center justify-between gap-4 rounded-[16px] border border-[var(--color-border)] bg-white p-5">
+        <div className="flex items-center justify-between gap-4 rounded-[16px] bg-white p-5">
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-16 rounded-full" />
             <Skeleton className="h-6 w-32" />
@@ -220,7 +220,7 @@ export default function SettingsPage() {
 
   return (
     <WorkspacePage className="gap-4">
-      <div className="flex items-center justify-between gap-4 rounded-[16px] border border-[var(--color-border)] bg-white p-5">
+      <div className="flex items-center justify-between gap-4 rounded-[16px] bg-white p-5">
         <div className="flex flex-col gap-1.5">
           <span className="w-fit rounded-full bg-[var(--color-accent-soft)] px-2.5 py-0.5 text-[9px] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
             Settings

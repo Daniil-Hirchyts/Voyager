@@ -764,7 +764,7 @@ function SuggestedPlaceCard({ place }: { place: PlannerAssistantSuggestedPlace }
 
 function TextBlock({ text }: { text: string }) {
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
+    <div className="rounded-[18px] bg-white px-3 py-2.5 text-[0.84rem] leading-7 text-[var(--color-text)]">
       <Markdown
         className="flex flex-col gap-3 text-[0.84rem] leading-7 [&_code]:rounded-[6px] [&_code]:bg-black/[0.04] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:text-[0.78rem]"
         components={MESSAGE_MARKDOWN_COMPONENTS}
@@ -790,7 +790,7 @@ function PlannerResultCard({ part }: { part: AssistantDataPart }) {
   const jobId = typeof part.data.job_id === 'string' ? part.data.job_id : null;
 
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           <WandSparkles className="size-3.5" />
@@ -843,7 +843,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
     : null;
 
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-7 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           {part.isError ? <XCircle className="size-3.5" /> : <Sparkles className="size-3.5" />}
@@ -939,7 +939,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         : null;
 
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-[rgba(47,111,115,0.09)] text-[var(--color-primary)]">
           {jobStatus === 'SUCCEEDED' ? (
@@ -1100,11 +1100,11 @@ function EmptyThreadState({
   return (
     <div className="flex min-h-[12rem] flex-col justify-center px-1 pt-1 pb-3">
       <div className="flex gap-2 pb-2.5">
-        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-primary)]">
+        <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-primary)]">
           <Bot className="size-3.5" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-2.5">
+          <div className="rounded-[18px] bg-white px-3 py-2.5">
             <p className="text-[0.84rem] leading-7 text-[var(--color-text)]">
               I can help shape <span className="font-semibold">{destination || 'this trip'}</span>.
               Ask me to add places, rebalance a day, or use{' '}
@@ -1334,7 +1334,7 @@ function AssistantMessageView() {
 
   return (
     <MessagePrimitive.Root className="flex gap-2 pb-2.5">
-      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-white text-[var(--color-primary)]">
+      <span className="mt-1 flex size-6 shrink-0 items-center justify-center rounded-full bg-white text-[var(--color-primary)]">
         {state.status?.type === 'running' ? (
           <Loader2 className="size-3 animate-spin" />
         ) : (

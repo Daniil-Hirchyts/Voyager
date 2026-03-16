@@ -456,7 +456,7 @@ export function AppLayout() {
         <AppSideRail />
         <main
           className={cn(
-            'flex min-w-0 flex-1 flex-col overflow-x-hidden overscroll-y-contain',
+            'flex min-w-0 flex-1 flex-col overflow-x-hidden overscroll-y-contain bg-[#F3F5F7]',
             location.pathname.endsWith('/plan') ? 'overflow-y-hidden' : 'overflow-y-auto',
           )}
           data-testid="app-layout-content"

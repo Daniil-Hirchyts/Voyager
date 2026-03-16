@@ -1156,7 +1156,7 @@ export default function PlannerBoard({ tripId }: Props) {
   if (plannerLoadRecoveryMode) {
     return (
       <div className="p-4 md:p-5">
-        <div className="rounded-[12px] border border-[var(--color-border)] bg-white p-5 text-sm text-[var(--color-text-muted)]">
+        <div className="rounded-[12px] bg-white p-5 text-sm text-[var(--color-text-muted)]">
           {plannerLoadRecoveryMode === 'auth'
             ? 'Redirecting to sign in...'
             : 'Returning to your trips...'}
@@ -1168,7 +1168,7 @@ export default function PlannerBoard({ tripId }: Props) {
   if (isError || !planner) {
     return (
       <div className="p-4 md:p-5">
-        <div className="rounded-[12px] border border-[var(--color-border)] bg-white p-5 text-sm text-[var(--color-text-muted)]">
+        <div className="rounded-[12px] bg-white p-5 text-sm text-[var(--color-text-muted)]">
           Failed to load the planner workspace.
         </div>
       </div>

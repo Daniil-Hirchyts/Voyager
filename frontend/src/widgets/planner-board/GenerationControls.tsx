@@ -92,7 +92,7 @@ export function PlannerGenerationInlineCard({
   });
 
   return (
-    <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-3 py-3">
+    <div className="rounded-[18px] bg-white px-3 py-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">

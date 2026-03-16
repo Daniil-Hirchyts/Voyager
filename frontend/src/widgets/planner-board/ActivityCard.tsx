@@ -81,11 +81,10 @@ export function ActivityCardView({
   return (
     <article
       className={cn(
-        'group flex flex-col rounded-[12px] border border-[var(--color-border)] bg-white transition-[border-color,box-shadow]',
-        'hover:border-black/12',
-        isSelected && 'border-black/16 ring-2 ring-black/6',
-        isDragging && 'border-black/16',
-        activity.visited_at && 'border-[rgba(0,201,120,0.22)] bg-[rgba(0,201,120,0.08)]',
+        'group flex flex-col rounded-[12px] bg-[#F3F5F7] transition-[box-shadow,background-color]',
+        isSelected && 'bg-white ring-2 ring-black/6',
+        isDragging && 'bg-white ring-2 ring-black/10',
+        activity.visited_at && 'bg-[rgba(0,201,120,0.08)]',
       )}
       aria-label={`Activity: ${activity.title}`}
     >

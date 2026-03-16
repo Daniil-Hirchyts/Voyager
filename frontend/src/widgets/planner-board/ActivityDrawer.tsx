@@ -472,7 +472,7 @@ function PlaceSelector({
   const showResults = normalizedQuery.length >= 3;
   const showSelectedSummary = !normalizedQuery && Boolean(selectedCandidate);
   return (
-    <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-3">
+    <div className="rounded-[16px] bg-[#F3F5F7] p-3">
       {' '}
       <div className="relative">
         {' '}
@@ -487,7 +487,7 @@ function PlaceSelector({
         />{' '}
       </div>{' '}
       {showSelectedSummary && selectedCandidate ? (
-        <div className="mt-3 flex items-start gap-3 rounded-[12px] border border-[var(--color-border)] bg-white px-3 py-3">
+        <div className="mt-3 flex items-start gap-3 rounded-[12px] bg-white px-3 py-3">
           {' '}
           <div className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--color-secondary-surface)]">
             {' '}
@@ -604,7 +604,7 @@ function TravelTimeWheelPicker({
   };
 
   return (
-    <div className="rounded-[16px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-3">
+    <div className="rounded-[16px] bg-[#F3F5F7] p-3">
       {' '}
       <div className="">
         {' '}
@@ -653,7 +653,7 @@ function TravelTimeWheelPicker({
           />{' '}
         </WheelPickerWrapper>{' '}
         <span className="text-base leading-none font-semibold text-[var(--color-text-muted)]">:</span>{' '}
-        <WheelPickerWrapper className="w-full rounded-[12px] border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-1 shadow-none">
+        <WheelPickerWrapper className="w-full rounded-[12px] bg-[#F3F5F7] px-1 shadow-none">
           {' '}
           <WheelPicker
             value={minute}
@@ -685,7 +685,7 @@ function PendingActivityAttachments({
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   return (
-    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+    <section className="rounded-[18px] bg-white p-4">
       {' '}
       <div className="flex items-start justify-between gap-4">
         {' '}
@@ -732,7 +732,7 @@ function PendingActivityAttachments({
             return (
               <div
                 key={fileKey}
-                className="flex items-center gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5"
+                className="flex items-center gap-3 rounded-[14px] bg-[#F3F5F7] px-3 py-2.5"
               >
                 {' '}
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white">
@@ -1408,7 +1408,7 @@ export function ActivityDrawer({
           className="flex min-h-0 flex-1 flex-col overflow-hidden"
         >
           {' '}
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#F3F5F7] px-4 py-4">
             {' '}
             <div className="mx-auto flex w-full max-w-[32rem] flex-col gap-4">
               {' '}
@@ -1468,7 +1468,7 @@ export function ActivityDrawer({
                 </section>
               ) : null}{' '}
               {step === 1 && createFlow === 'itinerary' ? (
-                <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+                <section className="rounded-[18px] bg-white p-4">
                   {' '}
                   <div className="flex items-start justify-between gap-4">
                     {' '}
@@ -1501,7 +1501,7 @@ export function ActivityDrawer({
               ) : null}
               {step === 2 ? (
                 <div className="grid gap-3">
-                  <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+                  <section className="rounded-[18px] bg-white p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
@@ -1530,7 +1530,7 @@ export function ActivityDrawer({
                   </section>
 
                   {category === 'travel' ? (
-                    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+                    <section className="rounded-[18px] bg-white p-4">
                       <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Travel details
                       </p>
@@ -1651,7 +1651,7 @@ export function ActivityDrawer({
                   ) : null}
 
                   {category === 'hotel' ? (
-                    <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+                    <section className="rounded-[18px] bg-white p-4">
                       <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Accommodation details
                       </p>
@@ -1750,7 +1750,7 @@ export function ActivityDrawer({
                     </section>
                   ) : null}
 
-                  <section className="rounded-[18px] border border-[var(--color-border)] bg-white p-4">
+                  <section className="rounded-[18px] bg-white p-4">
                     <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Activity details
                     </p>

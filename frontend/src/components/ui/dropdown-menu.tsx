@@ -55,7 +55,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[10rem] overflow-hidden rounded-[var(--radius-md)] bg-[rgba(250,250,250,0.85)] p-1.5 backdrop-blur-2xl',
+        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 min-w-[10rem] overflow-hidden rounded-[var(--radius-md)] bg-[rgba(250,250,250,0.85)] p-1.5 backdrop-blur-2xl ',
         className,
       )}
       {...props}
@@ -73,7 +73,7 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default items-center gap-2 rounded-[16px] px-3 py-2 text-sm text-[var(--color-text)] transition-colors outline-none select-none focus:bg-[var(--color-secondary-surface)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'relative flex cursor-default items-center gap-2 rounded-[16px] px-3 py-2 text-sm text-[var(--color-text)] transition-colors outline-none select-none focus:bg-[var(--color-secondary-surface)] focus:text-[var(--color-text)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 ' ,
       inset && 'pl-8',
       className,
     )}

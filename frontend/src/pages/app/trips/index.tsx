@@ -635,10 +635,10 @@ export default function TripsPage() {
             </h2>
           </div>
 
-          <div className="hidden w-full rounded-[14px] border border-[var(--color-border)] bg-[var(--color-border)] p-1 md:w-auto lg:flex">
+          <div className="hidden w-full rounded-[40px] border border-[var(--color-border)] bg-[var(--color-border)] p-1 md:w-auto lg:flex">
             <AnimatedBackground
               defaultValue={activeTab}
-              className="rounded-[10px] bg-black"
+              className="rounded-[40px] bg-black"
               transition={{
                 type: 'spring',
                 bounce: 0.2,
@@ -655,7 +655,7 @@ export default function TripsPage() {
                   data-id={id}
                   type="button"
                   className={cn(
-                    'flex flex-1 items-center justify-center rounded-[10px] px-4 py-2 transition-colors md:flex-none md:py-1.5',
+                    'flex flex-1 items-center justify-center rounded-[40px] px-4 py-2 transition-colors md:flex-none md:py-1.5',
                     activeTab === id ? 'text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
                   )}
                   aria-pressed={activeTab === id}
@@ -917,12 +917,7 @@ export default function TripsPage() {
             >
               Cookie Policy
             </Link>
-            <Link
-              to="/imprint"
-              className="text-[0.75rem] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
-            >
-              Imprint
-            </Link>
+
           </nav>
         </div>
       </footer>

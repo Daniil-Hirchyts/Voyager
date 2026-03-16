@@ -75,7 +75,7 @@ export default function TripInvitePage() {
             </div>
           </div>
 
-          <div className="grid gap-2 rounded-[20px] border border-[var(--color-border)] bg-white/74 px-4 py-4 text-sm text-[var(--color-text-muted)]">
+          <div className="grid gap-2 rounded-[20px] bg-white px-4 py-4 text-sm text-[var(--color-text-muted)]">
             <span className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               How it works
             </span>
@@ -115,7 +115,7 @@ export default function TripInvitePage() {
           ) : preview.data ? (
             <>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[22px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-5">
+                <div className="rounded-[22px] bg-[#F3F5F7] px-5 py-5">
                   <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Trip
                   </p>
@@ -128,7 +128,7 @@ export default function TripInvitePage() {
                   </p>
                 </div>
 
-                <div className="rounded-[22px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 py-5">
+                <div className="rounded-[22px] bg-[#F3F5F7] px-5 py-5">
                   <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                     Invited by
                   </p>
@@ -144,7 +144,7 @@ export default function TripInvitePage() {
 
               <Separator className="bg-[var(--color-border)]" />
 
-              <div className="grid gap-3 rounded-[22px] border border-[var(--color-border)] bg-white/78 px-5 py-5 text-sm text-[var(--color-text-muted)]">
+              <div className="grid gap-3 rounded-[22px] bg-white px-5 py-5 text-sm text-[var(--color-text-muted)]">
                 <p className="text-[0.72rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                   Granted role
                 </p>

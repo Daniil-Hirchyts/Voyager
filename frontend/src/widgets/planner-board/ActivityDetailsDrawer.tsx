@@ -219,12 +219,12 @@ export function ActivityDetailsDrawer({
         </div>
 
         {/* Scrollable content */}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F3F5F7] px-4 py-4">
           <div className="space-y-3">
             <MapPreview activity={activity} />
 
             {activity.description ? (
-              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
+              <div className="rounded-[18px] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Summary
                 </p>
@@ -237,7 +237,7 @@ export function ActivityDetailsDrawer({
             {infoItems.map((item) => (
               <div
                 key={item.key}
-                className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-3"
+                className="rounded-[18px] bg-white px-4 py-3"
               >
                 <div className="flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   <item.Icon className="h-3.5 w-3.5" />
@@ -248,7 +248,7 @@ export function ActivityDetailsDrawer({
             ))}
 
             {activity.category === 'travel' && travelRoute.length > 0 ? (
-              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
+              <div className="rounded-[18px] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Route
                 </p>
@@ -256,7 +256,7 @@ export function ActivityDetailsDrawer({
                   {travelRoute.map((point, idx) => (
                     <div
                       key={`${point.label}-${idx}`}
-                      className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5"
+                      className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5"
                     >
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         {idx === 0 ? 'Origin' : 'Destination'}
@@ -269,13 +269,13 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {activity.category === 'hotel' ? (
-              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
+              <div className="rounded-[18px] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Stay
                 </p>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   {typeof details.checkin_date === 'string' ? (
-                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-in
                       </p>
@@ -285,7 +285,7 @@ export function ActivityDetailsDrawer({
                     </div>
                   ) : null}
                   {typeof details.checkout_date === 'string' ? (
-                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="rounded-[12px] bg-[#F3F5F7] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Check-out
                       </p>
@@ -295,7 +295,7 @@ export function ActivityDetailsDrawer({
                     </div>
                   ) : null}
                   {typeof details.room_type === 'string' ? (
-                    <div className="col-span-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-3 py-2.5">
+                    <div className="col-span-2 rounded-[12px] bg-[#F3F5F7] px-3 py-2.5">
                       <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                         Room
                       </p>
@@ -307,7 +307,7 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {activity.notes ? (
-              <div className="rounded-[18px] border border-[var(--color-border)] bg-white px-4 py-4">
+              <div className="rounded-[18px] bg-white px-4 py-4">
                 <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   Notes
                 </p>

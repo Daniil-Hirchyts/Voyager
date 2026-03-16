@@ -16,7 +16,6 @@ const AuthSilentPage = lazy(() => import('@/pages/public/auth-silent'));
 const PrivacyPolicyPage = lazy(() => import('@/pages/public/privacy'));
 const TermsOfServicePage = lazy(() => import('@/pages/public/terms'));
 const CookiePolicyPage = lazy(() => import('@/pages/public/cookies'));
-const ImprintPage = lazy(() => import('@/pages/public/imprint'));
 
 // App pages
 const SettingsPage = lazy(() => import('@/pages/app/settings'));
@@ -151,14 +150,7 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-      {
-        path: 'imprint',
-        element: (
-          <Suspense fallback={<PageLoader />}>
-            <ImprintPage />
-          </Suspense>
-        ),
-      },
+
     ],
   },
   {

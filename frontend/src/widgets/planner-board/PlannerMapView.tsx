@@ -286,8 +286,8 @@ type PreviewPlan = {
 
 const FLOATING_ICON_BUTTON_CLASS =
   'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] backdrop-blur transition-colors hover:bg-white';
-const RECOMMENDATION_MARKER_COLOR = '#0F9D8A';
-const SAVED_RECOMMENDATION_MARKER_COLOR = '#F97316';
+const RECOMMENDATION_MARKER_COLOR = '#00C978';
+const SAVED_RECOMMENDATION_MARKER_COLOR = '#FFA200';
 
 const QUICK_CATEGORIES: QuickCategory[] = [
   { id: 'food', label: 'Food', query: 'restaurants', category: 'restaurant' },
@@ -4521,7 +4521,7 @@ export function PlannerMapView({
                       onClick={() => handleRecommendationSelection(entry)}
                     >
                       <PlannerMapPin
-                        label={entry.source === 'saved_fit' ? 'S' : 'R'}
+                        label={entry.source === 'saved_fit' ? 'S' : <Compass className="h-4 w-4" />}
                         color={
                           entry.source === 'saved_fit'
                             ? SAVED_RECOMMENDATION_MARKER_COLOR
