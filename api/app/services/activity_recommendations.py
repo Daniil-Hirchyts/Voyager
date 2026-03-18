@@ -155,6 +155,11 @@ async def _llm_rationales(
         api_key = settings.llm_mistral_api_key
         base_url = settings.llm_mistral_base_url
         timeout_sec = settings.llm_mistral_timeout_sec
+    elif llm_provider == "gemini":
+        models = settings.itinerary_gemini_model_order()
+        api_key = settings.llm_gemini_api_key
+        base_url = settings.llm_gemini_base_url
+        timeout_sec = settings.llm_gemini_timeout_sec
     else:
         llm_provider = "openrouter"
         models = settings.itinerary_llm_model_order()

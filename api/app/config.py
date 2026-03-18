@@ -114,6 +114,16 @@ class Settings(BaseSettings):
         alias="VOYAGER_LLM_MISTRAL_MODEL_ORDER",
     )
     llm_mistral_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_MISTRAL_TIMEOUT_SEC")
+
+    llm_gemini_api_key: str | None = Field(default=None, alias="VOYAGER_LLM_GEMINI_API_KEY")
+    llm_gemini_base_url: str = Field(
+        default="https://generativelanguage.googleapis.com/v1beta/openai", alias="VOYAGER_LLM_GEMINI_BASE_URL"
+    )
+    llm_gemini_model_order_raw: str = Field(
+        default="gemini-2.5-flash,gemini-2.0-flash",
+        alias="VOYAGER_LLM_GEMINI_MODEL_ORDER",
+    )
+    llm_gemini_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_GEMINI_TIMEOUT_SEC")
     rate_limit_itinerary_provider_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )
@@ -239,6 +249,11 @@ class Settings(BaseSettings):
     def itinerary_mistral_model_order(self) -> list[str]:
         return [
             part.strip() for part in self.llm_mistral_model_order_raw.split(",") if part.strip()
+        ]
+
+    def itinerary_gemini_model_order(self) -> list[str]:
+        return [
+            part.strip() for part in self.llm_gemini_model_order_raw.split(",") if part.strip()
         ]
 
     @property

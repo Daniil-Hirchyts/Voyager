@@ -430,6 +430,7 @@ export default function SettingsPage() {
                 <SelectContent className="rounded-[16px] border-[var(--color-border)]">
                   <SelectItem value="openrouter">OpenRouter</SelectItem>
                   <SelectItem value="mistral">Mistral API</SelectItem>
+                  <SelectItem value="gemini">Google Gemini</SelectItem>
                 </SelectContent>
               </Select>
             </label>

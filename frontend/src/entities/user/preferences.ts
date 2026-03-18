@@ -7,7 +7,7 @@ export type RecommendationAudiencePreference =
   | 'friends'
   | 'solo_travelers';
 
-export type LlmProviderPreference = 'openrouter' | 'mistral';
+export type LlmProviderPreference = 'openrouter' | 'mistral' | 'gemini';
 
 export interface VoyagerRecommendationPreferences {
   resultLimit: number;
@@ -97,6 +97,7 @@ function coerceLlmProvider(
   switch (normalized) {
     case 'openrouter':
     case 'mistral':
+    case 'gemini':
       return normalized;
     default:
       return fallback;
