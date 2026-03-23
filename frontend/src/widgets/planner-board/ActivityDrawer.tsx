@@ -1,21 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
 import {
   BedDouble,
   CarFront,
   Check,
-  FileText,
   Footprints,
   Landmark,
-  MapPin,
-  Paperclip,
   Plane,
-  Search,
   ShipWheel,
   Ticket,
-  Trash2,
   TrainFront,
   Utensils,
 } from 'lucide-react';
@@ -27,7 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { Combobox, type ComboboxOption } from '@/components/ui/combobox';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -45,11 +38,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  WheelPicker,
-  WheelPickerWrapper,
-  type WheelPickerOption,
-} from '@/components/wheel-picker/wheel-picker';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
 import { useDebouncedValue } from '@/shared/hooks/useDebouncedValue';
 import { cn } from '@/shared/lib/cn';
@@ -62,7 +50,6 @@ import type {
   ActivityCreateInput,
   Place,
   PlaceCreateInput,
-  GooglePlaceCandidate,
   PlannerActivity,
 } from '@/shared/api/types';
 import {
@@ -70,48 +57,31 @@ import {
   PLANNER_TRAVEL_MODE_OPTIONS,
   plannerCategoryLabel,
 } from './categories';
-
-const activitySchema = z.object({
-  title: z.string().trim().min(1, 'Title is required').max(300),
-  description: z.string().optional(),
-  start_time: z.string().optional(),
-  duration_min: z
-    .union([z.number().int().positive(), z.nan()])
-    .optional()
-    .transform((value) => (value == null || Number.isNaN(value) ? undefined : value)),
-  estimated_cost_amount: z
-    .union([z.number().nonnegative(), z.nan()])
-    .optional()
-    .transform((value) => (value == null || Number.isNaN(value) ? undefined : value)),
-  estimated_cost_currency: z.string().optional(),
-  notes: z.string().optional(),
-  origin_text: z.string().optional(),
-  destination_text: z.string().optional(),
-  travel_mode: z.string().optional(),
-  hotel_name: z.string().optional(),
-  address_text: z.string().optional(),
-  checkin_date: z.string().optional(),
-  checkout_date: z.string().optional(),
-  room_type: z.string().optional(),
-});
-
-type ActivityFormValues = z.infer<typeof activitySchema>;
-type Step = 0 | 1 | 2;
-type CreateFlow = 'itinerary' | 'hotel' | 'travel';
-const INBOX_DAY_VALUE = '__inbox__';
-
-type PlaceCandidate = {
-  source: string;
-  external_id?: string | null;
-  saved_place_id?: string | null;
-  name: string;
-  category: string | null;
-  address_text: string | null;
-  lat: number | null;
-  lon: number | null;
-  metadata: Record<string, unknown>;
-  description?: string | null;
-};
+import { activitySchema, INBOX_DAY_VALUE } from './activity-drawer.schema';
+import type { ActivityFormValues, CreateFlow, Step } from './activity-drawer.schema';
+import type { PlaceCandidate } from './activity-drawer.types';
+import {
+  activityToForm,
+  autoResolveCandidate,
+  candidateFromGooglePlace,
+  candidateFromHotelDetails,
+  candidateFromTravelDetails,
+  candidateMatchesQuery,
+  currentStepDescription,
+  detailsRecord,
+  emptyActivityForm,
+  formatPlaceCaption,
+  mergePendingAttachments,
+  normalizePlaceSearchQuery,
+  normalizeTravelMode,
+  pendingAttachmentKey,
+  plannerActivityCandidate,
+} from './activity-drawer.utils';
+import {
+  PendingActivityAttachments,
+  PlaceSelector,
+  TravelTimeWheelPicker,
+} from './ActivityDrawerPrimitives';
 
 interface Props {
   tripId: string;
@@ -142,648 +112,6 @@ const TRAVEL_MODE_ICON = {
   walk: Footprints,
 } as const;
 
-const TRAVEL_HOUR_OPTIONS: WheelPickerOption[] = Array.from({ length: 24 }, (_, index) => {
-  const value = String(index).padStart(2, '0');
-  return { value, label: value };
-});
-
-const TRAVEL_MINUTE_OPTIONS: WheelPickerOption[] = Array.from({ length: 60 }, (_, index) => {
-  const value = String(index).padStart(2, '0');
-  return { value, label: value };
-});
-
-function normalizeTravelMode(value: unknown) {
-  const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  if (
-    normalized === 'flight' ||
-    normalized === 'train' ||
-    normalized === 'car' ||
-    normalized === 'ferry' ||
-    normalized === 'walk'
-  ) {
-    return normalized;
-  }
-  if (normalized === 'drive' || normalized === 'driving' || normalized === 'taxi') {
-    return 'car';
-  }
-  if (normalized === 'rail' || normalized === 'transit') {
-    return 'train';
-  }
-  if (normalized === 'walking') {
-    return 'walk';
-  }
-  return 'flight';
-}
-
-function splitTimeParts(value: string | null | undefined) {
-  const [rawHour = '09', rawMinute = '00'] = (value ?? '').slice(0, 5).split(':');
-  const hour = /^\d{2}$/.test(rawHour) ? rawHour : '09';
-  const minute = /^\d{2}$/.test(rawMinute) ? rawMinute : '00';
-  return { hour, minute };
-}
-
-function normalizeTypedTime(value: string) {
-  const compactValue = value.trim().replace(/[^\d:]/g, '');
-  if (!compactValue) return null;
-
-  let hour: number;
-  let minute: number;
-
-  if (compactValue.includes(':')) {
-    const [rawHour = '', ...rawMinuteParts] = compactValue.split(':');
-    const hourDigits = rawHour.replace(/\D/g, '').slice(0, 2);
-    const minuteDigits = rawMinuteParts.join('').replace(/\D/g, '').slice(0, 2);
-    if (!hourDigits) return null;
-    hour = Number(hourDigits);
-    minute = minuteDigits ? Number(minuteDigits.padStart(2, '0')) : 0;
-  } else {
-    const digits = compactValue.replace(/\D/g, '').slice(0, 4);
-    if (!digits) return null;
-
-    if (digits.length <= 2) {
-      hour = Number(digits);
-      minute = 0;
-    } else if (digits.length === 3) {
-      hour = Number(digits.slice(0, 1));
-      minute = Number(digits.slice(1));
-    } else {
-      hour = Number(digits.slice(0, 2));
-      minute = Number(digits.slice(2));
-    }
-  }
-
-  if (!Number.isInteger(hour) || !Number.isInteger(minute) || hour > 23 || minute > 59) {
-    return null;
-  }
-
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-}
-
-function formatAttachmentBytes(size: number) {
-  if (size < 1024) return `${size} B`;
-  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
-  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function pendingAttachmentKey(file: File) {
-  return `${file.name}:${file.size}:${file.lastModified}`;
-}
-
-function mergePendingAttachments(currentFiles: File[], nextFiles: File[]) {
-  const seen = new Set(currentFiles.map(pendingAttachmentKey));
-  const additions = nextFiles.filter((file) => {
-    const key = pendingAttachmentKey(file);
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
-  return [...currentFiles, ...additions];
-}
-
-function currentStepDescription(
-  step: Step,
-  category: ActivityCategory,
-  isCreate: boolean,
-  createFlow: CreateFlow,
-) {
-  if (!isCreate) {
-    return 'Edit the saved details for this planner item.';
-  }
-  if (createFlow === 'travel') {
-    return 'Add the route details for this travel segment.';
-  }
-  if (createFlow === 'hotel') {
-    return 'Add the stay details for this accommodation item.';
-  }
-  if (step === 0) {
-    return 'Choose the itinerary activity type.';
-  }
-  if (step === 1) {
-    return `Search and link a ${plannerCategoryLabel(category).toLowerCase()} place.`;
-  }
-  return 'Review the itinerary details and save the activity.';
-}
-
-function detailsRecord(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
-}
-
-function activityToForm(activity: Activity | PlannerActivity): ActivityFormValues {
-  const details = detailsRecord(activity.category_details);
-  return {
-    title: activity.title,
-    description: activity.description ?? undefined,
-    start_time: activity.start_time ?? undefined,
-    duration_min: activity.duration_min ?? undefined,
-    estimated_cost_amount:
-      activity.estimated_cost_amount != null ? Number(activity.estimated_cost_amount) : undefined,
-    estimated_cost_currency: activity.estimated_cost_currency ?? 'EUR',
-    notes: activity.notes ?? undefined,
-    origin_text: typeof details.origin_text === 'string' ? details.origin_text : undefined,
-    destination_text:
-      typeof details.destination_text === 'string' ? details.destination_text : undefined,
-    travel_mode: normalizeTravelMode(details.travel_mode),
-    hotel_name: typeof details.hotel_name === 'string' ? details.hotel_name : undefined,
-    address_text: typeof details.address_text === 'string' ? details.address_text : undefined,
-    checkin_date: typeof details.checkin_date === 'string' ? details.checkin_date : undefined,
-    checkout_date: typeof details.checkout_date === 'string' ? details.checkout_date : undefined,
-    room_type: typeof details.room_type === 'string' ? details.room_type : undefined,
-  };
-}
-
-function emptyActivityForm(): ActivityFormValues {
-  return {
-    title: '',
-    description: '',
-    start_time: '',
-    duration_min: undefined,
-    estimated_cost_amount: undefined,
-    estimated_cost_currency: 'EUR',
-    notes: '',
-    origin_text: '',
-    destination_text: '',
-    travel_mode: 'flight',
-    hotel_name: '',
-    address_text: '',
-    checkin_date: '',
-    checkout_date: '',
-    room_type: '',
-  };
-}
-
-function plannerActivityCandidate(place: Place | null | undefined): PlaceCandidate | null {
-  if (!place) return null;
-  return {
-    source: place.source,
-    external_id: place.external_id,
-    saved_place_id: place.id,
-    name: place.name,
-    category: place.category,
-    address_text: place.address_text,
-    lat: place.lat,
-    lon: place.lon,
-    metadata: place.metadata ?? {},
-  };
-}
-
-function candidateFromTravelDetails(
-  details: Record<string, unknown>,
-  prefix: 'origin' | 'destination',
-): PlaceCandidate | null {
-  const text =
-    typeof details[`${prefix}_text`] === 'string' ? String(details[`${prefix}_text`]) : null;
-  const geo =
-    details[`${prefix}_geo`] && typeof details[`${prefix}_geo`] === 'object'
-      ? (details[`${prefix}_geo`] as Record<string, unknown>)
-      : {};
-  const lat = Number(geo.lat);
-  const lon = Number(geo.lon);
-
-  if (!text && (!Number.isFinite(lat) || !Number.isFinite(lon))) {
-    return null;
-  }
-
-  return {
-    source: 'manual_route',
-    saved_place_id:
-      typeof details[`${prefix}_place_id`] === 'string'
-        ? String(details[`${prefix}_place_id`])
-        : null,
-    name: text ?? (prefix === 'origin' ? 'Origin' : 'Destination'),
-    category: prefix,
-    address_text: text,
-    lat: Number.isFinite(lat) ? lat : null,
-    lon: Number.isFinite(lon) ? lon : null,
-    metadata: {},
-  };
-}
-
-function candidateFromHotelDetails(details: Record<string, unknown>): PlaceCandidate | null {
-  const hotelName = typeof details.hotel_name === 'string' ? String(details.hotel_name) : null;
-  const addressText =
-    typeof details.address_text === 'string' ? String(details.address_text) : null;
-  const lat = Number(details.latitude);
-  const lon = Number(details.longitude);
-
-  if (!hotelName && !addressText && (!Number.isFinite(lat) || !Number.isFinite(lon))) {
-    return null;
-  }
-
-  return {
-    source: 'manual_stay',
-    saved_place_id: typeof details.place_id === 'string' ? String(details.place_id) : null,
-    name: hotelName ?? addressText ?? 'Accommodation',
-    category: 'hotel',
-    address_text: addressText,
-    lat: Number.isFinite(lat) ? lat : null,
-    lon: Number.isFinite(lon) ? lon : null,
-    metadata: {},
-  };
-}
-
-function candidateFromGooglePlace(place: GooglePlaceCandidate): PlaceCandidate {
-  return {
-    source: 'google_places',
-    external_id: place.place_id,
-    name: place.name,
-    category: place.category,
-    address_text: place.address_text,
-    lat: place.lat,
-    lon: place.lon,
-    metadata: place.metadata ?? {},
-  };
-}
-
-function formatPlaceCaption(candidate: PlaceCandidate | null) {
-  if (!candidate) return 'No place selected yet';
-  return candidate.address_text || candidate.category || candidate.name;
-}
-
-function normalizePlaceSearchQuery(value: string) {
-  return value.replace(/[’`]/g, "'").replace(/\s+/g, ' ').trim();
-}
-
-function candidateIdentity(candidate: PlaceCandidate) {
-  const normalizedName = normalizePlaceSearchQuery(candidate.name).toLowerCase();
-  const normalizedAddress = normalizePlaceSearchQuery(candidate.address_text ?? '').toLowerCase();
-
-  if (normalizedName && normalizedAddress) {
-    return `text:${normalizedName}:${normalizedAddress}`;
-  }
-  if (candidate.external_id) {
-    return `external:${candidate.source}:${candidate.external_id}`;
-  }
-  if (candidate.saved_place_id) {
-    return `saved:${candidate.saved_place_id}`;
-  }
-  if (candidate.lat != null && candidate.lon != null && normalizedName) {
-    return `geo:${normalizedName}:${candidate.lat.toFixed(5)}:${candidate.lon.toFixed(5)}`;
-  }
-  return `text:${normalizedName}:${normalizedAddress}`;
-}
-function candidateMatchesQuery(candidate: PlaceCandidate | null, query: string) {
-  if (!candidate) return false;
-  const normalizedQuery = normalizePlaceSearchQuery(query).toLowerCase();
-  if (!normalizedQuery) return true;
-  const haystacks = [candidate.name, candidate.address_text ?? '', candidate.category ?? '']
-    .map((value) => normalizePlaceSearchQuery(value).toLowerCase())
-    .filter(Boolean);
-  return haystacks.some((value) => value.includes(normalizedQuery));
-}
-function autoResolveCandidate(candidates: PlaceCandidate[], query: string) {
-  const normalizedQuery = normalizePlaceSearchQuery(query).toLowerCase();
-  if (normalizedQuery.length < 3) {
-    return null;
-  }
-  const exactMatch =
-    candidates.find((candidate) =>
-      [candidate.name, candidate.address_text ?? '']
-        .map((value) => normalizePlaceSearchQuery(value).toLowerCase())
-        .some((value) => value === normalizedQuery),
-    ) ?? null;
-  return exactMatch ?? candidates[0] ?? null;
-}
-function PlaceSelector({
-  inputId,
-  query,
-  selectedCandidate,
-  onQueryChange,
-  onSelect,
-  autoFocus = false,
-  searchPlaceholder,
-  helperText,
-  results = [],
-  isSearching = false,
-}: {
-  inputId?: string;
-  query: string;
-  selectedCandidate?: PlaceCandidate | null;
-  onQueryChange: (value: string) => void;
-  onSelect: (candidate: PlaceCandidate) => void;
-  autoFocus?: boolean;
-  searchPlaceholder: string;
-  helperText: string;
-  results?: PlaceCandidate[];
-  isSearching?: boolean;
-}) {
-  const normalizedQuery = normalizePlaceSearchQuery(query);
-  const showResults = normalizedQuery.length >= 3;
-  const showSelectedSummary = !normalizedQuery && Boolean(selectedCandidate);
-  return (
-    <div className="rounded-[16px] p-3">
-      {' '}
-      <div className="relative">
-        {' '}
-        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-[var(--color-text-muted)]" />{' '}
-        <Input
-          id={inputId}
-          autoFocus={autoFocus}
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder={searchPlaceholder}
-          className="h-11 rounded-[12px] border-[var(--color-border)] bg-white pl-10"
-        />{' '}
-      </div>{' '}
-      {showSelectedSummary && selectedCandidate ? (
-        <div className="mt-3 flex items-start gap-3 rounded-[12px] bg-white px-3 py-3">
-          {' '}
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-[12px] bg-[var(--color-secondary-surface)]">
-            {' '}
-            <MapPin className="h-4 w-4 text-[var(--color-text-muted)]" />{' '}
-          </div>{' '}
-          <div className="min-w-0 flex-1">
-            {' '}
-            <p className="truncate text-sm font-medium text-[var(--color-text)]">
-              {' '}
-              {selectedCandidate.name}{' '}
-            </p>{' '}
-            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-              {' '}
-              {formatPlaceCaption(selectedCandidate)}{' '}
-            </p>{' '}
-          </div>{' '}
-          <Check className="mt-0.5 h-4 w-4 text-[var(--color-text)]" />{' '}
-        </div>
-      ) : null}{' '}
-      <ScrollArea className="mt-3 max-h-72">
-        {' '}
-        <div className="flex flex-col gap-1 pr-2">
-          {' '}
-          {!showResults ? (
-            <div className="rounded-[12px] px-1 py-2 text-sm text-[var(--color-text-muted)]">
-              {' '}
-              {helperText}{' '}
-            </div>
-          ) : isSearching ? (
-            <div className="flex items-center gap-2 rounded-[12px] px-3 py-3 text-sm text-[var(--color-text-muted)]">
-              {' '}
-              <VoyagerLoader className="h-4 w-4" /> Searching places...{' '}
-            </div>
-          ) : results.length ? (
-            results.map((result) => {
-              const isSelected =
-                selectedCandidate != null &&
-                candidateIdentity(selectedCandidate) === candidateIdentity(result);
-              return (
-                <button
-                  key={candidateIdentity(result)}
-                  type="button"
-                  onClick={() => onSelect(result)}
-                  className={cn(
-                    'flex w-full items-start gap-3 rounded-[12px] border px-3 py-3 text-left transition-colors',
-                    isSelected
-                      ? 'border-[rgba(23,23,23,0.12)] bg-white'
-                      : 'border-transparent hover:bg-white',
-                  )}
-                >
-                  {' '}
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white">
-                    {' '}
-                    <MapPin className="h-4 w-4 text-[var(--color-text-muted)]" />{' '}
-                  </div>{' '}
-                  <div className="min-w-0 flex-1">
-                    {' '}
-                    <p className="truncate text-sm font-medium text-[var(--color-text)]">
-                      {' '}
-                      {result.name}{' '}
-                    </p>{' '}
-                    <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-                      {' '}
-                      {formatPlaceCaption(result)}{' '}
-                    </p>{' '}
-                  </div>{' '}
-                  {isSelected ? (
-                    <Check className="mt-0.5 h-4 w-4 text-[var(--color-text)]" />
-                  ) : null}{' '}
-                </button>
-              );
-            })
-          ) : (
-            <div className="rounded-[12px] px-3 py-3 text-sm text-[var(--color-text-muted)]">
-              {' '}
-              No places found yet. Try a simpler landmark or venue name.{' '}
-            </div>
-          )}{' '}
-        </div>{' '}
-      </ScrollArea>{' '}
-    </div>
-  );
-}
-function TravelTimeWheelPicker({
-  value,
-  onChange,
-  inputAriaLabel = 'Type start time',
-}: {
-  value: string | null | undefined;
-  onChange: (value: string) => void;
-  inputAriaLabel?: string;
-}) {
-  const { hour, minute } = splitTimeParts(value);
-  const normalizedValue = `${hour}:${minute}`;
-  const [draftValue, setDraftValue] = useState(normalizedValue);
-  const [isInputFocused, setIsInputFocused] = useState(false);
-
-  useEffect(() => {
-    if (!isInputFocused) {
-      setDraftValue(normalizedValue);
-    }
-  }, [isInputFocused, normalizedValue]);
-
-  const commitTypedValue = (rawValue: string = draftValue) => {
-    const nextValue = normalizeTypedTime(rawValue);
-    if (nextValue) {
-      setDraftValue(nextValue);
-      if (nextValue !== normalizedValue) {
-        onChange(nextValue);
-      }
-      return;
-    }
-    setDraftValue(normalizedValue);
-  };
-
-  return (
-    <div className="rounded-[16px] p-3">
-      {' '}
-      <div className="">
-        {' '}
-        <p className="text-[0.64rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
-          {' '}
-          Selected time{' '}
-        </p>{' '}
-        <Input
-          type="text"
-          inputMode="numeric"
-          aria-label={inputAriaLabel}
-          value={draftValue}
-          onFocus={() => setIsInputFocused(true)}
-          onChange={(event) => setDraftValue(event.target.value)}
-          onBlur={(event) => {
-            setIsInputFocused(false);
-            commitTypedValue(event.target.value);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'Enter') {
-              return;
-            }
-            event.preventDefault();
-            event.currentTarget.blur();
-          }}
-          className="mt-1 h-auto border-0 bg-transparent px-0 py-0 text-[1.05rem] font-semibold tracking-[0.08em] tabular-nums text-[var(--color-text)] shadow-none focus:border-transparent focus:ring-0"
-        />{' '}
-      </div>{' '}
-      <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[12px] bg-white ">
-        {' '}
-        <WheelPickerWrapper className="w-full rounded-[12px] px-1 shadow-none">
-          {' '}
-          <WheelPicker
-            value={hour}
-            options={TRAVEL_HOUR_OPTIONS}
-            onValueChange={(nextHour) => onChange(`${String(nextHour)}:${minute}`)}
-            infinite
-            optionItemHeight={30}
-            visibleCount={7}
-            classNames={{
-              optionItem: 'text-[0.78rem] font-medium text-[var(--color-text-muted)]',
-              highlightWrapper: 'rounded-[10px] bg-white text-[var(--color-text)] ring-0',
-              highlightItem:
-                'text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]',
-            }}
-          />{' '}
-        </WheelPickerWrapper>{' '}
-        <span className="text-base leading-none font-semibold text-[var(--color-text-muted)]">:</span>{' '}
-        <WheelPickerWrapper className="w-full rounded-[12px] px-1 shadow-none">
-          {' '}
-          <WheelPicker
-            value={minute}
-            options={TRAVEL_MINUTE_OPTIONS}
-            onValueChange={(nextMinute) => onChange(`${hour}:${String(nextMinute)}`)}
-            infinite
-            optionItemHeight={30}
-            visibleCount={7}
-            classNames={{
-              optionItem: 'text-[0.78rem] font-medium text-[var(--color-text-muted)]',
-              highlightWrapper: 'rounded-[10px] bg-white text-[var(--color-text)] ring-0',
-              highlightItem:
-                'text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]',
-            }}
-          />{' '}
-        </WheelPickerWrapper>{' '}
-      </div>{' '}
-    </div>
-  );
-}
-function PendingActivityAttachments({
-  files,
-  onAddFiles,
-  onRemoveFile,
-}: {
-  files: File[];
-  onAddFiles: (files: File[]) => void;
-  onRemoveFile: (fileKey: string) => void;
-}) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  return (
-    <section className="rounded-[18px] bg-white p-4">
-      {' '}
-      <div className="flex items-start justify-between gap-4">
-        {' '}
-        <div>
-          {' '}
-          <p className="text-[0.72rem] font-medium tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
-            {' '}
-            Attachments{' '}
-          </p>{' '}
-          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-            {' '}
-            Add files now and they will be linked to this activity right after save.{' '}
-          </p>{' '}
-        </div>{' '}
-        <Button
-          type="button"
-          variant="outline"
-          className="h-9 rounded-full border-[var(--color-border)] px-3 text-[0.76rem] font-semibold"
-          onClick={() => inputRef.current?.click()}
-        >
-          {' '}
-          <Paperclip className="mr-1.5 h-3.5 w-3.5" /> Join file{' '}
-        </Button>{' '}
-      </div>{' '}
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        aria-label="Attach files to activity"
-        className="sr-only"
-        onChange={(event) => {
-          const selectedFiles = event.target.files ? Array.from(event.target.files) : [];
-          if (selectedFiles.length > 0) {
-            onAddFiles(selectedFiles);
-          }
-          event.target.value = '';
-        }}
-      />{' '}
-      {files.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-2">
-          {' '}
-          {files.map((file) => {
-            const fileKey = pendingAttachmentKey(file);
-            return (
-              <div
-                key={fileKey}
-                className="flex items-center gap-3 rounded-[14px] bg-[#F3F5F7] px-3 py-2.5"
-              >
-                {' '}
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-white">
-                  {' '}
-                  <FileText className="h-4 w-4 text-[var(--color-text-muted)]" />{' '}
-                </div>{' '}
-                <div className="min-w-0 flex-1">
-                  {' '}
-                  <p className="truncate text-sm font-semibold text-[var(--color-text)]">
-                    {' '}
-                    {file.name}{' '}
-                  </p>{' '}
-                  <p className="mt-0.5 text-[0.72rem] text-[var(--color-text-muted)]">
-                    {' '}
-                    {formatAttachmentBytes(file.size)}{' '}
-                  </p>{' '}
-                </div>{' '}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-full text-[var(--color-text-muted)] hover:bg-black/5 hover:text-[var(--color-text)]"
-                  onClick={() => onRemoveFile(fileKey)}
-                  aria-label={`Remove ${file.name}`}
-                >
-                  {' '}
-                  <Trash2 className="h-4 w-4" />{' '}
-                </Button>{' '}
-              </div>
-            );
-          })}{' '}
-        </div>
-      ) : (
-        <div className="mt-4 flex items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-4 py-6 text-center">
-          {' '}
-          <div>
-            {' '}
-            <p className="text-sm font-medium text-[var(--color-text-muted)]">
-              {' '}
-              No files linked yet{' '}
-            </p>{' '}
-            <p className="mt-1 text-[0.72rem] text-[var(--color-text-muted)]">
-              {' '}
-              Add tickets, PDFs, screenshots, or booking confirmations.{' '}
-            </p>{' '}
-          </div>{' '}
-        </div>
-      )}{' '}
-    </section>
-  );
-}
 export function ActivityDrawer({
   tripId,
   open,
@@ -877,7 +205,7 @@ export function ActivityDrawer({
   const visibleDayLabel = selectedAssignmentValue === INBOX_DAY_VALUE ? null : currentDayLabel;
   const { data: selectedPlace } = usePlace(selectedPlaceId);
   const selectedPlaceCandidate = useMemo(
-    () => plannerActivityCandidate(selectedPlace),
+    () => plannerActivityCandidate(selectedPlace as Place | null | undefined),
     [selectedPlace],
   );
   const primaryGoogleSearch = useGooglePlaceSearch(

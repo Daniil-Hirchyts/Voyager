@@ -400,7 +400,7 @@ function DestinationListCard({
   return (
     <div
       className={cn(
-        'group flex w-full items-center gap-3 rounded-[12px] border border-transparent px-3 py-2.5 text-left transition-colors lg:rounded-[14px] lg:px-3 lg:py-2.5',
+        'destination-card group flex w-full items-center gap-3 rounded-[12px] border border-transparent px-3 py-2.5 text-left transition-colors lg:rounded-[14px] lg:px-3 lg:py-2.5',
         selected
           ? 'bg-[var(--color-secondary-surface)] lg:border-[var(--color-border)] lg:bg-white'
           : 'border-transparent bg-white hover:bg-[var(--color-secondary-surface)] lg:border-transparent lg:bg-transparent lg:hover:border-[var(--color-border)] lg:hover:bg-white',
@@ -464,17 +464,56 @@ export default function TripsPage() {
 
   const heroRef = useRef<HTMLElement>(null);
   const boardRef = useRef<HTMLElement>(null);
+  const destinationsRef = useRef<HTMLElement>(null);
   const detailsPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (activeTab === 'info' && detailsPanelRef.current) {
       const ctx = gsap.context(() => {
-        gsap.fromTo(
-          detailsPanelRef.current?.children ?? [],
-          { y: 15, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power2.out' }
-        );
-      });
+        const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+
+        tl.fromTo(
+          '.destination-meta > *',
+          { y: 12, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.3, stagger: 0.05 },
+        )
+          .fromTo(
+            '.destination-title',
+            { y: 18, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.45 },
+            '-=0.12',
+          )
+          .fromTo(
+            '.destination-teaser',
+            { y: 18, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.42 },
+            '-=0.24',
+          )
+          .fromTo(
+            '.destination-stat',
+            { y: 16, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.4, stagger: 0.06 },
+            '-=0.18',
+          )
+          .fromTo(
+            '.destination-highlights-heading',
+            { y: 14, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.34 },
+            '-=0.16',
+          )
+          .fromTo(
+            '.destination-highlight',
+            { y: 10, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.28, stagger: 0.035 },
+            '-=0.18',
+          )
+          .fromTo(
+            '.destination-summary',
+            { y: 18, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.42 },
+            '-=0.12',
+          );
+      }, detailsPanelRef);
       return () => ctx.revert();
     }
     return undefined;
@@ -486,26 +525,32 @@ export default function TripsPage() {
 
       tl.fromTo(
         '.hero-bg',
-        { scale: 1.15, opacity: 0 },
-        { scale: 1, opacity: 0.75, duration: 2, ease: 'power2.out' }
+        { scale: 1.08, autoAlpha: 0 },
+        { scale: 1, autoAlpha: 0.75, duration: 1.3, ease: 'power2.out' },
       )
         .fromTo(
+          '.hero-shell',
+          { y: 20, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.65 },
+          '-=0.92',
+        )
+        .fromTo(
           '.hero-title',
-          { y: 30, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.8 },
-          '-=1.2'
+          { y: 22, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.58 },
+          '-=0.34',
         )
         .fromTo(
           '.hero-desc',
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.8 },
-          '-=0.6'
+          { y: 18, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.54 },
+          '-=0.28',
         )
         .fromTo(
           '.hero-actions > *',
-          { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, duration: 0.6, stagger: 0.1 },
-          '-=0.4'
+          { y: 16, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.08 },
+          '-=0.16',
         );
     }, heroRef);
 
@@ -513,34 +558,143 @@ export default function TripsPage() {
   }, []);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || !boardRef.current) return;
 
-    // Use a small timeout to let the DOM settle, mainly for Carousel layout
+    let ctx: gsap.Context | undefined;
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
-      const ctx = gsap.context(() => {
-        if (boardRef.current && document.querySelector('.trip-card')) {
-          gsap.fromTo('.trip-card', 
-            { y: 50, opacity: 0 },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 0.8,
-              stagger: 0.1,
-              ease: 'back.out(1)',
-              scrollTrigger: {
-                trigger: boardRef.current,
-                start: 'top 85%',
-              },
-            }
+      ctx = gsap.context(() => {
+        const tripCards = gsap.utils.toArray<HTMLElement>('.board-card');
+        const hasCards = tripCards.length > 0;
+        const hasAlert = Boolean(error);
+
+        if (!hasCards && !hasAlert) {
+          return;
+        }
+
+        const tl = gsap.timeline({
+          defaults: { ease: 'power3.out' },
+          scrollTrigger: {
+            trigger: boardRef.current,
+            start: 'top 82%',
+            once: true,
+          },
+        });
+
+        tl.fromTo(
+          '.board-intro',
+          { y: 18, autoAlpha: 0 },
+          { y: 0, autoAlpha: 1, duration: 0.48 },
+        );
+
+        if (hasAlert) {
+          tl.fromTo(
+            '.board-alert',
+            { y: 16, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.42 },
+            '-=0.18',
           );
         }
-      });
-      return () => ctx.revert();
+
+        if (hasCards) {
+          tl.fromTo(
+            tripCards,
+            { y: 28, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.56, stagger: 0.08 },
+            hasAlert ? '-=0.14' : '-=0.16',
+          );
+        }
+      }, boardRef);
     }, 150);
 
-    return () => clearTimeout(timer);
-  }, [isLoading, trips.length]);
+    return () => {
+      clearTimeout(timer);
+      ctx?.revert();
+    };
+  }, [error, isLoading, trips.length]);
+
+  useEffect(() => {
+    if (!destinationsRef.current) return;
+
+    const section = destinationsRef.current;
+    let ctx: gsap.Context | undefined;
+    let trigger: ScrollTrigger | undefined;
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+      const revealDestinations = () => {
+        if (ctx) {
+          return;
+        }
+
+        ctx = gsap.context(() => {
+          const viewer = gsap
+            .utils.toArray<HTMLElement>('.destinations-viewer')
+            .filter((element) => element.offsetParent !== null);
+          const sidebarHeader = gsap
+            .utils.toArray<HTMLElement>('.destinations-sidebar-header')
+            .filter((element) => element.offsetParent !== null);
+          const destinationCards = gsap
+            .utils.toArray<HTMLElement>('.destination-card')
+            .filter((element) => element.offsetParent !== null);
+
+          const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+          tl.fromTo(
+            '.destinations-header',
+            { y: 22, autoAlpha: 0 },
+            { y: 0, autoAlpha: 1, duration: 0.52 },
+          );
+
+          if (viewer.length > 0) {
+            tl.fromTo(
+              viewer,
+              { y: 24, autoAlpha: 0, scale: 0.985 },
+              { y: 0, autoAlpha: 1, scale: 1, duration: 0.62 },
+              '-=0.18',
+            );
+          }
+
+          if (sidebarHeader.length > 0) {
+            tl.fromTo(
+              sidebarHeader,
+              { y: 16, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.38 },
+              viewer.length > 0 ? '-=0.4' : '-=0.14',
+            );
+          }
+
+          if (destinationCards.length > 0) {
+            tl.fromTo(
+              destinationCards,
+              { y: 14, autoAlpha: 0 },
+              { y: 0, autoAlpha: 1, duration: 0.36, stagger: 0.045 },
+              '-=0.14',
+            );
+          }
+        }, destinationsRef);
+      };
+
+      // If the section is already on screen, leave it rendered normally instead of hiding it
+      // while waiting for a scroll-trigger that may already have been passed.
+      if (section.getBoundingClientRect().top <= window.innerHeight * 0.88) {
+        return;
+      }
+
+      trigger = ScrollTrigger.create({
+        trigger: section,
+        start: 'top 88%',
+        once: true,
+        invalidateOnRefresh: true,
+        onEnter: revealDestinations,
+      });
+    }, 120);
+
+    return () => {
+      clearTimeout(timer);
+      trigger?.kill();
+      ctx?.revert();
+    };
+  }, []);
 
   async function handleAddDestination(destination: CuratedDestination) {
     if (addingDestinationId) {
@@ -633,7 +787,7 @@ export default function TripsPage() {
           className="hero-bg absolute inset-0 h-full w-full object-cover object-center opacity-0"
         />
         <div className="relative z-10 mx-auto max-w-4xl px-4 md:px-0">
-          <div className="flex flex-col items-center justify-center rounded-3xl bg-white/40 px-6 py-10 text-center shadow-sm backdrop-blur-md border border-white/60 md:px-12 md:py-14">
+          <div className="hero-shell flex flex-col items-center justify-center rounded-3xl border border-white/60 bg-white/40 px-6 py-10 text-center shadow-sm backdrop-blur-md md:px-12 md:py-14">
             <h1 className="hero-title max-w-[22ch] text-[2.2rem] leading-[1.05] font-bold tracking-tight text-[var(--color-text)] sm:text-[2.6rem] md:text-[3.6rem] drop-shadow-sm">
               Your next journey starts here.
             </h1>
@@ -665,7 +819,7 @@ export default function TripsPage() {
       {(isLoading || error || trips.length > 0) && (
         <section ref={boardRef} id="board" className="mt-12 scroll-mt-8 px-0 md:mt-16">
           <Carousel className="group/board">
-            <div className="max-md:px-4">
+            <div className="board-intro max-md:px-4">
               <SectionIntro
                 eyebrow="Recently planned and upcoming"
                 title="Trips worth opening again"
@@ -682,7 +836,7 @@ export default function TripsPage() {
             </div>
 
             {error && (
-              <Alert variant="destructive" className="mt-6">
+              <Alert variant="destructive" className="board-alert mt-6">
                 <AlertDescription>Failed to load trips. Please refresh the page.</AlertDescription>
               </Alert>
             )}
@@ -711,7 +865,7 @@ export default function TripsPage() {
                 {trips.map((trip) => (
                   <CarouselItem
                     key={trip.id}
-                    className="basis-[84%] pl-3 sm:basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
+                    className="board-card basis-[84%] pl-3 sm:basis-1/2 sm:pl-4 lg:basis-1/3 xl:basis-1/4"
                   >
                     <TripCard
                       trip={trip}
@@ -727,10 +881,11 @@ export default function TripsPage() {
 
       {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section
+        ref={destinationsRef}
         id="destinations"
         className="mt-12 scroll-mt-8 md:mt-16 "
       >
-        <div className="flex flex-col gap-5 px-4 md:flex-row md:items-end md:justify-between lg:px-0">
+        <div className="destinations-header flex flex-col gap-5 px-4 md:flex-row md:items-end md:justify-between lg:px-0">
           <div>
             <div className="flex items-center gap-2">
               <p className="text-[0.75rem] font-bold tracking-[0.2em] text-[var(--color-primary)] uppercase opacity-80">
@@ -780,7 +935,7 @@ export default function TripsPage() {
         <div className="mt-4 border-y-0 border-[var(--color-border)] bg-transparent md:mt-8 lg:overflow-hidden lg:rounded-xl lg:border lg:border-[var(--color-border-strong)] lg:bg-white">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
             {/* Map or Info Area */}
-            <div className="relative hidden h-[17rem] overflow-y-auto bg-white md:h-[30rem] lg:block lg:h-[34rem]">
+            <div className="destinations-viewer relative hidden h-[17rem] overflow-y-auto bg-white md:h-[30rem] lg:block lg:h-[34rem]">
               {activeTab === 'map' ? (
                 <div className="h-full w-full">
                   <WorldExplorerMap
@@ -791,7 +946,7 @@ export default function TripsPage() {
                 </div>
               ) : activeDestination ? (
                 <div ref={detailsPanelRef} className="p-3.5 pt-4 lg:p-10 lg:pt-20">
-                  <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
+                  <div className="destination-meta mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
                     <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.region}
                     </span>
@@ -799,15 +954,15 @@ export default function TripsPage() {
                       {activeDestination.bestFor}
                     </span>
                   </div>
-                  <h3 className="text-[1.28rem] leading-[1.08] font-semibold tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
+                  <h3 className="destination-title text-[1.28rem] leading-[1.08] font-semibold tracking-[-0.04em] text-[var(--color-text)] md:text-[2.2rem]">
                     {activeDestination.name}
                   </h3>
-                  <p className="mt-1.5 text-[0.82rem] leading-5 text-[var(--color-text-muted)] md:mt-2 md:text-[1rem] md:leading-7">
+                  <p className="destination-teaser mt-1.5 text-[0.82rem] leading-5 text-[var(--color-text-muted)] md:mt-2 md:text-[1rem] md:leading-7">
                     {activeDestination.teaser}
                   </p>
 
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
-                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
+                  <div className="destination-stats mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:mt-8 md:gap-3">
+                    <div className="destination-stat rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
                       <CalendarDays className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Dates
@@ -816,7 +971,7 @@ export default function TripsPage() {
                         {formatTripDates(activeDestination.startDate, activeDestination.endDate)}
                       </p>
                     </div>
-                    <div className="rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
+                    <div className="destination-stat rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 md:rounded-[16px] md:p-4">
                       <Compass className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Budget
@@ -828,7 +983,7 @@ export default function TripsPage() {
                         )}
                       </p>
                     </div>
-                    <div className="col-span-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
+                    <div className="destination-stat col-span-2 rounded-[12px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-2.5 sm:col-span-1 md:rounded-[16px] md:p-4">
                       <Route className="mb-1 size-3.5 text-[var(--color-text-muted)] md:mb-2 md:size-4" />
                       <p className="text-[0.68rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase">
                         Travel
@@ -840,14 +995,14 @@ export default function TripsPage() {
                   </div>
 
                   <div className="mt-5 md:mt-8">
-                    <p className="mb-2 text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase md:mb-3">
+                    <p className="destination-highlights-heading mb-2 text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase md:mb-3">
                       Highlights
                     </p>
                     <ul className="flex flex-wrap gap-1.5 md:gap-2">
                       {activeDestination.highlights.map((highlight) => (
                         <li
                           key={highlight}
-                          className="rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.72rem] text-[var(--color-text-muted)] md:px-3 md:py-1.5 md:text-[0.78rem]"
+                          className="destination-highlight rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.72rem] text-[var(--color-text-muted)] md:px-3 md:py-1.5 md:text-[0.78rem]"
                         >
                           {highlight}
                         </li>
@@ -855,7 +1010,7 @@ export default function TripsPage() {
                     </ul>
                   </div>
 
-                  <div className="mt-4 border-t border-[var(--color-border)] pt-4 md:mt-8 md:pt-8">
+                  <div className="destination-summary mt-4 border-t border-[var(--color-border)] pt-4 md:mt-8 md:pt-8">
                     <p className="[display:-webkit-box] overflow-hidden pb-2 text-[0.8rem] leading-5 text-[var(--color-text-muted)] [-webkit-box-orient:vertical] [-webkit-line-clamp:4] md:[display:block] md:pb-10 md:text-[0.92rem] md:leading-7 md:[-webkit-line-clamp:unset]">
                       {activeDestination.summary}
                     </p>
@@ -873,7 +1028,7 @@ export default function TripsPage() {
             {/* Destination list sidebar */}
             <aside className="flex flex-col lg:h-[34rem] lg:border-t-0 lg:border-l lg:border-[var(--color-border-strong)] lg:bg-[var(--color-secondary-surface)]">
               {/* Sidebar header */}
-              <div className="flex shrink-0 items-center justify-between border-b-0 border-[var(--color-border)] bg-transparent px-4 py-3 lg:border-b lg:bg-[var(--color-secondary-surface)]">
+              <div className="destinations-sidebar-header flex shrink-0 items-center justify-between border-b-0 border-[var(--color-border)] bg-transparent px-4 py-3 lg:border-b lg:bg-[var(--color-secondary-surface)]">
                 <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   {CURATED_DESTINATIONS.length} editorial routes
                 </p>
