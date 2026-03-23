@@ -119,7 +119,8 @@ class Settings(BaseSettings):
         default=120, alias="VOYAGER_RATE_LIMIT_AUDIT_READ_PER_MIN"
     )
     trip_cache_ttl_sec: int = 30
-    place_cache_ttl_sec: int = 60
+    place_cache_ttl_sec: int = Field(default=3600, alias="VOYAGER_PLACE_CACHE_TTL_SEC")
+    routes_cache_ttl_sec: int = Field(default=86400, alias="VOYAGER_ROUTES_CACHE_TTL_SEC")
     job_cache_ttl_sec: int = 5
     activity_cache_ttl_sec: int = Field(
         default=30,
@@ -129,6 +130,7 @@ class Settings(BaseSettings):
         ),
     )
     proposal_cache_ttl_sec: int = Field(default=30, alias="VOYAGER_PROPOSAL_CACHE_TTL_SEC")
+    discover_cache_ttl_sec: int = Field(default=86400, alias="VOYAGER_DISCOVER_CACHE_TTL_SEC")
     place_photo_cache_ttl_sec: int = Field(default=60, alias="VOYAGER_PLACE_PHOTO_CACHE_TTL_SEC")
     export_cache_ttl_sec: int = Field(default=20, alias="VOYAGER_EXPORT_CACHE_TTL_SEC")
     audit_cache_ttl_sec: int = Field(default=15, alias="VOYAGER_AUDIT_CACHE_TTL_SEC")
@@ -168,6 +170,18 @@ class Settings(BaseSettings):
         alias="VOYAGER_LLM_GEMINI_MODEL_ORDER",
     )
     llm_gemini_timeout_sec: int = Field(default=20, alias="VOYAGER_LLM_GEMINI_TIMEOUT_SEC")
+    llm_rate_limit_max_retries: int = Field(
+        default=2,
+        alias="VOYAGER_LLM_RATE_LIMIT_MAX_RETRIES",
+    )
+    llm_rate_limit_base_delay_ms: int = Field(
+        default=750,
+        alias="VOYAGER_LLM_RATE_LIMIT_BASE_DELAY_MS",
+    )
+    llm_rate_limit_max_delay_ms: int = Field(
+        default=8000,
+        alias="VOYAGER_LLM_RATE_LIMIT_MAX_DELAY_MS",
+    )
     rate_limit_itinerary_provider_per_min: int = Field(
         default=120, alias="VOYAGER_RATE_LIMIT_ITINERARY_PROVIDER_PER_MIN"
     )

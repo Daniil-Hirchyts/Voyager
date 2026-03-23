@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 import uuid
@@ -17,6 +18,8 @@ from app.db.models import Activity, EventSnapshot, Place, Trip, TripDay, UserPro
 from app.db.repositories import EventRepository, TripRepository
 from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
+from app.services.llm_retry import llm_rate_limit_retry_delay_sec
+from app.services.user_preferences import resolve_assistant_llm_provider
 
 
 def _trip_terms(trip: Trip) -> set[str]:
@@ -149,7 +152,7 @@ async def _llm_rationales(
     llm_provider: str = "openrouter",
 ) -> dict[uuid.UUID, str]:
     settings = get_settings()
-    
+
     if llm_provider == "mistral":
         models = settings.itinerary_mistral_model_order()
         api_key = settings.llm_mistral_api_key
@@ -236,7 +239,21 @@ async def _llm_rationales(
     }
     try:
         async with httpx.AsyncClient(timeout=timeout_sec) as client:
-            response = await client.post(endpoint, headers=headers, json=body)
+            rate_limit_attempts = 0
+            while True:
+                response = await client.post(endpoint, headers=headers, json=body)
+                if response.status_code != 429:
+                    break
+                if rate_limit_attempts >= settings.llm_rate_limit_max_retries:
+                    response.raise_for_status()
+                rate_limit_attempts += 1
+                delay_sec = llm_rate_limit_retry_delay_sec(
+                    attempt=rate_limit_attempts,
+                    retry_after=response.headers.get("Retry-After"),
+                    base_delay_ms=settings.llm_rate_limit_base_delay_ms,
+                    max_delay_ms=settings.llm_rate_limit_max_delay_ms,
+                )
+                await asyncio.sleep(delay_sec)
         response.raise_for_status()
         response_payload = response.json()
         choices = response_payload.get("choices")
@@ -279,8 +296,10 @@ async def recommend_shortlist_items(
 ) -> list[dict[str, Any]]:
     trip = await TripRepository.get_trip(db, user_id, trip_id)
     user = await db.get(UserProfile, trip.user_id)
-    llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
-    
+    llm_provider = resolve_assistant_llm_provider(
+        user.preferences_json if user and user.preferences_json else None
+    )
+
     all_days = await TripRepository.list_days(db, user_id, trip_id)
     if day_ids:
         scoped_days = [day for day in all_days if day.id in set(day_ids)]

@@ -4,7 +4,7 @@ from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
-from sqlalchemy import case, func, or_, select, text, update
+from sqlalchemy import case, delete, func, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -1623,12 +1623,12 @@ class ActivityRepository:
         # This clears 0-based indexes for every row in the bucket (including any that
         # are not part of ordered_ids), so the final assignment in step 2 cannot
         # collide with a "bystander" row that still holds a low order_index.
-        _TEMP_OFFSET = 1_000_000
+        temp_offset = 1_000_000
         await db.execute(
             update(Activity)
             .where(Activity.trip_id == trip_id)
             .where(bucket_filter)
-            .values(order_index=Activity.order_index + _TEMP_OFFSET)
+            .values(order_index=Activity.order_index + temp_offset)
         )
 
         # Step 2: Assign the final sequential order to ordered_ids.
@@ -3453,6 +3453,21 @@ class AssistantRepository:
             .order_by(AssistantMessage.created_at.asc(), AssistantMessage.id.asc())
         )
         return thread, list(rows.scalars().all())
+
+    @staticmethod
+    async def clear_thread_messages(
+        db: AsyncSession,
+        *,
+        user_id: uuid.UUID,
+        trip_id: uuid.UUID,
+    ) -> None:
+        thread = await AssistantRepository.get_or_create_thread(
+            db,
+            user_id=user_id,
+            trip_id=trip_id,
+        )
+        await db.execute(delete(AssistantMessage).where(AssistantMessage.thread_id == thread.id))
+        await db.flush()
 
     @staticmethod
     async def create_message(

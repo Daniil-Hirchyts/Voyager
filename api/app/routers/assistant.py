@@ -16,6 +16,7 @@ from app.models.assistant import (
 )
 from app.security.dependencies import AuthContext, get_auth_context
 from app.services.planner_assistant import (
+    clear_thread_messages,
     get_thread_response,
     mirror_job_to_thread,
     stream_assistant_messages,
@@ -48,6 +49,15 @@ async def mirror_assistant_job(
         request_text=payload.request_text,
         action=payload.action,
     )
+
+
+@router.delete("/thread/messages", status_code=204)
+async def delete_assistant_thread_messages(
+    trip_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    db: AsyncSession = Depends(get_db_session),
+) -> None:
+    await clear_thread_messages(db, user_id=auth.user_id, trip_id=trip_id)
 
 
 @router.post("/messages/stream")

@@ -19,6 +19,8 @@ import type {
 } from './api';
 import type { PlaceCreateInput } from '@/shared/api/types';
 
+const PLACE_STALE_TIME = 15 * 60 * 1000; // 15 min — Google Places data doesn't change frequently
+
 export const placeKeys = {
   all: ['places'] as const,
   list: (params: PlaceListParams) => ['places', 'list', params] as const,
@@ -52,6 +54,7 @@ export function useGooglePlaceSearch(params: PlaceListParams, enabled = true) {
     queryKey: placeKeys.googleSearch(params),
     queryFn: () => searchGooglePlaces(params),
     enabled,
+    staleTime: PLACE_STALE_TIME,
   });
 }
 
@@ -60,6 +63,7 @@ export function useDestinationAutocomplete(params: PlaceListParams, enabled = tr
     queryKey: placeKeys.autocomplete(params),
     queryFn: () => autocompleteDestinations(params),
     enabled,
+    staleTime: PLACE_STALE_TIME,
   });
 }
 
@@ -68,6 +72,7 @@ export function useNearbyPlaces(params: NearbyPlaceParams | null, enabled = true
     queryKey: placeKeys.nearby(params),
     queryFn: () => getNearbyPlaces(params!),
     enabled: enabled && !!params,
+    staleTime: PLACE_STALE_TIME,
   });
 }
 
@@ -76,6 +81,7 @@ export function useViewportPlaces(params: ViewportPlaceParams | null, enabled = 
     queryKey: placeKeys.viewport(params),
     queryFn: () => getViewportPlaces(params!),
     enabled: enabled && !!params,
+    staleTime: PLACE_STALE_TIME,
   });
 }
 

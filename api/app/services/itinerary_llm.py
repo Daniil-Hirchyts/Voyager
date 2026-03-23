@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -16,6 +17,7 @@ from app.metrics import increment_itinerary_llm_metric
 from app.rate_limit.limiter import enforce_limit
 from app.services.google_maps import GoogleMapsError, lookup_google_place, search_google_places
 from app.services.job_progress import ProgressTracker
+from app.services.llm_retry import llm_rate_limit_retry_delay_sec
 
 logger = logging.getLogger(__name__)
 
@@ -512,6 +514,7 @@ async def _call_provider(
     seed: int | None,
     progress: ProgressTracker | None = None,
 ) -> dict[uuid.UUID, list[dict[str, Any]]]:
+    settings = get_settings()
     endpoint = f"{base_url.rstrip('/')}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -538,7 +541,34 @@ async def _call_provider(
                 "tools": _tool_definitions(),
                 "tool_choice": "auto",
             }
-            response = await client.post(endpoint, headers=headers, json=body)
+            rate_limit_attempts = 0
+            while True:
+                response = await client.post(endpoint, headers=headers, json=body)
+
+                if response.status_code != 429:
+                    break
+
+                if rate_limit_attempts >= settings.llm_rate_limit_max_retries:
+                    raise RuntimeError("PROVIDER_LIMITED")
+
+                rate_limit_attempts += 1
+                delay_sec = llm_rate_limit_retry_delay_sec(
+                    attempt=rate_limit_attempts,
+                    retry_after=response.headers.get("Retry-After"),
+                    base_delay_ms=settings.llm_rate_limit_base_delay_ms,
+                    max_delay_ms=settings.llm_rate_limit_max_delay_ms,
+                )
+                logger.warning(
+                    "itinerary_llm_provider_rate_limited_retrying",
+                    extra={
+                        "trace_id": "-",
+                        "provider": provider,
+                        "model": model,
+                        "attempt": rate_limit_attempts,
+                        "delay_sec": delay_sec,
+                    },
+                )
+                await asyncio.sleep(delay_sec)
 
             if response.status_code == 429:
                 raise RuntimeError("PROVIDER_LIMITED")

@@ -28,7 +28,7 @@ export const PLANNER_ASSISTANT_COMMANDS: PlannerAssistantCommandDefinition[] = [
   },
   {
     name: 'reset',
-    label: 'Reset generated itinerary',
+    label: 'Reset itinerary',
     description: 'Open the reset form in chat.',
     chipLabel: 'Reset',
   },

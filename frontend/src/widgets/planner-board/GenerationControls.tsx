@@ -96,7 +96,7 @@ export function PlannerGenerationInlineCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[0.72rem] font-medium text-[var(--color-text-muted)]">
-            {action === 'generate' ? 'Itinerary setup' : 'Reset generated itinerary'}
+            {action === 'generate' ? 'Itinerary setup' : 'Reset itinerary'}
           </p>
           <h3 className="mt-1 text-[0.9rem] font-semibold tracking-[-0.02em] text-[var(--color-text)]">
             {action === 'generate'
@@ -145,8 +145,7 @@ export function PlannerGenerationInlineCard({
           </div>
         ) : (
           <p className="rounded-[14px] border border-[rgba(255,81,14,0.16)] bg-[rgba(255,81,14,0.05)] px-3 py-2.5 text-[0.77rem] leading-6 text-[var(--color-text)]">
-            Reset only removes generated activities from the selected days. Manual edits stay in
-            place.
+            Reset removes every activity from the selected days, including manual edits.
           </p>
         )}
 

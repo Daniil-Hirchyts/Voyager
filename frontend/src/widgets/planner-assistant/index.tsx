@@ -73,9 +73,14 @@ import {
   PromptInputActions,
   PromptInputTextarea,
 } from '@/components/ui/prompt-input';
-import { mirrorAssistantJob, streamAssistantMessages } from '@/entities/assistant/api';
+import {
+  clearAssistantThreadMessages as clearAssistantThreadMessagesRequest,
+  mirrorAssistantJob,
+  streamAssistantMessages,
+} from '@/entities/assistant/api';
 import {
   appendAssistantJobProgressEvent,
+  replaceAssistantMessages,
   upsertAssistantMessages,
 } from '@/entities/assistant/cache';
 import { assistantKeys, useAssistantThread } from '@/entities/assistant/queries';
@@ -224,6 +229,12 @@ function isDataPart(part: AssistantMessagePart): part is AssistantDataPart {
 
 function isJobProgressPart(part: AssistantMessagePart): part is AssistantDataPart {
   return isDataPart(part) && part.name === 'job-progress';
+}
+
+function isPlannerMutationOperation(operation: unknown) {
+  return ['create_activity', 'update_activity', 'move_activity', 'delete_activity'].includes(
+    String(operation ?? ''),
+  );
 }
 
 function toThreadMessage(message: AssistantMessage): ThreadMessageLike {
@@ -1064,7 +1075,9 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
         </div>
         <div className="min-w-0 flex-1 py-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[0.84rem] font-medium text-[var(--color-text)]">{requestText}</p>
+            <p className="break-words text-[0.84rem] font-medium text-[var(--color-text)]">
+              {requestText}
+            </p>
             <span className={toneChipClasses(jobTone)}>
               {isRunning ? 'In progress' : jobStatus}
             </span>
@@ -1116,7 +1129,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                 const isActive = isRunning && row === currentActivityRow;
                 const detail = row.detail;
                 return (
-                  <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
+                  <ChainOfThoughtStep key={row.eventId} defaultOpen>
                     <ChainOfThoughtTrigger
                       leftIcon={jobRowIcon(row)}
                       className={cn(
@@ -1128,7 +1141,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </ChainOfThoughtTrigger>
                     {detail ? (
                       <ChainOfThoughtContent>
-                        <ChainOfThoughtItem className="pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                        <ChainOfThoughtItem className="break-words pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
                           {detail}
                         </ChainOfThoughtItem>
                       </ChainOfThoughtContent>
@@ -1156,7 +1169,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                   : 'neutral';
               const toolSummary = summarizeTimelineTool(row);
               return (
-                <ChainOfThoughtStep key={row.eventId} defaultOpen={isActive}>
+                <ChainOfThoughtStep key={row.eventId} defaultOpen>
                   <ChainOfThoughtTrigger
                     leftIcon={jobRowIcon(row)}
                     className={cn(
@@ -1170,7 +1183,7 @@ function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </span>
                   </ChainOfThoughtTrigger>
                   <ChainOfThoughtContent>
-                    <ChainOfThoughtItem className="pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                    <ChainOfThoughtItem className="break-words pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
                       {toolSummary}
                     </ChainOfThoughtItem>
                   </ChainOfThoughtContent>
@@ -1461,6 +1474,9 @@ function AssistantMessageView() {
             );
           }
           if (isDataPart(part) && part.name === 'planner-result') {
+            if (!isPlannerMutationOperation(part.data.operation)) {
+              return null;
+            }
             return <PlannerResultCard key={`${messageId}-result-${index}`} part={part} />;
           }
           if (isDataPart(part) && part.name === 'job-progress') {
@@ -1665,6 +1681,22 @@ export function PlannerAssistantPanel({
     abortRef.current = null;
     setIsStreaming(false);
   }, []);
+
+  const resetAssistantConversation = useCallback(async () => {
+    await cancelCurrentStream();
+    for (const controller of jobStreamControllersRef.current.values()) {
+      controller.abort();
+    }
+    jobStreamControllersRef.current.clear();
+    ignoredJobResumeIdsRef.current.clear();
+    await clearAssistantThreadMessagesRequest(tripId);
+    replaceAssistantMessages(queryClient, tripId, []);
+    const clearedHiddenIds = new Set<string>();
+    setHiddenMessageIds(clearedHiddenIds);
+    persistHiddenIds(tripId, clearedHiddenIds);
+    setStreamError(null);
+    await queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) });
+  }, [cancelCurrentStream, queryClient, tripId]);
 
   const startStream = useCallback(
     async (payload: AssistantMessageStreamInput, optimisticMessageId?: string) => {
@@ -1883,14 +1915,15 @@ export function PlannerAssistantPanel({
     [tripId],
   );
 
-  const handleClearConversation = useCallback(() => {
-    if (currentLiveMessages.length === 0) return;
-    const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)]);
-    setHiddenMessageIds(newHiddenIds);
-    persistHiddenIds(tripId, newHiddenIds);
-  }, [currentLiveMessages, hiddenMessageIds, tripId]);
+  const handleClearConversation = useCallback(async () => {
+    try {
+      await resetAssistantConversation();
+    } catch (error) {
+      setStreamError(toInlineError(error, 'Failed to clear this conversation.'));
+    }
+  }, [resetAssistantConversation]);
 
-  const handleNewConversation = useCallback(() => {
+  const handleNewConversation = useCallback(async () => {
     if (currentLiveMessages.length > 0) {
       const conv: SavedConversation = {
         id: crypto.randomUUID(),
@@ -1908,16 +1941,17 @@ export function PlannerAssistantPanel({
       const updated = [conv, ...savedConversations];
       setSavedConversations(updated);
       persistSavedConversations(tripId, updated);
-      // Hide current messages from the live view — cannot clear React Query cache
-      // because staleTime: 0 causes an immediate refetch that restores them.
-      const newHiddenIds = new Set([...hiddenMessageIds, ...currentLiveMessages.map((m) => m.id)]);
-      setHiddenMessageIds(newHiddenIds);
-      persistHiddenIds(tripId, newHiddenIds);
+    }
+    try {
+      await resetAssistantConversation();
+    } catch (error) {
+      setStreamError(toInlineError(error, 'Failed to start a new conversation.'));
+      return;
     }
     setViewingConvId(null);
     setDiscussionName('');
     localStorage.removeItem(`assistant-discussion-${tripId}`);
-  }, [currentLiveMessages, discussionName, savedConversations, hiddenMessageIds, tripId]);
+  }, [currentLiveMessages, discussionName, resetAssistantConversation, savedConversations, tripId]);
 
   const handleSwitchConversation = useCallback((convId: string | null) => {
     setViewingConvId(convId);
@@ -1993,7 +2027,7 @@ export function PlannerAssistantPanel({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[210px]">
-                <DropdownMenuItem onClick={handleNewConversation}>
+                <DropdownMenuItem onClick={() => void handleNewConversation()}>
                   <MessageSquarePlus className="mr-2 size-3.5" />
                   New conversation
                 </DropdownMenuItem>
@@ -2046,7 +2080,7 @@ export function PlannerAssistantPanel({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-[rgba(255,81,14,1)] focus:text-[rgba(255,81,14,1)]"
-                  onClick={handleClearConversation}
+                  onClick={() => void handleClearConversation()}
                   disabled={viewingConvId !== null}
                 >
                   <Trash2 className="mr-2 size-3.5" />

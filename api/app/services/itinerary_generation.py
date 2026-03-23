@@ -25,6 +25,7 @@ from app.services.google_maps import (
 from app.services.itinerary_catalog import CatalogPlaceSeed, build_catalog_candidates
 from app.services.itinerary_llm import generate_with_llm
 from app.services.job_progress import ProgressTracker
+from app.services.user_preferences import resolve_assistant_llm_provider
 
 PHOTO_ENRICHMENT_LIMIT = 6
 RETRYABLE_GROUNDING_ERROR_CODES = {
@@ -1009,7 +1010,9 @@ async def execute_itinerary_job(
 
     trip = await _load_trip_for_job(db, payload)
     user = await db.get(UserProfile, trip.user_id)
-    llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
+    llm_provider = resolve_assistant_llm_provider(
+        user.preferences_json if user and user.preferences_json else None
+    )
 
     if progress:
         await progress.step("Loaded trip", str(trip.destination_text or ""), phase="setup")

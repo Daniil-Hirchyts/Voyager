@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import re
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import UTC, date, datetime, time
@@ -25,12 +26,14 @@ from app.db.repositories import (
     PlaceRepository,
     TripRepository,
 )
-from app.errors import NotFoundError, ServiceUnavailableError, ValidationApiError
+from app.errors import ApiError, NotFoundError, ServiceUnavailableError, ValidationApiError
 from app.models.assistant import AssistantMessageResponse, AssistantThreadResponse
 from app.models.places import PlaceCreateRequest
 from app.models.trips import ActivityCreateRequest, ActivityMoveRequest, ActivityPatchRequest
 from app.rate_limit.limiter import limit_user_request
 from app.services.google_maps import GoogleMapsError, lookup_google_place, search_google_places
+from app.services.llm_retry import llm_rate_limit_retry_delay_sec
+from app.services.user_preferences import resolve_assistant_llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +61,11 @@ DIRECT_COMMAND_TOOL_MAP = {
     "move_activity": "move_activity",
     "delete_activity": "delete_activity",
 }
+GREETING_INPUT_RE = re.compile(
+    r"^(hi|hello|hey|good morning|good afternoon|good evening)[!. ]*$",
+    re.I,
+)
+THANKS_INPUT_RE = re.compile(r"^(thanks|thank you|thx)[!. ]*$", re.I)
 
 
 def _jsonable(value: Any) -> Any:
@@ -121,6 +129,20 @@ def _extract_message_text(content: Any) -> str | None:
     return None
 
 
+def _small_talk_reply(text: str) -> str | None:
+    normalized = text.strip()
+    if not normalized:
+        return None
+    if GREETING_INPUT_RE.fullmatch(normalized):
+        return (
+            "Hi. I can help with this trip when you're ready. Ask a question, search for a place, "
+            "or use /generate or /reset."
+        )
+    if THANKS_INPUT_RE.fullmatch(normalized):
+        return "You're welcome. Ask if you want to adjust the itinerary or generate a new pass."
+    return None
+
+
 def _float(value: Any) -> float | None:
     if value in (None, ""):
         return None
@@ -181,6 +203,15 @@ async def get_thread_response(
         user_id=thread.user_id,
         messages=[assistant_message_to_response(message) for message in messages],
     )
+
+
+async def clear_thread_messages(
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID,
+    trip_id: uuid.UUID,
+) -> None:
+    await AssistantRepository.clear_thread_messages(db, user_id=user_id, trip_id=trip_id)
 
 
 async def mirror_job_to_thread(
@@ -730,7 +761,8 @@ def _system_prompt() -> str:
     return (
         "You are Voyager's planner assistant. "
         "Help the user understand and edit a trip itinerary. "
-        "Use tools whenever you need current trip data or when the user requests a mutation. "
+        "Use tools only when you need current trip data or when the user requests a mutation. "
+        "For simple greetings, acknowledgements, or small talk, reply directly without tools. "
         "If the user asks about places, options, or ideas, inspect the trip context and search places before answering. "
         "Always call search_places before recommending specific new venues so the UI can show grounded place cards. "
         "Never invent activity ids, day ids, or place ids. "
@@ -786,23 +818,60 @@ async def _call_llm(
                 "tool_choice": "auto",
                 "max_tokens": max(64, settings.assistant_max_response_tokens),
             }
-            try:
-                response = await client.post(endpoint, headers=headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                choices = data.get("choices")
-                if not isinstance(choices, list) or not choices:
-                    raise ValueError("Missing choices in provider response")
-                first = choices[0]
-                if not isinstance(first, dict) or not isinstance(first.get("message"), dict):
-                    raise ValueError("Missing assistant message in provider response")
-                message = first["message"]
-                message["_model"] = model
-                return message
-            except Exception as exc:  # pragma: no cover - defensive provider failover
-                last_error = exc
-                logger.warning("planner_assistant_provider_failed", exc_info=True)
-                continue
+            rate_limit_attempts = 0
+            while True:
+                try:
+                    response = await client.post(endpoint, headers=headers, json=payload)
+                    response.raise_for_status()
+                    data = response.json()
+                    choices = data.get("choices")
+                    if not isinstance(choices, list) or not choices:
+                        raise ValueError("Missing choices in provider response")
+                    first = choices[0]
+                    if not isinstance(first, dict) or not isinstance(first.get("message"), dict):
+                        raise ValueError("Missing assistant message in provider response")
+                    message = first["message"]
+                    message["_model"] = model
+                    return message
+                except Exception as exc:  # pragma: no cover - defensive provider failover
+                    if isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429:
+                        if rate_limit_attempts < settings.llm_rate_limit_max_retries:
+                            rate_limit_attempts += 1
+                            delay_sec = llm_rate_limit_retry_delay_sec(
+                                attempt=rate_limit_attempts,
+                                retry_after=exc.response.headers.get("Retry-After"),
+                                base_delay_ms=settings.llm_rate_limit_base_delay_ms,
+                                max_delay_ms=settings.llm_rate_limit_max_delay_ms,
+                            )
+                            logger.warning(
+                                "planner_assistant_provider_rate_limited_retrying",
+                                extra={
+                                    "trace_id": "-",
+                                    "provider": llm_provider,
+                                    "model": model,
+                                    "attempt": rate_limit_attempts,
+                                    "delay_sec": delay_sec,
+                                },
+                                exc_info=True,
+                            )
+                            await asyncio.sleep(delay_sec)
+                            continue
+                        last_error = ServiceUnavailableError(
+                            "UPSTREAM_PROVIDER_RATE_LIMIT",
+                            f"{llm_provider.capitalize()} is temporarily unavailable right now.",
+                            {"provider": llm_provider, "status_code": 429},
+                        )
+                        logger.warning(
+                            "planner_assistant_provider_rate_limited_exhausted",
+                            extra={"trace_id": "-", "provider": llm_provider, "model": model},
+                            exc_info=True,
+                        )
+                        break
+                    last_error = exc
+                    logger.warning("planner_assistant_provider_failed", exc_info=True)
+                    break
+    if isinstance(last_error, ServiceUnavailableError):
+        raise last_error
     raise ServiceUnavailableError(
         "UPSTREAM_PROVIDER_ERROR",
         "Planner assistant provider request failed",
@@ -1020,7 +1089,11 @@ def _format_tool_summary(tool_name: str, result: dict[str, Any]) -> str:
     if tool_name == "search_places":
         items = result.get("items") or []
         return f"Found {len(items)} place option(s)."
-    if tool_name in {"create_activity", "update_activity", "move_activity"}:
+    if tool_name == "create_activity":
+        activity = result.get("activity") or {}
+        title = _string(activity.get("title")) or "the activity"
+        return f"Added {title}."
+    if tool_name in {"update_activity", "move_activity"}:
         activity = result.get("activity") or {}
         title = _string(activity.get("title")) or "the activity"
         return f"Updated {title}."
@@ -1255,7 +1328,9 @@ class PlannerAssistantSession:
             )
 
         user = await self._db.get(UserProfile, self._user_id)
-        llm_provider = user.preferences_json.get("assistant", {}).get("llmProvider", "openrouter") if user and user.preferences_json else "openrouter"
+        llm_provider = resolve_assistant_llm_provider(
+            user.preferences_json if user and user.preferences_json else None
+        )
 
         thread, history = await AssistantRepository.get_thread_with_messages(
             self._db,
@@ -1274,6 +1349,16 @@ class PlannerAssistantSession:
         await self._emit_message(user_message)
 
         assistant_message = await self._create_assistant_message(metadata={"kind": "chat"})
+        direct_reply = _small_talk_reply(request_text)
+        if direct_reply:
+            await AssistantRepository.update_message(
+                self._db,
+                assistant_message,
+                status="complete",
+                parts=[{"type": "text", "text": direct_reply}],
+            )
+            await self._emit_message(assistant_message)
+            return
 
         provider_history: list[dict[str, Any]] = [{"role": "system", "content": _system_prompt()}]
         for item in history:
@@ -1696,11 +1781,12 @@ async def stream_assistant_messages(
                 await session.handle_user_turn(client_message_id=client_message_id, text=text or "")
             await queue.put({"type": STREAM_EVENT_DONE})
         except Exception as exc:
+            error_message = exc.message if isinstance(exc, ApiError) else str(exc)
             await queue.put(
                 {
                     "type": STREAM_EVENT_ERROR,
                     "error": {
-                        "message": str(exc),
+                        "message": error_message,
                         "code": getattr(exc, "code", "ASSISTANT_ERROR"),
                     },
                 }

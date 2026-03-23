@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { tripKeys, useTrips } from '@/entities/trip/queries';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import { createTrip, patchTripCoverPreference } from '@/entities/trip/api';
 import { createPlace } from '@/entities/place/api';
-import { ArrowUpRight, CalendarDays, ChevronRight, Compass, Map, Plus, Route } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, ChevronRight, Compass, Map, Plus, Route, Users, UserCheck } from 'lucide-react';
 import { VoyagerLogo } from '@/widgets/app-shell/logo';
 import { differenceInCalendarDays, format, parseISO, startOfDay } from 'date-fns';
 import { toast } from 'sonner';
 import { config } from '@/app/config';
 import { AnimatedNumber } from '@/components/ui/animated-number';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AnimatedBackground } from '@/components/ui/animated-background';
 import {
@@ -100,6 +103,21 @@ function getTripTimingLabel(startDate?: string | null, endDate?: string | null) 
   return 'Completed';
 }
 
+function getTimingStatusColor(startDate?: string | null, endDate?: string | null) {
+  if (!startDate) return 'bg-blue-400';
+  
+  const today = startOfDay(new Date());
+  const tripStart = startOfDay(parseISO(startDate));
+  const tripEnd = endDate ? startOfDay(parseISO(endDate)) : tripStart;
+  const daysUntilStart = differenceInCalendarDays(tripStart, today);
+  const daysUntilEnd = differenceInCalendarDays(tripEnd, today);
+
+  if (daysUntilStart > 1) return 'bg-blue-400';
+  if (daysUntilStart === 1 || daysUntilStart === 0) return 'bg-amber-400';
+  if (daysUntilEnd >= 0) return 'bg-emerald-400';
+  return 'bg-white/70';
+}
+
 function formatBudget(amount: number, currency: string) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -179,14 +197,14 @@ function TripCard({ trip, cover }: { trip: Trip; cover: TripCardCover }) {
   const shareBadge = getTripShareBadge(trip);
 
   return (
-    <Link to={`/app/trips/${trip.id}`} className="group block" draggable={false}>
-      <article className="overflow-hidden rounded-[20px] border border-white/70 bg-white transition-all duration-300 group-hover:-translate-y-0.5">
+    <Link to={`/app/trips/${trip.id}`} className="trip-card group block" draggable={false}>
+      <article className="overflow-hidden rounded-[20px] border border-white/70 bg-[var(--color-secondary-surface)] transition-all duration-400 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:-translate-y-1 group-hover:border-white group-hover:bg-white">
         <div className="relative aspect-[16/9] overflow-hidden bg-[linear-gradient(135deg,#d4d4d4_0%,#a3a3a3_100%)]">
           {cover.url && (
             <img
               src={cover.url}
               alt={trip.destination_text}
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+              className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-[1.08]"
               loading="lazy"
               draggable={false}
             />
@@ -199,19 +217,27 @@ function TripCard({ trip, cover }: { trip: Trip; cover: TripCardCover }) {
           ) : null}
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,12,18,0.0)_0%,rgba(7,12,18,0.12)_40%,rgba(7,12,18,0.78)_100%)]" />
 
-          <div className="absolute top-3 left-3">
-            <span className="rounded-full border border-white/50 bg-[rgba(255,162,0,0.10)] px-2.5 py-[3px] text-[0.65rem] font-semibold tracking-[0.02em] backdrop-blur-sm text-[var(--color-primary-foreground)]">
-              {timingLabel}
+          <div className="absolute top-3 left-3 z-10">
+            <span className="flex items-center rounded-full border border-white/20 bg-[rgba(15,20,25,0.45)] px-2.5 py-1 shadow-sm backdrop-blur-md transition-colors hover:bg-[rgba(15,20,25,0.6)]">
+              <span className={cn("mr-1.5 size-1.5 rounded-full", getTimingStatusColor(trip.start_date, trip.end_date))} />
+              <span className="text-[0.7rem] font-medium tracking-wide text-white">{timingLabel}</span>
             </span>
           </div>
 
           {shareBadge ? (
-            <div className="absolute top-3 right-3">
-              <Badge variant={shareBadge.variant}>{shareBadge.label}</Badge>
+            <div className="absolute top-3 right-3 z-10">
+              <span className="flex items-center rounded-full border border-white/20 bg-[rgba(15,20,25,0.45)] px-2.5 py-1 shadow-sm backdrop-blur-md transition-colors hover:bg-[rgba(15,20,25,0.6)]">
+                {shareBadge.label === 'Shared' ? (
+                  <Users className="mr-1.5 size-[13px] text-white/80" />
+                ) : (
+                  <UserCheck className="mr-1.5 size-[13px] text-white/80" />
+                )}
+                <span className="text-[0.7rem] font-medium tracking-wide text-white">{shareBadge.label}</span>
+              </span>
             </div>
           ) : null}
 
-          <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2">
+          <div className="absolute inset-x-3 bottom-3 flex items-end justify-between gap-2 z-10">
             <h3 className="line-clamp-2 text-[1.15rem] leading-[1.1] font-semibold tracking-[-0.04em] text-white">
               {trip.title}
             </h3>
@@ -436,6 +462,86 @@ export default function TripsPage() {
     CURATED_DESTINATIONS.find((destination) => destination.id === activeDestinationId) ??
     CURATED_DESTINATIONS[0];
 
+  const heroRef = useRef<HTMLElement>(null);
+  const boardRef = useRef<HTMLElement>(null);
+  const detailsPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (activeTab === 'info' && detailsPanelRef.current) {
+      const ctx = gsap.context(() => {
+        gsap.fromTo(
+          detailsPanelRef.current?.children ?? [],
+          { y: 15, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: 'power2.out' }
+        );
+      });
+      return () => ctx.revert();
+    }
+    return undefined;
+  }, [activeDestinationId, activeTab]);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+      tl.fromTo(
+        '.hero-bg',
+        { scale: 1.15, opacity: 0 },
+        { scale: 1, opacity: 0.75, duration: 2, ease: 'power2.out' }
+      )
+        .fromTo(
+          '.hero-title',
+          { y: 30, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.8 },
+          '-=1.2'
+        )
+        .fromTo(
+          '.hero-desc',
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.8 },
+          '-=0.6'
+        )
+        .fromTo(
+          '.hero-actions > *',
+          { y: 20, opacity: 0 },
+          { y: 0, opacity: 1, duration: 0.6, stagger: 0.1 },
+          '-=0.4'
+        );
+    }, heroRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    // Use a small timeout to let the DOM settle, mainly for Carousel layout
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+      const ctx = gsap.context(() => {
+        if (boardRef.current && document.querySelector('.trip-card')) {
+          gsap.fromTo('.trip-card', 
+            { y: 50, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.8,
+              stagger: 0.1,
+              ease: 'back.out(1)',
+              scrollTrigger: {
+                trigger: boardRef.current,
+                start: 'top 85%',
+              },
+            }
+          );
+        }
+      });
+      return () => ctx.revert();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [isLoading, trips.length]);
+
   async function handleAddDestination(destination: CuratedDestination) {
     if (addingDestinationId) {
       return;
@@ -515,25 +621,28 @@ export default function TripsPage() {
 
   return (
     <WorkspacePage className="gap-6 !p-0 pb-10 md:gap-8 md:pb-14 lg:gap-10 lg:!p-6">
-      <header className="relative overflow-hidden  px-4 py-8 md:px-6 md:py-6 lg:rounded-xl lg:border lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-10 lg:py-10">
+      <header
+        ref={heroRef}
+        className="relative overflow-hidden px-4 py-12 md:px-8 md:py-16 lg:rounded-2xl lg:border lg:border-white/40 lg:bg-[linear-gradient(135deg,rgba(255,255,255,0.95)_0%,rgba(235,242,248,0.98)_100%)] lg:px-12 lg:py-16 lg:shadow-[0_20px_50px_rgba(30,41,59,0.04)]"
+      >
         <img
           src="/images/trips/trips-hero.jpg"
           alt=""
           aria-hidden="true"
           loading="eager"
-          className="absolute inset-0 h-full w-full object-cover object-center opacity-20"
+          className="hero-bg absolute inset-0 h-full w-full object-cover object-center opacity-0"
         />
-        <div className="relative">
-          <div className="flex flex-col items-center justify-center py-6 text-center md:py-10">
-            <h1 className="max-w-[25ch] text-[2rem] leading-[1.05] font-semibold tracking-[-0.06em] text-[var(--color-text)] sm:text-[2.4rem] md:text-[3.2rem]">
+        <div className="relative z-10 mx-auto max-w-4xl px-4 md:px-0">
+          <div className="flex flex-col items-center justify-center rounded-3xl bg-white/40 px-6 py-10 text-center shadow-sm backdrop-blur-md border border-white/60 md:px-12 md:py-14">
+            <h1 className="hero-title max-w-[22ch] text-[2.2rem] leading-[1.05] font-bold tracking-tight text-[var(--color-text)] sm:text-[2.6rem] md:text-[3.6rem] drop-shadow-sm">
               Your trips, curated routes, and the world map.
             </h1>
-            <p className="mx-auto mt-4 max-w-[55ch] text-[0.95rem] leading-7 text-[var(--color-text-muted)] md:text-[1rem]">
+            <p className="hero-desc mx-auto mt-6 max-w-[52ch] text-[1.05rem] leading-relaxed font-medium text-[var(--color-text)] drop-shadow-sm md:text-[1.15rem]">
               Keep recent trips close, instantly drop proposed destinations into your collection,
               and explore the map to find your next great itinerary.
             </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Button asChild className="h-11 rounded-full px-6 text-[0.95rem]">
+            <div className="hero-actions mt-8 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild className="h-12 rounded-full px-7 text-[0.95rem] font-medium shadow-md transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]">
                 <Link to="/app/trips/new">
                   <Plus className="mr-1.5 size-4" />
                   New trip
@@ -542,7 +651,7 @@ export default function TripsPage() {
               <Button
                 asChild
                 variant="outline"
-                className="hidden h-11 rounded-full px-6 text-[0.95rem] sm:inline-flex"
+                className="hidden h-12 rounded-full px-7 text-[0.95rem] font-medium bg-white/50 backdrop-blur-md transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98] sm:inline-flex"
               >
                 <a href="#destinations">
                   Browse destinations
@@ -555,9 +664,9 @@ export default function TripsPage() {
       </header>
 
       {(isLoading || error || trips.length > 0) && (
-        <section id="board" className="mt-8 scroll-mt-6 px-0 md:mt-10">
+        <section ref={boardRef} id="board" className="mt-12 scroll-mt-8 px-0 md:mt-16">
           <Carousel className="group/board">
-            <div className="px-4">
+            <div className="max-md:px-4">
               <SectionIntro
                 eyebrow="Recently planned and upcoming"
                 title="Trips worth opening again"
@@ -620,21 +729,21 @@ export default function TripsPage() {
       {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section
         id="destinations"
-        className="mt-8 scroll-mt-6 border-white/75 px-0 md:mt-10 lg:overflow-hidden lg:rounded-xl lg:border lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-6 lg:py-6"
+        className="mt-12 scroll-mt-8 md:mt-16 "
       >
-        <div className="flex flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between lg:px-0">
+        <div className="flex flex-col gap-5 px-4 md:flex-row md:items-end md:justify-between lg:px-0">
           <div>
             <div className="flex items-center gap-2">
-              <p className="text-[0.72rem] font-semibold tracking-[0.22em] text-[var(--color-text-muted)] uppercase">
+              <p className="text-[0.75rem] font-bold tracking-[0.2em] text-[var(--color-primary)] uppercase opacity-80">
                 Curated destinations
               </p>
             </div>
-            <h2 className="mt-1 text-[1.5rem] leading-none font-semibold tracking-[-0.05em] text-[var(--color-text)] md:text-[2rem]">
+            <h2 className="mt-1.5 text-[1.8rem] leading-[1.1] font-bold tracking-tight text-[var(--color-text)] md:text-[2.2rem]">
               Explore the world map
             </h2>
           </div>
 
-          <div className="hidden w-full rounded-[40px] border border-[var(--color-border)] bg-[var(--color-border)] p-1 md:w-auto lg:flex">
+          <div className="hidden w-full rounded-full border border-[var(--color-border)] bg-[var(--color-secondary-surface)] p-1.5 md:w-auto lg:flex">
             <AnimatedBackground
               defaultValue={activeTab}
               className="rounded-[40px] bg-black"
@@ -682,7 +791,7 @@ export default function TripsPage() {
                   />
                 </div>
               ) : activeDestination ? (
-                <div className="p-3.5 pt-4 lg:p-10 lg:pt-20">
+                <div ref={detailsPanelRef} className="p-3.5 pt-4 lg:p-10 lg:pt-20">
                   <div className="mb-2.5 flex flex-wrap items-center gap-1.5 md:mb-3 md:gap-2">
                     <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-2.5 py-0.5 text-[0.6rem] font-semibold tracking-[0.15em] text-[var(--color-text-muted)] uppercase md:px-3 md:py-1 md:text-[0.65rem]">
                       {activeDestination.region}

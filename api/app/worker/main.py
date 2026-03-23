@@ -98,6 +98,18 @@ async def _set_trip_generation_failed(payload: dict[str, Any]) -> None:
             await db.flush()
 
 
+async def _emit_terminal_itinerary_progress(
+    *,
+    job_id: uuid.UUID,
+    final_status: str,
+    summary: dict[str, Any] | None,
+) -> None:
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            tracker = ProgressTracker(redis_client, str(job_id), db)
+            await tracker.done(final_status, summary=summary, phase="terminal")
+
+
 async def _claim_next_job_id() -> uuid.UUID | None:
     async with AsyncSessionLocal() as db:
         async with db.begin():
@@ -239,7 +251,11 @@ async def _process_job(job_id: uuid.UUID) -> None:
 
     # Emit terminal progress event for itinerary jobs
     if tracker and final_status in ("SUCCEEDED", "FAILED"):
-        await tracker.done(final_status, summary=terminal_summary, phase="terminal")
+        await _emit_terminal_itinerary_progress(
+            job_id=job_id,
+            final_status=final_status,
+            summary=terminal_summary,
+        )
 
     await _invalidate_job_cache(user_id=job_user_id, job_id=job_id)
     if job_type.startswith("itinerary."):

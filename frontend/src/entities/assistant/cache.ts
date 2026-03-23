@@ -223,6 +223,27 @@ export function upsertAssistantMessages(
   });
 }
 
+export function replaceAssistantMessages(
+  queryClient: QueryClient,
+  tripId: string,
+  messages: AssistantMessage[],
+) {
+  queryClient.setQueryData<AssistantThread | undefined>(assistantKeys.thread(tripId), (current) => {
+    if (!current) {
+      return {
+        id: `thread-${tripId}`,
+        trip_id: tripId,
+        user_id: '',
+        messages,
+      };
+    }
+    return {
+      ...current,
+      messages,
+    };
+  });
+}
+
 export function appendAssistantJobProgressEvent(
   queryClient: QueryClient,
   tripId: string,

@@ -489,7 +489,7 @@ async def discover_activities(
             redis,
             cache_key,
             {"total": total, "items": items},
-            settings.activity_cache_ttl_sec,
+            settings.discover_cache_ttl_sec,
         )
 
     refs = [item["provider_ref"] for item in items if item.get("provider_ref")]

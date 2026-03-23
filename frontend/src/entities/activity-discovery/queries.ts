@@ -49,8 +49,9 @@ export function useDiscoverActivities(
     queryKey: activityDiscoveryKeys.discover(tripId, params),
     queryFn: () => discoverActivities(tripId, params),
     enabled: enabled && !!tripId,
-    staleTime: 30_000,
+    staleTime: Infinity, // never auto-refetch; only re-fetched via explicit refresh()
     refetchOnWindowFocus: false,
+    refetchOnMount: false,
     retry: (failureCount, error) => {
       if (isRateLimit(error)) {
         return false;
@@ -65,7 +66,7 @@ export function useSavedActivities(tripId: string) {
     queryKey: activityDiscoveryKeys.shortlist(tripId),
     queryFn: () => listSavedActivities(tripId, { limit: 100, offset: 0 }),
     enabled: !!tripId,
-    staleTime: 15_000,
+    staleTime: 60_000,
   });
 }
 

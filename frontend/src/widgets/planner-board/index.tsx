@@ -515,6 +515,7 @@ export default function PlannerBoard({ tripId }: Props) {
   const [activeActivity, setActiveActivity] = useState<PlannerActivity | null>(null);
   const [activeDragPreviewSize, setActiveDragPreviewSize] = useState<DragPreviewSize | null>(null);
   const prevJobStatus = useRef<string | null>(null);
+  const mirroredAssistantJobIdsRef = useRef(new Set<string>());
   const lastOverIdRef = useRef<UniqueIdentifier | null>(null);
   const dragOriginPlannerRef = useRef<PlannerResponse | null>(null);
   const openRailSectionRef = useRef<((sectionKey: string) => void) | null>(null);
@@ -728,16 +729,22 @@ export default function PlannerBoard({ tripId }: Props) {
 
     prevJobStatus.current = job.status;
     setGenerationReport(tripId, buildReport(job.id, job.status, job.result, job.error));
+    const mirroredInAssistant = mirroredAssistantJobIdsRef.current.has(pendingJobId);
+    mirroredAssistantJobIdsRef.current.delete(pendingJobId);
 
     if (isJobSuccessful(job.status)) {
       qc.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
       clearPendingJobId(tripId);
-      toast.success('Planner updated');
+      if (!mirroredInAssistant) {
+        toast.success('Planner updated');
+      }
       return;
     }
 
     clearPendingJobId(tripId);
-    toast.error('Planner generation failed');
+    if (!mirroredInAssistant) {
+      toast.error(job.job_type === 'itinerary.reset' ? 'Itinerary reset failed' : 'Planner generation failed');
+    }
   }, [clearPendingJobId, currentJob.data, pendingJobId, qc, setGenerationReport, tripId]);
 
   useEffect(() => {
@@ -927,6 +934,7 @@ export default function PlannerBoard({ tripId }: Props) {
           requestText,
           action: 'generate',
         });
+        mirroredAssistantJobIdsRef.current.add(jobId);
         setAssistantPanelOpen(tripId, true);
       } catch {
         toast.error('Planner generation queued, but assistant progress could not be opened');
@@ -965,11 +973,12 @@ export default function PlannerBoard({ tripId }: Props) {
           requestText,
           action: 'reset',
         });
+        mirroredAssistantJobIdsRef.current.add(accepted.job_id);
         setAssistantPanelOpen(tripId, true);
       } catch {
         toast.error('Reset queued, but assistant progress could not be opened');
       }
-      toast.success('Generated activities reset queued');
+      toast.success('Itinerary reset queued');
     } catch (error) {
       if (isConflict(error)) {
         toast.error('Trip changed. Refresh the planner and try again.');

@@ -21,6 +21,12 @@ export async function mirrorAssistantJob(
   });
 }
 
+export async function clearAssistantThreadMessages(tripId: string): Promise<void> {
+  await requestJson(`/trips/${tripId}/assistant/thread/messages`, {
+    method: 'DELETE',
+  });
+}
+
 export async function streamAssistantMessages(
   tripId: string,
   payload: AssistantMessageStreamInput,

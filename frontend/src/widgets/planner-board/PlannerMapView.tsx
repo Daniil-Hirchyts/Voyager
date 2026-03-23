@@ -340,9 +340,9 @@ function DetailSegmentedTabs({
         compact ? 'px-2.5 py-1.5' : 'px-3 py-1.5',
       )}
     >
-      <div className={cn('flex items-center gap-2', !tabs.length && 'justify-end')}>
+      <div className={cn('flex items-center gap-1.5 sm:gap-2', tabs.length ? 'justify-between' : 'justify-end')}>
         {tabs.length ? (
-          <div className="min-w-0 overflow-x-auto">
+          <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">
             <div
               className="inline-flex min-w-max items-center gap-0 rounded-[40px] border border-[var(--color-border)] bg-[var(--color-border)] p-[2px]"
               role="tablist"
@@ -388,7 +388,7 @@ function DetailSegmentedTabs({
                     }}
                     className={cn(
                       'inline-flex shrink-0 items-center justify-center rounded-[40px] font-semibold tracking-[-0.02em] whitespace-nowrap text-[#5f6b7e] transition-[transform,color] duration-200 hover:text-[#1a1a1a] active:scale-[0.98] data-[checked=true]:text-white',
-                      compact ? 'h-7 px-2.5 text-[0.72rem]' : 'h-8 px-3 text-[0.78rem]',
+                      compact ? 'h-7 px-2 text-[0.68rem] sm:px-2.5 sm:text-[0.72rem]' : 'h-8 px-2.5 text-[0.74rem] sm:px-3 sm:text-[0.78rem]',
                     )}
                   >
                     {label}
@@ -398,7 +398,7 @@ function DetailSegmentedTabs({
             </div>
           </div>
         ) : null}
-        {controls ? <div className="flex shrink-0 items-center gap-1">{controls}</div> : null}
+        {controls ? <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">{controls}</div> : null}
       </div>
     </div>
   );
@@ -1185,7 +1185,7 @@ function PlannerBudgetOverview({
     <div className="flex flex-col gap-3" data-testid="planner-budget-summary">
       <div className="rounded-[22px] bg-white px-5 py-5">
         <div className="flex flex-col gap-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-[0.68rem] font-bold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                 Initial Budget
@@ -1199,9 +1199,9 @@ function PlannerBudgetOverview({
               </span>
             </div>
 
-            <div className="flex items-center">
+            <div className="flex w-full sm:w-auto items-center">
               <div
-                className="relative flex h-11 items-center overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-[var(--color-border)]"
+                className="relative flex h-11 w-full sm:w-auto items-center overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-[var(--color-border)]"
                 aria-busy={patchTrip.isPending}
                 onBlur={(event) => {
                   const nextFocused = event.relatedTarget;
@@ -1258,7 +1258,7 @@ function PlannerBudgetOverview({
                     event.preventDefault();
                     void handleSaveBudget();
                   }}
-                  className="h-full w-24 border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0"
+                  className="h-full w-full sm:w-24 border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0"
                 />
               </div>
             </div>
@@ -2513,18 +2513,19 @@ function DetailSheetContent({
             transition={{ duration: 0.15 }}
           >
             {isDetailLoading && !detail ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className={cn("grid gap-3", compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3')}>
                 <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
                 <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
-                <Skeleton className={cn('col-span-2 rounded-[18px]', compact ? 'h-9' : 'h-10')} />
+                <Skeleton className={cn('col-span-2 sm:col-span-3 rounded-[18px]', compact ? 'h-9' : 'h-10')} />
               </div>
             ) : activeTab === 'about' ? (
-              <div className="grid grid-cols-3 gap-3">
+              <div className={cn("grid gap-3", compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3')}>
                 {/* Row 1 col 1-2 — Summary (hidden when no content) */}
                 {summary ? (
                   <div
                     className={cn(
-                      'col-span-2 rounded-[22px] bg-white',
+                      'rounded-[22px] bg-white',
+                      !compact && 'sm:col-span-2',
                       compact ? 'p-3.5' : 'p-4',
                     )}
                   >
@@ -2555,8 +2556,8 @@ function DetailSheetContent({
                         type="button"
                         className={cn(
                           'group relative block w-full overflow-hidden rounded-[22px] bg-[var(--color-secondary-surface)] text-left',
-                          !summary && 'col-span-3',
-                          summary ? 'row-span-2' : '',
+                          !summary && 'sm:col-span-3',
+                          summary && !compact ? 'sm:row-span-2' : '',
                           compact ? 'max-h-[12rem] min-h-[5rem]' : 'max-h-[14rem] min-h-[6rem]',
                         )}
                         aria-label={`Preview ${title}`}
@@ -2674,7 +2675,8 @@ function DetailSheetContent({
                 {visibleHours.length ? (
                   <div
                     className={cn(
-                      'col-span-2 rounded-[22px] bg-white',
+                      'rounded-[22px] bg-white',
+                      !compact && 'sm:col-span-2',
                       compact ? 'px-3.5 pt-1 pb-1' : 'px-4 pt-2 pb-2',
                     )}
                   >
