@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/shared/stores/auth.store';
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
+import { VoyagerLoader } from '@/widgets/app-shell/logo';
 import { startKeycloakSignIn } from './signin';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         style={{ background: 'var(--color-bg)' }}
       >
         <div className="text-center">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#2F6F73] border-t-transparent" />
+          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#2F6F73]" />
           <p className="text-sm text-[#526072]">Loading...</p>
         </div>
       </div>
@@ -60,7 +61,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         style={{ background: 'var(--color-bg)' }}
       >
         <div className="text-center">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#2F6F73] border-t-transparent" />
+          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#2F6F73]" />
           <p className="text-sm text-[#526072]">Redirecting to sign in...</p>
         </div>
       </div>

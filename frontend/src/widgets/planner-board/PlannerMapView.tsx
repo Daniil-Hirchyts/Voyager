@@ -3178,9 +3178,7 @@ export function PlannerMapView({
   );
   const setMapDayAccordionState = usePlannerStore((state) => state.setMapDayAccordionState);
   const [showRoutes, setShowRoutes] = useState(recommendations.preferences.map.showRoutesByDefault);
-  const [showCustomLayers, setShowCustomLayers] = useState(
-    recommendations.preferences.map.showCustomLayersByDefault,
-  );
+
   const [mapVisibilityCustomized, setMapVisibilityCustomized] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [layersOpen, setLayersOpen] = useState(false);
@@ -3216,7 +3214,7 @@ export function PlannerMapView({
     };
   });
 
-  const { data: tripLayersData } = useTripMapLayers(tripId);
+
   const routeLegPayload = useMemo(
     () => buildPlannerMapLegPayload(itinerarySections, travelMode, itineraryAccommodationByDayId),
     [itinerarySections, travelMode, itineraryAccommodationByDayId],
@@ -3357,11 +3355,7 @@ export function PlannerMapView({
     () => mergePlaceDetail(placeDetailQuery.data, googlePlaceDetailQuery.data),
     [googlePlaceDetailQuery.data, placeDetailQuery.data],
   );
-  const tripLayers = useMemo(
-    () =>
-      showCustomLayers ? (tripLayersData?.items ?? []).filter((layer) => layer.is_visible) : [],
-    [showCustomLayers, tripLayersData?.items],
-  );
+
   const allTravelOverlays = useMemo(
     () => buildPlannerTravelOverlays(days, inboxActivities),
     [days, inboxActivities],
@@ -3443,10 +3437,8 @@ export function PlannerMapView({
     }
 
     setShowRoutes(recommendations.preferences.map.showRoutesByDefault);
-    setShowCustomLayers(recommendations.preferences.map.showCustomLayersByDefault);
   }, [
     mapVisibilityCustomized,
-    recommendations.preferences.map.showCustomLayersByDefault,
     recommendations.preferences.map.showRoutesByDefault,
   ]);
 
@@ -4437,7 +4429,7 @@ export function PlannerMapView({
                 });
               }}
             >
-              <TripMapLayerRenderer layers={tripLayers} />
+
 
               {routeSections.map(({ section, routeStops }) => {
                 const isPrimaryRoute = section.dayId === primaryRouteSection?.dayId;
@@ -4740,7 +4732,11 @@ export function PlannerMapView({
                           sideOffset={10}
                           className="w-[min(22rem,calc(100vw-1.25rem))]"
                         >
-                          <ScrollArea className="max-h-[min(70dvh,34rem)]">
+                          <ScrollArea
+                            viewportStyle={{
+                              maxHeight: 'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
+                            }}
+                          >
                             <div className="flex flex-col gap-4">
                               <div className="flex flex-col gap-0.5">
                                 <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
@@ -4790,18 +4786,7 @@ export function PlannerMapView({
                                       }}
                                     />
                                   </label>
-                                <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
-                                  <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                      Custom layers
-                                    </span>
-                                    <Checkbox
-                                      checked={showCustomLayers}
-                                      onCheckedChange={(checked) => {
-                                        setMapVisibilityCustomized(true);
-                                        setShowCustomLayers(Boolean(checked));
-                                      }}
-                                    />
-                                  </label>
+
                                   {sections.map((section) => (
                                     <label
                                       key={section.dayId}
@@ -4952,7 +4937,11 @@ export function PlannerMapView({
                     sideOffset={10}
                     className="w-[min(22rem,calc(100vw-1.25rem))]"
                   >
-                    <ScrollArea className="max-h-[min(70dvh,34rem)]">
+                    <ScrollArea
+                      viewportStyle={{
+                        maxHeight: 'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
+                      }}
+                    >
                       <div className="flex flex-col gap-4">
                         <div className="flex flex-col gap-0.5">
                           <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">

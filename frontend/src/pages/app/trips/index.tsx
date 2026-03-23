@@ -620,7 +620,7 @@ export default function TripsPage() {
   }
 
   return (
-    <WorkspacePage className="gap-6 !p-0 pb-10 md:gap-8 md:pb-14 lg:gap-10 lg:!p-6">
+    <WorkspacePage className="gap-2 !p-0 pb-10 md:pb-14 lg:!p-6">
       <header
         ref={heroRef}
         className="relative overflow-hidden px-4 py-12 md:px-8 md:py-16 lg:rounded-2xl lg:border lg:border-white/40 lg:bg-[linear-gradient(135deg,rgba(255,255,255,0.95)_0%,rgba(235,242,248,0.98)_100%)] lg:px-12 lg:py-16 lg:shadow-[0_20px_50px_rgba(30,41,59,0.04)]"
@@ -635,11 +635,10 @@ export default function TripsPage() {
         <div className="relative z-10 mx-auto max-w-4xl px-4 md:px-0">
           <div className="flex flex-col items-center justify-center rounded-3xl bg-white/40 px-6 py-10 text-center shadow-sm backdrop-blur-md border border-white/60 md:px-12 md:py-14">
             <h1 className="hero-title max-w-[22ch] text-[2.2rem] leading-[1.05] font-bold tracking-tight text-[var(--color-text)] sm:text-[2.6rem] md:text-[3.6rem] drop-shadow-sm">
-              Your trips, curated routes, and the world map.
+              Your next journey starts here.
             </h1>
             <p className="hero-desc mx-auto mt-6 max-w-[52ch] text-[1.05rem] leading-relaxed font-medium text-[var(--color-text)] drop-shadow-sm md:text-[1.15rem]">
-              Keep recent trips close, instantly drop proposed destinations into your collection,
-              and explore the map to find your next great itinerary.
+              Organize your travel plans, draw inspiration from hand-picked global routes, and map out unforgettable itineraries with ease.
             </p>
             <div className="hero-actions mt-8 flex flex-wrap items-center justify-center gap-3">
               <Button asChild className="h-12 rounded-full px-7 text-[0.95rem] font-medium shadow-md transition-transform duration-300 hover:scale-[1.03] active:scale-[0.98]">
