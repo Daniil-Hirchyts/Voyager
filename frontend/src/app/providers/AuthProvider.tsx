@@ -1,3 +1,4 @@
+import { WebStorageStateStore } from 'oidc-client-ts';
 import { AuthProvider as OidcAuthProvider, useAuth } from 'react-oidc-context';
 import { useEffect, useMemo } from 'react';
 import { config } from '@/app/config';
@@ -16,6 +17,7 @@ const oidcConfig = {
   automaticSilentRenew: true,
   filterProtocolClaims: true,
   loadUserInfo: true,
+  userStore: new WebStorageStateStore({ store: window.sessionStorage }),
 };
 
 interface Props {

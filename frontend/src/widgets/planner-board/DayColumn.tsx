@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { format } from 'date-fns';
@@ -47,44 +47,48 @@ export function DayColumn({
     data: { type: 'container-end', containerId: day.id, dayId: day.id },
   });
 
-  const activities = [...day.activities].sort(
-    (left, right) => left.order_index - right.order_index,
+  const activities = useMemo(
+    () => [...day.activities].sort((left, right) => left.order_index - right.order_index),
+    [day.activities],
   );
   const fallbackTravelLegs = buildPlannerTravelLegs(activities, travelMode);
-  const routeLegPayload =
-    activities.length > 1
-      ? {
-          legs: activities.slice(1).flatMap((activity, index) => {
-            const previousActivity = activities[index];
-            if (!previousActivity) {
-              return [];
-            }
-            const originLat = previousActivity.place?.lat;
-            const originLon = previousActivity.place?.lon;
-            const destinationLat = activity.place?.lat;
-            const destinationLon = activity.place?.lon;
+  const routeLegPayload = useMemo(
+    () =>
+      activities.length > 1
+        ? {
+            legs: activities.slice(1).flatMap((activity, index) => {
+              const previousActivity = activities[index];
+              if (!previousActivity) {
+                return [];
+              }
+              const originLat = previousActivity.place?.lat;
+              const originLon = previousActivity.place?.lon;
+              const destinationLat = activity.place?.lat;
+              const destinationLon = activity.place?.lon;
 
-            if (
-              typeof originLat !== 'number' ||
-              typeof originLon !== 'number' ||
-              typeof destinationLat !== 'number' ||
-              typeof destinationLon !== 'number'
-            ) {
-              return [];
-            }
+              if (
+                typeof originLat !== 'number' ||
+                typeof originLon !== 'number' ||
+                typeof destinationLat !== 'number' ||
+                typeof destinationLon !== 'number'
+              ) {
+                return [];
+              }
 
-            return [
-              {
-                from_activity_id: previousActivity.id,
-                to_activity_id: activity.id,
-                origin: { lat: originLat, lng: originLon },
-                destination: { lat: destinationLat, lng: destinationLon },
-              },
-            ];
-          }),
-          travel_mode: travelMode,
-        }
-      : null;
+              return [
+                {
+                  from_activity_id: previousActivity.id,
+                  to_activity_id: activity.id,
+                  origin: { lat: originLat, lng: originLon },
+                  destination: { lat: destinationLat, lng: destinationLon },
+                },
+              ];
+            }),
+            travel_mode: travelMode,
+          }
+        : null,
+    [activities, travelMode],
+  );
   const routeLegEstimates = useRouteLegEstimates(
     routeLegPayload && routeLegPayload.legs.length > 0 ? routeLegPayload : null,
     Boolean(routeLegPayload?.legs.length),

@@ -405,10 +405,7 @@ function updatePlannerActivityLists(
     return null;
   }
 
-  const insertionIndex =
-    source.containerId === target.containerId && target.index > source.index
-      ? target.index - 1
-      : target.index;
+  const insertionIndex = target.index;
   const safeIndex = getBucketInsertionIndex(
     targetActivities,
     target.bucket,

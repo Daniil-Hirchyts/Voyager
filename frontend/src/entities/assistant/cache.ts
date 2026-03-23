@@ -32,6 +32,99 @@ function isJobProgressPart(part: unknown): part is {
   );
 }
 
+function jobActionLabel(action: unknown) {
+  return String(action ?? '').trim().toLowerCase() === 'reset' ? 'reset' : 'generation';
+}
+
+function formatJobCompletionText(action: unknown, status: unknown, summary: unknown) {
+  const normalizedStatus = String(status ?? '').toUpperCase();
+  const operation = jobActionLabel(action);
+  const summaryRecord =
+    summary && typeof summary === 'object' && !Array.isArray(summary)
+      ? (summary as Record<string, unknown>)
+      : {};
+  const counts =
+    summaryRecord.summary &&
+    typeof summaryRecord.summary === 'object' &&
+    !Array.isArray(summaryRecord.summary)
+      ? (summaryRecord.summary as Record<string, unknown>)
+      : {};
+  const dayCount = Array.isArray(summaryRecord.day_deltas) ? summaryRecord.day_deltas.length : 0;
+  const detailParts: string[] = [];
+
+  const created = typeof counts.created === 'number' ? counts.created : Number(counts.created ?? 0);
+  const updated = typeof counts.updated === 'number' ? counts.updated : Number(counts.updated ?? 0);
+  const deleted = typeof counts.deleted === 'number' ? counts.deleted : Number(counts.deleted ?? 0);
+  const skipped = typeof counts.skipped === 'number' ? counts.skipped : Number(counts.skipped ?? 0);
+
+  if (normalizedStatus !== 'SUCCEEDED') {
+    return `Itinerary ${operation} failed. Review the progress details above and try again.`;
+  }
+
+  if (Number.isFinite(created) && created > 0) {
+    detailParts.push(`added ${created}`);
+  }
+  if (Number.isFinite(updated) && updated > 0) {
+    detailParts.push(`updated ${updated}`);
+  }
+  if (Number.isFinite(deleted) && deleted > 0) {
+    detailParts.push(`removed ${deleted}`);
+  }
+  if (Number.isFinite(skipped) && skipped > 0) {
+    detailParts.push(`skipped ${skipped}`);
+  }
+  if (dayCount > 0) {
+    detailParts.push(`across ${dayCount} day${dayCount === 1 ? '' : 's'}`);
+  }
+
+  if (operation === 'reset') {
+    return detailParts.length > 0
+      ? `Itinerary reset finished. ${detailParts.join('; ')}.`
+      : 'Itinerary reset finished. The planner board has been updated.';
+  }
+
+  return detailParts.length > 0
+    ? `Itinerary generation finished. ${detailParts.join('; ')}.`
+    : 'Itinerary generation finished. The planner board has been updated.';
+}
+
+function upsertJobCompletionPart(
+  parts: AssistantMessage['parts'],
+  event: JobProgressEvent,
+  action: unknown,
+) {
+  const nextParts = [...parts];
+  if (event.type !== 'done') {
+    return nextParts;
+  }
+
+  const completionPart = {
+    type: 'text' as const,
+    text: formatJobCompletionText(
+      action,
+      event.status,
+      event.summary && typeof event.summary === 'object' ? event.summary : undefined,
+    ),
+    intent: 'job-completion',
+  };
+
+  const existingIndex = nextParts.findIndex(
+    (part) =>
+      part &&
+      typeof part === 'object' &&
+      (part as { type?: unknown }).type === 'text' &&
+      (part as { intent?: unknown }).intent === 'job-completion',
+  );
+
+  if (existingIndex >= 0) {
+    nextParts[existingIndex] = completionPart;
+  } else {
+    nextParts.push(completionPart);
+  }
+
+  return nextParts;
+}
+
 function mergeJobProgressEvent(
   message: AssistantMessage,
   event: JobProgressEvent,
@@ -87,10 +180,19 @@ function mergeJobProgressEvent(
     nextParts.push(nextPart);
   }
 
+  const action =
+    existingPart?.data.action && typeof existingPart.data.action === 'string'
+      ? existingPart.data.action
+      : (message.metadata.action ?? 'generate');
+  const finalParts =
+    event.type === 'done'
+      ? upsertJobCompletionPart(nextParts, event, action)
+      : nextParts;
+
   return {
     ...message,
     status: nextStatus,
-    parts: nextParts,
+    parts: finalParts,
     metadata: {
       ...message.metadata,
       kind: 'job-progress',

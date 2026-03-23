@@ -99,9 +99,24 @@ export async function toApiError(response: Response) {
   );
 }
 
-export function buildApiUrl(path: string) {
-  if (/^https?:\/\//.test(path)) return path;
-  return `${config.api.baseUrl}${path}`;
+function isAbsoluteUrl(value: string) {
+  return /^([a-z][a-z\d+.-]*:)?\/\//i.test(value);
+}
+
+function joinApiBaseUrl(path: string) {
+  const normalizedBaseUrl = config.api.baseUrl.replace(/\/+$/, '');
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBaseUrl}${normalizedPath}`;
+}
+
+export function buildApiUrl(path: string, options?: { allowAbsolute?: boolean }) {
+  if (isAbsoluteUrl(path)) {
+    if (options?.allowAbsolute) {
+      return path;
+    }
+    throw new Error('Absolute URLs are not allowed for API requests');
+  }
+  return joinApiBaseUrl(path);
 }
 
 export function createRequestHeaders(headers?: HeadersInit, options?: { json?: boolean }) {

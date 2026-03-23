@@ -16,7 +16,6 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_LANDING_MOTION: string;
   readonly VITE_ENABLE_ACTIVITIES_UI: string;
   readonly VITE_ENABLE_EXPORTS_UI: string;
-  readonly VITE_ENABLE_AUDIT_UI: string;
 }
 
 interface ImportMeta {

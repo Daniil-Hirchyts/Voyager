@@ -1609,28 +1609,31 @@ class ActivityRepository:
         if not ordered_ids:
             return
 
+        # Flush any pending session changes so no unseen activities exist in the
+        # same bucket when we read or write below.
+        await db.flush()
+
         bucket_filter = (
             Activity.trip_day_id.is_(None)
             if trip_day_id is None
             else Activity.trip_day_id == trip_day_id
         )
-        temp_sentinel = await ActivityRepository._temporary_order_sentinel(
-            db,
-            trip_id=trip_id,
-            trip_day_id=trip_day_id,
-        )
-        temp_case = case(
-            {aid: temp_sentinel - idx - 1 for idx, aid in enumerate(ordered_ids)},
-            value=Activity.id,
-        )
+
+        # Step 1: Shift ALL activities in the bucket to a large positive temp range.
+        # This clears 0-based indexes for every row in the bucket (including any that
+        # are not part of ordered_ids), so the final assignment in step 2 cannot
+        # collide with a "bystander" row that still holds a low order_index.
+        _TEMP_OFFSET = 1_000_000
         await db.execute(
             update(Activity)
             .where(Activity.trip_id == trip_id)
             .where(bucket_filter)
-            .where(Activity.id.in_(ordered_ids))
-            .values(order_index=temp_case)
+            .values(order_index=Activity.order_index + _TEMP_OFFSET)
         )
 
+        # Step 2: Assign the final sequential order to ordered_ids.
+        # All other bucket rows remain at temp+original, which is fine because
+        # every caller of this method passes the complete bucket as ordered_ids.
         final_case = case({aid: idx for idx, aid in enumerate(ordered_ids)}, value=Activity.id)
         await db.execute(
             update(Activity)
@@ -3327,6 +3330,87 @@ class JobRepository:
         return pending, running
 
 
+def _assistant_job_action_label(action: str | None) -> str:
+    normalized = str(action or "").strip().lower()
+    if normalized == "reset":
+        return "reset"
+    return "generation"
+
+
+def _assistant_job_completion_text(
+    *,
+    action: str | None,
+    status: str,
+    summary: dict[str, Any] | None,
+) -> str:
+    status_label = str(status or "").upper()
+    operation = _assistant_job_action_label(action)
+    summary_payload = summary if isinstance(summary, dict) else {}
+    counts = summary_payload.get("summary")
+    counts_payload = counts if isinstance(counts, dict) else {}
+    created = int(counts_payload.get("created") or 0)
+    updated = int(counts_payload.get("updated") or 0)
+    deleted = int(counts_payload.get("deleted") or 0)
+    skipped = int(counts_payload.get("skipped") or 0)
+    day_deltas = summary_payload.get("day_deltas")
+    day_count = len(day_deltas) if isinstance(day_deltas, list) else 0
+
+    if status_label != "SUCCEEDED":
+        return (
+            f"Itinerary {operation} failed. Review the progress details above and try again."
+        )
+
+    detail_parts: list[str] = []
+    if created:
+        detail_parts.append(f"added {created}")
+    if updated:
+        detail_parts.append(f"updated {updated}")
+    if deleted:
+        detail_parts.append(f"removed {deleted}")
+    if skipped:
+        detail_parts.append(f"skipped {skipped}")
+    if day_count:
+        detail_parts.append(f"across {day_count} day{'s' if day_count != 1 else ''}")
+
+    if operation == "reset":
+        if detail_parts:
+            return f"Itinerary reset finished. {'; '.join(detail_parts)}."
+        return "Itinerary reset finished. The planner board has been updated."
+
+    if detail_parts:
+        return f"Itinerary generation finished. {'; '.join(detail_parts)}."
+    return "Itinerary generation finished. The planner board has been updated."
+
+
+def _upsert_assistant_job_completion_part(
+    parts: list[dict[str, Any]],
+    *,
+    action: str | None,
+    status: str,
+    summary: dict[str, Any] | None,
+) -> list[dict[str, Any]]:
+    completion_part = {
+        "type": "text",
+        "text": _assistant_job_completion_text(action=action, status=status, summary=summary),
+        "intent": "job-completion",
+    }
+    existing_index = next(
+        (
+            idx
+            for idx, part in enumerate(parts)
+            if isinstance(part, dict)
+            and part.get("type") == "text"
+            and part.get("intent") == "job-completion"
+        ),
+        -1,
+    )
+    if existing_index >= 0:
+        parts[existing_index] = completion_part
+    else:
+        parts.append(completion_part)
+    return parts
+
+
 class AssistantRepository:
     @staticmethod
     async def get_or_create_thread(
@@ -3546,11 +3630,13 @@ class AssistantRepository:
         progress_data["events"] = existing_events
 
         if event.get("type") == "done":
-            progress_data["job_status"] = str(event.get("status") or "FAILED")
-            progress_data["summary"] = event.get("summary")
+            terminal_status = str(event.get("status") or "FAILED")
+            terminal_summary = event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            progress_data["job_status"] = terminal_status
+            progress_data["summary"] = terminal_summary
             message.status = (
                 "complete"
-                if str(event.get("status") or "").upper() == "SUCCEEDED"
+                if terminal_status.upper() == "SUCCEEDED"
                 else "incomplete"
             )
         else:
@@ -3563,6 +3649,23 @@ class AssistantRepository:
             parts[part_index] = progress_payload
         else:
             parts.append(progress_payload)
+
+        if event.get("type") == "done":
+            action = None
+            if isinstance(progress_data.get("action"), str):
+                action = progress_data["action"]
+            elif isinstance(message.metadata_json, dict) and isinstance(
+                message.metadata_json.get("action"), str
+            ):
+                action = message.metadata_json["action"]
+            parts = _upsert_assistant_job_completion_part(
+                parts,
+                action=action,
+                status=progress_data["job_status"],
+                summary=progress_data["summary"]
+                if isinstance(progress_data.get("summary"), dict)
+                else None,
+            )
 
         message.parts_json = parts
         metadata = dict(message.metadata_json or {})

@@ -58,6 +58,17 @@ def _to_export_response(*, export, job) -> ExportResponse:
     )
 
 
+def _resolve_export_file_path(file_path: str) -> Path:
+    settings = get_settings()
+    exports_root = Path(settings.exports_dir).resolve()
+    resolved = Path(file_path).resolve()
+    try:
+        resolved.relative_to(exports_root)
+    except ValueError as exc:
+        raise NotFoundError("Export artifact file not found") from exc
+    return resolved
+
+
 @router.post("/trips/{trip_id}/exports", response_model=JobAcceptedResponse, status_code=202)
 async def submit_trip_export(
     trip_id: uuid.UUID,
@@ -199,8 +210,8 @@ async def download_export_content(
     if not export.file_path:
         raise NotFoundError("Export artifact path is missing")
 
-    file_path = Path(export.file_path)
-    if not file_path.exists():
+    file_path = _resolve_export_file_path(export.file_path)
+    if not file_path.exists() or not file_path.is_file():
         raise NotFoundError("Export artifact file not found")
 
     content_type = (

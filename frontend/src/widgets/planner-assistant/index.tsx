@@ -289,7 +289,14 @@ function extractAppendText(message: AppendMessage) {
 }
 
 function formatToolLabel(toolName: string) {
-  return toolName.replace(/_/g, ' ').replace(/\b\w/g, (letter: string) => letter.toUpperCase());
+  const normalized = toolName.trim().toLowerCase();
+  if (normalized === 'generate_with_llm') {
+    return 'Generate With LLM';
+  }
+  return toolName
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter: string) => letter.toUpperCase())
+    .replace(/\bLlm\b/g, 'LLM');
 }
 
 function toInlineError(error: unknown, fallback = 'Something went wrong.') {
@@ -373,14 +380,19 @@ function summarizeToolUsage(
   result?: Record<string, unknown>,
   options?: {
     pending?: boolean;
+    running?: boolean;
     isError?: boolean;
   },
 ) {
   const pending = Boolean(options?.pending);
+  const running = Boolean(options?.running);
   const isError = Boolean(options?.isError);
 
   if (toolName === 'read_trip_snapshot') {
     const dayCount = Array.isArray(result?.days) ? result.days.length : null;
+    if (running) {
+      return 'Loading the latest trip context.';
+    }
     return dayCount != null
       ? `Loaded the latest trip context for ${pluralize(dayCount, 'day')}.`
       : 'Loaded the latest trip context.';
@@ -397,24 +409,30 @@ function summarizeToolUsage(
         ? `Found ${pluralize(itemCount, 'place')} for "${query}".`
         : `Found ${pluralize(itemCount, 'place')}.`;
     }
+    if (running) {
+      return query ? `Searching places for "${query}".` : 'Searching places.';
+    }
     return query ? `Searching places for "${query}".` : 'Searching places.';
   }
 
   if (toolName === 'create_activity') {
     const activity = asRecord(result?.activity);
     const title = asString(activity?.title) ?? asString(args.title) ?? 'the activity';
-    return pending ? `Preparing ${title}.` : `Added ${title} to the itinerary.`;
+    return pending || running ? `Preparing ${title}.` : `Added ${title} to the itinerary.`;
   }
 
   if (toolName === 'update_activity') {
     const activity = asRecord(result?.activity);
     const title = asString(activity?.title) ?? asString(args.title) ?? 'the activity';
-    return pending ? `Updating ${title}.` : `Updated ${title}.`;
+    return pending || running ? `Updating ${title}.` : `Updated ${title}.`;
   }
 
   if (toolName === 'move_activity') {
     const activity = asRecord(result?.activity);
     const title = asString(activity?.title);
+    if (running) {
+      return title ? `Moving ${title}.` : 'Moving the activity to a new slot.';
+    }
     return title ? `Moved ${title}.` : 'Moved the activity to a new slot.';
   }
 
@@ -429,12 +447,16 @@ function summarizeToolUsage(
     const mode = asString(args.mode) ?? asString(result?.mode) ?? 'replace';
     return pending
       ? `Ready to generate in ${mode} mode for ${dayScopeLabel(args.day_ids)}.`
+      : running
+        ? `Queueing itinerary generation in ${mode} mode for ${dayScopeLabel(args.day_ids)}.`
       : 'Queued itinerary generation and attached live progress below.';
   }
 
   if (toolName === 'reset_itinerary') {
     return pending
-      ? `Ready to clear generated activities from ${dayScopeLabel(args.day_ids)}.`
+      ? `Ready to clear every activity from ${dayScopeLabel(args.day_ids)}.`
+      : running
+        ? `Queueing an itinerary reset for ${dayScopeLabel(args.day_ids)}.`
       : 'Queued itinerary reset and attached live progress below.';
   }
 
@@ -442,12 +464,32 @@ function summarizeToolUsage(
     ? `${formatToolLabel(toolName)} failed.`
     : pending
       ? `${formatToolLabel(toolName)} is ready to run.`
-      : `${formatToolLabel(toolName)} completed.`;
+      : running
+        ? `${formatToolLabel(toolName)} is running.`
+        : `${formatToolLabel(toolName)} completed.`;
 }
 
 function summarizeTimelineTool(row: Extract<JobTimelineRow, { kind: 'tool' }>) {
   const query = asString(row.args.query);
   const result = row.result;
+  const running = !row.result && !row.isError;
+
+  if (row.toolName === 'generate_with_llm') {
+    const model = asString(result?.model);
+    const candidates =
+      typeof result?.candidates === 'number' ? result.candidates : Number(result?.candidates ?? 0);
+    if (row.isError) {
+      return model ? `The ${model} drafting pass failed.` : 'The LLM drafting pass failed.';
+    }
+    if (result) {
+      return model && Number.isFinite(candidates) && candidates > 0
+        ? `${model} drafted ${pluralize(candidates, 'candidate activity')}.`
+        : model
+          ? `${model} finished drafting the itinerary candidates.`
+          : 'The LLM drafting pass completed.';
+    }
+    return 'Drafting itinerary candidates with the configured LLM.';
+  }
 
   if (row.toolName === 'google_places_search') {
     const count = Array.isArray(result?.items) ? result.items.length : null;
@@ -481,6 +523,7 @@ function summarizeTimelineTool(row: Extract<JobTimelineRow, { kind: 'tool' }>) {
   }
 
   return summarizeToolUsage(row.toolName, row.args, row.result, {
+    running,
     isError: row.isError,
   });
 }
@@ -575,6 +618,69 @@ function buildTimelineRows(events: unknown[]): JobTimelineRow[] {
 
 function buildSummaryEntries(summary: Record<string, unknown> | undefined) {
   if (!summary) return [];
+  const entries: Array<readonly [string, string]> = [];
+  const counts = asRecord(summary.summary);
+
+  const appendCount = (key: string, labelKey: string) => {
+    const raw = counts?.[key];
+    const value = typeof raw === 'number' ? raw : Number(raw ?? 0);
+    if (Number.isFinite(value) && value > 0) {
+      entries.push([labelKey, String(value)]);
+    }
+  };
+
+  appendCount('created', 'added');
+  appendCount('updated', 'updated');
+  appendCount('deleted', 'removed');
+  appendCount('skipped', 'skipped');
+
+  const llmModel = asString(summary.llm_model);
+  if (llmModel) {
+    entries.push(['llm_model', llmModel]);
+  }
+
+  const engine = asString(summary.generator_engine);
+  if (engine) {
+    entries.push(['generator_engine', engine]);
+  }
+
+  const resolvedPlaceCount =
+    typeof summary.resolved_place_count === 'number'
+      ? summary.resolved_place_count
+      : Number(summary.resolved_place_count ?? 0);
+  if (Number.isFinite(resolvedPlaceCount) && resolvedPlaceCount > 0) {
+    entries.push(['resolved_places', String(resolvedPlaceCount)]);
+  }
+
+  const photoCount =
+    typeof summary.photo_enriched_place_count === 'number'
+      ? summary.photo_enriched_place_count
+      : Number(summary.photo_enriched_place_count ?? 0);
+  if (Number.isFinite(photoCount) && photoCount > 0) {
+    entries.push(['photo_enriched_places', String(photoCount)]);
+  }
+
+  if (typeof summary.fallback_used === 'boolean') {
+    entries.push(['fallback_used', summary.fallback_used ? 'Yes' : 'No']);
+  }
+
+  const unresolvedCount =
+    typeof summary.unresolved_activity_count === 'number'
+      ? summary.unresolved_activity_count
+      : Number(summary.unresolved_activity_count ?? 0);
+  if (Number.isFinite(unresolvedCount) && unresolvedCount > 0) {
+    entries.push(['unresolved_activities', String(unresolvedCount)]);
+  }
+
+  const providerErrors = Array.isArray(summary.provider_errors) ? summary.provider_errors.length : 0;
+  if (providerErrors > 0) {
+    entries.push(['provider_errors', pluralize(providerErrors, 'issue')]);
+  }
+
+  if (entries.length > 0) {
+    return entries;
+  }
+
   return Object.entries(summary).flatMap(([key, value]) => {
     const label = summaryValueLabel(value);
     return label ? [[key, label] as const] : [];
@@ -835,6 +941,7 @@ function ToolCard({ part, messageId }: { part: AssistantToolCallPart; messageId:
         : 'neutral';
   const summary = summarizeToolUsage(part.toolName, part.args ?? {}, result ?? undefined, {
     pending,
+    running: !pending && !part.isError && !part.result,
     isError: part.isError,
   });
   const errorDetail = part.isError

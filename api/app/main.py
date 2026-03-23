@@ -4,10 +4,16 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
+from app.config import get_settings
 from app.errors import ApiError
 from app.logging import attach_trace_filter, configure_logging
-from app.middleware import IpRateLimitMiddleware, TraceAndLoggingMiddleware
+from app.middleware import (
+    IpRateLimitMiddleware,
+    SecurityHeadersMiddleware,
+    TraceAndLoggingMiddleware,
+)
 from app.routers import (
     activities,
     assets,
@@ -28,24 +34,26 @@ from app.routers import (
 configure_logging()
 attach_trace_filter()
 logger = logging.getLogger(__name__)
+settings = get_settings()
+settings.validate_runtime()
 
 app = FastAPI(
     title="Voyager API",
     version="0.1.0",
     description="Local-first backend for interactive trip planning",
+    openapi_url=settings.openapi_url,
+    docs_url=settings.docs_url,
+    redoc_url=settings.redoc_url,
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://voyager.local",
-    ],
-    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|voyager\.local)(:\d+)?$",
+    allow_origins=settings.cors_allowed_origins,
+    allow_origin_regex=settings.cors_allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.trusted_hosts)
 
 
 @app.exception_handler(ApiError)
@@ -99,6 +107,7 @@ async def unhandled_error_handler(request: Request, exc: Exception):
 
 app.add_middleware(TraceAndLoggingMiddleware)
 app.add_middleware(IpRateLimitMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(health.router)
 app.include_router(users.router)

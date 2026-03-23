@@ -977,17 +977,18 @@ async def _apply_reset(
 
     for day in days:
         existing = await _fetch_day_activities(db, day.id)
-        generated = [row for row in existing if row.source == "generated"]
-        for row in generated:
+        for row in existing:
             await db.delete(row)
         await db.flush()
         await _normalize_day(db, day.id)
 
-        summary["deleted"] += len(generated)
+        deleted_count = len(existing)
+        summary["deleted"] += deleted_count
         deltas.append(
             {
                 "day_id": str(day.id),
-                "deleted_generated": len(generated),
+                "deleted_activities": deleted_count,
+                "deleted_generated": deleted_count,
                 "created_generated": 0,
                 "updated_generated": 0,
                 "skipped_generated": 0,

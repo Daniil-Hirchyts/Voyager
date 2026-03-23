@@ -39,6 +39,7 @@ STREAM_EVENT_DONE = "done"
 STREAM_EVENT_ERROR = "error"
 MAX_TOOL_TURNS = 8
 DESTRUCTIVE_TOOLS = {"delete_activity", "reset_itinerary", "replace_itinerary"}
+PLANNER_RESULT_TOOLS = {"create_activity", "update_activity", "move_activity", "delete_activity"}
 ALLOWED_TOOL_NAMES = {
     "read_trip_snapshot",
     "search_places",
@@ -95,6 +96,29 @@ def _string(value: Any) -> str | None:
         return cleaned or None
     cleaned = str(value).strip()
     return cleaned or None
+
+
+def _extract_message_text(content: Any) -> str | None:
+    if isinstance(content, str):
+        stripped = content.strip()
+        return stripped or None
+    if isinstance(content, dict):
+        if content.get("type") in {"text", "output_text"} and isinstance(content.get("text"), str):
+            stripped = content["text"].strip()
+            return stripped or None
+        if isinstance(content.get("content"), str):
+            stripped = content["content"].strip()
+            return stripped or None
+    if isinstance(content, list):
+        parts: list[str] = []
+        for entry in content:
+            if not isinstance(entry, dict):
+                continue
+            if entry.get("type") in {"text", "output_text"} and isinstance(entry.get("text"), str):
+                parts.append(entry["text"])
+        joined = "".join(parts).strip()
+        return joined or None
+    return None
 
 
 def _float(value: Any) -> float | None:
@@ -688,7 +712,7 @@ def _tool_definitions() -> list[dict[str, Any]]:
             "type": "function",
             "function": {
                 "name": "reset_itinerary",
-                "description": "Queue reset of generated itinerary items for the selected days. This always requires confirmation.",
+                "description": "Queue reset of all itinerary items for the selected days. This always requires confirmation.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -1007,6 +1031,31 @@ def _format_tool_summary(tool_name: str, result: dict[str, Any]) -> str:
     return "Completed the requested tool action."
 
 
+def _tool_supports_planner_result(tool_name: str) -> bool:
+    return tool_name in PLANNER_RESULT_TOOLS
+
+
+def _fallback_assistant_text(parts: list[dict[str, Any]]) -> str | None:
+    for part in reversed(parts):
+        if not isinstance(part, dict) or part.get("type") != "tool-call":
+            continue
+        tool_name = _string(part.get("toolName"))
+        if not tool_name:
+            continue
+        result = part.get("result")
+        result_payload = result if isinstance(result, dict) else {}
+        if part.get("isError"):
+            error = result_payload.get("error")
+            if isinstance(error, dict):
+                message = _string(error.get("message"))
+                if message:
+                    return f"{_format_tool_summary(tool_name, result_payload)} {message}"
+            return _format_tool_summary(tool_name, result_payload)
+        if isinstance(result, dict):
+            return _format_tool_summary(tool_name, result_payload)
+    return None
+
+
 def _format_command_request_text(command_name: str, args: dict[str, Any]) -> str:
     if command_name == "snapshot":
         return "/snapshot"
@@ -1044,7 +1093,7 @@ def _pending_confirmation_payload(
     if tool_name == "reset_itinerary":
         return (
             {"tool_name": tool_name, "tool_call_id": tool_call_id, "args": args},
-            "Reset will remove generated activities from the selected days. Confirm to continue.",
+            "Reset will remove every activity from the selected days. Confirm to continue.",
         )
     return (
         {"tool_name": tool_name, "tool_call_id": tool_call_id, "args": args},
@@ -1176,7 +1225,8 @@ class PlannerAssistantSession:
             args=args,
             result=result,
         )
-        parts.append(_planner_result_part(tool_name, result))
+        if _tool_supports_planner_result(tool_name):
+            parts.append(_planner_result_part(tool_name, result))
         parts.append({"type": "text", "text": _format_tool_summary(tool_name, result)})
         await AssistantRepository.update_message(
             self._db,
@@ -1240,7 +1290,7 @@ class PlannerAssistantSession:
                 provider_history.append(
                     {
                         "role": "assistant",
-                        "content": provider_message.get("content") or "",
+                        "content": _extract_message_text(provider_message.get("content")) or "",
                         "tool_calls": tool_calls,
                     }
                 )
@@ -1344,7 +1394,8 @@ class PlannerAssistantSession:
                             args=args,
                             result=result,
                         )
-                        parts.append(_planner_result_part(tool_name, result))
+                        if _tool_supports_planner_result(tool_name):
+                            parts.append(_planner_result_part(tool_name, result))
                         await AssistantRepository.update_message(
                             self._db,
                             assistant_message,
@@ -1382,12 +1433,14 @@ class PlannerAssistantSession:
                         return
                 continue
 
-            content = _string(provider_message.get("content"))
+            content = _extract_message_text(provider_message.get("content"))
             parts = list(assistant_message.parts_json or [])
             if content:
                 parts.append({"type": "text", "text": content})
             elif parts:
-                parts.append({"type": "text", "text": _format_tool_summary("tool", {})})
+                fallback_text = _fallback_assistant_text(parts)
+                if fallback_text:
+                    parts.append({"type": "text", "text": fallback_text})
             else:
                 parts.append({"type": "text", "text": "I’m ready to help with this trip."})
             await AssistantRepository.update_message(
@@ -1571,7 +1624,8 @@ class PlannerAssistantSession:
         tool_part["result"] = _jsonable(result)
         tool_part.pop("interrupt", None)
         parts[tool_index] = tool_part
-        parts.append(_planner_result_part(tool_name, result))
+        if _tool_supports_planner_result(tool_name):
+            parts.append(_planner_result_part(tool_name, result))
         parts.append({"type": "text", "text": _format_tool_summary(tool_name, result)})
         await AssistantRepository.update_message(
             self._db,

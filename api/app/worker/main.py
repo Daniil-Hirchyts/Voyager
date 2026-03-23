@@ -249,8 +249,6 @@ async def _process_job(job_id: uuid.UUID) -> None:
         await _invalidate_activity_shortlist_caches()
     if job_type.startswith("places.") and final_status == "SUCCEEDED":
         await _invalidate_place_caches()
-    if job_type == "places.photos.refresh" and final_status == "SUCCEEDED":
-        await _invalidate_place_caches()
     if job_type.startswith("export.generate."):
         await _invalidate_export_caches()
     await _invalidate_audit_caches()

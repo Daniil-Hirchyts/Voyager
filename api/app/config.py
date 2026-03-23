@@ -7,6 +7,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 _API_DIR = Path(__file__).resolve().parents[1]
 _REPO_DIR = _API_DIR.parent
 _ENV_FILES = (_REPO_DIR / ".env", _API_DIR / ".env")
+_DEFAULT_CORS_ALLOWED_ORIGINS = (
+    "http://localhost:5173,http://127.0.0.1:5173,http://voyager.local"
+)
+_DEFAULT_CORS_ALLOWED_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|voyager\.local)(:\d+)?$"
+_DEFAULT_TRUSTED_HOSTS = "localhost,127.0.0.1,voyager.local,api"
+
+
+def _split_csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [part.strip() for part in value.split(",") if part.strip()]
 
 
 class Settings(BaseSettings):
@@ -31,6 +42,39 @@ class Settings(BaseSettings):
     trip_invite_secret: str = Field(
         default="voyager-dev-trip-invite-secret",
         alias="VOYAGER_TRIP_INVITE_SECRET",
+    )
+    cors_allowed_origins_raw: str = Field(
+        default=_DEFAULT_CORS_ALLOWED_ORIGINS,
+        alias="VOYAGER_CORS_ALLOWED_ORIGINS",
+    )
+    cors_allowed_origin_regex: str | None = Field(
+        default=_DEFAULT_CORS_ALLOWED_ORIGIN_REGEX,
+        alias="VOYAGER_CORS_ALLOWED_ORIGIN_REGEX",
+    )
+    trusted_hosts_raw: str = Field(
+        default=_DEFAULT_TRUSTED_HOSTS,
+        alias="VOYAGER_TRUSTED_HOSTS",
+    )
+    openapi_enabled_override: bool | None = Field(
+        default=None,
+        alias="VOYAGER_OPENAPI_ENABLED",
+    )
+    docs_enabled_override: bool | None = Field(
+        default=None,
+        alias="VOYAGER_DOCS_ENABLED",
+    )
+    redoc_enabled_override: bool | None = Field(
+        default=None,
+        alias="VOYAGER_REDOC_ENABLED",
+    )
+    public_metrics_enabled_override: bool | None = Field(
+        default=None,
+        alias="VOYAGER_PUBLIC_METRICS_ENABLED",
+    )
+    metrics_token: str | None = Field(default=None, alias="VOYAGER_METRICS_TOKEN")
+    security_headers_enabled: bool = Field(
+        default=True,
+        alias="VOYAGER_SECURITY_HEADERS_ENABLED",
     )
     keycloak_admin_user: str | None = Field(
         default=None,
@@ -179,21 +223,20 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "VOYAGER_GOOGLE_MAPS_API_KEY",
             "GOOGLE_MAPS_API_KEY",
-            "VITE_GOOGLE_MAPS_API_KEY",
         ),
     )
     google_maps_language: str = Field(
         default="en",
         validation_alias=AliasChoices(
             "VOYAGER_GOOGLE_MAPS_LANGUAGE",
-            "VITE_GOOGLE_MAPS_LANGUAGE",
+            "GOOGLE_MAPS_LANGUAGE",
         ),
     )
     google_maps_region: str | None = Field(
         default=None,
         validation_alias=AliasChoices(
             "VOYAGER_GOOGLE_MAPS_REGION",
-            "VITE_GOOGLE_MAPS_REGION",
+            "GOOGLE_MAPS_REGION",
         ),
     )
     google_places_timeout_sec: int = Field(
@@ -259,6 +302,83 @@ class Settings(BaseSettings):
     @property
     def allowed_audiences(self) -> list[str]:
         return [a.strip() for a in self.keycloak_audience.split(",")]
+
+    @property
+    def env_name(self) -> str:
+        return self.env.strip().lower()
+
+    @property
+    def is_production(self) -> bool:
+        return self.env_name not in {"dev", "development", "local", "test"}
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return _split_csv(self.cors_allowed_origins_raw)
+
+    @property
+    def trusted_hosts(self) -> list[str]:
+        return _split_csv(self.trusted_hosts_raw)
+
+    @property
+    def openapi_enabled(self) -> bool:
+        if self.openapi_enabled_override is not None:
+            return self.openapi_enabled_override
+        return not self.is_production
+
+    @property
+    def docs_enabled(self) -> bool:
+        if self.docs_enabled_override is not None:
+            return self.docs_enabled_override
+        return not self.is_production
+
+    @property
+    def redoc_enabled(self) -> bool:
+        if self.redoc_enabled_override is not None:
+            return self.redoc_enabled_override
+        return not self.is_production
+
+    @property
+    def public_metrics_enabled(self) -> bool:
+        if self.public_metrics_enabled_override is not None:
+            return self.public_metrics_enabled_override
+        return not self.is_production
+
+    @property
+    def openapi_url(self) -> str | None:
+        return "/openapi.json" if self.openapi_enabled else None
+
+    @property
+    def docs_url(self) -> str | None:
+        if not self.openapi_enabled or not self.docs_enabled:
+            return None
+        return "/docs"
+
+    @property
+    def redoc_url(self) -> str | None:
+        if not self.openapi_enabled or not self.redoc_enabled:
+            return None
+        return "/redoc"
+
+    def validate_runtime(self) -> None:
+        issues: list[str] = []
+        if self.is_production:
+            if self.trip_invite_secret == "voyager-dev-trip-invite-secret":
+                issues.append("VOYAGER_TRIP_INVITE_SECRET must be set in production")
+            if (
+                self.object_storage_access_key == "rustfsadmin"
+                or self.object_storage_secret_key == "rustfsadmin"
+            ):
+                issues.append("Object storage credentials must be changed in production")
+            if (
+                self.cors_allowed_origins_raw == _DEFAULT_CORS_ALLOWED_ORIGINS
+                and self.cors_allowed_origin_regex == _DEFAULT_CORS_ALLOWED_ORIGIN_REGEX
+            ):
+                issues.append("Configure VOYAGER_CORS_ALLOWED_ORIGINS for production clients")
+            if self.trusted_hosts_raw == _DEFAULT_TRUSTED_HOSTS:
+                issues.append("Configure VOYAGER_TRUSTED_HOSTS for production hosts")
+
+        if issues:
+            raise ValueError("; ".join(issues))
 
 
 @lru_cache
