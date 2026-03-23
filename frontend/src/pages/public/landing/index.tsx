@@ -67,7 +67,6 @@ export default function LandingPage() {
         return;
       }
 
-      // 1. Clouds Parallax & Floating
       gsap.utils.toArray<HTMLElement>('.parallax-cloud').forEach((cloud, i) => {
         gsap.to(cloud, {
           y: () => (i % 2 === 0 ? -32 : 32),
@@ -91,7 +90,6 @@ export default function LandingPage() {
         });
       });
 
-      // 2. Hero Entrance
       const heroTimeline = gsap.timeline({
         defaults: { ease: 'power3.out' },
       });
@@ -199,7 +197,6 @@ export default function LandingPage() {
           0,
         );
 
-      // 4. Section Fade Ins
       gsap.utils.toArray<HTMLElement>('.fade-section').forEach((section) => {
         gsap.from(section, {
           autoAlpha: 0,
@@ -216,7 +213,6 @@ export default function LandingPage() {
         });
       });
 
-      // 5. Smooth Asymmetric Bento Scroll Reveal
       const bentoCards = gsap.utils.toArray<HTMLElement>('.bento-card');
       bentoCards.forEach((card, i) => {
         gsap.from(card, {
@@ -264,7 +260,6 @@ export default function LandingPage() {
       className="relative min-h-screen overflow-x-hidden text-[#1A1615] selection:bg-[#72AEE6] selection:text-white"
       style={{ fontFamily: '"Outfit", sans-serif' }}
     >
-      {/* Background */}
       <div className="fixed inset-0 -z-20 h-full w-full bg-[#E4F0FB]">
         <div className="absolute inset-0 bg-gradient-to-b from-[#B6D6F2]/40 via-[#E4F0FB] to-[#F1F7FD] opacity-90" />
         <div className="absolute top-[-10%] left-[-10%] h-[60vw] w-[60vw] rounded-full bg-[radial-gradient(circle,rgba(255,255,255,0.9)_0%,transparent_70%)] blur-[80px]" />
@@ -273,7 +268,6 @@ export default function LandingPage() {
         <div className="absolute top-[60%] right-[10%] h-[45vw] w-[45vw] rounded-full bg-[#72AEE6] opacity-30 mix-blend-multiply blur-[160px]" />
       </div>
 
-      {/* Clouds */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="parallax-cloud absolute top-[4%] -right-[9%] w-[760px] opacity-58 mix-blend-multiply md:w-[1120px]">
           <img
@@ -321,7 +315,6 @@ export default function LandingPage() {
         </div>
       </div>
 
-      {/* Nav */}
       <div className="fixed top-6 right-0 left-0 z-50 flex w-full justify-center px-4">
         <nav className="landing-nav flex w-full max-w-5xl items-center justify-between rounded-full border border-white/60 bg-white/50 px-6 py-3 backdrop-blur-2xl transition-all">
           <Link
@@ -352,7 +345,6 @@ export default function LandingPage() {
         </nav>
       </div>
 
-      {/* Hero */}
       <section className="hero-section relative z-10 flex min-h-[100dvh] flex-col items-center justify-start px-4 pt-[20vh]">
         <div className="hero-stack flex w-full max-w-6xl flex-col items-center text-center">
           <div className="hero-badge mb-8 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/60 px-4 py-2 text-xs font-bold tracking-[0.2em] text-[#1A1615] uppercase backdrop-blur-xl">
@@ -402,7 +394,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Hero Dashboard Mockup */}
         <div className="dashboard-trigger relative z-20 mx-auto mt-24 w-full max-w-6xl">
           <div className="dashboard-mockup rounded-[2.5rem] border border-white/80 bg-white/40 p-3 shadow-2xl shadow-[#72AEE6]/10 backdrop-blur-3xl md:p-5">
             <img
@@ -414,7 +405,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Bento Feature Cards */}
       <section className="fade-section bento-trigger-container relative z-10 mt-10 px-4 py-20">
         <div className="mx-auto max-w-7xl">
           <div className="mb-14 md:w-1/2">
@@ -431,9 +421,7 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-12 lg:gap-8">
-            {/* Left column */}
             <div className="flex flex-col gap-6 md:col-span-7 lg:gap-8">
-              {/* Card 1 — AI Planner Assistant */}
               <div className="bento-card group flex flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 backdrop-blur-3xl transition-all duration-500 hover:bg-white/60">
                 <div className="p-6 md:p-8">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#1A1615] to-[#453F3D] text-white shadow-lg transition-transform duration-500 group-hover:scale-110">
@@ -459,7 +447,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Card 2 — Day-by-Day Flow */}
               <div className="bento-card group flex flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 backdrop-blur-3xl transition-all duration-500 hover:bg-white/60">
                 <div className="p-6 md:p-8">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#1A1615] to-[#453F3D] text-white shadow-lg transition-transform duration-500 group-hover:scale-110">
@@ -486,9 +473,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* Right column */}
             <div className="flex flex-col gap-6 md:col-span-5 md:mt-32 lg:gap-8">
-              {/* Card 3 — Live Map View */}
               <div className="bento-card group flex flex-col overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 backdrop-blur-3xl transition-all duration-500 hover:bg-white/60">
                 <div className="p-6 md:p-8">
                   <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#1A1615] to-[#453F3D] text-white shadow-lg transition-transform duration-500 group-hover:scale-110">
@@ -513,7 +498,6 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              {/* Card 4 — Structured Data */}
               <div className="bento-card group relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/40 p-6 backdrop-blur-3xl transition-all duration-500 hover:bg-white/60 md:p-8">
                 <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#1A1615] to-[#453F3D] text-white shadow-lg transition-transform duration-500 group-hover:scale-110">
                   <Compass className="h-5 w-5" />
@@ -531,7 +515,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
       <section className="fade-section relative z-10 flex justify-center px-4 py-48">
         <div className="cta-shell relative w-full max-w-6xl overflow-hidden rounded-[4rem] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.72),rgba(255,255,255,0.5))] p-8 text-[#1A1615] shadow-[0_30px_90px_rgba(84,129,176,0.16)] backdrop-blur-3xl md:p-14 lg:p-16">
           <div className="pointer-events-none absolute top-[-18%] left-[-8%] h-[48%] w-[38%] rounded-full bg-white/90 mix-blend-screen blur-[100px]" />
@@ -624,7 +607,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="relative z-10 mt-20 px-8 py-16">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-8 md:flex-row">
           <div className="flex items-center gap-3 opacity-90 transition-opacity hover:opacity-100">

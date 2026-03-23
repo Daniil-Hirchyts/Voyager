@@ -148,7 +148,7 @@ export function ActivityDetailsDrawer({
         <SheetDescription className="sr-only">
           {categoryDescription || dayLabel || 'Activity details'}
         </SheetDescription>
-        {/* Header */}
+
         <div className="shrink-0 border-b border-[var(--color-border)] bg-white px-5 py-5">
           <div className="flex items-start gap-3">
             <div className="min-w-0 flex-1">
@@ -218,7 +218,6 @@ export function ActivityDetailsDrawer({
           </div>
         </div>
 
-        {/* Scrollable content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#F3F5F7] px-4 py-4">
           <div className="space-y-3">
             <MapPreview activity={activity} />
@@ -235,10 +234,7 @@ export function ActivityDetailsDrawer({
             ) : null}
 
             {infoItems.map((item) => (
-              <div
-                key={item.key}
-                className="rounded-[18px] bg-white px-4 py-3"
-              >
+              <div key={item.key} className="rounded-[18px] bg-white px-4 py-3">
                 <div className="flex items-center gap-2 text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                   <item.Icon className="h-3.5 w-3.5" />
                   {item.label}

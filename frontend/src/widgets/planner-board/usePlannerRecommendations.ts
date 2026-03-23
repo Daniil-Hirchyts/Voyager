@@ -329,7 +329,6 @@ export function usePlannerRecommendations({
   );
 
   async function persistEntry(entry: PlannerRecommendationEntry) {
-    // Only skip saving if we already have a snapshot with a linked place
     if (entry.item.snapshot_id && entry.item.place_id) {
       return entry.item;
     }

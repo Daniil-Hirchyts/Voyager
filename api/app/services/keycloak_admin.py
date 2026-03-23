@@ -15,6 +15,9 @@ class KeycloakAdminTarget:
     realm: str
 
 
+LOOPBACK_HOSTS = {"localhost", "127.0.0.1"}
+
+
 def derive_keycloak_admin_target() -> KeycloakAdminTarget:
     settings = get_settings()
     issuer = urlparse(settings.keycloak_issuer)
@@ -37,10 +40,8 @@ def derive_keycloak_admin_target() -> KeycloakAdminTarget:
     base_url = f"{issuer.scheme}://{issuer.netloc}"
     realm = issuer_parts[-1]
 
-    # The API container validates tokens against an external issuer (`localhost`) but must reach
-    # Keycloak over the Docker network for admin writes.
     jwks = urlparse(settings.keycloak_jwks_url)
-    if issuer.hostname in {"localhost", "127.0.0.1"} and jwks.scheme and jwks.netloc:
+    if issuer.hostname in LOOPBACK_HOSTS and jwks.scheme and jwks.netloc:
         base_url = f"{jwks.scheme}://{jwks.netloc}"
 
     return KeycloakAdminTarget(base_url=base_url, realm=realm)

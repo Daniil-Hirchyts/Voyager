@@ -743,7 +743,9 @@ export default function PlannerBoard({ tripId }: Props) {
 
     clearPendingJobId(tripId);
     if (!mirroredInAssistant) {
-      toast.error(job.job_type === 'itinerary.reset' ? 'Itinerary reset failed' : 'Planner generation failed');
+      toast.error(
+        job.job_type === 'itinerary.reset' ? 'Itinerary reset failed' : 'Planner generation failed',
+      );
     }
   }, [clearPendingJobId, currentJob.data, pendingJobId, qc, setGenerationReport, tripId]);
 
@@ -1144,9 +1146,7 @@ export default function PlannerBoard({ tripId }: Props) {
           await persistMove(freshPlanner.trip.version);
           await invalidatePlanner();
           return;
-        } catch {
-          // fall through to restore the optimistic state below
-        }
+        } catch {}
       }
       qc.setQueryData(plannerKeys.detail(tripId), originPlanner);
       toast.error('Failed to move activity');

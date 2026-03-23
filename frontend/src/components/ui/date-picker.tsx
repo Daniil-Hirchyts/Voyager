@@ -6,11 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-/**
- * DatePicker — a controlled Popover+Calendar combo.
- * value / onChange use ISO date strings ("YYYY-MM-DD") to stay
- * compatible with the existing react-hook-form date fields.
- */
 interface DatePickerProps {
   value?: string;
   onChange?: (value: string) => void;

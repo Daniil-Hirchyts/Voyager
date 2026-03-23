@@ -31,7 +31,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         weekdays: 'flex',
         weekday:
           'size-10 rounded-md text-center text-[0.74rem] font-medium uppercase tracking-[0.08em] text-[var(--color-text-muted)]',
-        // no gap between week rows so range bg is continuous across rows
+
         week: 'flex w-full',
         day: cn(
           'relative size-10 p-0 text-center text-sm focus-within:relative focus-within:z-20',

@@ -45,9 +45,7 @@ export async function streamJobProgress(
       const payloadText = line.slice(6);
       try {
         onEvent(JSON.parse(payloadText) as JobProgressEvent);
-      } catch {
-        // ignore malformed events
-      }
+      } catch {}
     }
   }
 }

@@ -8,8 +8,7 @@ export type TripCoverPhotoPreference = {
   placeLng?: number | null;
   photoId?: string | null;
   assetId?: string | null;
-  /** Raw relative URL from Google Place Detail (e.g. /places/google-photo-asset?name=...).
-   * Pass through resolveMediaUrl before using as <img src>. */
+
   googlePhotoUrl?: string | null;
 };
 
@@ -47,7 +46,7 @@ export function writeTripCoverPhotoPreference(tripId: string, value: TripCoverPh
 
   const key = getTripCoverPhotoKey(tripId);
   window.localStorage.setItem(key, JSON.stringify(value));
-  // Dispatch a storage event manually so other hook instances in the same tab can react
+
   window.dispatchEvent(
     new StorageEvent('storage', {
       key,

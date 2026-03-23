@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AssistantRuntimeProvider,
   ThreadPrimitive,
@@ -96,6 +90,14 @@ import {
   AssistantMessageView,
 } from './AssistantComposer';
 
+const ASSISTANT_THREAD_INVALIDATION_DELAY_MS = 4_000;
+const ASSISTANT_INPUT_BLOCK_PATTERNS = [
+  /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
+  /you\s+are\s+now\s+a/i,
+  /disregard\s+(all\s+)?(previous|prior)/i,
+  /system\s*:\s*[^\n]{0,100}/i,
+];
+
 function removeAssistantMessage(queryClient: QueryClient, tripId: string, messageId: string) {
   queryClient.setQueryData(assistantKeys.thread(tripId), (current: unknown) => {
     if (!current || typeof current !== 'object') {
@@ -110,6 +112,34 @@ function removeAssistantMessage(queryClient: QueryClient, tripId: string, messag
       messages: thread.messages.filter((message) => message.id !== messageId),
     };
   });
+}
+
+function sanitizeAssistantInput(text: string) {
+  return stripControlCharacters(text).trim();
+}
+
+function getAssistantInputError(
+  originalText: string,
+  sanitizedText: string,
+  now: number,
+  lastSubmittedAt: number,
+) {
+  if (now - lastSubmittedAt < SUBMIT_COOLDOWN_MS) {
+    return 'Please wait a moment before sending another message.';
+  }
+  if (originalText.length > MAX_INPUT_LENGTH) {
+    return `Message is too long. Please keep it under ${MAX_INPUT_LENGTH} characters.`;
+  }
+  if (ASSISTANT_INPUT_BLOCK_PATTERNS.some((pattern) => pattern.test(sanitizedText))) {
+    return 'This message contains patterns that are not allowed. Please rephrase your request.';
+  }
+  return null;
+}
+
+function scheduleAssistantThreadRefresh(queryClient: QueryClient, tripId: string) {
+  window.setTimeout(() => {
+    void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) });
+  }, ASSISTANT_THREAD_INVALIDATION_DELAY_MS);
 }
 
 export function PlannerAssistantPanel({
@@ -134,7 +164,7 @@ export function PlannerAssistantPanel({
   const [streamError, setStreamError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const jobStreamControllersRef = useRef(new Map<string, AbortController>());
-  const ignoredJobResumeIdsRef = useRef(new Set<string>());
+  const settledJobResumeIdsRef = useRef(new Set<string>());
   const handledRequestedInlineActionRef = useRef<PlannerGenerationAction | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSubmitTimeRef = useRef(0);
@@ -152,21 +182,18 @@ export function PlannerAssistantPanel({
   );
 
   const liveMessages = data?.messages ?? [];
-  // Filter out messages that belong to a previously archived conversation.
-  // We cannot clear the React Query cache (staleTime: 0 causes immediate refetch
-  // from the backend), so we track hidden IDs in localStorage instead.
-  const currentLiveMessages = useMemo(
-    () => liveMessages.filter((m) => !hiddenMessageIds.has(m.id)),
+  const visibleLiveMessages = useMemo(
+    () => liveMessages.filter((message) => !hiddenMessageIds.has(message.id)),
     [liveMessages, hiddenMessageIds],
   );
   const displayMessages =
     viewingConvId !== null
       ? (savedConversations.find((c) => c.id === viewingConvId)?.messages ?? [])
-      : currentLiveMessages;
+      : visibleLiveMessages;
   const runningJobIds = useMemo(() => {
     return Array.from(
       new Set(
-        currentLiveMessages.flatMap((message) => {
+        visibleLiveMessages.flatMap((message) => {
           if (
             message.role !== 'assistant' ||
             message.status !== 'running' ||
@@ -179,7 +206,17 @@ export function PlannerAssistantPanel({
         }),
       ),
     );
-  }, [currentLiveMessages]);
+  }, [visibleLiveMessages]);
+
+  const handleResumedJobCompletion = useCallback(
+    (jobId: string, controller: AbortController) => {
+      settledJobResumeIdsRef.current.add(jobId);
+      controller.abort();
+      void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
+      scheduleAssistantThreadRefresh(queryClient, tripId);
+    },
+    [queryClient, tripId],
+  );
 
   useEffect(() => {
     if (!requestedInlineAction) {
@@ -225,11 +262,6 @@ export function PlannerAssistantPanel({
   useEffect(() => {
     const controllerMap = jobStreamControllersRef.current;
     const activeJobIds = new Set(runningJobIds);
-    // Note: intentionally NOT cleaning up ignoredJobResumeIdsRef here.
-    // After a 'done' event, invalidateQueries causes the thread to refetch
-    // which may temporarily restore 'running' status from the backend before
-    // the server-side update propagates. Cleaning up the ignored set during
-    // this window causes the stream to restart, creating an infinite loop.
 
     for (const [jobId, controller] of controllerMap.entries()) {
       if (!activeJobIds.has(jobId)) {
@@ -239,7 +271,7 @@ export function PlannerAssistantPanel({
     }
 
     for (const jobId of activeJobIds) {
-      if (ignoredJobResumeIdsRef.current.has(jobId)) {
+      if (settledJobResumeIdsRef.current.has(jobId)) {
         continue;
       }
       if (controllerMap.has(jobId)) {
@@ -254,17 +286,7 @@ export function PlannerAssistantPanel({
         (event: JobProgressEvent) => {
           appendAssistantJobProgressEvent(queryClient, tripId, jobId, event);
           if (event.type === 'done') {
-            ignoredJobResumeIdsRef.current.add(jobId);
-            controller.abort();
-            // Invalidate planner immediately to show new activities
-            void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
-            // Delay thread invalidation: the backend may not have committed the
-            // updated message status yet, so an immediate refetch would overwrite
-            // the local 'complete' status we just applied above and make the card
-            // appear frozen (spinner never stops). Give the backend a few seconds.
-            window.setTimeout(() => {
-              void queryClient.invalidateQueries({ queryKey: assistantKeys.thread(tripId) });
-            }, 4000);
+            handleResumedJobCompletion(jobId, controller);
           }
         },
         controller.signal,
@@ -274,7 +296,7 @@ export function PlannerAssistantPanel({
             return;
           }
           if (isApiError(error) && error.status === 404) {
-            ignoredJobResumeIdsRef.current.add(jobId);
+            settledJobResumeIdsRef.current.add(jobId);
             return;
           }
           setStreamError(
@@ -287,7 +309,7 @@ export function PlannerAssistantPanel({
           }
         });
     }
-  }, [queryClient, runningJobIds, tripId]);
+  }, [handleResumedJobCompletion, queryClient, runningJobIds, tripId]);
 
   useEffect(() => {
     return () => {
@@ -312,7 +334,7 @@ export function PlannerAssistantPanel({
       controller.abort();
     }
     jobStreamControllersRef.current.clear();
-    ignoredJobResumeIdsRef.current.clear();
+    settledJobResumeIdsRef.current.clear();
     await clearAssistantThreadMessagesRequest(tripId);
     replaceAssistantMessages(queryClient, tripId, []);
     const clearedHiddenIds = new Set<string>();
@@ -373,36 +395,20 @@ export function PlannerAssistantPanel({
         return;
       }
 
-      // Rate limit: prevent rapid successive messages
       const now = Date.now();
-      if (now - lastSubmitTimeRef.current < SUBMIT_COOLDOWN_MS) {
-        setStreamError('Please wait a moment before sending another message.');
-        return;
-      }
-
-      // Length limit
-      if (trimmed.length > MAX_INPUT_LENGTH) {
-        setStreamError(`Message is too long. Please keep it under ${MAX_INPUT_LENGTH} characters.`);
-        return;
-      }
-
-      // Strip null bytes and dangerous control characters (basic injection protection)
-      const sanitized = stripControlCharacters(trimmed).trim();
+      const sanitized = sanitizeAssistantInput(trimmed);
       if (!sanitized) {
         return;
       }
 
-      // Warn on obvious prompt injection patterns
-      const injectionPatterns = [
-        /ignore\s+(all\s+)?(previous|prior|above)\s+instructions/i,
-        /you\s+are\s+now\s+a/i,
-        /disregard\s+(all\s+)?(previous|prior)/i,
-        /system\s*:\s*[^\n]{0,100}/i,
-      ];
-      if (injectionPatterns.some((p) => p.test(sanitized))) {
-        setStreamError(
-          'This message contains patterns that are not allowed. Please rephrase your request.',
-        );
+      const validationError = getAssistantInputError(
+        trimmed,
+        sanitized,
+        now,
+        lastSubmitTimeRef.current,
+      );
+      if (validationError) {
+        setStreamError(validationError);
         return;
       }
 
@@ -484,9 +490,7 @@ export function PlannerAssistantPanel({
       try {
         await onSubmitInlineAction(action, values, idempotencyKey);
         setInlineAction(null);
-      } catch {
-        // planner mutations already surface toast errors upstream
-      }
+      } catch {}
     },
     [onSubmitInlineAction],
   );
@@ -548,7 +552,7 @@ export function PlannerAssistantPanel({
   }, [resetAssistantConversation]);
 
   const handleNewConversation = useCallback(async () => {
-    if (currentLiveMessages.length > 0) {
+    if (visibleLiveMessages.length > 0) {
       const conv: SavedConversation = {
         id: crypto.randomUUID(),
         name:
@@ -559,7 +563,7 @@ export function PlannerAssistantPanel({
             hour: '2-digit',
             minute: '2-digit',
           }),
-        messages: currentLiveMessages,
+        messages: visibleLiveMessages,
         savedAt: new Date().toISOString(),
       };
       const updated = [conv, ...savedConversations];
@@ -575,7 +579,7 @@ export function PlannerAssistantPanel({
     setViewingConvId(null);
     setDiscussionName('');
     localStorage.removeItem(`assistant-discussion-${tripId}`);
-  }, [currentLiveMessages, discussionName, resetAssistantConversation, savedConversations, tripId]);
+  }, [discussionName, resetAssistantConversation, savedConversations, tripId, visibleLiveMessages]);
 
   const handleSwitchConversation = useCallback((convId: string | null) => {
     setViewingConvId(convId);
@@ -839,7 +843,7 @@ export function PlannerAssistantPanel({
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', bounce: 0, duration: 0.32 }}
-              className="absolute inset-y-0 left-0 z-40 flex w-full lg:w-[clamp(380px,46vw,500px)] max-w-full flex-col overflow-hidden border-r border-[var(--color-border)] bg-[#fcfcfb]"
+              className="absolute inset-y-0 left-0 z-40 flex w-full max-w-full flex-col overflow-hidden border-r border-[var(--color-border)] bg-[#fcfcfb] lg:w-[clamp(380px,46vw,500px)]"
             >
               {assistantSurface}
             </motion.aside>

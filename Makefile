@@ -1,4 +1,4 @@
-.PHONY: up down logs logs-worker migrate fmt lint reset-keycloak
+.PHONY: up down logs logs-worker logs-frontend migrate fmt lint reset-keycloak
 
 up:
 	docker compose up -d --build
@@ -14,6 +14,9 @@ logs:
 
 logs-worker:
 	docker compose logs -f --tail=200 worker
+
+logs-frontend:
+	docker compose logs -f --tail=200 frontend
 
 migrate:
 	docker compose exec api uv run alembic -c alembic.ini upgrade head

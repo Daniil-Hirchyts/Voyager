@@ -1,7 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
-/* ── Page foundation ── */
 html,
 body {
   height: 100%;
@@ -20,7 +19,6 @@ body.voyager-login-body {
     linear-gradient(175deg, #d9e8f5 0%, #e6f1fb 40%, #edf5fc 100%);
 }
 
-/* ── Layout column resets ── */
 .col-xs-12,
 .col-sm-12,
 .col-md-10,
@@ -36,15 +34,11 @@ body.voyager-login-body {
   padding: 0 !important;
 }
 
-/* ── Form groups ──
-   With doUseDefaultCss=false, keycloakify emits the key name as the CSS class
-   (e.g. "kcFormGroupClass" instead of "form-group"), so we target both. */
 .form-group,
 .kcFormGroupClass {
   margin-bottom: 1rem;
 }
 
-/* ── Labels ── */
 .control-label,
 .pf-c-form__label,
 .kcLabelClass {
@@ -59,8 +53,6 @@ body.voyager-login-body {
   color: #c45f4f;
 }
 
-/* ── Text inputs ──
-   Targets both the PF class (doUseDefaultCss=true) and the kc key name (doUseDefaultCss=false). */
 .pf-c-form-control,
 .form-control,
 .kcInputClass {
@@ -97,7 +89,6 @@ body.voyager-login-body {
   border-color: rgba(196, 95, 79, 0.55) !important;
 }
 
-/* ── Password input group ── */
 .pf-c-input-group,
 .kcInputGroup {
   display: grid !important;
@@ -147,7 +138,6 @@ body.voyager-login-body {
   color: #1a1615 !important;
 }
 
-/* ── Error / helper text ── */
 .kc-feedback-text,
 .pf-m-error.required,
 .pf-c-form__helper-text,
@@ -160,7 +150,6 @@ body.voyager-login-body {
   color: #c45f4f !important;
 }
 
-/* ── Form options row (remember me + forgot password) ── */
 #kc-form-options {
   display: flex !important;
   align-items: center !important;
@@ -183,7 +172,6 @@ input[type='checkbox'] {
   cursor: pointer !important;
 }
 
-/* ── Submit button (DefaultPage-rendered) ── */
 #kc-form-buttons {
   margin-top: 0.25rem !important;
 }
@@ -216,7 +204,6 @@ input[type='checkbox'] {
   transform: translateY(-1px) !important;
 }
 
-/* ── Links ── */
 a {
   color: #1a1615;
   text-decoration: none;
@@ -233,7 +220,6 @@ a:hover {
   font-size: 0.8rem;
 }
 
-/* ── Alert messages ── */
 .pf-c-alert,
 .alert {
   display: flex !important;
@@ -279,7 +265,6 @@ a:hover {
   color: #4f8fc8 !important;
 }
 
-/* ── Social providers ── */
 #kc-social-providers {
   margin-top: 0;
   padding-top: 0;
@@ -296,7 +281,6 @@ a:hover {
   letter-spacing: 0.04em;
 }
 
-/* Both PF class and kc key name */
 .kc-social-links,
 .kcFormSocialAccountListClass {
   display: grid !important;
@@ -335,7 +319,6 @@ a:hover {
   text-align: center !important;
 }
 
-/* ── Try another way ── */
 #try-another-way {
   display: flex;
   align-items: center;
@@ -350,7 +333,6 @@ a:hover {
   font-weight: 600;
 }
 
-/* ── Register / info footers ── */
 #kc-registration,
 #kc-info-wrapper {
   text-align: center;
@@ -359,7 +341,6 @@ a:hover {
   margin-top: 0.75rem;
 }
 
-/* ── Responsive ── */
 @media (max-width: 480px) {
   body.voyager-login-body {
     padding: 0;
@@ -370,7 +351,6 @@ hr {
   display: none !important;
 }
 
-/* ── Password visibility icons ── */
 .kcFormPasswordVisibilityIconShow,
 .kcFormPasswordVisibilityIconHide {
   display: inline-block !important;
@@ -390,7 +370,6 @@ hr {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237b8796' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24'/%3E%3Cline x1='1' y1='1' x2='23' y2='23'/%3E%3C/svg%3E") !important;
 }
 
-/* ── Entrance animation ── */
 @keyframes authCardIn {
   from {
     opacity: 0;

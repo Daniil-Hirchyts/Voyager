@@ -55,7 +55,10 @@ function getInitials(name: string) {
 
 const BTN =
   'flex size-9 items-center justify-center rounded-[12px] text-[var(--color-text-muted)] transition-colors duration-300';
-const BTN_RAIL = cn(BTN, 'hover:text-[var(--color-text)] data-[checked=true]:text-[var(--color-text)]');
+const BTN_RAIL = cn(
+  BTN,
+  'hover:text-[var(--color-text)] data-[checked=true]:text-[var(--color-text)]',
+);
 const BTN_ACTIVE = cn(
   BTN_RAIL,
   'text-[var(--color-cta)] data-[checked=true]:text-[var(--color-cta)]',
@@ -72,7 +75,9 @@ const RAIL_HOVER_TRANSITION = {
 } satisfies NonNullable<AnimatedBackgroundProps['transition']>;
 
 function Divider({ className }: { className?: string }) {
-  return <div className={cn('mx-auto my-1 w-6 border-t border-[var(--color-border)]', className)} />;
+  return (
+    <div className={cn('mx-auto my-1 w-6 border-t border-[var(--color-border)]', className)} />
+  );
 }
 
 function RailTooltip({ label, children }: { label: string; children: ReactNode }) {
@@ -240,7 +245,6 @@ function AppSideRail() {
       className="relative z-30 flex h-full w-[56px] shrink-0 flex-col items-center border-r border-[var(--color-border)] bg-white py-3 lg:z-[60]"
       data-testid="app-side-rail"
     >
-      {/* Logo */}
       <RailTooltip label="Voyager">
         <Link
           to="/app/trips"
@@ -253,7 +257,6 @@ function AppSideRail() {
 
       <Divider />
 
-      {/* Nav */}
       <nav>
         <RailAnimatedColumn>
           <RailActionLink
@@ -279,18 +282,20 @@ function AppSideRail() {
         </RailAnimatedColumn>
       </nav>
 
-      {/* Planner instruments */}
       {isPlannerPage && plannerInstruments ? (
         <>
           <Divider />
-         
+
           <RailAnimatedColumn>
             <RailActionButton
               data-id="share-trip"
               tooltip="Collaboration & Share"
               type="button"
               aria-label="Share trip"
-              onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onShare(); }}
+              onClick={() => {
+                plannerInstruments.onCloseAssistant();
+                plannerInstruments.onShare();
+              }}
               className={BTN_RAIL}
             >
               <Share2 className="size-[1rem]" />
@@ -300,7 +305,10 @@ function AppSideRail() {
               tooltip="Trip settings"
               type="button"
               aria-label="Trip settings"
-              onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onOpenSettings(); }}
+              onClick={() => {
+                plannerInstruments.onCloseAssistant();
+                plannerInstruments.onOpenSettings();
+              }}
               className={BTN_RAIL}
             >
               <SlidersHorizontal className="size-[1rem]" />
@@ -351,7 +359,10 @@ function AppSideRail() {
                   tooltip="Accommodation"
                   type="button"
                   aria-label="Scroll to accommodation"
-                  onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onScrollToSection('hotel'); }}
+                  onClick={() => {
+                    plannerInstruments.onCloseAssistant();
+                    plannerInstruments.onScrollToSection('hotel');
+                  }}
                   className={BTN_RAIL}
                 >
                   <BedDouble className="size-[1rem]" />
@@ -361,7 +372,10 @@ function AppSideRail() {
                   tooltip="Travel"
                   type="button"
                   aria-label="Scroll to travel"
-                  onClick={() => { plannerInstruments.onCloseAssistant(); plannerInstruments.onScrollToSection('travel'); }}
+                  onClick={() => {
+                    plannerInstruments.onCloseAssistant();
+                    plannerInstruments.onScrollToSection('travel');
+                  }}
                   className={BTN_RAIL}
                 >
                   <Plane className="size-[1rem]" />
@@ -369,14 +383,16 @@ function AppSideRail() {
               </RailAnimatedColumn>
             </>
           )}
-           <Divider />
+          <Divider />
           <div className="relative z-30 flex flex-col items-center py-1.5">
             <RailTooltip label={isAssistantOpen ? 'Close assistant' : 'Open assistant'}>
               <div className="relative">
                 <button
                   data-id="planner-assistant"
                   type="button"
-                  aria-label={isAssistantOpen ? 'Close planner assistant' : 'Open planner assistant'}
+                  aria-label={
+                    isAssistantOpen ? 'Close planner assistant' : 'Open planner assistant'
+                  }
                   onClick={plannerInstruments.onToggleAssistant}
                   className={cn(BTN_ASSISTANT, isAssistantOpen && 'bg-[#2A2A2A]')}
                 >
@@ -392,7 +408,6 @@ function AppSideRail() {
 
       <Divider />
 
-      {/* User */}
       <DropdownMenu>
         <RailTooltip label={userName}>
           <DropdownMenuTrigger asChild>
@@ -414,18 +429,17 @@ function AppSideRail() {
           </DropdownMenuTrigger>
         </RailTooltip>
 
-        <DropdownMenuContent
-          side="right"
-          align="end"
-          sideOffset={10}
-          className="w-56"
-        >
+        <DropdownMenuContent side="right" align="end" sideOffset={10} className="w-56">
           <DropdownMenuLabel className="px-3 py-2 tracking-normal normal-case">
             <div className="flex flex-col gap-0.5">
               <span className="text-[0.92rem] font-medium text-[var(--color-text)]">
                 {userName}
               </span>
-              {userEmail && <span className="text-xs font-normal text-[var(--color-text-muted)]">{userEmail}</span>}
+              {userEmail && (
+                <span className="text-xs font-normal text-[var(--color-text-muted)]">
+                  {userEmail}
+                </span>
+              )}
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-[var(--color-border)]" />

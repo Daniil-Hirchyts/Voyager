@@ -55,11 +55,9 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
 
     toast.promise(
       async () => {
-        // 1. Submit export
         const accepted = await submitExport(tripId, format, tripVersion, idempotencyKey);
         const jobId = accepted.job_id;
 
-        // 2. Poll job
         let jobResult: unknown = null;
         while (true) {
           const job = await getJob(jobId);
@@ -77,7 +75,6 @@ export function ExportMenu({ tripId, tripVersion, asMenuItems, trigger }: Props)
           await new Promise((resolve) => setTimeout(resolve, 2000));
         }
 
-        // 3. Get export record and download
         const exportId =
           jobResult && typeof jobResult === 'object' && 'export_id' in jobResult
             ? ((jobResult as { export_id?: string }).export_id ?? null)

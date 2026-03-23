@@ -39,21 +39,31 @@ function CodeBlockCode({
   const [highlightedHtml, setHighlightedHtml] = useState<string | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     async function highlight() {
       if (!code) {
-        setHighlightedHtml('<pre><code></code></pre>');
+        if (active) {
+          setHighlightedHtml('<pre><code></code></pre>');
+        }
         return;
       }
 
       const html = await codeToHtml(code, { lang: language, theme });
-      setHighlightedHtml(html);
+      if (active) {
+        setHighlightedHtml(html);
+      }
     }
+
     highlight();
+
+    return () => {
+      active = false;
+    };
   }, [code, language, theme]);
 
   const classNames = cn('w-full overflow-x-auto text-[13px] [&>pre]:px-4 [&>pre]:py-4', className);
 
-  // SSR fallback: render plain code if not hydrated yet
   return highlightedHtml ? (
     <div className={classNames} dangerouslySetInnerHTML={{ __html: highlightedHtml }} {...props} />
   ) : (

@@ -3,8 +3,6 @@ import type { PlannerActivity, PlannerResponse, Trip } from '@/shared/api/types'
 import { filterPlannerActivitiesByBucket, type PlannerActivityBucket } from './activity-buckets';
 import type { PlannerDay } from '@/shared/api/types';
 
-// ─── Number / format helpers ─────────────────────────────────────────────────
-
 export function asFiniteNumber(value: string | number | null | undefined) {
   if (value == null || value === '') {
     return null;
@@ -47,8 +45,6 @@ export function formatTripTypeLabel(tripType: string | null | undefined) {
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
 }
-
-// ─── Budget helpers ───────────────────────────────────────────────────────────
 
 type BudgetGroup = {
   currency: string | null;
@@ -140,8 +136,6 @@ export function buildBudgetOverview(trip: Trip, activities: PlannerActivity[]) {
   };
 }
 
-// ─── Standalone activity groups ───────────────────────────────────────────────
-
 export type PlannerStandaloneActivityGroup = {
   id: string;
   dayId: string | null;
@@ -224,8 +218,6 @@ export function standaloneSectionEmptyCopy(bucket: 'travel' | 'accommodation') {
     ? 'Add hotels and stays here, then assign them to the right day when needed.'
     : 'Add flights, trains, and transfers here, then assign them to the right day when needed.';
 }
-
-// ─── Optimistic updates ───────────────────────────────────────────────────────
 
 export function applyOptimisticVisited(
   data: PlannerResponse,

@@ -47,8 +47,11 @@ export default function TripInvitePage() {
 
   return (
     <WorkspacePage className="flex min-h-[80svh] items-center justify-center p-4">
-      <div className="w-full max-w-[540px] animate-in fade-in zoom-in-95 duration-500">
-        <Card variant="elevated" className="overflow-hidden rounded-[32px] border-white/60 shadow-xl">
+      <div className="animate-in fade-in zoom-in-95 w-full max-w-[540px] duration-500">
+        <Card
+          variant="elevated"
+          className="overflow-hidden rounded-[32px] border-white/60 shadow-xl"
+        >
           <CardHeader className="items-center pb-2 text-center">
             <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
               <UserPlus className="size-7" />
@@ -69,7 +72,6 @@ export default function TripInvitePage() {
               </div>
             ) : preview.data ? (
               <div className="flex flex-col gap-5">
-                {/* Trip Info Box */}
                 <div className="rounded-2xl border border-[var(--color-border-strong)] bg-[var(--color-secondary-surface)] p-5">
                   <span className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                     Shared trip
@@ -83,7 +85,6 @@ export default function TripInvitePage() {
                   </p>
                 </div>
 
-                {/* Meta details */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col gap-1">
                     <span className="text-[0.65rem] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
@@ -111,7 +112,6 @@ export default function TripInvitePage() {
                   </div>
                 </div>
 
-                {/* Security badges */}
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
                   <div className="flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-white px-2.5 py-1 text-[0.68rem] font-medium text-[var(--color-text-muted)]">
                     <ShieldCheck className="size-3 text-[var(--color-success)]" />
@@ -125,7 +125,7 @@ export default function TripInvitePage() {
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-[var(--color-danger)]/30 bg-[var(--color-danger)]/5 p-6 text-center">
-                <p className="text-sm font-medium leading-relaxed text-[var(--color-danger)]">
+                <p className="text-sm leading-relaxed font-medium text-[var(--color-danger)]">
                   {errorMessage}
                 </p>
                 <Button asChild variant="link" className="mt-2 text-xs">
@@ -150,7 +150,11 @@ export default function TripInvitePage() {
                   )}
                   Accept and open trip
                 </Button>
-                <Button asChild variant="ghost" className="h-10 w-full rounded-full text-[0.88rem] text-[var(--color-text-muted)] hover:bg-[var(--color-secondary-surface)]">
+                <Button
+                  asChild
+                  variant="ghost"
+                  className="h-10 w-full rounded-full text-[0.88rem] text-[var(--color-text-muted)] hover:bg-[var(--color-secondary-surface)]"
+                >
                   <Link to="/app/trips">
                     <ArrowLeft className="mr-2 size-3.5" />
                     Back to trips
@@ -165,10 +169,9 @@ export default function TripInvitePage() {
           </CardFooter>
         </Card>
 
-        {/* Footer info */}
         <p className="mt-6 px-4 text-center text-[0.78rem] leading-relaxed text-[var(--color-text-muted)]">
-          By joining, you'll be able to see and edit all activities, assets, and route details
-          for this trip. This invitation link is unique to you.
+          By joining, you'll be able to see and edit all activities, assets, and route details for
+          this trip. This invitation link is unique to you.
         </p>
       </div>
     </WorkspacePage>

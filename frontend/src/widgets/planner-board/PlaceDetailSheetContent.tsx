@@ -1,8 +1,4 @@
-import {
-  Fragment,
-  type ReactNode,
-  useId,
-} from 'react';
+import { type ReactNode, useId } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   BedDouble,
@@ -58,11 +54,7 @@ import type {
 import { cn } from '@/shared/lib/cn';
 import { formatMoney } from '@/shared/lib/format';
 import { resolveMediaUrl } from '@/shared/lib/media';
-import {
-  plannerCategoryDescription,
-  plannerCategoryLabel,
-  plannerTravelRoute,
-} from './categories';
+import { plannerCategoryDescription, plannerCategoryLabel, plannerTravelRoute } from './categories';
 import type { PlannerMapStop } from './planner-map-utils';
 import type {
   PlannerRecommendationEntry,
@@ -102,8 +94,6 @@ export type ResolvedPlaceDetail = {
   mentions: PlannerMapPlaceDetail['mentions'];
   related_activities: PlannerMapPlaceDetail['related_activities'];
 };
-
-// ─── Private helper functions ────────────────────────────────────────────────
 
 export function toSavedSearchItem(place: {
   id: string;
@@ -314,8 +304,6 @@ export function mergePlaceDetail(
   };
 }
 
-// ─── DetailSegmentedTabs (private helper component) ──────────────────────────
-
 function DetailSegmentedTabs({
   tabs,
   activeTab,
@@ -338,9 +326,14 @@ function DetailSegmentedTabs({
         compact ? 'px-2.5 py-1.5' : 'px-3 py-1.5',
       )}
     >
-      <div className={cn('flex items-center gap-1.5 sm:gap-2', tabs.length ? 'justify-between' : 'justify-end')}>
+      <div
+        className={cn(
+          'flex items-center gap-1.5 sm:gap-2',
+          tabs.length ? 'justify-between' : 'justify-end',
+        )}
+      >
         {tabs.length ? (
-          <div className="min-w-0 flex-1 overflow-x-auto no-scrollbar">
+          <div className="no-scrollbar min-w-0 flex-1 overflow-x-auto">
             <div
               className="inline-flex min-w-max items-center gap-0 rounded-[40px] border border-[var(--color-border)] bg-[var(--color-border)] p-[2px]"
               role="tablist"
@@ -386,7 +379,9 @@ function DetailSegmentedTabs({
                     }}
                     className={cn(
                       'inline-flex shrink-0 items-center justify-center rounded-[40px] font-semibold tracking-[-0.02em] whitespace-nowrap text-[#5f6b7e] transition-[transform,color] duration-200 hover:text-[#1a1a1a] active:scale-[0.98] data-[checked=true]:text-white',
-                      compact ? 'h-7 px-2 text-[0.68rem] sm:px-2.5 sm:text-[0.72rem]' : 'h-8 px-2.5 text-[0.74rem] sm:px-3 sm:text-[0.78rem]',
+                      compact
+                        ? 'h-7 px-2 text-[0.68rem] sm:px-2.5 sm:text-[0.72rem]'
+                        : 'h-8 px-2.5 text-[0.74rem] sm:px-3 sm:text-[0.78rem]',
                     )}
                   >
                     {label}
@@ -396,13 +391,13 @@ function DetailSegmentedTabs({
             </div>
           </div>
         ) : null}
-        {controls ? <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">{controls}</div> : null}
+        {controls ? (
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">{controls}</div>
+        ) : null}
       </div>
     </div>
   );
 }
-
-// ─── DetailSheetContent ───────────────────────────────────────────────────────
 
 export function DetailSheetContent({
   tripId,
@@ -554,7 +549,6 @@ export function DetailSheetContent({
     ? (ACTIVITY_CATEGORY_ICON[activity.category] ?? Landmark)
     : Landmark;
 
-  // Which tabs to show depends on the activity type
   const visibleTabs: Array<[string, string]> = hasActivityTab
     ? activity?.category === 'travel'
       ? activity
@@ -716,7 +710,6 @@ export function DetailSheetContent({
         )}
       >
         {compact ? (
-          /* Compact layout (map panel): badges → title → subtitle */
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               {selectedStop ? (
@@ -760,7 +753,6 @@ export function DetailSheetContent({
             ) : null}
           </div>
         ) : (
-          /* Full drawer layout: title prominent at top, meta badges below */
           <>
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               {selectedStop ? (
@@ -837,14 +829,22 @@ export function DetailSheetContent({
             transition={{ duration: 0.15 }}
           >
             {isDetailLoading && !detail ? (
-              <div className={cn("grid gap-3", compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3')}>
+              <div
+                className={cn('grid gap-3', compact ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-3')}
+              >
                 <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
                 <Skeleton className={cn('rounded-[18px]', compact ? 'h-[5rem]' : 'h-[6rem]')} />
-                <Skeleton className={cn('col-span-2 sm:col-span-3 rounded-[18px]', compact ? 'h-9' : 'h-10')} />
+                <Skeleton
+                  className={cn(
+                    'col-span-2 rounded-[18px] sm:col-span-3',
+                    compact ? 'h-9' : 'h-10',
+                  )}
+                />
               </div>
             ) : activeTab === 'about' ? (
-              <div className={cn("grid gap-3", compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3')}>
-                {/* Row 1 col 1-2 — Summary (hidden when no content) */}
+              <div
+                className={cn('grid gap-3', compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-3')}
+              >
                 {summary ? (
                   <div
                     className={cn(
@@ -872,7 +872,6 @@ export function DetailSheetContent({
                   </div>
                 ) : null}
 
-                {/* Row 1 col 3 — Photo (spans both rows, or all 3 cols when no summary) */}
                 {detailPhotoUrl ? (
                   <PhotoViewerProvider>
                     <PhotoViewer src={resolveMediaUrl(heroPhoto?.image_url) ?? detailPhotoUrl}>
@@ -896,14 +895,8 @@ export function DetailSheetContent({
                   </PhotoViewerProvider>
                 ) : null}
 
-                {/* Row 2 col 1 — Tags */}
                 {visibleTags.length ? (
-                  <div
-                    className={cn(
-                      'rounded-[22px] bg-white',
-                      compact ? 'p-3.5' : 'p-4',
-                    )}
-                  >
+                  <div className={cn('rounded-[22px] bg-white', compact ? 'p-3.5' : 'p-4')}>
                     <p
                       className={cn(
                         'font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase',
@@ -938,14 +931,8 @@ export function DetailSheetContent({
                   </div>
                 ) : null}
 
-                {/* Row 3 col 2 — Rating + meta + links */}
                 {detail?.rating != null || detailMeta.length > 0 || detailLinks.length > 0 ? (
-                  <div
-                    className={cn(
-                      'rounded-[22px] bg-white',
-                      compact ? 'p-3.5' : 'p-4',
-                    )}
-                  >
+                  <div className={cn('rounded-[22px] bg-white', compact ? 'p-3.5' : 'p-4')}>
                     <p
                       className={cn(
                         'font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase',
@@ -995,7 +982,6 @@ export function DetailSheetContent({
                   </div>
                 ) : null}
 
-                {/* Row 3 — Opening Hours (full width) */}
                 {visibleHours.length ? (
                   <div
                     className={cn(
@@ -1055,10 +1041,7 @@ export function DetailSheetContent({
                   {reviews.slice(0, 6).map((review) => (
                     <div
                       key={review.review_id}
-                      className={cn(
-                        'rounded-[18px] bg-white',
-                        compact ? 'p-3.5' : 'p-4',
-                      )}
+                      className={cn('rounded-[18px] bg-white', compact ? 'p-3.5' : 'p-4')}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p
@@ -1152,10 +1135,7 @@ export function DetailSheetContent({
               <div className="space-y-3">
                 {activity.description ? (
                   <div
-                    className={cn(
-                      'rounded-[18px] bg-white',
-                      compact ? 'px-3.5 py-3' : 'px-4 py-4',
-                    )}
+                    className={cn('rounded-[18px] bg-white', compact ? 'px-3.5 py-3' : 'px-4 py-4')}
                   >
                     <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Summary
@@ -1222,10 +1202,7 @@ export function DetailSheetContent({
 
                 {activity.category === 'travel' && activityTravelRoute.length > 0 ? (
                   <div
-                    className={cn(
-                      'rounded-[18px] bg-white',
-                      compact ? 'px-3.5 py-3' : 'px-4 py-4',
-                    )}
+                    className={cn('rounded-[18px] bg-white', compact ? 'px-3.5 py-3' : 'px-4 py-4')}
                   >
                     <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Route
@@ -1255,10 +1232,7 @@ export function DetailSheetContent({
 
                 {activity.category === 'hotel' ? (
                   <div
-                    className={cn(
-                      'rounded-[18px] bg-white',
-                      compact ? 'px-3.5 py-3' : 'px-4 py-4',
-                    )}
+                    className={cn('rounded-[18px] bg-white', compact ? 'px-3.5 py-3' : 'px-4 py-4')}
                   >
                     <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Stay
@@ -1300,10 +1274,7 @@ export function DetailSheetContent({
 
                 {activity.notes ? (
                   <div
-                    className={cn(
-                      'rounded-[18px] bg-white',
-                      compact ? 'px-3.5 py-3' : 'px-4 py-4',
-                    )}
+                    className={cn('rounded-[18px] bg-white', compact ? 'px-3.5 py-3' : 'px-4 py-4')}
                   >
                     <p className="text-[0.72rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                       Notes

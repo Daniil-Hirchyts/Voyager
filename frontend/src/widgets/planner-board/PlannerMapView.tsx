@@ -1,97 +1,16 @@
-import {
-  forwardRef,
-  Fragment,
-  type ComponentPropsWithoutRef,
-  type ReactNode,
-  startTransition,
-  useDeferredValue,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { format, parseISO } from 'date-fns';
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { useQueryClient } from '@tanstack/react-query';
-import type { MapMouseEvent } from '@vis.gl/react-google-maps';
-import {
-  BedDouble,
-  CarFront,
-  CalendarDays,
-  Check,
-  ChevronDown,
-  Clock3,
-  Compass,
-  Download,
-  ExternalLink,
-  FileText,
-  Landmark,
-  Layers3,
-  MapPin,
-  Pencil,
-  Plane,
-  Plus,
-  Receipt,
-  Route,
-  Search,
-  ShipWheel,
-  Sparkles,
-  Star,
-  Ticket,
-  TrainFront,
-  Trash2,
-  Utensils,
-  X,
-  Footprints,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { AnimatedMoney, AnimatedNumber } from '@/components/ui/animated-number';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { AnimatedBackground } from '@/components/ui/animated-background';
-import { ProgressiveBlur } from '@/components/ui/progressive-blur';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Carousel } from '@/components/ui/carousel';
-import { Checkbox } from '@/components/ui/checkbox';
-import * as AccordionPrimitive from '@radix-ui/react-accordion';
+import { config } from '@/app/config';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
+import { AnimatedMoney, AnimatedNumber } from '@/components/ui/animated-number';
+import { Badge } from '@/components/ui/badge';
+import { Carousel } from '@/components/ui/carousel';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Sheet,
   SheetContent,
@@ -100,8 +19,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { config } from '@/app/config';
-import { PhotoViewer, PhotoViewerProvider } from '@/components/ui/photo-viewer';
 import { createPlannerActivity, patchActivity, reorderActivities } from '@/entities/activity/api';
 import { getGooglePlace } from '@/entities/place/api';
 import {
@@ -112,74 +29,109 @@ import {
   usePlace,
   usePlaceSearch,
 } from '@/entities/place/queries';
-import { plannerKeys } from '@/entities/planner/queries';
 import { usePlannerMapPlaceDetail } from '@/entities/planner-map/queries';
+import { plannerKeys } from '@/entities/planner/queries';
 import { estimateRouteLegs } from '@/entities/routes/api';
 import { useRouteLegEstimates } from '@/entities/routes/queries';
 import { useTripAssets } from '@/entities/trip-asset/queries';
-import { useTripMapLayers } from '@/entities/trip-map-layer/queries';
-import { useTripSharing } from '@/entities/trip-sharing/queries';
-import { usePatchTrip } from '@/entities/trip/queries';
 import { useTripCoverPhotoManager } from '@/entities/trip/useTripCoverPhotoManager';
-import { useProfile } from '@/entities/user/queries';
 import type {
-  GooglePlaceCandidate,
   PlannerActivity,
   PlannerDay,
-  PlannerMapPlaceDetail,
   PlannerResponse,
   RouteTravelMode,
   Trip,
-  TripCollaborator,
 } from '@/shared/api/types';
 import { useIsMobile } from '@/shared/hooks/use-mobile';
-import { cn } from '@/shared/lib/cn';
-import { CURRENCY_OPTIONS } from '@/shared/lib/currencies';
-import { formatMoney } from '@/shared/lib/format';
-import { resolveMediaUrl } from '@/shared/lib/media';
-import { usePlannerStore } from '@/shared/stores/planner.store';
-import { useSideRailStore } from '@/shared/stores/side-rail.store';
 import {
   ControlPosition,
   GoogleDirectionsRoute,
-  VoyagerMap,
   GooglePolyline,
-  type LatLngPoint,
   MapFitBounds,
   MapPanTo,
-  TripMapLayerRenderer,
+  VoyagerMap,
   VoyagerMapControl,
   VoyagerMarker,
+  type LatLngPoint,
 } from '@/shared/layouts/google-maps';
-import { ActivityCard } from './ActivityCard';
-import { ExportMenu } from './ExportMenu';
-import { TravelConnector } from './TravelConnector';
+import { cn } from '@/shared/lib/cn';
+import { usePlannerStore } from '@/shared/stores/planner.store';
+import { useSideRailStore } from '@/shared/stores/side-rail.store';
 import TripAssetManager from '@/widgets/trip-assets';
+import { useQueryClient, type QueryClient } from '@tanstack/react-query';
+import type { MapMouseEvent } from '@vis.gl/react-google-maps';
+import {
+  BedDouble,
+  CalendarDays,
+  Compass,
+  Download,
+  FileText,
+  Landmark,
+  Layers3,
+  MapPin,
+  Receipt,
+  Route,
+  Search,
+  Sparkles,
+  Utensils,
+} from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  forwardRef,
+  Fragment,
+  startTransition,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentPropsWithoutRef,
+  type ReactNode,
+} from 'react';
+import { toast } from 'sonner';
+import { ExportMenu } from './ExportMenu';
+import {
+  DetailSheetContent,
+  inferActivityCategory,
+  isRecommendationSearchItem,
+  mergePlaceDetail,
+  recommendationCoordinates,
+  resolveGooglePlaceId,
+  toGoogleSearchItem,
+  toRecommendationSearchItem,
+  toSavedSearchItem,
+  type ResolvedPlaceDetail,
+  type SearchResultItem,
+} from './PlaceDetailSheetContent';
+import {
+  buildApplyPreviewOrder,
+  dayProgressLabel,
+  PlannerMapDayAccordion,
+  PlannerMapPin,
+  PlannerSidebarSectionTrigger,
+  PlannerStandaloneActivitySection,
+} from './PlannerMapActivitySections';
 import {
   CompactCarouselActions,
   CompactRefreshButton,
   PlannerRecommendationsCompactSection,
   PlannerRecommendationsPanel,
 } from './PlannerRecommendations';
-import {
-  plannerCategoryDescription,
-  plannerCategoryLabel,
-  plannerPrimaryPlace,
-  plannerTravelRoute,
-  plannerTravelMode,
-  plannerTravelModeLabel,
-  type PlannerTravelDisplayMode,
-} from './categories';
+import { PlannerBudgetOverview, PlannerTripHeroCard } from './PlannerTripHeroCard';
 import {
   filterPlannerActivitiesByBucket,
   filterPlannerDaysByBucket,
   mergeBucketActivityOrder,
-  type PlannerActivityBucket,
 } from './activity-buckets';
 import {
+  plannerCategoryDescription,
+  plannerPrimaryPlace,
+  plannerTravelModeLabel,
+} from './categories';
+import {
   buildPlannerMapDayMetrics,
-  buildPlannerMapMetricsForActivities,
   buildPlannerMapLegPayload,
+  buildPlannerMapMetricsForActivities,
   buildPlannerMapSections,
   filterVisibleStops,
   optimizePlannerDayStops,
@@ -188,56 +140,21 @@ import {
   type PlannerMapSection,
   type PlannerMapStop,
 } from './planner-map-utils';
+import {
+  applyOptimisticVisited,
+  asFiniteNumber,
+  buildBudgetOverview,
+  buildStandaloneActivityGroups,
+} from './planner-map-view.utils';
+import {
+  buildPlannerTravelOverlays,
+  travelOverlayColor,
+  travelOverlayIcon,
+} from './planner-travel-overlays';
 import type {
   PlannerRecommendationEntry,
   PlannerRecommendationsController,
 } from './usePlannerRecommendations';
-import { routeTravelModeDescriptor } from './travel-modes';
-import { VoyagerLoader } from '../app-shell/logo';
-import {
-  asFiniteNumber,
-  buildBudgetOverview,
-  buildStandaloneActivityGroups,
-  standaloneSectionTitle,
-  standaloneSectionSummary,
-  standaloneSectionEmptyCopy,
-  formatTripDateRangeLabel,
-  formatTripTypeLabel,
-  applyOptimisticVisited,
-  type PlannerStandaloneActivityGroup,
-} from './planner-map-view.utils';
-import { PlannerTripHeroCard, PlannerBudgetOverview } from './PlannerTripHeroCard';
-import {
-  type SearchResultItem,
-  type ResolvedPlaceDetail,
-  DetailSheetContent,
-  toSavedSearchItem,
-  toGoogleSearchItem,
-  toRecommendationSearchItem,
-  isRecommendationSearchItem,
-  recommendationCoordinates,
-  inferActivityCategory,
-  resolveGooglePlaceId,
-  mergePlaceDetail,
-} from './PlaceDetailSheetContent';
-import {
-  PlannerMapDayAccordion,
-  PlannerStandaloneActivityGroupCard,
-  PlannerStandaloneActivitySection,
-  PlannerMapPin,
-  PlannerSidebarSectionTrigger,
-  buildApplyPreviewOrder,
-  dayProgressLabel,
-} from './PlannerMapActivitySections';
-import {
-  type PlannerTravelOverlay,
-  type PlannerTravelRoutePoint,
-  travelOverlayColor,
-  travelOverlayIcon,
-  buildPlannerTravelOverlays,
-  travelOverlayRoutePath,
-  midpointForTravelPath,
-} from './planner-travel-overlays';
 
 interface Props {
   trip: Trip;
@@ -282,7 +199,7 @@ type QuickCategory = {
   category?: string;
 };
 
-type PreviewPlan = {
+type PlannerPreviewState = {
   order: string[];
   metrics: ReturnType<typeof buildPlannerMapMetricsForActivities>;
 };
@@ -291,6 +208,7 @@ const FLOATING_ICON_BUTTON_CLASS =
   'pointer-events-auto inline-flex h-[3.25rem] w-[3.25rem] items-center justify-center rounded-full border border-white/70 bg-white/92 text-[var(--color-text)] backdrop-blur transition-colors hover:bg-white shadow-sm hover:shadow-md';
 const RECOMMENDATION_MARKER_COLOR = '#00C978';
 const SAVED_RECOMMENDATION_MARKER_COLOR = '#FFA200';
+const PLANNER_RAIL_SECTIONS_STORAGE_KEY_PREFIX = 'planner-rail-sections';
 
 const QUICK_CATEGORIES: QuickCategory[] = [
   { id: 'food', label: 'Food', query: 'restaurants', category: 'restaurant' },
@@ -342,6 +260,63 @@ function expandedDayIdsToAccordionState(expandedDayIds: string[], sectionDayIds:
   return Object.fromEntries(
     sectionDayIds.map((dayId) => [dayId, expandedDayIdSet.has(dayId)]),
   ) as Record<string, boolean>;
+}
+
+function getPlannerRailSectionsStorageKey(tripId: string) {
+  return `${PLANNER_RAIL_SECTIONS_STORAGE_KEY_PREFIX}:${tripId}`;
+}
+
+function readPlannerRailSections(tripId: string) {
+  try {
+    const stored = localStorage.getItem(getPlannerRailSectionsStorageKey(tripId));
+    return stored ? (JSON.parse(stored) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function persistPlannerRailSections(tripId: string, sectionKeys: string[]) {
+  try {
+    localStorage.setItem(getPlannerRailSectionsStorageKey(tripId), JSON.stringify(sectionKeys));
+  } catch {}
+}
+
+function applyPreviewOrder(activities: PlannerActivity[], previewOrder: string[]) {
+  return mergeBucketActivityOrder(activities, 'main', previewOrder).map((activity, index) => ({
+    ...activity,
+    order_index: index,
+  }));
+}
+
+function applyOptimisticVisitedUpdate(
+  queryClient: QueryClient,
+  tripId: string,
+  activityId: string,
+  visitedAt: string | null,
+) {
+  const previousPlanner = queryClient.getQueryData<PlannerResponse>(plannerKeys.detail(tripId));
+  if (previousPlanner) {
+    queryClient.setQueryData(
+      plannerKeys.detail(tripId),
+      applyOptimisticVisited(previousPlanner, activityId, visitedAt),
+    );
+  }
+  return previousPlanner;
+}
+
+function restorePlannerData(
+  queryClient: QueryClient,
+  tripId: string,
+  plannerData: PlannerResponse | undefined,
+) {
+  if (plannerData) {
+    queryClient.setQueryData(plannerKeys.detail(tripId), plannerData);
+  }
+}
+
+function invalidatePlannerQueries(queryClient: QueryClient, tripId: string) {
+  void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
+  void queryClient.invalidateQueries({ queryKey: ['planner-map', tripId] });
 }
 
 function activeSelectionTitle(
@@ -498,27 +473,17 @@ export function PlannerMapView({
   const dragActive = Boolean(isDragActive);
   const queryClient = useQueryClient();
   const createPlaceMutation = useCreatePlace();
-  const [railSections, setRailSections] = useState<string[]>(() => {
-    try {
-      const stored = localStorage.getItem(`planner-rail-sections:${tripId}`);
-      if (stored) return JSON.parse(stored) as string[];
-    } catch {}
-    return [];
-  });
+  const [railSections, setRailSections] = useState<string[]>(() => readPlannerRailSections(tripId));
   const handleRailSectionsChange = (next: string[]) => {
     setRailSections(next);
-    try {
-      localStorage.setItem(`planner-rail-sections:${tripId}`, JSON.stringify(next));
-    } catch {}
+    persistPlannerRailSections(tripId, next);
   };
   useEffect(() => {
     onRegisterSectionOpener?.((sectionKey) => {
       setRailSections((prev) => {
         if (prev.includes(sectionKey)) return prev;
         const next = [...prev, sectionKey];
-        try {
-          localStorage.setItem(`planner-rail-sections:${tripId}`, JSON.stringify(next));
-        } catch {}
+        persistPlannerRailSections(tripId, next);
         return next;
       });
     });
@@ -530,11 +495,9 @@ export function PlannerMapView({
       const preview = previewByDayId[day.id];
       if (!preview?.order.length) return day;
 
-      const merged = mergeBucketActivityOrder(day.activities, 'main', preview.order);
-      // We apply a stable but temporary order_index for the preview
       return {
         ...day,
-        activities: merged.map((a, i) => ({ ...a, order_index: i })),
+        activities: applyPreviewOrder(day.activities, preview.order),
       };
     });
   }, [days, previewByDayId]);
@@ -543,8 +506,7 @@ export function PlannerMapView({
     const preview = previewByDayId['inbox'];
     if (!preview?.order.length) return inboxActivities;
 
-    const merged = mergeBucketActivityOrder(inboxActivities, 'main', preview.order);
-    return merged.map((a, i) => ({ ...a, order_index: i }));
+    return applyPreviewOrder(inboxActivities, preview.order);
   }, [inboxActivities, previewByDayId]);
 
   const sections = useMemo(
@@ -560,40 +522,39 @@ export function PlannerMapView({
       ),
     [previewAwareDays, previewAwareInbox],
   );
-  const itineraryAccommodationByDayId = useMemo(
-    () => {
-      const allAccommodationActivities = [...inboxActivities, ...days.flatMap((day) => day.activities)]
-        .filter((activity) => activity.category === 'hotel');
-      const uniqueAccommodationActivities = Array.from(
-        new Map(allAccommodationActivities.map((activity) => [activity.id, activity])).values(),
-      );
-      const singleUnassignedAccommodation =
-        uniqueAccommodationActivities.length === 1 &&
-        uniqueAccommodationActivities[0]?.trip_day_id == null
-          ? uniqueAccommodationActivities[0]
-          : null;
+  const itineraryAccommodationByDayId = useMemo(() => {
+    const allAccommodationActivities = [
+      ...inboxActivities,
+      ...days.flatMap((day) => day.activities),
+    ].filter((activity) => activity.category === 'hotel');
+    const uniqueAccommodationActivities = Array.from(
+      new Map(allAccommodationActivities.map((activity) => [activity.id, activity])).values(),
+    );
+    const singleUnassignedAccommodation =
+      uniqueAccommodationActivities.length === 1 &&
+      uniqueAccommodationActivities[0]?.trip_day_id == null
+        ? uniqueAccommodationActivities[0]
+        : null;
 
-      return Object.fromEntries(
-        days.map((day) => {
-          const dayAccommodationFromActivities = [...day.activities]
-            .sort((left, right) => left.order_index - right.order_index)
-            .find((activity) => activity.category === 'hotel');
-          const dayAccommodationFromGlobal = uniqueAccommodationActivities.find(
-            (activity) => activity.trip_day_id === day.id,
-          );
+    return Object.fromEntries(
+      days.map((day) => {
+        const dayAccommodationFromActivities = [...day.activities]
+          .sort((left, right) => left.order_index - right.order_index)
+          .find((activity) => activity.category === 'hotel');
+        const dayAccommodationFromGlobal = uniqueAccommodationActivities.find(
+          (activity) => activity.trip_day_id === day.id,
+        );
 
-          return [
-            day.id,
-            dayAccommodationFromActivities ??
-              dayAccommodationFromGlobal ??
-              singleUnassignedAccommodation ??
-              null,
-          ] as const;
-        }),
-      );
-    },
-    [days, inboxActivities],
-  );
+        return [
+          day.id,
+          dayAccommodationFromActivities ??
+            dayAccommodationFromGlobal ??
+            singleUnassignedAccommodation ??
+            null,
+        ] as const;
+      }),
+    );
+  }, [days, inboxActivities]);
   const accommodationGroups = useMemo(
     () => buildStandaloneActivityGroups(days, inboxActivities, 'accommodation'),
     [days, inboxActivities],
@@ -652,7 +613,6 @@ export function PlannerMapView({
   const [addingToTrip, setAddingToTrip] = useState(false);
   const [togglingVisited, setTogglingVisited] = useState(false);
   const [optimizingDayId, setOptimizingDayId] = useState<string | null>(null);
-  // No longer using local state for previewByDayId, it's in the store
   const setPreviewByDayId = usePlannerStore((s) => s.setPreviewByDayId);
   const deferredSearchText = useDeferredValue(searchText);
   const [viewport, setViewport] = useState(() => {
@@ -670,8 +630,6 @@ export function PlannerMapView({
       zoom: initialMapCenter ? 13 : 12,
     };
   });
-
-
   const routeLegPayload = useMemo(
     () => buildPlannerMapLegPayload(itinerarySections, travelMode, itineraryAccommodationByDayId),
     [itinerarySections, travelMode, itineraryAccommodationByDayId],
@@ -894,10 +852,7 @@ export function PlannerMapView({
     }
 
     setShowRoutes(recommendations.preferences.map.showRoutesByDefault);
-  }, [
-    mapVisibilityCustomized,
-    recommendations.preferences.map.showRoutesByDefault,
-  ]);
+  }, [mapVisibilityCustomized, recommendations.preferences.map.showRoutesByDefault]);
 
   useEffect(() => {
     if (!isPlannerStoreHydrated) {
@@ -995,13 +950,11 @@ export function PlannerMapView({
     [activeRouteSections],
   );
 
-  // On desktop the detail panel overlays the bottom ~60% of the map canvas.
-  // Shift the focus center south so the marker lands in the visible upper area.
-  const PANEL_LAT_OFFSET = isMobile ? 0 : -0.018;
+  const detailPanelLatitudeOffset = isMobile ? 0 : -0.018;
 
   const currentMapFocus = useMemo(() => {
     function withOffset(lat: number, lng: number) {
-      return { lat: lat + PANEL_LAT_OFFSET, lng };
+      return { lat: lat + detailPanelLatitudeOffset, lng };
     }
 
     if (selectedStop?.lat != null && selectedStop.lon != null) {
@@ -1063,7 +1016,7 @@ export function PlannerMapView({
     }
     return null;
   }, [
-    PANEL_LAT_OFFSET,
+    detailPanelLatitudeOffset,
     destinationCoverPlace?.lat,
     destinationCoverPlace?.lon,
     initialMapCenter,
@@ -1457,24 +1410,20 @@ export function PlannerMapView({
       selectedStop?.activity.visited_at ?? singleRelatedActivity?.visited_at ?? null;
 
     const newVisitedAt = currentVisitedAt ? null : new Date().toISOString();
-
-    // Optimistic update for immediate UI feedback
-    const prevData = queryClient.getQueryData<PlannerResponse>(plannerKeys.detail(tripId));
-    if (prevData) {
-      queryClient.setQueryData(
-        plannerKeys.detail(tripId),
-        applyOptimisticVisited(prevData, targetActivityId, newVisitedAt),
-      );
-    }
+    const previousPlanner = applyOptimisticVisitedUpdate(
+      queryClient,
+      tripId,
+      targetActivityId,
+      newVisitedAt,
+    );
 
     setTogglingVisited(true);
     try {
       await patchActivity(targetActivityId, { visited_at: newVisitedAt });
-      void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
-      void queryClient.invalidateQueries({ queryKey: ['planner-map', tripId] });
+      invalidatePlannerQueries(queryClient, tripId);
       toast.success(currentVisitedAt ? 'Visited state removed' : 'Marked as visited');
     } catch {
-      if (prevData) queryClient.setQueryData(plannerKeys.detail(tripId), prevData);
+      restorePlannerData(queryClient, tripId, previousPlanner);
       toast.error('Could not update the visited state');
     } finally {
       setTogglingVisited(false);
@@ -1520,7 +1469,7 @@ export function PlannerMapView({
       const result = await estimateRouteLegs(estimatePayload);
       const markerOrder = optimizePlannerDayStops(section, result.items, travelMode);
       const fullOrder = buildApplyPreviewOrder(section, markerOrder);
-      const previewActivities = orderedSectionActivities(section, fullOrder);
+      const previewActivities = applyPreviewOrder(section.activities, fullOrder);
       setPreviewByDayId({
         ...previewByDayId,
         [section.dayId]: {
@@ -1730,11 +1679,11 @@ export function PlannerMapView({
               >
                 <AccordionItem
                   value="recommendations"
-                  className="overflow-hidden rounded-[20px] bg-white "
+                  className="overflow-hidden rounded-[20px] bg-white"
                   data-testid="planner-recommendations-section"
                 >
                   <Carousel className="w-full">
-                    <AccordionTrigger className="py-3 px-3.5 hover:no-underline">
+                    <AccordionTrigger className="px-3.5 py-3 hover:no-underline">
                       <PlannerSidebarSectionTrigger
                         icon={<Compass className="h-4 w-4" />}
                         title="Recommendations"
@@ -1774,7 +1723,10 @@ export function PlannerMapView({
               >
                 {itinerarySections.map((section) => {
                   const metrics = dayMetrics[section.dayId];
-                  const preview = previewByDayId[section.dayId];
+                  const preview = previewByDayId[section.dayId] as
+                    | PlannerPreviewState
+                    | null
+                    | undefined;
 
                   return (
                     <PlannerMapDayAccordion
@@ -1886,8 +1838,6 @@ export function PlannerMapView({
                 });
               }}
             >
-
-
               {routeSections.map(({ section, routeStops }) => {
                 const isPrimaryRoute = section.dayId === primaryRouteSection?.dayId;
                 const originStop = routeStops[0];
@@ -2191,7 +2141,8 @@ export function PlannerMapView({
                         >
                           <ScrollArea
                             viewportStyle={{
-                              maxHeight: 'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
+                              maxHeight:
+                                'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
                             }}
                           >
                             <div className="flex flex-col gap-4">
@@ -2212,7 +2163,7 @@ export function PlannerMapView({
                                   ).map(([key, label, Icon]) => (
                                     <label
                                       key={key}
-                                      className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                                      className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]"
                                     >
                                       <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
                                         <Icon className="h-[1.1rem] w-[1.1rem] shrink-0 opacity-70" />
@@ -2231,39 +2182,39 @@ export function PlannerMapView({
                                 <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
                                   Routes
                                 </p>
-                                <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                                <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]">
                                   <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                      Route lines
+                                    Route lines
+                                  </span>
+                                  <Checkbox
+                                    checked={showRoutes}
+                                    onCheckedChange={(checked) => {
+                                      setMapVisibilityCustomized(true);
+                                      setShowRoutes(Boolean(checked));
+                                    }}
+                                  />
+                                </label>
+
+                                {sections.map((section) => (
+                                  <label
+                                    key={section.dayId}
+                                    className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]"
+                                  >
+                                    <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                      <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
+                                        <span
+                                          className="h-3 w-3 rounded-full"
+                                          style={{ backgroundColor: section.color }}
+                                        />
+                                      </div>
+                                      <span className="truncate">{section.title}</span>
                                     </span>
                                     <Checkbox
-                                      checked={showRoutes}
-                                      onCheckedChange={(checked) => {
-                                        setMapVisibilityCustomized(true);
-                                        setShowRoutes(Boolean(checked));
-                                      }}
+                                      checked={visibleDayIds.has(section.dayId)}
+                                      onCheckedChange={() => toggleVisibleDay(section.dayId)}
                                     />
                                   </label>
-
-                                  {sections.map((section) => (
-                                    <label
-                                      key={section.dayId}
-                                      className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
-                                    >
-                                      <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                        <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
-                                          <span
-                                            className="h-3 w-3 rounded-full"
-                                            style={{ backgroundColor: section.color }}
-                                          />
-                                        </div>
-                                        <span className="truncate">{section.title}</span>
-                                      </span>
-                                      <Checkbox
-                                        checked={visibleDayIds.has(section.dayId)}
-                                        onCheckedChange={() => toggleVisibleDay(section.dayId)}
-                                      />
-                                    </label>
-                                  ))}
+                                ))}
                               </div>
                             </div>
                           </ScrollArea>
@@ -2274,7 +2225,7 @@ export function PlannerMapView({
 
                   {selectedSection && (
                     <VoyagerMapControl position={ControlPosition.BOTTOM_LEFT}>
-                      <div className="pointer-events-auto relative z-[5] m-4 inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium backdrop-blur shadow-sm">
+                      <div className="pointer-events-auto relative z-[5] m-4 inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium shadow-sm backdrop-blur">
                         <CalendarDays className="h-5 w-5 text-[var(--color-text-muted)]" />
                         <span>{selectedSection.title}</span>
                         {dayProgressLabel(selectedSection, selectedStop) ? (
@@ -2308,7 +2259,7 @@ export function PlannerMapView({
                   }
                 />
                 {selectedSection ? (
-                  <div className="inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium backdrop-blur shadow-sm">
+                  <div className="inline-flex items-center gap-2.5 rounded-full border border-white/70 bg-white/94 px-5 py-3.5 text-[0.93rem] font-medium shadow-sm backdrop-blur">
                     <CalendarDays className="h-5 w-5 text-[var(--color-text-muted)]" />
                     <span>{selectedSection.title}</span>
                     {dayProgressLabel(selectedSection, selectedStop) ? (
@@ -2396,7 +2347,8 @@ export function PlannerMapView({
                   >
                     <ScrollArea
                       viewportStyle={{
-                        maxHeight: 'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
+                        maxHeight:
+                          'min(34rem, calc(var(--radix-popover-content-available-height) - 1rem))',
                       }}
                     >
                       <div className="flex flex-col gap-4">
@@ -2417,7 +2369,7 @@ export function PlannerMapView({
                             ).map(([key, label, Icon]) => (
                               <label
                                 key={key}
-                                className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
+                                className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]"
                               >
                                 <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
                                   <Icon className="h-[1.1rem] w-[1.1rem] shrink-0 opacity-70" />
@@ -2436,50 +2388,38 @@ export function PlannerMapView({
                           <p className="px-2 py-1 text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
                             Routes
                           </p>
-                          <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
+                          <label className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]">
                             <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                Route lines
+                              Route lines
+                            </span>
+                            <Checkbox
+                              checked={showRoutes}
+                              onCheckedChange={(checked) => {
+                                setMapVisibilityCustomized(true);
+                                setShowRoutes(Boolean(checked));
+                              }}
+                            />
+                          </label>
+                          {sections.map((section) => (
+                            <label
+                              key={section.dayId}
+                              className="group flex cursor-pointer items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors select-none hover:bg-[var(--color-secondary-surface)]"
+                            >
+                              <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
+                                <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
+                                  <span
+                                    className="h-3 w-3 rounded-full"
+                                    style={{ backgroundColor: section.color }}
+                                  />
+                                </div>
+                                <span className="truncate">{section.title}</span>
                               </span>
                               <Checkbox
-                                checked={showRoutes}
-                                onCheckedChange={(checked) => {
-                                  setMapVisibilityCustomized(true);
-                                  setShowRoutes(Boolean(checked));
-                                }}
+                                checked={visibleDayIds.has(section.dayId)}
+                                onCheckedChange={() => toggleVisibleDay(section.dayId)}
                               />
                             </label>
-                          <label className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]">
-                            <span className="min-w-0 truncate text-[0.9rem] font-medium text-[var(--color-text)]">
-                                Custom layers
-                              </span>
-                              <Checkbox
-                                checked={showCustomLayers}
-                                onCheckedChange={(checked) => {
-                                  setMapVisibilityCustomized(true);
-                                  setShowCustomLayers(Boolean(checked));
-                                }}
-                              />
-                            </label>
-                            {sections.map((section) => (
-                              <label
-                                key={section.dayId}
-                                className="group flex cursor-pointer select-none items-center justify-between gap-3 rounded-[16px] px-3 py-2.5 transition-colors hover:bg-[var(--color-secondary-surface)]"
-                              >
-                                <span className="flex min-w-0 items-center gap-3 text-[0.9rem] font-medium text-[var(--color-text)]">
-                                  <div className="flex h-[1.1rem] w-[1.1rem] shrink-0 items-center justify-center">
-                                    <span
-                                      className="h-3 w-3 rounded-full"
-                                      style={{ backgroundColor: section.color }}
-                                    />
-                                  </div>
-                                  <span className="truncate">{section.title}</span>
-                                </span>
-                                <Checkbox
-                                  checked={visibleDayIds.has(section.dayId)}
-                                  onCheckedChange={() => toggleVisibleDay(section.dayId)}
-                                />
-                              </label>
-                            ))}
+                          ))}
                         </div>
                       </div>
                     </ScrollArea>
@@ -2511,8 +2451,8 @@ export function PlannerMapView({
                   type="button"
                   onClick={() => void handlePreviewOptimize(selectedSection)}
                   className={cn(
-                    "absolute flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff8c62,#7c5ae0)] text-white",
-                    isMobile ? "right-5 bottom-32" : "right-5 bottom-5"
+                    'absolute flex h-16 w-16 items-center justify-center rounded-full bg-[linear-gradient(135deg,#ff8c62,#7c5ae0)] text-white',
+                    isMobile ? 'right-5 bottom-32' : 'right-5 bottom-5',
                   )}
                   aria-label="Optimise itinerary"
                 >
@@ -2611,8 +2551,6 @@ export function PlannerMapView({
   );
 }
 
-// ─── Standalone drawer that reuses DetailSheetContent for the board layout ───
-
 export function ActivityMapDetailSheet({
   open,
   tripId,
@@ -2670,22 +2608,18 @@ export function ActivityMapDetailSheet({
     isTogglingVisitedRef.current = true;
     setIsTogglingVisited(true);
     const newVisitedAt = activity.visited_at ? null : new Date().toISOString();
-
-    // Optimistic update for immediate UI feedback
-    const prevData = queryClient.getQueryData<PlannerResponse>(plannerKeys.detail(tripId));
-    if (prevData) {
-      queryClient.setQueryData(
-        plannerKeys.detail(tripId),
-        applyOptimisticVisited(prevData, activity.id, newVisitedAt),
-      );
-    }
+    const previousPlanner = applyOptimisticVisitedUpdate(
+      queryClient,
+      tripId,
+      activity.id,
+      newVisitedAt,
+    );
 
     try {
       await patchActivity(activity.id, { visited_at: newVisitedAt });
-      void queryClient.invalidateQueries({ queryKey: plannerKeys.detail(tripId) });
-      void queryClient.invalidateQueries({ queryKey: ['planner-map', tripId] });
+      invalidatePlannerQueries(queryClient, tripId);
     } catch {
-      if (prevData) queryClient.setQueryData(plannerKeys.detail(tripId), prevData);
+      restorePlannerData(queryClient, tripId, previousPlanner);
     } finally {
       isTogglingVisitedRef.current = false;
       setIsTogglingVisited(false);

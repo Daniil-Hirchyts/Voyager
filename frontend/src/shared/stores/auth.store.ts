@@ -31,9 +31,7 @@ function writeStoredIntendedPath(path: string | null) {
     }
 
     window.sessionStorage.removeItem(INTENDED_PATH_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures and keep the in-memory fallback.
-  }
+  } catch {}
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({

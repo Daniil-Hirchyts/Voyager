@@ -63,9 +63,7 @@ export async function streamAssistantMessages(
       try {
         const event = JSON.parse(payloadText) as AssistantStreamEvent;
         onEvent(event);
-      } catch {
-        // ignore malformed events
-      }
+      } catch {}
     }
   }
 }

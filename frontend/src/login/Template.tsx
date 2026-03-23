@@ -44,18 +44,15 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      {/* Hidden header required by Keycloak */}
       <div id="kc-header" aria-hidden="true" className="hidden">
         <div id="kc-header-wrapper">
           {msg('loginTitleHtml', realm.displayNameHtml || realm.name)}
         </div>
       </div>
 
-      {/* Card */}
       <div className="w-full max-w-[420px]">
         <div className="auth-card overflow-hidden rounded-[20px] border border-white/70 bg-white">
           <div className="flex flex-col gap-5 p-5">
-            {/* Top bar: back link + brand + locale */}
             <div className="flex items-center justify-between border-b border-[rgba(97,126,158,0.1)] pb-4">
               <div className="flex items-center gap-3.5">
                 <a
@@ -123,7 +120,6 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
               )}
             </div>
 
-            {/* Page title */}
             <div className="flex flex-col gap-1">
               {displayRequiredFields && (
                 <p className="m-0 mb-1 text-[0.76rem] font-medium text-[#7b8796]">
@@ -153,7 +149,6 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
               )}
             </div>
 
-            {/* Form content */}
             <div id="kc-content">
               <div id="kc-content-wrapper">
                 {displayMessage &&

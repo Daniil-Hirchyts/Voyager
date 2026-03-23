@@ -13,7 +13,6 @@ export function VoyagerLogo(props: React.SVGProps<SVGSVGElement>) {
 export function VoyagerLoader(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" {...props}>
-      {/* Soft pulsing background base */}
       <motion.g
         animate={{ opacity: [0.15, 0.4, 0.15] }}
         transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -22,7 +21,6 @@ export function VoyagerLoader(props: React.SVGProps<SVGSVGElement>) {
         <path d="M60 62L42 100H78L60 62Z" fill="currentColor" opacity="0.3" />
       </motion.g>
 
-      {/* Outer path racing comet effect */}
       <motion.path
         d="M60 15L15 100H42L60 62L78 100H105L60 15Z"
         stroke="currentColor"
@@ -38,7 +36,6 @@ export function VoyagerLoader(props: React.SVGProps<SVGSVGElement>) {
         }}
       />
 
-      {/* Inner path racing comet effect */}
       <motion.path
         d="M60 62L42 100H78L60 62Z"
         stroke="currentColor"

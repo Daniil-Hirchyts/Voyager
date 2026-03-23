@@ -20,7 +20,7 @@ export function useRefreshPlacePhotos(placeId: string) {
     mutationFn: (idempotencyKey: string) => refreshPlacePhotos(placeId, idempotencyKey),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: photoKeys.list(placeId) });
-      // also invalidate place detail so primary_photo updates
+
       qc.invalidateQueries({ queryKey: ['place', placeId] });
     },
   });

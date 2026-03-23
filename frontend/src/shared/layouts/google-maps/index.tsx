@@ -377,7 +377,6 @@ export function MapPanTo({ point, zoom }: { point: LatLngPoint | null; zoom?: nu
 
       if (zoom != null && currentZoom !== zoom) {
         google.maps.event.addListenerOnce(map, 'idle', () => {
-          // Delay zoom slightly after pan completes for a smoother feel
           setTimeout(() => {
             if (zoom != null) map.setZoom(zoom);
           }, 150);

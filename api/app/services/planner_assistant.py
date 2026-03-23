@@ -69,7 +69,6 @@ THANKS_INPUT_RE = re.compile(r"^(thanks|thank you|thx)[!. ]*$", re.I)
 
 
 def _jsonable(value: Any) -> Any:
-    # Pydantic models must be dumped to dict before further processing
     try:
         from pydantic import BaseModel as _BaseModel  # noqa: PLC0415
 

@@ -8,7 +8,10 @@ export default defineConfig(({ mode }) => {
   const envDir = resolve(__dirname, '..');
   const env = loadEnv(mode, envDir, '');
   const apiBaseUrl = env.VITE_API_BASE_URL || '/api';
-  const apiProxyTarget = /^https?:\/\//.test(apiBaseUrl) ? apiBaseUrl : 'http://localhost:8000';
+  const explicitProxyTarget = process.env.VITE_API_PROXY_TARGET || env.VITE_API_PROXY_TARGET;
+  const apiProxyTarget =
+    explicitProxyTarget ||
+    (/^https?:\/\//.test(apiBaseUrl) ? apiBaseUrl : 'http://localhost:8000');
   return {
     envDir,
     plugins: [

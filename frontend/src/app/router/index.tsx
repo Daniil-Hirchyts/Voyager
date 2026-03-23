@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { VoyagerLoader } from '@/widgets/app-shell/logo';
 
-// Public pages
 const LandingPage = lazy(() => import('@/pages/public/landing'));
 const SignInPage = lazy(() => import('@/pages/public/signin'));
 const AuthCallbackPage = lazy(() => import('@/pages/public/auth-callback'));
@@ -17,7 +16,6 @@ const PrivacyPolicyPage = lazy(() => import('@/pages/public/privacy'));
 const TermsOfServicePage = lazy(() => import('@/pages/public/terms'));
 const CookiePolicyPage = lazy(() => import('@/pages/public/cookies'));
 
-// App pages
 const SettingsPage = lazy(() => import('@/pages/app/settings'));
 const TripsPage = lazy(() => import('@/pages/app/trips'));
 const TripCreatePage = lazy(() => import('@/pages/app/trips/new'));
@@ -150,7 +148,6 @@ const router = createBrowserRouter([
           </Suspense>
         ),
       },
-
     ],
   },
   {

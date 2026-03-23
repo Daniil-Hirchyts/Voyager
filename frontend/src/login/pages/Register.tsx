@@ -76,7 +76,6 @@ export default function Register({
       displayInfo={false}
       displayRequiredFields={false}
     >
-      {/* Step indicator */}
       <div className="mb-1 flex items-center">
         <div
           className={clsx(
@@ -94,7 +93,6 @@ export default function Register({
       </div>
 
       <form ref={formRef} action={url.registrationAction} method="post" id="kc-register-form">
-        {/* ── STEP 1: Profile info ── */}
         {step === 1 && (
           <div className="auth-step flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-3">
@@ -183,7 +181,6 @@ export default function Register({
           </div>
         )}
 
-        {/* ── STEP 2: Credentials ── */}
         {step === 2 && (
           <div className="auth-step flex flex-col gap-3">
             <input type="hidden" name="firstName" value={step1Values.firstName} />

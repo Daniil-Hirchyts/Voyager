@@ -52,13 +52,12 @@ export function useApplyProposal(tripId: string) {
       idempotencyKey: string;
     }) => applyProposal(proposalId, tripVersion, idempotencyKey),
     onSuccess: (result) => {
-      // Invalidate all planner data for affected days
       qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) });
       qc.invalidateQueries({ queryKey: dayKeys.list(tripId) });
       for (const dayId of result.applied_day_ids) {
         qc.invalidateQueries({ queryKey: activityKeys.list(dayId) });
       }
-      // Invalidate proposal list/detail
+
       qc.invalidateQueries({ queryKey: proposalKeys.list(tripId) });
     },
   });

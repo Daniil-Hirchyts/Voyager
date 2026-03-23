@@ -1,24 +1,10 @@
-import {
-  Fragment,
-  type ReactNode,
-} from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import {
-  BedDouble,
-  Check,
-  ChevronDown,
-  Plane,
-  Plus,
-  Sparkles,
-} from 'lucide-react';
+import { BedDouble, Check, ChevronDown, Plane, Plus, Sparkles } from 'lucide-react';
 import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import {
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -42,20 +28,16 @@ import {
 } from './planner-map-view.utils';
 import { routeTravelModeDescriptor } from './travel-modes';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 type PreviewPlan = {
   order: string[];
   metrics: ReturnType<typeof buildPlannerMapMetricsForActivities>;
 };
 
-// ─── Private helpers ──────────────────────────────────────────────────────────
-
 function getPlannerVisualContainerId(bucket: PlannerActivityBucket, dayId: string | null) {
   return `${bucket}::${dayId ?? 'inbox'}`;
 }
 
-function orderedSectionActivities(
+export function orderedSectionActivities(
   section: PlannerMapSection,
   previewOrder: string[] | null | undefined,
 ) {
@@ -97,8 +79,6 @@ export function dayProgressLabel(section: PlannerMapSection, selectedStop: Plann
   }
   return `${selectedStop.markerNumber} of ${total}`;
 }
-
-// ─── Private components ───────────────────────────────────────────────────────
 
 export function PlannerMapPin({
   label,
@@ -184,8 +164,6 @@ export function PlannerSidebarSectionTrigger({
     </span>
   );
 }
-
-// ─── Exported components ──────────────────────────────────────────────────────
 
 export function PlannerMapDayAccordion({
   section,

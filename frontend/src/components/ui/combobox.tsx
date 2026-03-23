@@ -67,12 +67,9 @@ export function Combobox({
     () => options.find((option) => option.value === value) ?? null,
     [options, value],
   );
+  const isServerFiltered = Boolean(onSearchChange);
   const filteredOptions = useMemo(() => {
-    // When server-side search is active (onSearchChange provided), the parent
-    // already fetches filtered options from the API — skip local re-filtering
-    // which would incorrectly exclude results whose English label doesn't
-    // contain the user's query (e.g. "italie" vs "Rome / FCO").
-    if (onSearchChange) {
+    if (isServerFiltered) {
       return options;
     }
     const normalizedQuery = normalize(query);
@@ -84,7 +81,7 @@ export function Combobox({
         .map(normalize)
         .some((entry) => entry.includes(normalizedQuery)),
     );
-  }, [options, query, onSearchChange]);
+  }, [isServerFiltered, options, query]);
 
   return (
     <Popover

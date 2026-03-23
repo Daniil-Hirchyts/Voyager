@@ -54,8 +54,6 @@ import {
   type LatLngPoint,
 } from '@/shared/layouts/google-maps';
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
-
 const TRIP_TYPES = [
   'leisure',
   'business',
@@ -99,8 +97,6 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
 function toTitleCase(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -110,8 +106,6 @@ function parseFormDate(v: string | undefined) {
   const p = parseISO(v);
   return isValid(p) ? p : null;
 }
-
-// ─── Single date picker ───────────────────────────────────────────────────────
 
 function SingleDatePicker({
   id,
@@ -190,8 +184,6 @@ function SingleDatePicker({
   );
 }
 
-// ─── Light Currency Select ────────────────────────────────────────────────────
-
 function CurrencySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const selected = CURRENCY_OPTIONS.find((o) => o.value === value);
   return (
@@ -221,8 +213,6 @@ function CurrencySelect({ value, onChange }: { value: string; onChange: (v: stri
   );
 }
 
-// ─── Map click geocoding ───────────────────────────────────────────────────────
-
 function buildItemFromGeocodeResult(
   latLng: google.maps.LatLng,
   results: google.maps.GeocoderResult[],
@@ -230,7 +220,6 @@ function buildItemFromGeocodeResult(
   const lat = latLng.lat();
   const lng = latLng.lng();
 
-  // Prefer a result whose own type is a recognisable city-level entity
   const CITY_TYPES = ['locality', 'postal_town', 'sublocality'];
   const REGION_TYPES = ['administrative_area_level_2', 'administrative_area_level_1'];
 
@@ -312,15 +301,11 @@ function MapClickPickerEffect({
   return null;
 }
 
-// ─── Steps ────────────────────────────────────────────────────────────────────
-
 const STEPS = [
   { id: 1, icon: MapPin },
   { id: 2, icon: CalendarRange },
   { id: 3, icon: Settings2 },
 ] as const;
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TripCreatePage() {
   const navigate = useNavigate();
@@ -527,13 +512,10 @@ export default function TripCreatePage() {
 
   return (
     <div className="flex h-dvh flex-col-reverse overflow-hidden bg-white md:flex-row">
-      {/* ── Wizard panel (LEFT on desktop, BOTTOM on mobile) ── */}
       <div className="relative z-10 flex h-[72%] shrink-0 flex-col overflow-hidden md:h-full md:w-[440px] md:border-r md:border-[var(--color-border-strong)]">
-        {/* Panel background */}
         <div className="absolute inset-0 bg-white" />
 
         <div className="relative flex h-full flex-col overflow-hidden px-6 py-5 md:px-8 md:py-7">
-          {/* Top bar */}
           <div className="mb-6 flex shrink-0 items-center justify-between">
             <button
               type="button"
@@ -542,7 +524,7 @@ export default function TripCreatePage() {
             >
               ×&nbsp;Cancel
             </button>
-            {/* Step dots */}
+
             <div className="flex items-center gap-2">
               {STEPS.map((s) => (
                 <div
@@ -560,7 +542,6 @@ export default function TripCreatePage() {
             </div>
           </div>
 
-          {/* Step content */}
           <div
             className={cn(
               'flex min-h-0 flex-1 flex-col overflow-y-auto transition-all duration-[230ms]',
@@ -577,7 +558,6 @@ export default function TripCreatePage() {
               onSubmit={handleSubmit((data) => mutation.mutate(data))}
               className="flex flex-1 flex-col gap-5"
             >
-              {/* ── Headings ── */}
               {step === 1 && (
                 <StepHeading
                   step={1}
@@ -600,7 +580,6 @@ export default function TripCreatePage() {
                 />
               )}
 
-              {/* ══ Step 1 — always in DOM for tests ══ */}
               <div
                 className={
                   step !== 1 ? 'pointer-events-none sr-only absolute' : 'flex flex-col gap-4'
@@ -738,13 +717,11 @@ export default function TripCreatePage() {
                 )}
               </div>
 
-              {/* ══ Step 2 — always in DOM ══ */}
               <div
                 className={
                   step !== 2 ? 'pointer-events-none sr-only absolute' : 'flex flex-col gap-4'
                 }
               >
-                {/* Hidden inputs keep date values in the form payload */}
                 <input
                   type="text"
                   className="sr-only"
@@ -831,13 +808,11 @@ export default function TripCreatePage() {
                 )}
               </div>
 
-              {/* ══ Step 3 — always in DOM ══ */}
               <div
                 className={
                   step !== 3 ? 'pointer-events-none sr-only absolute' : 'flex flex-col gap-5'
                 }
               >
-                {/* Budget */}
                 <Field data-invalid={!!errors.budget_amount} className="gap-2">
                   <FieldLabel
                     htmlFor="budget_amount"
@@ -882,7 +857,6 @@ export default function TripCreatePage() {
                   </FieldContent>
                 </Field>
 
-                {/* Trip type */}
                 <Controller
                   control={control}
                   name="trip_type"
@@ -912,7 +886,7 @@ export default function TripCreatePage() {
                             </button>
                           ))}
                         </div>
-                        {/* Accessible select for tests */}
+
                         <Select value={field.value} onValueChange={field.onChange}>
                           <SelectTrigger
                             id="trip-type"
@@ -941,7 +915,6 @@ export default function TripCreatePage() {
                   )}
                 />
 
-                {/* Summary: budget + style */}
                 <div className="flex gap-3 rounded-[var(--radius)] border border-[var(--color-border-strong)] bg-[var(--color-bg-soft)] px-4 py-4">
                   <div className="flex-1">
                     <p className="mb-1 text-[0.6rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)]/60 uppercase">
@@ -968,7 +941,6 @@ export default function TripCreatePage() {
             </form>
           </div>
 
-          {/* ── Nav footer ── */}
           <div className="mt-3 flex shrink-0 items-center justify-between gap-3 border-t border-[var(--color-border-strong)] pt-4">
             <Button
               type="button"
@@ -1016,7 +988,6 @@ export default function TripCreatePage() {
         </div>
       </div>
 
-      {/* ── Map (RIGHT on desktop, TOP on mobile) ── */}
       <div className="relative h-[28%] overflow-hidden md:h-full md:flex-1">
         <VoyagerMap
           defaultCenter={{ lat: 20, lng: 10 }}
@@ -1039,7 +1010,7 @@ export default function TripCreatePage() {
             />
           )}
         </VoyagerMap>
-        {/* Tap-to-set hint — only on step 1 before a destination is chosen */}
+
         {step === 1 && !selectedDestinationSuggestion && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center">
             <div className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1.5 text-[0.72rem] font-medium text-white backdrop-blur-sm">
@@ -1048,16 +1019,14 @@ export default function TripCreatePage() {
             </div>
           </div>
         )}
-        {/* Left edge fade towards wizard panel */}
+
         <div className="pointer-events-none absolute inset-y-0 left-0 hidden w-12 bg-gradient-to-r from-white/20 to-transparent md:block" />
-        {/* Bottom fade on mobile */}
+
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white/60 to-transparent md:hidden" />
       </div>
     </div>
   );
 }
-
-// ─── Step heading sub-component ───────────────────────────────────────────────
 
 function StepHeading({ step, title, subtitle }: { step: number; title: string; subtitle: string }) {
   return (

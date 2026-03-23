@@ -17,6 +17,10 @@ from app.security.dependencies import AuthContext, get_auth_context
 from app.services.job_progress import PROGRESS_KEY_PREFIX
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
+SSE_POLL_INTERVAL_SEC = 0.5
+SSE_IDLE_TIMEOUT_TICKS = 1200
+SSE_HEARTBEAT_INTERVAL_TICKS = 30
+SSE_IDLE_BACKOFF_SEC = 0.2
 
 
 @router.get("", response_model=JobListResponse)
@@ -43,7 +47,6 @@ async def stream_job_progress(
     redis: Redis = Depends(get_redis),
 ) -> StreamingResponse:
     """SSE endpoint that streams job progress events from Redis."""
-    # Verify ownership — raises 404 if job not found or not owned
     await JobRepository.get_job(db, auth.user_id, job_id)
 
     key = f"{PROGRESS_KEY_PREFIX}{job_id}"
@@ -51,17 +54,16 @@ async def stream_job_progress(
     async def generate() -> AsyncIterator[str]:
         cursor = 0
         idle_ticks = 0
-        max_idle_ticks = 1200  # 10 min at 0.5 s/tick
+        max_idle_ticks = SSE_IDLE_TIMEOUT_TICKS
 
         while idle_ticks < max_idle_ticks:
             events: list[str] = await redis.lrange(key, cursor, -1)
 
             if not events:
                 idle_ticks += 1
-                # heartbeat every 15 s to keep connection alive
-                if idle_ticks % 30 == 0:
+                if idle_ticks % SSE_HEARTBEAT_INTERVAL_TICKS == 0:
                     yield ": heartbeat\n\n"
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(SSE_POLL_INTERVAL_SEC)
                 continue
 
             idle_ticks = 0
@@ -75,7 +77,7 @@ async def stream_job_progress(
                 except json.JSONDecodeError:
                     pass
 
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(SSE_IDLE_BACKOFF_SEC)
 
     return StreamingResponse(
         generate(),

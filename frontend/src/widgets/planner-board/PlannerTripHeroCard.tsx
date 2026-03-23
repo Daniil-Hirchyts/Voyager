@@ -65,10 +65,7 @@ export function PlannerTripHeroCard({
     .slice(0, 3);
 
   return (
-    <section
-      className="overflow-hidden rounded-[26px] bg-white"
-      data-testid="planner-trip-hero"
-    >
+    <section className="overflow-hidden rounded-[26px] bg-white" data-testid="planner-trip-hero">
       <div className="relative overflow-hidden rounded-[22px]">
         <div className="relative h-36 bg-[linear-gradient(135deg,#d6e3ee_0%,#9fb5c6_52%,#6d879e_100%)] sm:h-40">
           {coverPhotoUrl ? (
@@ -107,11 +104,10 @@ export function PlannerTripHeroCard({
             aria-label="Open collaboration"
           >
             <div className="flex -space-x-2">
-              {/* Plus circle (behind) */}
               <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white/80 bg-white/20 backdrop-blur">
                 <span className="text-[1rem] leading-none font-light text-white">+</span>
               </div>
-              {/* Collaborator avatars */}
+
               {visibleCollaborators.map((c) => {
                 const name = getCollaboratorName(c);
                 const initials =
@@ -135,7 +131,7 @@ export function PlannerTripHeroCard({
                   </Avatar>
                 );
               })}
-              {/* My avatar (front) */}
+
               <Avatar className="h-8 w-8 rounded-full border-2 border-white">
                 <AvatarImage src={myAvatar ?? undefined} alt={myName} />
                 <AvatarFallback className="rounded-full bg-[#ECEEF0] text-[0.6rem] font-semibold text-[var(--color-text-muted)]">
@@ -261,7 +257,7 @@ export function PlannerBudgetOverview({
     <div className="flex flex-col gap-3" data-testid="planner-budget-summary">
       <div className="rounded-[22px] bg-white px-5 py-5">
         <div className="flex flex-col gap-5">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-2">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center sm:gap-2">
             <div className="flex flex-col gap-1">
               <span className="text-[0.68rem] font-bold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
                 Initial Budget
@@ -275,9 +271,9 @@ export function PlannerBudgetOverview({
               </span>
             </div>
 
-            <div className="flex w-full sm:w-auto items-center">
+            <div className="flex w-full items-center sm:w-auto">
               <div
-                className="relative flex h-11 w-full sm:w-auto items-center overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-[var(--color-border)]"
+                className="relative flex h-11 w-full items-center overflow-hidden rounded-[14px] border border-[var(--color-border)] bg-[var(--color-secondary-surface)] focus-within:ring-2 focus-within:ring-[var(--color-border)] sm:w-auto"
                 aria-busy={patchTrip.isPending}
                 onBlur={(event) => {
                   const nextFocused = event.relatedTarget;
@@ -333,7 +329,7 @@ export function PlannerBudgetOverview({
                     event.preventDefault();
                     void handleSaveBudget();
                   }}
-                  className="h-full w-full sm:w-24 border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0"
+                  className="h-full w-full border-none bg-transparent px-3 text-right text-[0.95rem] font-semibold focus-visible:ring-0 sm:w-24"
                 />
               </div>
             </div>

@@ -1609,8 +1609,6 @@ class ActivityRepository:
         if not ordered_ids:
             return
 
-        # Flush any pending session changes so no unseen activities exist in the
-        # same bucket when we read or write below.
         await db.flush()
 
         bucket_filter = (
@@ -1619,10 +1617,6 @@ class ActivityRepository:
             else Activity.trip_day_id == trip_day_id
         )
 
-        # Step 1: Shift ALL activities in the bucket to a large positive temp range.
-        # This clears 0-based indexes for every row in the bucket (including any that
-        # are not part of ordered_ids), so the final assignment in step 2 cannot
-        # collide with a "bystander" row that still holds a low order_index.
         temp_offset = 1_000_000
         await db.execute(
             update(Activity)
@@ -1631,10 +1625,8 @@ class ActivityRepository:
             .values(order_index=Activity.order_index + temp_offset)
         )
 
-        # Step 2: Assign the final sequential order to ordered_ids.
-        # All other bucket rows remain at temp+original, which is fine because
-        # every caller of this method passes the complete bucket as ordered_ids.
-        final_case = case({aid: idx for idx, aid in enumerate(ordered_ids)}, value=Activity.id)
+        order_index_by_id = {aid: idx for idx, aid in enumerate(ordered_ids)}
+        final_case = case(order_index_by_id, value=Activity.id)
         await db.execute(
             update(Activity)
             .where(Activity.trip_id == trip_id)
@@ -2412,8 +2404,10 @@ class EventRepository:
         if snapshot.start_at is not None:
             start_time = snapshot.start_at.time().replace(tzinfo=None)
         if snapshot.start_at is not None and snapshot.end_at is not None:
-            delta = int((snapshot.end_at - snapshot.start_at).total_seconds() // 60)
-            duration_min = max(delta, 30)
+            duration_min = max(
+                int((snapshot.end_at - snapshot.start_at).total_seconds() // 60),
+                30,
+            )
 
         activity = Activity(
             trip_id=day.trip_id,
@@ -3356,9 +3350,7 @@ def _assistant_job_completion_text(
     day_count = len(day_deltas) if isinstance(day_deltas, list) else 0
 
     if status_label != "SUCCEEDED":
-        return (
-            f"Itinerary {operation} failed. Review the progress details above and try again."
-        )
+        return f"Itinerary {operation} failed. Review the progress details above and try again."
 
     detail_parts: list[str] = []
     if created:
@@ -3646,14 +3638,12 @@ class AssistantRepository:
 
         if event.get("type") == "done":
             terminal_status = str(event.get("status") or "FAILED")
-            terminal_summary = event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            terminal_summary = (
+                event.get("summary") if isinstance(event.get("summary"), dict) else {}
+            )
             progress_data["job_status"] = terminal_status
             progress_data["summary"] = terminal_summary
-            message.status = (
-                "complete"
-                if terminal_status.upper() == "SUCCEEDED"
-                else "incomplete"
-            )
+            message.status = "complete" if terminal_status.upper() == "SUCCEEDED" else "incomplete"
         else:
             progress_data["job_status"] = "RUNNING"
             if message.status == "complete":

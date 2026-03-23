@@ -14,7 +14,6 @@ function LegalPage({
   return (
     <div className="min-h-dvh bg-[var(--color-bg)]">
       <div className="mx-auto max-w-3xl px-5 py-12 md:px-8 md:py-20">
-        {/* Nav */}
         <div className="mb-10 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2.5 text-[var(--color-text)]">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--color-cta)] text-white">
@@ -31,7 +30,6 @@ function LegalPage({
           </Link>
         </div>
 
-        {/* Header */}
         <div className="mb-10 border-b border-[var(--color-border-strong)] pb-8">
           <p className="mb-3 text-[0.68rem] font-semibold tracking-[0.22em] text-[#8b97a7] uppercase">
             Legal
@@ -44,16 +42,13 @@ function LegalPage({
           </p>
         </div>
 
-        {/* Content */}
         <div className="prose-legal">{children}</div>
 
-        {/* Footer nav */}
         <div className="mt-16 flex flex-wrap gap-x-5 gap-y-2 border-t border-[var(--color-border-strong)] pt-8">
           {[
             { label: 'Privacy Policy', to: '/privacy' },
             { label: 'Terms of Service', to: '/terms' },
             { label: 'Cookie Policy', to: '/cookies' },
-
           ].map(({ label, to }) => (
             <Link
               key={label}

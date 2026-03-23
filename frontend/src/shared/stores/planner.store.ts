@@ -7,6 +7,11 @@ import {
 } from 'zustand/middleware';
 import type { PlannerGenerationReport } from '@/shared/api/types';
 
+type PlannerPreviewStoreEntry = {
+  order: string[];
+  metrics: unknown;
+};
+
 interface PlannerStore {
   pendingJobIds: Record<string, string>;
   setPendingJobId: (tripId: string, jobId: string) => void;
@@ -30,8 +35,8 @@ interface PlannerStore {
   setMapDayAccordionState: (tripId: string, dayStates: Record<string, boolean>) => void;
   clearMapDayAccordionState: (tripId: string) => void;
 
-  previewByDayId: Record<string, any | null>;
-  setPreviewByDayId: (preview: Record<string, any | null>) => void;
+  previewByDayId: Record<string, PlannerPreviewStoreEntry | null>;
+  setPreviewByDayId: (preview: Record<string, PlannerPreviewStoreEntry | null>) => void;
 }
 
 const plannerStoreInitialState = {

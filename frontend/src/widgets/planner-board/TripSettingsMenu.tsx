@@ -180,7 +180,6 @@ export function TripSettingsMenu({
       description: item.address_text ?? undefined,
     }));
 
-    // Ensure the current value is always in the options so it shows up as selected
     if (form.destination_text && !items.find((i) => i.value === form.destination_text)) {
       items.unshift({
         value: form.destination_text,
@@ -392,7 +391,6 @@ export function TripSettingsMenu({
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <div className="flex flex-col gap-8 px-6 py-8 pb-12">
-              {/* General Details */}
               <div className="flex flex-col gap-6">
                 <div className="grid gap-5 sm:grid-cols-2">
                   <div className="flex flex-col gap-2 sm:col-span-2">
@@ -569,7 +567,6 @@ export function TripSettingsMenu({
                 </div>
               </div>
 
-              {/* Cover Photo */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <label className={fieldLabelClassName}>Cover Photo</label>
@@ -695,12 +692,10 @@ export function TripSettingsMenu({
                 </PhotoViewerProvider>
               </div>
 
-              {/* Asset Manager */}
               <div className="flex flex-col gap-4">
                 <TripAssetManager tripId={tripId} className="border-none bg-transparent p-0" />
               </div>
 
-              {/* Management Actions */}
               <div className="flex flex-col gap-4 pt-4">
                 <label className={fieldLabelClassName}>Management</label>
                 <div className="flex flex-col gap-3">
@@ -847,7 +842,6 @@ export function TripSettingsMenu({
 
           <div className="min-h-0 flex-1 overflow-y-auto p-6">
             <div className="flex flex-col gap-10">
-              {/* Members List */}
               <div className="flex flex-col gap-4">
                 <h3 className="text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                   Members
@@ -931,7 +925,6 @@ export function TripSettingsMenu({
 
               <div className="h-px bg-[var(--color-border)]" />
 
-              {/* Pending Invites */}
               <div className="flex flex-col gap-4">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">

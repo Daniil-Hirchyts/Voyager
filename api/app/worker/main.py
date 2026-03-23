@@ -249,7 +249,6 @@ async def _process_job(job_id: uuid.UUID) -> None:
     if job_user_id is None or job_type is None or final_status is None:
         return
 
-    # Emit terminal progress event for itinerary jobs
     if tracker and final_status in ("SUCCEEDED", "FAILED"):
         await _emit_terminal_itinerary_progress(
             job_id=job_id,

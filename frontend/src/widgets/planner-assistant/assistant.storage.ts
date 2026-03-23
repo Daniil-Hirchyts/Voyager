@@ -18,9 +18,7 @@ export function loadSavedConversations(tripId: string): SavedConversation[] {
 export function persistSavedConversations(tripId: string, convs: SavedConversation[]) {
   try {
     localStorage.setItem(CONVERSATIONS_STORAGE_KEY(tripId), JSON.stringify(convs));
-  } catch {
-    // localStorage may be full or unavailable — fail silently
-  }
+  } catch {}
 }
 
 const HIDDEN_IDS_KEY = (tripId: string) => `assistant-hidden-ids-${tripId}`;
@@ -38,7 +36,5 @@ export function loadHiddenIds(tripId: string): Set<string> {
 export function persistHiddenIds(tripId: string, ids: Set<string>) {
   try {
     localStorage.setItem(HIDDEN_IDS_KEY(tripId), JSON.stringify([...ids]));
-  } catch {
-    // fail silently
-  }
+  } catch {}
 }

@@ -58,7 +58,7 @@ export function JobProgressCard({ part }: { part: AssistantDataPart }) {
         : null;
 
   return (
-    <div className="rounded-[18px] bg-white px-3 py-3 rounded-tl-[8px] border border-[var(--color-border)]">
+    <div className="rounded-[18px] rounded-tl-[8px] border border-[var(--color-border)] bg-white px-3 py-3">
       <div className="flex items-start gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[rgba(15,23,42,0.04)] text-[var(--color-text)]">
           {jobStatus === 'SUCCEEDED' ? (
@@ -71,7 +71,7 @@ export function JobProgressCard({ part }: { part: AssistantDataPart }) {
         </div>
         <div className="min-w-0 flex-1 py-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="break-words text-[0.84rem] font-medium text-[var(--color-text)]">
+            <p className="text-[0.84rem] font-medium break-words text-[var(--color-text)]">
               {requestText}
             </p>
             <span className={toneChipClasses(jobTone)}>
@@ -137,7 +137,7 @@ export function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </ChainOfThoughtTrigger>
                     {detail ? (
                       <ChainOfThoughtContent>
-                        <ChainOfThoughtItem className="break-words pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                        <ChainOfThoughtItem className="pt-0.5 pb-2 text-[0.74rem] leading-5 break-words text-[var(--color-text-muted)]">
                           {detail}
                         </ChainOfThoughtItem>
                       </ChainOfThoughtContent>
@@ -146,7 +146,6 @@ export function JobProgressCard({ part }: { part: AssistantDataPart }) {
                 );
               }
 
-              // tool row
               const isActive = isRunning && row === currentActivityRow;
               const isComplete = Boolean(row.result);
               const toolStatusLabel = isComplete
@@ -179,7 +178,7 @@ export function JobProgressCard({ part }: { part: AssistantDataPart }) {
                     </span>
                   </ChainOfThoughtTrigger>
                   <ChainOfThoughtContent>
-                    <ChainOfThoughtItem className="break-words pb-2 pt-0.5 text-[0.74rem] leading-5 text-[var(--color-text-muted)]">
+                    <ChainOfThoughtItem className="pt-0.5 pb-2 text-[0.74rem] leading-5 break-words text-[var(--color-text-muted)]">
                       {toolSummary}
                     </ChainOfThoughtItem>
                   </ChainOfThoughtContent>
