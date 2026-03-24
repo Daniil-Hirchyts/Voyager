@@ -47,7 +47,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         style={{ background: 'var(--color-bg)' }}
       >
         <div className="text-center">
-          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#2F6F73]" />
+          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#00B1FF]" />
           <p className="text-sm text-[#526072]">Loading...</p>
         </div>
       </div>
@@ -61,7 +61,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
         style={{ background: 'var(--color-bg)' }}
       >
         <div className="text-center">
-          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#2F6F73]" />
+          <VoyagerLoader className="mx-auto mb-4 size-10 text-[#00B1FF]" />
           <p className="text-sm text-[#526072]">Redirecting to sign in...</p>
         </div>
       </div>
