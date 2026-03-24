@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-labelledby="title">
+  <title id="title">Voyager</title>
+  <rect x="1" y="1" width="118" height="118" rx="28" fill="#ffffff" stroke="#e5e7eb" stroke-width="2"/>
+  <path d="M60 15L15 100H42L60 62L78 100H105L60 15Z" fill="#171717" opacity="0.95"/>
+  <path d="M60 62L42 100H78L60 62Z" fill="#171717" opacity="0.4"/>
+</svg>
