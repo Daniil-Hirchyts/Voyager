@@ -7,7 +7,7 @@ export const routeKeys = {
   legs: (payload: RouteLegEstimateInput | null) => ['routes', 'legs', payload] as const,
 };
 
-const ROUTES_STALE_TIME = 5 * 60 * 1000; // 5 minutes — routes for given coordinates don't change
+const ROUTES_STALE_TIME = 5 * 60 * 1000; 
 
 export function useRoutePreview(payload: RoutePreviewInput | null, enabled = true) {
   return useQuery({

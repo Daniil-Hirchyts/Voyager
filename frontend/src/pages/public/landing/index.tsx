@@ -360,7 +360,7 @@ export default function LandingPage() {
               <div className="hero-word inline-block">Plan</div>{' '}
               <div className="hero-word inline-block">Trips.</div>
             </div>
-            <div className="-mb-4 overflow-hidden pb-4">
+            <div className="-mb-4  pb-4">
               <div className="hero-word inline-block text-white" style={heroWhiteTextShadow}>
                 Keep
               </div>{' '}
@@ -614,8 +614,7 @@ export default function LandingPage() {
             <span className="text-3xl font-semibold tracking-tight text-[#1A1615]">Voyager</span>
           </div>
           <p className="text-base font-medium text-[#453F3D]">
-            © 2026 Voyager. AI-assisted trip planning with editable itineraries, maps, and shared
-            trips.
+            © 2026 Voyager
           </p>
         </div>
       </footer>

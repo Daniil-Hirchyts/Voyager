@@ -509,6 +509,14 @@ function RecommendationSection({
   );
 }
 
+function CompactRecommendationsEmptyState({ copy }: { copy: string }) {
+  return (
+    <div className="flex min-h-[88px] items-center justify-center rounded-[16px] border border-dashed border-[var(--color-border)] bg-[var(--color-secondary-surface)] px-5 text-center">
+      <p className="text-sm text-[var(--color-text-muted)]">{copy}</p>
+    </div>
+  );
+}
+
 export function PlannerRecommendationsCompactSection({
   recommendations,
   maxItems = Infinity,
@@ -523,14 +531,15 @@ export function PlannerRecommendationsCompactSection({
   const visibleEntries = recommendations.discoverEntries.slice(0, maxItems);
 
   return (
-    <div className="flex flex-col gap-3" data-testid="planner-compact-recommendations">
+    <div
+      className="flex flex-col gap-3 border-t border-[var(--color-border)] px-3.5 pt-3"
+      data-testid="planner-compact-recommendations"
+    >
       {!recommendations.enabled ? (
-        <div className="rounded-[18px] border border-dashed border-black/8 px-4 py-5 text-sm text-[var(--color-text-muted)]">
-          Turn recommendations back on to see nearby places Voyager can add for you.
-        </div>
+        <CompactRecommendationsEmptyState copy="Turn recommendations back on to see nearby places Voyager can add for you." />
       ) : recommendations.isLoadingDiscover ? (
         <div className="flex flex-col gap-3">
-          <AiLoadingText className="px-1" size="md">
+          <AiLoadingText size="md">
             {RECOMMENDATION_LOADING_COPY}
           </AiLoadingText>
           <div className="flex gap-3 overflow-hidden">
@@ -543,7 +552,7 @@ export function PlannerRecommendationsCompactSection({
           </div>
         </div>
       ) : visibleEntries.length ? (
-        <CarouselContent className="mt-0.5 items-stretch gap-3 px-3">
+        <CarouselContent className="mt-0.5 items-stretch gap-3">
           {visibleEntries.map((entry) => (
             <CarouselItem
               key={entry.key}
@@ -559,9 +568,7 @@ export function PlannerRecommendationsCompactSection({
           ))}
         </CarouselContent>
       ) : (
-        <div className="rounded-[18px] border border-dashed border-black/8 px-4 py-5 text-sm text-[var(--color-text-muted)]">
-          No recommendations are available right now.
-        </div>
+        <CompactRecommendationsEmptyState copy="No recommendations are available right now." />
       )}
     </div>
   );

@@ -82,6 +82,18 @@ function stringifyCoordinates(points: LatLngPoint[]) {
   return points.map((point) => `${point.lat}:${point.lng}`).join('|');
 }
 
+function enforceMapZoom(map: google.maps.Map, targetZoom: number, retryDelay = 200) {
+  if (map.getZoom() !== targetZoom) {
+    map.setZoom(targetZoom);
+  }
+
+  setTimeout(() => {
+    if (map.getZoom() !== targetZoom) {
+      map.setZoom(targetZoom);
+    }
+  }, retryDelay);
+}
+
 function signatureForFeatureCollection(
   featureCollection: TripMapFeatureCollection | null | undefined,
 ) {
@@ -231,15 +243,21 @@ export function fitBoundsForPoints(
       Math.abs(currentCenter.lat() - firstPoint.lat) < 0.0001 &&
       Math.abs(currentCenter.lng() - firstPoint.lng) < 0.0001;
 
-    if (isSamePoint && map.getZoom() === targetZoom) return;
+    if (isSamePoint) {
+      enforceMapZoom(map, targetZoom);
+      return;
+    }
 
     map.panTo(firstPoint);
     if (map.getZoom() !== targetZoom) {
       google.maps.event.addListenerOnce(map, 'idle', () => {
         setTimeout(() => {
-          if (map.getZoom() !== targetZoom) map.setZoom(targetZoom);
+          enforceMapZoom(map, targetZoom, 120);
         }, 150);
       });
+      setTimeout(() => {
+        enforceMapZoom(map, targetZoom, 120);
+      }, 300);
     }
     return;
   }
@@ -371,16 +389,24 @@ export function MapPanTo({ point, zoom }: { point: LatLngPoint | null; zoom?: nu
 
       const isSameZoom = zoom == null || currentZoom === zoom;
 
-      if (isSamePoint && isSameZoom) return;
+      if (isSamePoint) {
+        if (!isSameZoom && zoom != null) {
+          enforceMapZoom(map, zoom);
+        }
+        return;
+      }
 
       map.panTo(point);
 
       if (zoom != null && currentZoom !== zoom) {
         google.maps.event.addListenerOnce(map, 'idle', () => {
           setTimeout(() => {
-            if (zoom != null) map.setZoom(zoom);
+            if (zoom != null) enforceMapZoom(map, zoom, 120);
           }, 150);
         });
+        setTimeout(() => {
+          if (zoom != null) enforceMapZoom(map, zoom, 120);
+        }, 300);
       }
     }, 100);
 
@@ -390,11 +416,15 @@ export function MapPanTo({ point, zoom }: { point: LatLngPoint | null; zoom?: nu
   return null;
 }
 
-export function VoyagerMap({ className, ...props }: React.ComponentProps<typeof Map>) {
+export function VoyagerMap({
+  className,
+  reuseMaps = true,
+  ...props
+}: React.ComponentProps<typeof Map> & { reuseMaps?: boolean }) {
   return (
     <div className={cn('voyager-google-map h-full w-full', className)}>
       <Map
-        reuseMaps
+        reuseMaps={reuseMaps}
         disableDefaultUI
         gestureHandling="greedy"
         mapId={config.map.mapId || undefined}

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useLayoutEffect, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { tripKeys, useTrips } from '@/entities/trip/queries';
@@ -518,113 +518,94 @@ export default function TripsPage() {
   const destinationsRef = useRef<HTMLElement>(null);
   const detailsPanelRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (prefersReducedMotion()) {
       return;
     }
 
     if (activeTab === 'info' && detailsPanelRef.current) {
       const ctx = gsap.context(() => {
+        gsap.set('.destination-meta > *', { y: 12, autoAlpha: 0 });
+        gsap.set('.destination-title', { y: 18, autoAlpha: 0 });
+        gsap.set('.destination-teaser', { y: 18, autoAlpha: 0 });
+        gsap.set('.destination-stat', { y: 16, autoAlpha: 0 });
+        gsap.set('.destination-highlights-heading', { y: 14, autoAlpha: 0 });
+        gsap.set('.destination-highlight', { y: 10, autoAlpha: 0 });
+        gsap.set('.destination-summary', { y: 18, autoAlpha: 0 });
+
         const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
 
-        tl.fromTo(
-          '.destination-meta > *',
-          { y: 12, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.3, stagger: 0.05 },
-        )
-          .fromTo(
-            '.destination-title',
-            { y: 18, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.45 },
-            '-=0.12',
-          )
-          .fromTo(
-            '.destination-teaser',
-            { y: 18, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.42 },
-            '-=0.24',
-          )
-          .fromTo(
+        tl.to('.destination-meta > *', { y: 0, autoAlpha: 1, duration: 0.3, stagger: 0.05 })
+          .to('.destination-title', { y: 0, autoAlpha: 1, duration: 0.45 }, '-=0.12')
+          .to('.destination-teaser', { y: 0, autoAlpha: 1, duration: 0.42 }, '-=0.24')
+          .to(
             '.destination-stat',
-            { y: 16, autoAlpha: 0 },
             { y: 0, autoAlpha: 1, duration: 0.4, stagger: 0.06 },
             '-=0.18',
           )
-          .fromTo(
+          .to(
             '.destination-highlights-heading',
-            { y: 14, autoAlpha: 0 },
             { y: 0, autoAlpha: 1, duration: 0.34 },
             '-=0.16',
           )
-          .fromTo(
+          .to(
             '.destination-highlight',
-            { y: 10, autoAlpha: 0 },
             { y: 0, autoAlpha: 1, duration: 0.28, stagger: 0.035 },
             '-=0.18',
           )
-          .fromTo(
-            '.destination-summary',
-            { y: 18, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.42 },
-            '-=0.12',
-          );
+          .to('.destination-summary', { y: 0, autoAlpha: 1, duration: 0.42 }, '-=0.12');
       }, detailsPanelRef);
       return () => ctx.revert();
     }
     return undefined;
   }, [activeDestinationId, activeTab]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (prefersReducedMotion()) {
       return;
     }
 
     const ctx = gsap.context(() => {
+      gsap.set('.hero-bg', { scale: 1.08, autoAlpha: 0 });
+      gsap.set('.hero-shell', { y: 20, autoAlpha: 0 });
+      gsap.set('.hero-title', { y: 22, autoAlpha: 0 });
+      gsap.set('.hero-desc', { y: 18, autoAlpha: 0 });
+      gsap.set('.hero-actions > *', { y: 16, autoAlpha: 0 });
+
       const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
 
-      tl.fromTo(
-        '.hero-bg',
-        { scale: 1.08, autoAlpha: 0 },
-        { scale: 1, autoAlpha: 0.75, duration: 1.3, ease: 'power2.out' },
-      )
-        .fromTo(
-          '.hero-shell',
-          { y: 20, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.65 },
-          '-=0.92',
-        )
-        .fromTo(
-          '.hero-title',
-          { y: 22, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.58 },
-          '-=0.34',
-        )
-        .fromTo(
-          '.hero-desc',
-          { y: 18, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.54 },
-          '-=0.28',
-        )
-        .fromTo(
-          '.hero-actions > *',
-          { y: 16, autoAlpha: 0 },
-          { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.08 },
-          '-=0.16',
-        );
+      tl.to('.hero-bg', { scale: 1, autoAlpha: 0.75, duration: 1.3, ease: 'power2.out' })
+        .to('.hero-shell', { y: 0, autoAlpha: 1, duration: 0.65 }, '-=0.92')
+        .to('.hero-title', { y: 0, autoAlpha: 1, duration: 0.58 }, '-=0.34')
+        .to('.hero-desc', { y: 0, autoAlpha: 1, duration: 0.54 }, '-=0.28')
+        .to('.hero-actions > *', { y: 0, autoAlpha: 1, duration: 0.45, stagger: 0.08 }, '-=0.16');
     }, heroRef);
 
     return () => ctx.revert();
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (prefersReducedMotion()) {
       return;
     }
 
     if (isLoading || !boardRef.current) return;
 
+    const setup = gsap.context(() => {
+      const tripCards = gsap.utils.toArray<HTMLElement>('.board-card');
+      gsap.set('.board-intro', { y: 18, autoAlpha: 0 });
+
+      if (error) {
+        gsap.set('.board-alert', { y: 16, autoAlpha: 0 });
+      }
+
+      if (tripCards.length > 0) {
+        gsap.set(tripCards, { y: 28, autoAlpha: 0 });
+      }
+    }, boardRef);
+
     let ctx: gsap.Context | undefined;
-    const timer = setTimeout(() => {
+    const frame = requestAnimationFrame(() => {
       ScrollTrigger.refresh();
       ctx = gsap.context(() => {
         const tripCards = gsap.utils.toArray<HTMLElement>('.board-card');
@@ -644,31 +625,26 @@ export default function TripsPage() {
           },
         });
 
-        tl.fromTo('.board-intro', { y: 18, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.48 });
+        tl.to('.board-intro', { y: 0, autoAlpha: 1, duration: 0.48 });
 
         if (hasAlert) {
-          tl.fromTo(
-            '.board-alert',
-            { y: 16, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.42 },
-            '-=0.18',
-          );
+          tl.to('.board-alert', { y: 0, autoAlpha: 1, duration: 0.42 }, '-=0.18');
         }
 
         if (hasCards) {
-          tl.fromTo(
+          tl.to(
             tripCards,
-            { y: 28, autoAlpha: 0 },
             { y: 0, autoAlpha: 1, duration: 0.56, stagger: 0.08 },
             hasAlert ? '-=0.14' : '-=0.16',
           );
         }
       }, boardRef);
-    }, 150);
+    });
 
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(frame);
       ctx?.revert();
+      setup.revert();
     };
   }, [error, isLoading, trips.length]);
 
@@ -706,7 +682,7 @@ export default function TripsPage() {
     return () => observer.disconnect();
   }, [shouldRenderDestinationMap]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (prefersReducedMotion()) {
       return;
     }
@@ -714,66 +690,85 @@ export default function TripsPage() {
     const section = destinationsRef.current;
     if (!section) return;
 
+    if (section.getBoundingClientRect().top <= window.innerHeight * 0.88) {
+      return;
+    }
+
+    const setup = gsap.context(() => {
+      const viewer = gsap.utils
+        .toArray<HTMLElement>('.destinations-viewer')
+        .filter((element) => element.offsetParent !== null);
+      const sidebarHeader = gsap.utils
+        .toArray<HTMLElement>('.destinations-sidebar-header')
+        .filter((element) => element.offsetParent !== null);
+      const destinationCards = gsap.utils
+        .toArray<HTMLElement>('.destination-card')
+        .filter((element) => element.offsetParent !== null);
+
+      gsap.set('.destinations-header', { y: 22, autoAlpha: 0 });
+
+      if (viewer.length > 0) {
+        gsap.set(viewer, { y: 24, autoAlpha: 0, scale: 0.985 });
+      }
+
+      if (sidebarHeader.length > 0) {
+        gsap.set(sidebarHeader, { y: 16, autoAlpha: 0 });
+      }
+
+      if (destinationCards.length > 0) {
+        gsap.set(destinationCards, { y: 14, autoAlpha: 0 });
+      }
+    }, destinationsRef);
+
     let ctx: gsap.Context | undefined;
     let trigger: ScrollTrigger | undefined;
-    const timer = setTimeout(() => {
-      ScrollTrigger.refresh();
-      const revealDestinations = () => {
-        if (ctx) {
-          return;
+    const revealDestinations = () => {
+      if (ctx) {
+        return;
+      }
+
+      ctx = gsap.context(() => {
+        const viewer = gsap.utils
+          .toArray<HTMLElement>('.destinations-viewer')
+          .filter((element) => element.offsetParent !== null);
+        const sidebarHeader = gsap.utils
+          .toArray<HTMLElement>('.destinations-sidebar-header')
+          .filter((element) => element.offsetParent !== null);
+        const destinationCards = gsap.utils
+          .toArray<HTMLElement>('.destination-card')
+          .filter((element) => element.offsetParent !== null);
+
+        const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+
+        tl.to('.destinations-header', { y: 0, autoAlpha: 1, duration: 0.52 });
+
+        if (viewer.length > 0) {
+          tl.to(viewer, { y: 0, autoAlpha: 1, scale: 1, duration: 0.62 }, '-=0.18');
         }
 
-        ctx = gsap.context(() => {
-          const viewer = gsap.utils
-            .toArray<HTMLElement>('.destinations-viewer')
-            .filter((element) => element.offsetParent !== null);
-          const sidebarHeader = gsap.utils
-            .toArray<HTMLElement>('.destinations-sidebar-header')
-            .filter((element) => element.offsetParent !== null);
-          const destinationCards = gsap.utils
-            .toArray<HTMLElement>('.destination-card')
-            .filter((element) => element.offsetParent !== null);
-
-          const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
-
-          tl.fromTo(
-            '.destinations-header',
-            { y: 22, autoAlpha: 0 },
-            { y: 0, autoAlpha: 1, duration: 0.52 },
+        if (sidebarHeader.length > 0) {
+          tl.to(
+            sidebarHeader,
+            { y: 0, autoAlpha: 1, duration: 0.38 },
+            viewer.length > 0 ? '-=0.4' : '-=0.14',
           );
+        }
 
-          if (viewer.length > 0) {
-            tl.fromTo(
-              viewer,
-              { y: 24, autoAlpha: 0, scale: 0.985 },
-              { y: 0, autoAlpha: 1, scale: 1, duration: 0.62 },
-              '-=0.18',
-            );
-          }
+        if (destinationCards.length > 0) {
+          tl.to(
+            destinationCards,
+            { y: 0, autoAlpha: 1, duration: 0.36, stagger: 0.045 },
+            '-=0.14',
+          );
+        }
+      }, destinationsRef);
+    };
 
-          if (sidebarHeader.length > 0) {
-            tl.fromTo(
-              sidebarHeader,
-              { y: 16, autoAlpha: 0 },
-              { y: 0, autoAlpha: 1, duration: 0.38 },
-              viewer.length > 0 ? '-=0.4' : '-=0.14',
-            );
-          }
+    const frame = requestAnimationFrame(() => {
+      ScrollTrigger.refresh();
 
-          if (destinationCards.length > 0) {
-            tl.fromTo(
-              destinationCards,
-              { y: 14, autoAlpha: 0 },
-              { y: 0, autoAlpha: 1, duration: 0.36, stagger: 0.045 },
-              '-=0.14',
-            );
-          }
-        }, destinationsRef);
-      };
-
-      // If the section is already on screen, leave it rendered normally instead of hiding it
-      // while waiting for a scroll-trigger that may already have been passed.
       if (section.getBoundingClientRect().top <= window.innerHeight * 0.88) {
+        revealDestinations();
         return;
       }
 
@@ -784,12 +779,13 @@ export default function TripsPage() {
         invalidateOnRefresh: true,
         onEnter: revealDestinations,
       });
-    }, 120);
+    });
 
     return () => {
-      clearTimeout(timer);
+      cancelAnimationFrame(frame);
       trigger?.kill();
       ctx?.revert();
+      setup.revert();
     };
   }, []);
 
@@ -980,7 +976,6 @@ export default function TripsPage() {
         </section>
       )}
 
-      {/* ─── Unified Destinations Section ─────────────────────────────────── */}
       <section ref={destinationsRef} id="destinations" className="mt-12 scroll-mt-8 md:mt-16">
         <div className="destinations-header flex flex-col gap-5 px-4 md:flex-row md:items-end md:justify-between lg:px-0">
           <div>
@@ -1033,7 +1028,6 @@ export default function TripsPage() {
 
         <div className="mt-4 border-y-0 border-[var(--color-border)] bg-transparent md:mt-8 lg:overflow-hidden lg:rounded-xl lg:border lg:border-[var(--color-border-strong)] lg:bg-white">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            {/* Map or Info Area */}
             <div className="destinations-viewer relative hidden h-[17rem] overflow-hidden bg-white md:h-[30rem] lg:block lg:h-[34rem]">
               {activeTab === 'map' ? (
                 <div className="h-full w-full">
@@ -1133,16 +1127,13 @@ export default function TripsPage() {
               )}
             </div>
 
-            {/* Destination list sidebar */}
             <aside className="flex flex-col lg:h-[34rem] lg:border-t-0 lg:border-l lg:border-[var(--color-border-strong)] lg:bg-[var(--color-secondary-surface)]">
-              {/* Sidebar header */}
               <div className="destinations-sidebar-header flex shrink-0 items-center justify-between border-b-0 border-[var(--color-border)] bg-transparent px-4 py-3 lg:border-b lg:bg-[var(--color-secondary-surface)]">
                 <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[var(--color-text-muted)] uppercase">
                   {CURATED_DESTINATIONS.length} editorial routes
                 </p>
               </div>
 
-              {/* Scrollable card list */}
               <div className="relative flex-1 overflow-y-visible bg-transparent lg:bg-[var(--color-secondary-surface)]">
                 <div className="flex flex-col gap-2 px-4 py-3 lg:gap-2 lg:p-3">
                   {CURATED_DESTINATIONS.map((destination) => (
@@ -1165,9 +1156,7 @@ export default function TripsPage() {
       </section>
 
       <footer className="mt-8 overflow-hidden border-t border-[var(--color-border)] bg-white px-6 py-10 md:mt-12 lg:rounded-[24px] lg:border lg:border-white/75 lg:bg-[linear-gradient(145deg,rgba(255,255,255,0.95),rgba(242,247,251,0.92))] lg:px-8 lg:py-10">
-        {/* Brand + link columns */}
         <div className="grid gap-10 md:grid-cols-[minmax(0,1.3fr)_minmax(0,2.7fr)] lg:gap-16">
-          {/* Brand column */}
           <div>
             <div className="flex items-center gap-2.5">
               <span className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-[var(--color-cta)] text-white">
@@ -1197,7 +1186,6 @@ export default function TripsPage() {
             </div>
           </div>
 
-          {/* Link columns */}
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
             {[
               {
@@ -1257,10 +1245,8 @@ export default function TripsPage() {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="mt-10 h-px w-full bg-[var(--color-border-strong)]" />
 
-        {/* Bottom bar */}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[0.75rem] text-[var(--color-text-muted)]">
             &copy; {new Date().getFullYear()} Voyager. All rights reserved.

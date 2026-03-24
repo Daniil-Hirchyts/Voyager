@@ -18,7 +18,6 @@ import type {
 import { isRateLimit } from '@/shared/api/client';
 import { activityKeys as plannerActivityKeys } from '@/entities/activity/queries';
 import { dayKeys } from '@/entities/day/queries';
-import { proposalKeys } from '@/entities/proposal/queries';
 import { tripKeys } from '@/entities/trip/queries';
 
 export const activityDiscoveryKeys = {
@@ -49,7 +48,7 @@ export function useDiscoverActivities(
     queryKey: activityDiscoveryKeys.discover(tripId, params),
     queryFn: () => discoverActivities(tripId, params),
     enabled: enabled && !!tripId,
-    staleTime: Infinity, // never auto-refetch; only re-fetched via explicit refresh()
+    staleTime: Infinity, 
     refetchOnWindowFocus: false,
     refetchOnMount: false,
     retry: (failureCount, error) => {
@@ -139,7 +138,6 @@ export function useAttachSavedActivityToDay(tripId: string) {
       qc.invalidateQueries({ queryKey: tripKeys.detail(tripId) });
       qc.invalidateQueries({ queryKey: dayKeys.list(tripId) });
       qc.invalidateQueries({ queryKey: plannerActivityKeys.list(data.trip_day_id) });
-      qc.invalidateQueries({ queryKey: proposalKeys.list(tripId) });
     },
   });
 }

@@ -1825,8 +1825,14 @@ export function PlannerMapView({
             </div>
           ) : (
             <VoyagerMap
+              reuseMaps={false}
               defaultCenter={{ lat: viewport.latitude, lng: viewport.longitude }}
               defaultZoom={viewport.zoom}
+              minZoom={3}
+              restriction={{
+                latLngBounds: { north: 85, south: -85, west: -179.99, east: 179.99 },
+                strictBounds: true,
+              }}
               style={{ width: '100%', height: '100%' }}
               disableDefaultUI
               onClick={handleMapPoiSelection}

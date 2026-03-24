@@ -2,7 +2,6 @@ import { createBrowserRouter, RouterProvider, Navigate, Outlet, useParams } from
 import { RequireAuth } from '@/app/auth/RequireAuth';
 import { ErrorBoundary } from 'react-error-boundary';
 import { lazy, Suspense } from 'react';
-import { config } from '@/app/config';
 import { useDelayedLoading } from '@/shared/hooks/useDelayedLoading';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +20,6 @@ const TripsPage = lazy(() => import('@/pages/app/trips'));
 const TripCreatePage = lazy(() => import('@/pages/app/trips/new'));
 const TripInvitePage = lazy(() => import('@/pages/app/invites'));
 const PlanPage = lazy(() => import('@/pages/app/plan'));
-const EventsPage = lazy(() => import('@/pages/app/events'));
-const ProposalsPage = lazy(() => import('@/pages/app/proposals'));
 const AppLayout = lazy(() =>
   import('@/widgets/app-side-rail').then((m) => ({ default: m.AppLayout })),
 );
@@ -73,22 +70,6 @@ function RouteErrorFallback({
       </Card>
     </div>
   );
-}
-
-export function FeatureRouteGate({
-  enabled,
-  children,
-}: {
-  enabled: boolean;
-  children: React.ReactNode;
-}) {
-  const { tripId } = useParams<{ tripId: string }>();
-
-  if (!enabled) {
-    return <Navigate to={tripId ? `/app/trips/${tripId}` : '/app/trips'} replace />;
-  }
-
-  return <>{children}</>;
 }
 
 export function LegacyActivitiesRedirect() {
@@ -222,30 +203,6 @@ const router = createBrowserRouter([
       {
         path: 'trips/:tripId/activities',
         element: <LegacyActivitiesRedirect />,
-      },
-      {
-        path: 'trips/:tripId/events',
-        element: (
-          <FeatureRouteGate enabled={config.features.activitiesUI}>
-            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
-              <Suspense fallback={<PageLoader />}>
-                <EventsPage />
-              </Suspense>
-            </ErrorBoundary>
-          </FeatureRouteGate>
-        ),
-      },
-      {
-        path: 'trips/:tripId/proposals',
-        element: (
-          <FeatureRouteGate enabled={config.features.activitiesUI}>
-            <ErrorBoundary FallbackComponent={RouteErrorFallback}>
-              <Suspense fallback={<PageLoader />}>
-                <ProposalsPage />
-              </Suspense>
-            </ErrorBoundary>
-          </FeatureRouteGate>
-        ),
       },
     ],
   },

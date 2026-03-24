@@ -19,7 +19,7 @@ import type {
 } from './api';
 import type { PlaceCreateInput } from '@/shared/api/types';
 
-const PLACE_STALE_TIME = 15 * 60 * 1000; // 15 min — Google Places data doesn't change frequently
+const PLACE_STALE_TIME = 15 * 60 * 1000; 
 
 export const placeKeys = {
   all: ['places'] as const,

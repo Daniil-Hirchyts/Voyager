@@ -7,7 +7,7 @@ import {
   WheelPicker,
   WheelPickerWrapper,
   type WheelPickerOption,
-} from '@/components/wheel-picker/wheel-picker';
+} from '@/components/ui/wheel-picker';
 import { cn } from '@/shared/lib/cn';
 import { VoyagerLoader } from '@/widgets/app-shell/logo';
 import {
