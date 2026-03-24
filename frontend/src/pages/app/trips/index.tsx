@@ -689,39 +689,10 @@ export default function TripsPage() {
 
     const section = destinationsRef.current;
     if (!section) return;
-
-    if (section.getBoundingClientRect().top <= window.innerHeight * 0.88) {
-      return;
-    }
-
-    const setup = gsap.context(() => {
-      const viewer = gsap.utils
-        .toArray<HTMLElement>('.destinations-viewer')
-        .filter((element) => element.offsetParent !== null);
-      const sidebarHeader = gsap.utils
-        .toArray<HTMLElement>('.destinations-sidebar-header')
-        .filter((element) => element.offsetParent !== null);
-      const destinationCards = gsap.utils
-        .toArray<HTMLElement>('.destination-card')
-        .filter((element) => element.offsetParent !== null);
-
-      gsap.set('.destinations-header', { y: 22, autoAlpha: 0 });
-
-      if (viewer.length > 0) {
-        gsap.set(viewer, { y: 24, autoAlpha: 0, scale: 0.985 });
-      }
-
-      if (sidebarHeader.length > 0) {
-        gsap.set(sidebarHeader, { y: 16, autoAlpha: 0 });
-      }
-
-      if (destinationCards.length > 0) {
-        gsap.set(destinationCards, { y: 14, autoAlpha: 0 });
-      }
-    }, destinationsRef);
-
     let ctx: gsap.Context | undefined;
-    let trigger: ScrollTrigger | undefined;
+    let setup: gsap.Context | undefined;
+    let observer: IntersectionObserver | undefined;
+
     const revealDestinations = () => {
       if (ctx) {
         return;
@@ -764,28 +735,68 @@ export default function TripsPage() {
       }, destinationsRef);
     };
 
-    const frame = requestAnimationFrame(() => {
-      ScrollTrigger.refresh();
+    const isAlreadyVisible = section.getBoundingClientRect().top <= window.innerHeight * 0.88;
+    if (isAlreadyVisible) {
+      return;
+    }
 
-      if (section.getBoundingClientRect().top <= window.innerHeight * 0.88) {
-        revealDestinations();
-        return;
+    setup = gsap.context(() => {
+      const viewer = gsap.utils
+        .toArray<HTMLElement>('.destinations-viewer')
+        .filter((element) => element.offsetParent !== null);
+      const sidebarHeader = gsap.utils
+        .toArray<HTMLElement>('.destinations-sidebar-header')
+        .filter((element) => element.offsetParent !== null);
+      const destinationCards = gsap.utils
+        .toArray<HTMLElement>('.destination-card')
+        .filter((element) => element.offsetParent !== null);
+
+      gsap.set('.destinations-header', { y: 22, autoAlpha: 0 });
+
+      if (viewer.length > 0) {
+        gsap.set(viewer, { y: 24, autoAlpha: 0, scale: 0.985 });
       }
 
-      trigger = ScrollTrigger.create({
-        trigger: section,
-        start: 'top 88%',
-        once: true,
-        invalidateOnRefresh: true,
-        onEnter: revealDestinations,
-      });
-    });
+      if (sidebarHeader.length > 0) {
+        gsap.set(sidebarHeader, { y: 16, autoAlpha: 0 });
+      }
+
+      if (destinationCards.length > 0) {
+        gsap.set(destinationCards, { y: 14, autoAlpha: 0 });
+      }
+    }, destinationsRef);
+
+    if (typeof IntersectionObserver === 'undefined') {
+      revealDestinations();
+      return () => {
+        ctx?.revert();
+        setup?.revert();
+      };
+    }
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        if (!entry?.isIntersecting) {
+          return;
+        }
+
+        revealDestinations();
+        observer?.disconnect();
+        observer = undefined;
+      },
+      {
+        threshold: 0.01,
+        rootMargin: '0px 0px -12% 0px',
+      },
+    );
+
+    observer.observe(section);
 
     return () => {
-      cancelAnimationFrame(frame);
-      trigger?.kill();
+      observer?.disconnect();
       ctx?.revert();
-      setup.revert();
+      setup?.revert();
     };
   }, []);
 
